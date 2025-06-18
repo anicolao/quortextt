@@ -1,45 +1,34 @@
 {
-  description = "eframe devShell";
-
+  description = "A basic rust environment";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    systems.url = "github:nix-systems/default";
+    flake-utils = {
+      url = "github:numtide/flake-utils";
+      inputs.systems.follows = "systems";
+    };
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
-      in with pkgs; {
-        devShells.default = mkShell rec {
-          buildInputs = [
-            # Rust
-            rust-bin.stable.latest.default
-            trunk
-
-            # misc. libraries
-            openssl
-            pkg-config
-
-            # GUI libs
-            libxkbcommon
-            libGL
-            fontconfig
-
-            # wayland libraries
-            wayland
-
-            # x11 libraries
-            xorg.libXcursor
-            xorg.libXrandr
-            xorg.libXi
-            xorg.libX11
-
+  outputs = {
+    nixpkgs,
+    flake-utils,
+    fenix,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+        rust-toolchain = with fenix.packages.${system};
+          combine [
+            stable.toolchain
+            targets.wasm32-unknown-unknown.stable.rust-std
           ];
-
-          LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
-        };
-      });
+      in {
+        devShells.default = pkgs.mkShell {packages = with pkgs; [cargo wasm-pack rust-toolchain];};
+      }
+    );
 }

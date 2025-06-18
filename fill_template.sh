@@ -14,17 +14,10 @@ read email
 echo "Patching files..."
 
 # Determine the correct sed syntax based on OS
-if [ "$(uname)" = "Darwin" ]; then
-  # macOS sed
-  sed_inplace() {
-    sed -i '' "$@"
-  }
-else
-  # GNU sed (Linux)
-  sed_inplace() {
-    sed -i "$@"
-  }
-fi
+# GNU sed (Linux)
+sed_inplace() {
+	sed -i "$@"
+}
 
 sed_inplace "s/eframe_template/$crate/g" Cargo.toml
 sed_inplace "s/eframe_template/$crate/g" src/main.rs
