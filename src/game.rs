@@ -4,7 +4,7 @@ use rand::prelude::*;
 pub struct Rotation(pub u8); // 0 - 5; 1 is 60 degrees clockwise from default rotation
 
 impl Rotation {
-    fn reversed(self) -> Self {
+    fn reversed(&self) -> Self {
         Self(5 - self.0)
     }
 }
@@ -108,17 +108,17 @@ impl Direction {
         }
     }
 
-    pub fn rotate(self, rotation: Rotation) -> Self {
-        Self::from_rotation(Rotation(((self as u8) + rotation.0) % 6))
+    pub fn rotate(&self, rotation: Rotation) -> Self {
+        Self::from_rotation(Rotation(((*self as u8) + rotation.0) % 6))
     }
 
-    pub fn reversed(self) -> Self {
+    pub fn reversed(&self) -> Self {
         self.rotate(Rotation(3))
     }
 
     // Turn the direction into (row delta, column delta), which are what you need to add to
     // a tile's row and column to get to the adjacent tile in this direction.
-    pub fn tile_vec(self) -> TileVec {
+    pub fn tile_vec(&self) -> TileVec {
         match self {
             Self::SouthWest => TileVec::new(-1, -1),
             Self::West => TileVec::new(0, -1),
@@ -139,8 +139,8 @@ pub enum TileType {
 }
 
 impl TileType {
-    pub fn num_sharps(self) -> usize {
-        self as usize
+    pub fn num_sharps(&self) -> usize {
+        *self as usize
     }
 
     pub fn from_num_sharps(n: usize) -> Self {
@@ -153,7 +153,7 @@ impl TileType {
         }
     }
 
-    pub fn exit_from_entrance(self, entrance: Direction) -> Direction {
+    pub fn exit_from_entrance(&self, entrance: Direction) -> Direction {
         let exits = match self {
             Self::NoSharps => [2, 4, 0, 5, 1, 3],
             Self::OneSharp => [5, 3, 4, 1, 2, 0],
@@ -163,7 +163,7 @@ impl TileType {
         Direction::from_rotation(Rotation(exits[entrance as usize]))
     }
 
-    pub fn all_flows(self) -> [(Direction, Direction); 3] {
+    pub fn all_flows(&self) -> [(Direction, Direction); 3] {
         (0u8..6)
             .filter_map(|i| {
                 let entrance = Direction::from_rotation(Rotation(i));
@@ -187,7 +187,7 @@ pub struct PlacedTile {
     type_: TileType,
     rotation: Rotation,
     // Cached set of the current flowed colour, indexed by the direction of the edge. For each flow,
-    flows: [Option<Player>; 6],
+    flow_cache: [Option<Player>; 6],
 }
 
 impl PlacedTile {
@@ -195,26 +195,34 @@ impl PlacedTile {
         Self {
             type_,
             rotation,
-            flows: [None; 6],
+            flow_cache: [None; 6],
         }
     }
 
-    pub fn exit_from_entrance(self, entrance: Direction) -> Direction {
+    pub fn exit_from_entrance(&self, entrance: Direction) -> Direction {
         self.type_
             .exit_from_entrance(entrance.rotate(self.rotation.reversed()))
             .rotate(self.rotation)
     }
 
-    pub fn all_flows(self) -> [(Direction, Direction); 3] {
+    pub fn all_flows(&self) -> [(Direction, Direction); 3] {
         self.type_
             .all_flows()
             .map(|(d1, d2)| (d1.rotate(self.rotation), d2.rotate(self.rotation)))
+    }
+
+    pub fn flow_cache(&self, direction: Direction) -> Option<Player> {
+        self.flow_cache[direction as usize]
+    }
+
+    pub fn set_flow_cache(&mut self, direction: Direction, player: Option<Player>) {
+        self.flow_cache[direction as usize] = player;
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AdjacentTile {
-    BoardEdge(Option<Player>),
+    BoardEdge(Direction),
     Tile(TilePos),
 }
 
@@ -266,14 +274,23 @@ impl Game {
         TilePos { row: 3, col: 3 }
     }
 
-    pub fn get_tile(&self, pos: TilePos) -> Tile {
+    pub fn tile_mut(&mut self, pos: TilePos) -> Option<&mut Tile> {
         if pos.row < 0 || pos.col < 0 || pos.row >= 7 || pos.col >= 7 {
-            return Tile::NotOnBoard;
+            return None;
         }
-        self.board[pos.row as usize][pos.col as usize]
+        Some(&mut self.board[pos.row as usize][pos.col as usize])
+    }
+
+    pub fn tile(&self, pos: TilePos) -> &Tile {
+        if pos.row < 0 || pos.col < 0 || pos.row >= 7 || pos.col >= 7 {
+            return &self.board[6][0]; // Some arbitrary NotOnBoard position so that we can return
+                                      // a reference.
+        }
+        &self.board[pos.row as usize][pos.col as usize]
     }
 
     pub fn adjacent_tile(&self, pos: TilePos, direction: Direction) -> AdjacentTile {
+        // TODO actually return a board edge if there is a board edge
         AdjacentTile::Tile(pos + direction.tile_vec())
     }
 
@@ -322,11 +339,32 @@ impl Game {
         g
     }
 
+    // Fill a flow in a tile starting from the edge specified by `dir`. If there is an adjacent
+    // tile at the other end of the flow, continue flowing into that edge.
+    fn floodfill_path(&mut self, player: Player, mut pos: TilePos, mut dir: Direction) {
+        loop {
+            match self.tile_mut(pos) {
+                None | Some(Tile::NotOnBoard) | Some(Tile::Empty) => break,
+                Some(Tile::Placed(tile)) => {
+                    let exit_dir = tile.exit_from_entrance(dir);
+                    tile.set_flow_cache(dir, Some(player));
+                    tile.set_flow_cache(exit_dir, Some(player));
+                    match self.adjacent_tile(pos, exit_dir) {
+                        AdjacentTile::BoardEdge(_) => (),
+                        AdjacentTile::Tile(next_pos) => {
+                            self.floodfill_path(player, next_pos, exit_dir.reversed())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn recompute_flows(&mut self) {
         for i in 0..7 {
             for j in 0..7 {
                 match self.board[i][j] {
-                    Tile::Placed(mut tile) => tile.flows = [None; 6],
+                    Tile::Placed(mut tile) => tile.flow_cache = [None; 6],
                     _ => (),
                 }
             }
@@ -337,7 +375,7 @@ impl Game {
                 None => (),
                 Some(player) => {
                     for (pos, dir) in self.edges_on_board_edge(Rotation(side as u8)) {
-                        // TODO: Actually floodfill from here
+                        self.floodfill_path(player, pos, dir);
                     }
                 }
             }
