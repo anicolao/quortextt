@@ -1,3 +1,4 @@
+use crate::game::*;
 use egui::{Sense, Stroke};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -24,6 +25,12 @@ impl Default for TemplateApp {
 impl TemplateApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let game = Game::random_board_for_testing(0.8);
+        let tile = PlacedTile::new(TileType::TwoSharps, Rotation(1));
+        println!("{:?}", tile.all_flows());
+        println!("{:?}", game.edges_on_board_edge(Rotation(2)));
+        println!("{game:?}");
+
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
