@@ -167,7 +167,8 @@ impl TileType {
         // This ordering is a hack to make sure that the straight segment (if there is one) is
         // always returned last. This works because the straight segment always goes from 1 to 4,
         // if it is present on the tile.
-        [0u8, 2u8, 3u8, 5u8, 1u8, 4u8].into_iter()
+        [0u8, 2u8, 3u8, 5u8, 1u8, 4u8]
+            .into_iter()
             .filter_map(|i| {
                 let entrance = Direction::from_rotation(Rotation(i));
                 let exit = self.exit_from_entrance(entrance);
@@ -301,7 +302,10 @@ impl Game {
     }
 
     pub fn adjacent_tile(&self, pos: TilePos, direction: Direction) -> AdjacentTile {
-        // TODO actually return a board edge if there is a board edge
+        let t = self.tile(pos + direction.tile_vec());
+        if *t == Tile::NotOnBoard {
+            return AdjacentTile::BoardEdge(direction);
+        }
         AdjacentTile::Tile(pos + direction.tile_vec())
     }
 
@@ -332,7 +336,8 @@ impl Game {
     pub fn random_board_for_testing(p_filled: f32) -> Self {
         let mut g = Self::new(3);
 
-        let mut rng = StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
+        let mut rng =
+            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
         for i in 0..7 {
             for j in 0..7 {
                 if g.board[i][j] == Tile::NotOnBoard {
@@ -362,7 +367,7 @@ impl Game {
                     tile.set_flow_cache(dir, Some(player));
                     tile.set_flow_cache(exit_dir, Some(player));
                     match self.adjacent_tile(pos, exit_dir) {
-                        AdjacentTile::BoardEdge(_) => (),
+                        AdjacentTile::BoardEdge(_) => break,
                         AdjacentTile::Tile(next_pos) => {
                             pos = next_pos;
                             dir = exit_dir.reversed();
