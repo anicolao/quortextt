@@ -8,7 +8,7 @@ pub struct TemplateApp {
 impl Default for TemplateApp {
     fn default() -> Self {
         Self {
-            game: Game::random_board_for_testing(0.35),
+            game: Game::random_board_for_testing(0.95),
         }
     }
 }
@@ -227,15 +227,15 @@ impl eframe::App for TemplateApp {
             if window.height() / 10.0 < 2.0 * hexagon_radius {
                 hexagon_radius = window.height() / 20.0;
             }
-            let centerOffset = hexagon_radius * 0.9;
+            let center_offset = hexagon_radius * 0.9;
             // horizontal vector that moves one tile width to the right
-            let right = Vec2::new(2.0 * centerOffset, 0.0);
+            let right = Vec2::new(2.0 * center_offset, 0.0);
             // diagonal vector that moves one hex up and to the right
             let up = Vec2::new(
-                2.0 * centerOffset * 0.5,
-                -2.0 * centerOffset * 0.86602540378,
+                2.0 * center_offset * 0.5,
+                -2.0 * center_offset * 0.86602540378,
             );
-            let rup = Vec2::new(-2.0 * centerOffset, 0.0);
+            let rup = Vec2::new(-2.0 * center_offset, 0.0);
             let bgcolor = egui::Color32::from_rgb(0xFE, 0xFE, 0xF0);
             let bgcolors = Stroke::new(2.0, egui::Color32::from_rgb(0xFE, 0xFE, 0xF0));
             let fill = egui::Color32::from_rgb(0xFE, 0xFE, 0xF0);
@@ -249,8 +249,37 @@ impl eframe::App for TemplateApp {
                 border,
                 std::f32::consts::PI / 6.0,
             );
-            for col in -1..8 {
-                for row in -1..8 {
+            for side in 0..6 {
+                match self.game.sides[side] {
+                    None => (),
+                    Some(player) => {
+                        for (pos, dir) in self.game.edges_on_board_edge(Rotation(side as u8)) {
+                            let color = match player {
+                                0 => egui::Color32::from_rgb(0xFF, 0, 0),
+                                1 => egui::Color32::from_rgb(0, 0xFF, 0),
+                                2 => egui::Color32::from_rgb(0, 0, 0xFF),
+                                3 => egui::Color32::from_rgb(0xFF, 0xFF, 0),
+                                4 => egui::Color32::from_rgb(0, 0xFF, 0xFF),
+                                5 => egui::Color32::from_rgb(0xFF, 0, 0xFF),
+                                _ => egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
+                            };
+                            let edge = pos + dir.tile_vec();
+                            let col = edge.col;
+                            let row = edge.row;
+                            let pos = window.center()
+                                + up * -3.0
+                                + right * col as f32
+                                + up * row as f32
+                                + rup * row as f32;
+                            let fcolor = color;
+                            let bcolor = Stroke::new(3.0, color);
+                            Self::draw_empty_hex(pos, hexagon_radius, painter, fcolor, bcolor, 0.0);
+                        }
+                    }
+                }
+            }
+            for col in 0..7 {
+                for row in 0..7 {
                     let pos = window.center()
                         + up * -3.0
                         + right * col as f32
@@ -258,7 +287,7 @@ impl eframe::App for TemplateApp {
                         + rup * row as f32;
                     let tile = self.game.tile(TilePos::new(row, col));
                     match tile {
-                        Tile::NotOnBoard => {} // skip the empty hexagons
+                        Tile::NotOnBoard => {}
                         Tile::Empty => {
                             match response.hover_pos() {
                                 Some(hover_pos)

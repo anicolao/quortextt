@@ -248,9 +248,9 @@ pub enum Tile {
 pub struct Game {
     num_players: usize,
     board: [[Tile; 7]; 7],
-    sides: [Option<Player>; 6], // Mapping from a side of the board to a player. Side 0 corresponds
-                                // to rotation 0 (top of the board), 1 is the next side clockwise,
-                                // and so on around the board.
+    pub sides: [Option<Player>; 6], // Mapping from a side of the board to a player. Side 0 corresponds
+                                    // to rotation 0 (top of the board), 1 is the next side clockwise,
+                                    // and so on around the board.
 }
 
 impl Game {
