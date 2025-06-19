@@ -10,6 +10,8 @@ pub struct TemplateApp {
 
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
+    #[serde(skip)]
+    game: Game,
 }
 
 impl Default for TemplateApp {
@@ -18,6 +20,7 @@ impl Default for TemplateApp {
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 2.7,
+            game: Game::random_board_for_testing(0.8),
         }
     }
 }
@@ -25,7 +28,8 @@ impl Default for TemplateApp {
 impl TemplateApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let game = Game::random_board_for_testing(0.8);
+        let s: Self = Default::default();
+        let game = &s.game;
         let tile = PlacedTile::new(TileType::TwoSharps, Rotation(1));
         println!("{:?}", tile.all_flows());
         println!("{:?}", game.edges_on_board_edge(Rotation(2)));
@@ -40,7 +44,7 @@ impl TemplateApp {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
 
-        Default::default()
+        s
     }
 
     fn draw_flow(
@@ -146,7 +150,12 @@ impl TemplateApp {
             .collect::<Vec<_>>();
         painter.add(egui::Shape::convex_polygon(hexagon.clone(), fill, border));
     }
-    fn draw_hex(center: egui::Pos2, hexagon_radius: f32, painter: &egui::Painter) {
+    fn draw_hex(
+        center: egui::Pos2,
+        hexagon_radius: f32,
+        painter: &egui::Painter,
+        tile: &PlacedTile,
+    ) {
         let hexagon = (0..6)
             .map(|i| {
                 let angle =
@@ -163,62 +172,28 @@ impl TemplateApp {
             Stroke::new(2.0, egui::Color32::from_rgb(0xAA, 0xAA, 0xAA)),
         ));
         let thickness = 8.0 / 35.0 * hexagon_radius;
-        Self::draw_flow(
-            center,
-            painter,
-            &hexagon,
-            0,
-            2,
-            egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
-            thickness,
-        );
-        Self::draw_flow(
-            center,
-            painter,
-            &hexagon,
-            3,
-            5,
-            egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
-            thickness,
-        );
-        Self::draw_flow(
-            center,
-            painter,
-            &hexagon,
-            1,
-            4,
-            egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
-            thickness,
-        );
-        Self::draw_flow(
-            center,
-            painter,
-            &hexagon,
-            0,
-            2,
-            egui::Color32::from_rgb(0xFF, 0x00, 0x00),
-            thickness,
-        );
-        Self::draw_flow(
-            center,
-            painter,
-            &hexagon,
-            3,
-            5,
-            egui::Color32::from_rgb(0x00, 0x00, 0xFF),
-            thickness,
-        );
-        /*
-                Self::draw_flow(
-                    center,
-                    painter,
-                    &hexagon,
-                    1,
-                    4,
-                    egui::Color32::from_rgb(0x00, 0xFF, 0x00),
-                    thickness,
-                );
-        */
+        let flows = tile.all_flows();
+        for (e1, e2) in flows.iter() {
+            let player = tile.flow_cache(*e1);
+            let color = match player {
+                Some(0) => egui::Color32::from_rgb(0xFF, 0, 0),
+                Some(1) => egui::Color32::from_rgb(0, 0xFF, 0),
+                Some(2) => egui::Color32::from_rgb(0, 0, 0xFF),
+                Some(3) => egui::Color32::from_rgb(0xFF, 0xFF, 0),
+                Some(4) => egui::Color32::from_rgb(0, 0xFF, 0xFF),
+                Some(5) => egui::Color32::from_rgb(0xFF, 0, 0xFF),
+                None | Some(_) => egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
+            };
+            Self::draw_flow(
+                center,
+                painter,
+                &hexagon,
+                *e1 as usize,
+                *e2 as usize,
+                color,
+                thickness,
+            );
+        }
         painter.add(egui::Shape::convex_polygon(
             hexagon.clone(),
             egui::Color32::TRANSPARENT,
@@ -287,36 +262,23 @@ impl eframe::App for TemplateApp {
             );
             for i in -1..8 {
                 for j in -1..8 {
-                    if i < 0 || j < 0 || i == 7 || j == 7 {
-                        if j == -1 && i > 0 && i <= 4 {
-                            // set the clipping path to the enclosing hexagon
-                            // player 0
-                            let fcolor = egui::Color32::from_rgb(0xFF, 0, 0);
-                            let bcolor = Stroke::new(3.0, egui::Color32::from_rgb(0xFF, 0, 0));
-                            Self::draw_empty_hex(
-                                window.center() + up * -3.0 + right * i as f32 + up * j as f32,
-                                hexagon_radius,
-                                painter,
-                                fcolor,
-                                bcolor,
-                                0.0,
-                            );
-                        }
-                        continue;
-                    }
-                    if (j > 3 && i < j - 3) || (j < 3 && i > 3 + j) {
-                        continue; // skip the empty hexagons
-                    }
                     let pos = window.center()
                         + up * -3.0
                         + right * i as f32
                         + up * j as f32
                         + rup * j as f32;
-                    Self::draw_empty_hex(pos, hexagon_radius, painter, fill, border, 0.0);
-                    if (i + j) % 2 == 0 {
-                        Self::draw_hex(pos, hexagon_radius, painter);
-                    }
-                    //Self::draw_hex(pos, hexagon_radius, painter);
+                    let tile = self.game.tile(TilePos::new(i, j));
+                    match tile {
+                        Tile::NotOnBoard => {
+                            // skip the empty hexagons
+                        }
+                        Tile::Empty => {
+                            Self::draw_empty_hex(pos, hexagon_radius, painter, fill, border, 0.0);
+                        }
+                        Tile::Placed(tile) => {
+                            Self::draw_hex(pos, hexagon_radius, painter, tile);
+                        }
+                    };
                 }
             }
             Self::draw_inverted_hex(
