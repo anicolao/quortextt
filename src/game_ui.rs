@@ -3,6 +3,35 @@ use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec
 
 pub struct GameUi {}
 
+const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
+const DEFAULT_HEXAGON_RADIUS: f32 = 40.0;
+const BG_COLOUR: Color32 = Color32::from_rgb(0xFE, 0xFE, 0xF0);
+const BG_COLOUR_STROKE: Stroke = Stroke {
+    width: 2.0,
+    color: BG_COLOUR,
+};
+const FILL_COLOUR: Color32 = Color32::from_rgb(0xFE, 0xFE, 0xF0);
+const BORDER: Stroke = Stroke {
+    width: 2.0,
+    color: Color32::from_rgb(0xAA, 0xAA, 0xAA),
+};
+const HIGHLIGHT_BORDER: Stroke = Stroke {
+    width: 2.0,
+    color: Color32::from_rgb(0x00, 0xf0, 0x0),
+};
+
+fn player_colour(player: Player) -> Color32 {
+    match player {
+        0 => Color32::from_rgb(0xFF, 0, 0),
+        1 => Color32::from_rgb(0, 0xFF, 0),
+        2 => Color32::from_rgb(0, 0, 0xFF),
+        3 => Color32::from_rgb(0xFF, 0xFF, 0),
+        4 => Color32::from_rgb(0, 0xFF, 0xFF),
+        5 => Color32::from_rgb(0xFF, 0, 0xFF),
+        _ => NEUTRAL_COLOUR,
+    }
+}
+
 impl GameUi {
     pub fn new() -> Self {
         Self {}
@@ -136,13 +165,8 @@ impl GameUi {
             for (e1, e2) in flows.iter() {
                 let player = tile.flow_cache(*e1);
                 let color = match player {
-                    Some(0) => Color32::from_rgb(0xFF, 0, 0),
-                    Some(1) => Color32::from_rgb(0, 0xFF, 0),
-                    Some(2) => Color32::from_rgb(0, 0, 0xFF),
-                    Some(3) => Color32::from_rgb(0xFF, 0xFF, 0),
-                    Some(4) => Color32::from_rgb(0, 0xFF, 0xFF),
-                    Some(5) => Color32::from_rgb(0xFF, 0, 0xFF),
-                    None | Some(_) => Color32::from_rgb(0xAA, 0xAA, 0xAA),
+                    Some(player) => player_colour(player),
+                    None => NEUTRAL_COLOUR,
                 };
                 if blank && player.is_some() {
                     continue;
@@ -174,13 +198,10 @@ impl GameUi {
             ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
         let painter = ui.painter();
 
-        let mut hexagon_radius = 40.0;
-        if window.width() / 10.0 < 2.0 * hexagon_radius {
-            hexagon_radius = window.width() / 20.0;
-        }
-        if window.height() / 10.0 < 2.0 * hexagon_radius {
-            hexagon_radius = window.height() / 20.0;
-        }
+        let hexagon_radius = DEFAULT_HEXAGON_RADIUS
+            .min(window.width() / 17.0)
+            .min(window.height() / 15.0);
+
         let center_offset = hexagon_radius * 0.9;
         // horizontal vector that moves one tile width to the right
         let right = Vec2::new(2.0 * center_offset, 0.0);
@@ -190,33 +211,20 @@ impl GameUi {
             -2.0 * center_offset * 0.86602540378,
         );
         let rup = Vec2::new(-2.0 * center_offset, 0.0);
-        let bgcolor = Color32::from_rgb(0xFE, 0xFE, 0xF0);
-        let bgcolors = Stroke::new(2.0, Color32::from_rgb(0xFE, 0xFE, 0xF0));
-        let fill = Color32::from_rgb(0xFE, 0xFE, 0xF0);
-        let border = Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA));
-        let hborder = Stroke::new(2.0, Color32::from_rgb(0x00, 0xf0, 0x0));
         Self::draw_empty_hex(
             window.center(),
             hexagon_radius * 7.5,
             painter,
             Color32::from_rgb(0x33, 0x33, 0x33),
-            border,
+            BORDER,
             std::f32::consts::PI / 6.0,
         );
-        for side in 0u8..6 {
+        for side in 0..6 {
             match game.player_on_side(Rotation(side)) {
                 None => (),
                 Some(player) => {
                     for (pos, dir) in game.edges_on_board_edge(Rotation(side)) {
-                        let color = match player {
-                            0 => Color32::from_rgb(0xFF, 0, 0),
-                            1 => Color32::from_rgb(0, 0xFF, 0),
-                            2 => Color32::from_rgb(0, 0, 0xFF),
-                            3 => Color32::from_rgb(0xFF, 0xFF, 0),
-                            4 => Color32::from_rgb(0, 0xFF, 0xFF),
-                            5 => Color32::from_rgb(0xFF, 0, 0xFF),
-                            _ => Color32::from_rgb(0xAA, 0xAA, 0xAA),
-                        };
+                        let color = player_colour(player);
                         let edge = pos + dir.tile_vec();
                         let col = edge.col;
                         let row = edge.row;
@@ -243,28 +251,20 @@ impl GameUi {
                 match tile {
                     Tile::NotOnBoard => {}
                     Tile::Empty => {
-                        match response.hover_pos() {
+                        let border_stroke = match response.hover_pos() {
                             Some(hover_pos) if hover_pos.distance(pos) < hexagon_radius * 0.8 => {
-                                Self::draw_empty_hex(
-                                    pos,
-                                    hexagon_radius,
-                                    painter,
-                                    fill,
-                                    hborder,
-                                    0.0,
-                                );
+                                HIGHLIGHT_BORDER
                             }
-                            _ => {
-                                Self::draw_empty_hex(
-                                    pos,
-                                    hexagon_radius,
-                                    painter,
-                                    fill,
-                                    border,
-                                    0.0,
-                                );
-                            }
+                            _ => BORDER,
                         };
+                        Self::draw_empty_hex(
+                            pos,
+                            hexagon_radius,
+                            painter,
+                            FILL_COLOUR,
+                            border_stroke,
+                            0.0,
+                        );
                     }
                     Tile::Placed(tile) => {
                         Self::draw_hex(pos, hexagon_radius, painter, tile);
@@ -277,8 +277,8 @@ impl GameUi {
             window.center(),
             hexagon_radius * 7.5,
             painter,
-            bgcolor,
-            bgcolors,
+            BG_COLOUR,
+            BG_COLOUR_STROKE,
             std::f32::consts::PI / 6.0,
         );
         Self::draw_empty_hex(
@@ -286,7 +286,7 @@ impl GameUi {
             hexagon_radius * 7.5,
             painter,
             Color32::TRANSPARENT,
-            border,
+            BORDER,
             std::f32::consts::PI / 6.0,
         );
 

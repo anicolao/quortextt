@@ -184,7 +184,7 @@ impl TileType {
     }
 }
 
-type Player = usize;
+pub type Player = usize;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct PlacedTile {
