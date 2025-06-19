@@ -2,4 +2,5 @@
 
 mod app;
 mod game;
-pub use app::TemplateApp;
+mod game_ui;
+pub use app::FlowsApp;

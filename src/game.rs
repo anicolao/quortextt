@@ -248,9 +248,9 @@ pub enum Tile {
 pub struct Game {
     num_players: usize,
     board: [[Tile; 7]; 7],
-    pub sides: [Option<Player>; 6], // Mapping from a side of the board to a player. Side 0 corresponds
-                                    // to rotation 0 (top of the board), 1 is the next side clockwise,
-                                    // and so on around the board.
+    sides: [Option<Player>; 6], // Mapping from a side of the board to a player. Side 0 corresponds
+                                // to rotation 0 (top of the board), 1 is the next side clockwise,
+                                // and so on around the board.
 }
 
 impl Game {
@@ -284,6 +284,10 @@ impl Game {
 
     pub fn center_pos(&self) -> TilePos {
         TilePos { row: 3, col: 3 }
+    }
+
+    pub fn player_on_side(&self, rotation: Rotation) -> Option<Player> {
+        self.sides[rotation.0 as usize]
     }
 
     pub fn tile_mut(&mut self, pos: TilePos) -> Option<&mut Tile> {
