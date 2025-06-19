@@ -164,7 +164,10 @@ impl TileType {
     }
 
     pub fn all_flows(&self) -> [(Direction, Direction); 3] {
-        (0u8..6)
+        // This ordering is a hack to make sure that the straight segment (if there is one) is
+        // always returned last. This works because the straight segment always goes from 1 to 4,
+        // if it is present on the tile.
+        [0u8, 2u8, 3u8, 5u8, 1u8, 4u8].into_iter()
             .filter_map(|i| {
                 let entrance = Direction::from_rotation(Rotation(i));
                 let exit = self.exit_from_entrance(entrance);
@@ -329,7 +332,7 @@ impl Game {
     pub fn random_board_for_testing(p_filled: f32) -> Self {
         let mut g = Self::new(3);
 
-        let mut rng = rand::rng();
+        let mut rng = StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
         for i in 0..7 {
             for j in 0..7 {
                 if g.board[i][j] == Tile::NotOnBoard {
