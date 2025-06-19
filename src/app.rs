@@ -8,7 +8,7 @@ pub struct TemplateApp {
 impl Default for TemplateApp {
     fn default() -> Self {
         Self {
-            game: Game::random_board_for_testing(0.8),
+            game: Game::random_board_for_testing(0.35),
         }
     }
 }
@@ -152,26 +152,34 @@ impl TemplateApp {
         ));
         let thickness = 8.0 / 35.0 * hexagon_radius;
         let flows = tile.all_flows();
-        for (e1, e2) in flows.iter() {
-            let player = tile.flow_cache(*e1);
-            let color = match player {
-                Some(0) => egui::Color32::from_rgb(0xFF, 0, 0),
-                Some(1) => egui::Color32::from_rgb(0, 0xFF, 0),
-                Some(2) => egui::Color32::from_rgb(0, 0, 0xFF),
-                Some(3) => egui::Color32::from_rgb(0xFF, 0xFF, 0),
-                Some(4) => egui::Color32::from_rgb(0, 0xFF, 0xFF),
-                Some(5) => egui::Color32::from_rgb(0xFF, 0, 0xFF),
-                None | Some(_) => egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
-            };
-            Self::draw_flow(
-                center,
-                painter,
-                &hexagon,
-                *e1 as usize,
-                *e2 as usize,
-                color,
-                thickness,
-            );
+        for blank in [true, false] {
+            for (e1, e2) in flows.iter() {
+                let player = tile.flow_cache(*e1);
+                let color = match player {
+                    Some(0) => egui::Color32::from_rgb(0xFF, 0, 0),
+                    Some(1) => egui::Color32::from_rgb(0, 0xFF, 0),
+                    Some(2) => egui::Color32::from_rgb(0, 0, 0xFF),
+                    Some(3) => egui::Color32::from_rgb(0xFF, 0xFF, 0),
+                    Some(4) => egui::Color32::from_rgb(0, 0xFF, 0xFF),
+                    Some(5) => egui::Color32::from_rgb(0xFF, 0, 0xFF),
+                    None | Some(_) => egui::Color32::from_rgb(0xAA, 0xAA, 0xAA),
+                };
+                if blank && player.is_some() {
+                    continue;
+                }
+                if !blank && player.is_none() {
+                    continue;
+                }
+                Self::draw_flow(
+                    center,
+                    painter,
+                    &hexagon,
+                    *e1 as usize,
+                    *e2 as usize,
+                    color,
+                    thickness,
+                );
+            }
         }
         painter.add(egui::Shape::convex_polygon(
             hexagon.clone(),
@@ -212,7 +220,13 @@ impl eframe::App for TemplateApp {
                 ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
             let painter = ui.painter();
 
-            let hexagon_radius = 40.0;
+            let mut hexagon_radius = 40.0;
+            if window.width() / 10.0 < 2.0 * hexagon_radius {
+                hexagon_radius = window.width() / 20.0;
+            }
+            if window.height() / 10.0 < 2.0 * hexagon_radius {
+                hexagon_radius = window.height() / 20.0;
+            }
             let centerOffset = hexagon_radius * 0.9;
             // horizontal vector that moves one tile width to the right
             let right = Vec2::new(2.0 * centerOffset, 0.0);
@@ -226,6 +240,7 @@ impl eframe::App for TemplateApp {
             let bgcolors = Stroke::new(2.0, egui::Color32::from_rgb(0xFE, 0xFE, 0xF0));
             let fill = egui::Color32::from_rgb(0xFE, 0xFE, 0xF0);
             let border = Stroke::new(2.0, egui::Color32::from_rgb(0xAA, 0xAA, 0xAA));
+            let hborder = Stroke::new(2.0, egui::Color32::from_rgb(0x00, 0xf0, 0x0));
             Self::draw_empty_hex(
                 window.center(),
                 hexagon_radius * 7.5,
@@ -245,7 +260,30 @@ impl eframe::App for TemplateApp {
                     match tile {
                         Tile::NotOnBoard => {} // skip the empty hexagons
                         Tile::Empty => {
-                            Self::draw_empty_hex(pos, hexagon_radius, painter, fill, border, 0.0);
+                            match response.hover_pos() {
+                                Some(hover_pos)
+                                    if hover_pos.distance(pos) < hexagon_radius * 0.8 =>
+                                {
+                                    Self::draw_empty_hex(
+                                        pos,
+                                        hexagon_radius,
+                                        painter,
+                                        fill,
+                                        hborder,
+                                        0.0,
+                                    );
+                                }
+                                _ => {
+                                    Self::draw_empty_hex(
+                                        pos,
+                                        hexagon_radius,
+                                        painter,
+                                        fill,
+                                        border,
+                                        0.0,
+                                    );
+                                }
+                            };
                         }
                         Tile::Placed(tile) => {
                             Self::draw_hex(pos, hexagon_radius, painter, tile);
