@@ -1,11 +1,11 @@
 use rand::prelude::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Rotation(pub u8); // 0 - 5; 1 is 60 degrees clockwise from default rotation
 
 impl Rotation {
     fn reversed(&self) -> Self {
-        Self(5 - self.0)
+        Self(6 - self.0)
     }
 }
 
@@ -130,7 +130,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum TileType {
     NoSharps = 0,
     OneSharp = 1,
@@ -182,7 +182,7 @@ impl TileType {
 
 type Player = usize;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct PlacedTile {
     type_: TileType,
     rotation: Rotation,
@@ -197,6 +197,14 @@ impl PlacedTile {
             rotation,
             flow_cache: [None; 6],
         }
+    }
+
+    pub fn type_(&self) -> TileType {
+        self.type_
+    }
+
+    pub fn rotation(&self) -> Rotation {
+        self.rotation
     }
 
     pub fn exit_from_entrance(&self, entrance: Direction) -> Direction {
@@ -226,7 +234,7 @@ pub enum AdjacentTile {
     Tile(TilePos),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Tile {
     NotOnBoard,
     Empty,
@@ -319,7 +327,7 @@ impl Game {
     // Create a board by randomly placing a bunch of tiles. This function does not attempt to obey the
     // 10-instances-per-type of the actual game, and may leave non-board variables in a bad state.
     pub fn random_board_for_testing(p_filled: f32) -> Self {
-        let mut g = Self::new(2);
+        let mut g = Self::new(3);
 
         let mut rng = rand::rng();
         for i in 0..7 {
@@ -335,6 +343,7 @@ impl Game {
                 }
             }
         }
+        g.recompute_flows();
 
         g
     }
@@ -352,7 +361,8 @@ impl Game {
                     match self.adjacent_tile(pos, exit_dir) {
                         AdjacentTile::BoardEdge(_) => (),
                         AdjacentTile::Tile(next_pos) => {
-                            self.floodfill_path(player, next_pos, exit_dir.reversed())
+                            pos = next_pos;
+                            dir = exit_dir.reversed();
                         }
                     }
                 }

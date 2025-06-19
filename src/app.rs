@@ -1,25 +1,13 @@
 use crate::game::*;
 use egui::{Pos2, Sense, Stroke, Vec2};
 
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct TemplateApp {
-    // Example stuff:
-    label: String,
-
-    #[serde(skip)] // This how you opt-out of serialization of a field
-    value: f32,
-    #[serde(skip)]
     game: Game,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
         Self {
-            // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
             game: Game::random_board_for_testing(0.8),
         }
     }
@@ -30,19 +18,10 @@ impl TemplateApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let s: Self = Default::default();
         let game = &s.game;
-        let tile = PlacedTile::new(TileType::TwoSharps, Rotation(1));
-        println!("{:?}", tile.all_flows());
-        println!("{:?}", game.edges_on_board_edge(Rotation(2)));
         println!("{game:?}");
 
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-
-        // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
-        }
 
         s
     }
@@ -203,11 +182,6 @@ impl TemplateApp {
 }
 
 impl eframe::App for TemplateApp {
-    /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
-    }
-
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
@@ -260,18 +234,16 @@ impl eframe::App for TemplateApp {
                 border,
                 std::f32::consts::PI / 6.0,
             );
-            for i in -1..8 {
-                for j in -1..8 {
+            for col in -1..8 {
+                for row in -1..8 {
                     let pos = window.center()
                         + up * -3.0
-                        + right * i as f32
-                        + up * j as f32
-                        + rup * j as f32;
-                    let tile = self.game.tile(TilePos::new(i, j));
+                        + right * col as f32
+                        + up * row as f32
+                        + rup * row as f32;
+                    let tile = self.game.tile(TilePos::new(row, col));
                     match tile {
-                        Tile::NotOnBoard => {
-                            // skip the empty hexagons
-                        }
+                        Tile::NotOnBoard => {} // skip the empty hexagons
                         Tile::Empty => {
                             Self::draw_empty_hex(pos, hexagon_radius, painter, fill, border, 0.0);
                         }
@@ -300,18 +272,4 @@ impl eframe::App for TemplateApp {
             );
         });
     }
-}
-
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
-        );
-        ui.label(".");
-    });
 }
