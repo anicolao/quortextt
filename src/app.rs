@@ -1,5 +1,6 @@
 use crate::game::Game;
 use crate::game_ui::GameUi;
+use rand::{rngs::StdRng, SeedableRng};
 
 pub struct FlowsApp {
     game: Game,
@@ -8,8 +9,10 @@ pub struct FlowsApp {
 
 impl Default for FlowsApp {
     fn default() -> Self {
+        let mut rng =
+            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
         Self {
-            game: Game::random_board_for_testing(0.95),
+            game: Game::random_board_for_testing(&mut rng, 0.95),
             game_ui: GameUi::new(),
         }
     }

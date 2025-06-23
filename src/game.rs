@@ -1,6 +1,7 @@
-use rand::prelude::*;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Rotation(pub u8); // 0 - 5; 1 is 60 degrees clockwise from default rotation
 
 impl Rotation {
@@ -9,7 +10,7 @@ impl Rotation {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TilePos {
     pub row: i32,
     pub col: i32,
@@ -130,7 +131,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub enum TileType {
     NoSharps = 0,
     OneSharp = 1,
@@ -245,18 +246,63 @@ pub enum Tile {
     Placed(PlacedTile),
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GameSettings {
+    pub num_players: usize,
+    pub version: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Action {
+    InitializeGame(GameSettings),
+    DrawTile {
+        player: Player,
+        tile: TileType,
+    },
+    RevealTile {
+        player: Player,
+        tile: TileType,
+    },
+    PlaceTile {
+        player: Player,
+        tile: TileType,
+        pos: TilePos,
+        rotation: Rotation,
+    },
+}
+
+impl Action {
+    pub fn visible_for_player(&self, viewing_player: Player) -> bool {
+        match self {
+            Action::InitializeGame(_) | Action::RevealTile { .. } | Action::PlaceTile { .. } => {
+                true
+            }
+            Action::DrawTile { player, .. } => *player == viewing_player,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Game {
-    num_players: usize,
+    settings: GameSettings,
+    /// Mapping from a side of the board to a player. Side 0 corresponds
+    /// to rotation 0 (top of the board), 1 is the next side clockwise,
+    /// and so on around the board.
+    sides: [Option<Player>; 6],
+    remaining_tiles: [u8; 4],
+    tiles_in_hand: Vec<Option<TileType>>,
     board: [[Tile; 7]; 7],
-    sides: [Option<Player>; 6], // Mapping from a side of the board to a player. Side 0 corresponds
-                                // to rotation 0 (top of the board), 1 is the next side clockwise,
-                                // and so on around the board.
+    action_history: Vec<Action>,
+    current_player: Player,
 }
 
 impl Game {
-    pub fn new(num_players: usize) -> Self {
-        if num_players < 2 || num_players > 3 {
-            panic!("Invalid number of players: {}", num_players);
+    pub fn new(settings: GameSettings) -> Self {
+        if settings.version != 0 {
+            panic!("Invalid version: {}", settings.version);
+        }
+        if settings.num_players < 2 || settings.num_players > 3 {
+            panic!("Invalid number of players: {}", settings.num_players);
         }
 
         let mut board = [[Tile::Empty; 7]; 7];
@@ -271,17 +317,96 @@ impl Game {
         let mut sides = [None; 6];
         sides[0] = Some(0);
         sides[2] = Some(1);
-        if num_players == 3 {
+        if settings.num_players == 3 {
             sides[4] = Some(2);
         }
 
         Self {
-            num_players,
-            board,
+            settings: settings.clone(),
             sides,
+            remaining_tiles: [10; 4],
+            tiles_in_hand: vec![None; settings.num_players],
+            board,
+            action_history: vec![Action::InitializeGame(settings)],
+            current_player: 0,
         }
     }
 
+    pub fn from_actions(action_history: Vec<Action>) -> Result<Self, String> {
+        let mut game = match &action_history[0] {
+            Action::InitializeGame(settings) => Self::new(settings.clone()),
+            action => panic!(
+                "First action in history must be InitializeGame, instead found {:?}",
+                action
+            ),
+        };
+        match action_history
+            .into_iter()
+            .skip(1)
+            .map(|action| game.apply_action(action))
+            .collect::<Result<(), String>>()
+        {
+            Err(err) => Err(err),
+            Ok(()) => Ok(game),
+        }
+    }
+
+    pub fn apply_action(&mut self, action: Action) -> Result<(), String> {
+        match action {
+            Action::InitializeGame(_) => Err("Game initialized twice".into()),
+            Action::DrawTile { player, tile } => {
+                if self.tiles_in_hand[player].is_some() {
+                    return Err("Player already has a tile in hand".into());
+                }
+                if self.remaining_tiles[tile as usize] == 0 {
+                    return Err("No tiles remaining of drawn type".into());
+                }
+                self.tiles_in_hand[player] = Some(tile);
+                self.remaining_tiles[tile as usize] -= 1;
+                Ok(())
+            }
+            Action::RevealTile { player, tile } => {
+                if self.tiles_in_hand[player] != Some(tile) {
+                    return Err("Must reveal actual tile that player holds".into());
+                }
+                // This action has no effect on the game state.
+                Ok(())
+            }
+            Action::PlaceTile {
+                player,
+                tile,
+                pos,
+                rotation,
+            } => {
+                if self.tiles_in_hand[player] != Some(tile) {
+                    return Err("Player must play the tile from their hand".into());
+                }
+                if *self.tile(pos) != Tile::Empty {
+                    return Err("Can only place tile on an empty space".into());
+                }
+                if self.current_player != player {
+                    return Err("Wrong player's turn".into());
+                }
+                // TODO: Check whether move is legal by checking connectivity after placing.
+                *self.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
+                self.tiles_in_hand[player] = None;
+                self.recompute_flows();
+                Ok(())
+            }
+        }
+    }
+
+    /// Returns a copy of the game with the tile placed at the given location and rotation. Does
+    /// not do any legality checking.
+    pub fn with_tile_placed(&self, tile: TileType, pos: TilePos, rotation: Rotation) -> Self {
+        let mut new_game = self.clone();
+        // Technically this should at least check that the tile is being placed on the board. Right
+        // now you can place a tile in the corners of the square that the board lives within.
+        *new_game.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
+        new_game
+    }
+
+    /// Returns the tile position at the center of the board.
     pub fn center_pos(&self) -> TilePos {
         TilePos { row: 3, col: 3 }
     }
@@ -337,11 +462,12 @@ impl Game {
 
     // Create a board by randomly placing a bunch of tiles. This function does not attempt to obey the
     // 10-instances-per-type of the actual game, and may leave non-board variables in a bad state.
-    pub fn random_board_for_testing(p_filled: f32) -> Self {
-        let mut g = Self::new(3);
+    pub fn random_board_for_testing<R: Rng>(rng: &mut R, p_filled: f32) -> Self {
+        let mut g = Self::new(GameSettings {
+            num_players: 3,
+            version: 0,
+        });
 
-        let mut rng =
-            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
         for i in 0..7 {
             for j in 0..7 {
                 if g.board[i][j] == Tile::NotOnBoard {
