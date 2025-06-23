@@ -353,7 +353,7 @@ impl Game {
 
     pub fn apply_action(&mut self, action: Action) -> Result<(), String> {
         match action {
-            Action::InitializeGame(_) => Err("Game initialized twice".into()),
+            Action::InitializeGame(_) => return Err("Game initialized twice".into()),
             Action::DrawTile { player, tile } => {
                 if self.tiles_in_hand[player].is_some() {
                     return Err("Player already has a tile in hand".into());
@@ -363,14 +363,12 @@ impl Game {
                 }
                 self.tiles_in_hand[player] = Some(tile);
                 self.remaining_tiles[tile as usize] -= 1;
-                Ok(())
             }
             Action::RevealTile { player, tile } => {
                 if self.tiles_in_hand[player] != Some(tile) {
                     return Err("Must reveal actual tile that player holds".into());
                 }
                 // This action has no effect on the game state.
-                Ok(())
             }
             Action::PlaceTile {
                 player,
@@ -391,7 +389,76 @@ impl Game {
                 *self.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
                 self.tiles_in_hand[player] = None;
                 self.recompute_flows();
-                Ok(())
+                self.current_player = (self.current_player + 1) % self.settings.num_players;
+            }
+        }
+        self.action_history.push(action);
+        Ok(())
+    }
+
+    /// Selects a random tile from the remaining tiles, with odds proportional to how many tiles
+    /// remain of each type. Does not modify the game state; if a player is drawing a tile,
+    /// `apply_action(DrawTile { .. })` should be called.
+    pub fn draw_random_tile<R: Rng>(&self, rng: &mut R) -> TileType {
+        let total_tiles = self.remaining_tiles.iter().sum();
+        let mut drawn_tile = rng.random_range(0..total_tiles);
+        for (sharps, num_tiles) in self.remaining_tiles.iter().enumerate() {
+            if drawn_tile < *num_tiles {
+                return TileType::from_num_sharps(sharps);
+            }
+            drawn_tile -= *num_tiles;
+        }
+        // Should be unreachable
+        panic!("Somehow did not select a tile in draw_random_tile")
+    }
+
+    /// Perform automatic actions, such as drawing tiles for whichever players need them and revealing the tile of the current player if it hasn't been revealed,
+    pub fn do_automatic_actions<R: Rng>(&mut self, rng: &mut R) {
+        // Draw tiles for players with no tiles, in order from the current player.
+        for player in (self.current_player..self.settings.num_players).chain(0..self.current_player)
+        {
+            if self.tiles_in_hand[player].is_none() && self.remaining_tiles.iter().sum::<u8>() > 0 {
+                let drawn_tile = self.draw_random_tile(rng);
+                self.apply_action(Action::DrawTile {
+                    player,
+                    tile: drawn_tile,
+                })
+                .unwrap();
+            }
+        }
+
+        // Check whether the current player has revealed their tile since they last drew.
+        let mut tile_is_revealed = false;
+        for action in self.action_history.iter().rev() {
+            match action {
+                Action::InitializeGame(_) | Action::PlaceTile { .. } => (),
+                Action::DrawTile { player, .. } => {
+                    if *player == self.current_player {
+                        // Found the current player drawing a tile before we found them revealing
+                        // it, so we should reveal it. We do this by breakout out of the loop and
+                        // letting the `tile_is_revealed` check below handle it.
+                        break;
+                    }
+                }
+                Action::RevealTile { player, .. } => {
+                    if *player == self.current_player {
+                        // The player has already revealed their tile.
+                        tile_is_revealed = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if !tile_is_revealed {
+            match self.tiles_in_hand[self.current_player] {
+                Some(tile) => self
+                    .apply_action(Action::RevealTile {
+                        player: self.current_player,
+                        tile,
+                    })
+                    .unwrap(),
+                // The `None` case should never be reached because we just drew tiles above.
+                None => (),
             }
         }
     }
@@ -547,6 +614,15 @@ impl std::fmt::Debug for Game {
             }
             write!(f, "\n")?;
         }
+
+        // TODO: There is a better way to do this but I can't look it up because I'm on
+        // a plane.
+        write!(f, "Settings: {:?}\n", self.settings);
+        write!(f, "Sides: {:?}\n", self.sides);
+        write!(f, "Remaining tiles: {:?}\n", self.remaining_tiles);
+        write!(f, "Tiles in hand: {:?}\n", self.tiles_in_hand);
+        write!(f, "Current player: {:?}\n", self.current_player);
+        write!(f, "Action history: {:?}\n", self.action_history);
         Ok(())
     }
 }
