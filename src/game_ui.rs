@@ -219,8 +219,9 @@ impl GameUi {
             BORDER,
             std::f32::consts::PI / 6.0,
         );
+        let r = 1;
         for side in 0..6 {
-            match game.player_on_side(Rotation(side)) {
+            match game.player_on_side(Rotation((side + (6 - r)) % 6)) {
                 None => (),
                 Some(player) => {
                     for (pos, dir) in game.edges_on_board_edge(Rotation(side)) {
@@ -240,14 +241,18 @@ impl GameUi {
                 }
             }
         }
+        let center = game.center_pos();
         for col in 0..7 {
             for row in 0..7 {
+                let rotation = Rotation(r);
+                let tile_pos = TilePos::new(row, col);
+                let rotated_pos = center + (tile_pos - center).rotate(rotation);
                 let pos = window.center()
                     + up * -3.0
-                    + right * col as f32
-                    + up * row as f32
-                    + rup * row as f32;
-                let tile = game.tile(TilePos::new(row, col));
+                    + right * rotated_pos.col as f32
+                    + up * rotated_pos.row as f32
+                    + rup * rotated_pos.row as f32;
+                let tile = game.tile(tile_pos);
                 match tile {
                     Tile::NotOnBoard => {}
                     Tile::Empty => {
@@ -267,7 +272,14 @@ impl GameUi {
                         );
                     }
                     Tile::Placed(tile) => {
-                        Self::draw_hex(pos, hexagon_radius, painter, tile);
+                        let mut rendered =
+                            PlacedTile::new(tile.type_(), Rotation((tile.rotation().0 + r) % 6));
+                        for dir in 0..6 {
+                            let f = tile.flow_cache(Direction::from_rotation(Rotation(dir)));
+                            let rdir = Direction::from_rotation(Rotation((dir + r) % 6));
+                            rendered.set_flow_cache(rdir, f);
+                        }
+                        Self::draw_hex(pos, hexagon_radius, painter, &rendered);
                     }
                 };
             }

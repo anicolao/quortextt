@@ -11,10 +11,11 @@ impl Default for FlowsApp {
     fn default() -> Self {
         let mut rng =
             StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
-        let mut game = Game::new(GameSettings {
-            num_players: 2,
-            version: 0,
-        });
+        let mut game = //Game::new(GameSettings {
+            //num_players: 2,
+            //version: 0,
+        //});
+        Game::random_board_for_testing(&mut rng, 0.8);
         game.do_automatic_actions(&mut rng);
         Self {
             game,
