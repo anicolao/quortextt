@@ -1,4 +1,4 @@
-use crate::game::{Game, GameSettings};
+use crate::game::{Game, GameSettings, Rotation};
 use crate::game_ui::GameUi;
 use rand::{rngs::StdRng, SeedableRng};
 
@@ -19,7 +19,7 @@ impl Default for FlowsApp {
         game.do_automatic_actions(&mut rng);
         Self {
             game,
-            game_ui: GameUi::new(),
+            game_ui: GameUi::new(Rotation(1)),
         }
     }
 }

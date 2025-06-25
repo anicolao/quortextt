@@ -5,8 +5,16 @@ use serde::{Deserialize, Serialize};
 pub struct Rotation(pub u8); // 0 - 5; 1 is 60 degrees clockwise from default rotation
 
 impl Rotation {
-    fn reversed(&self) -> Self {
+    pub fn reversed(&self) -> Self {
         Self(6 - self.0)
+    }
+}
+
+impl std::ops::Add<Rotation> for Rotation {
+    type Output = Rotation;
+
+    fn add(self, rhs: Rotation) -> Self::Output {
+        Self((self.0 + rhs.0) % 6)
     }
 }
 

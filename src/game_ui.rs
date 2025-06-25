@@ -1,8 +1,6 @@
 use crate::game::*;
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2};
 
-pub struct GameUi {}
-
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
 const DEFAULT_HEXAGON_RADIUS: f32 = 40.0;
 const BG_COLOUR: Color32 = Color32::from_rgb(0xFE, 0xFE, 0xF0);
@@ -32,9 +30,13 @@ fn player_colour(player: Player) -> Color32 {
     }
 }
 
+pub struct GameUi {
+    rotation: Rotation,
+}
+
 impl GameUi {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(rotation: Rotation) -> Self {
+        Self { rotation }
     }
 
     fn draw_flow(
@@ -219,12 +221,11 @@ impl GameUi {
             BORDER,
             std::f32::consts::PI / 6.0,
         );
-        let r = 1;
-        for side in 0..6 {
-            match game.player_on_side(Rotation((side + (6 - r)) % 6)) {
+        for side in (0..6).map(|x| Rotation(x)) {
+            match game.player_on_side(side + self.rotation.reversed()) {
                 None => (),
                 Some(player) => {
-                    for (pos, dir) in game.edges_on_board_edge(Rotation(side)) {
+                    for (pos, dir) in game.edges_on_board_edge(side) {
                         let color = player_colour(player);
                         let edge = pos + dir.tile_vec();
                         let col = edge.col;
@@ -244,9 +245,8 @@ impl GameUi {
         let center = game.center_pos();
         for col in 0..7 {
             for row in 0..7 {
-                let rotation = Rotation(r);
                 let tile_pos = TilePos::new(row, col);
-                let rotated_pos = center + (tile_pos - center).rotate(rotation);
+                let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
                 let pos = window.center()
                     + up * -3.0
                     + right * rotated_pos.col as f32
@@ -273,10 +273,10 @@ impl GameUi {
                     }
                     Tile::Placed(tile) => {
                         let mut rendered =
-                            PlacedTile::new(tile.type_(), Rotation((tile.rotation().0 + r) % 6));
-                        for dir in 0..6 {
-                            let f = tile.flow_cache(Direction::from_rotation(Rotation(dir)));
-                            let rdir = Direction::from_rotation(Rotation((dir + r) % 6));
+                            PlacedTile::new(tile.type_(), tile.rotation() + self.rotation);
+                        for dir in (0..6).map(|x| Rotation(x)) {
+                            let f = tile.flow_cache(Direction::from_rotation(dir));
+                            let rdir = Direction::from_rotation(dir + self.rotation);
                             rendered.set_flow_cache(rdir, f);
                         }
                         Self::draw_hex(pos, hexagon_radius, painter, &rendered);
