@@ -26,6 +26,7 @@ log = "0.4.27"
 serde = { version = "1.0.219", features = ["derive"] }
 rand = { version = "0.9.1", default-features = false, features = ["std", "std_rng", "small_rng"] }
 chrono = "0.4.41"
+parking_lot = "0.12.4"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

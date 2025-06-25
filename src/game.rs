@@ -254,6 +254,13 @@ pub enum Tile {
     Placed(PlacedTile),
 }
 
+#[derive(Clone, Copy)]
+pub enum GameViewer {
+    Player(Player),
+    Spectator,
+    Admin,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GameSettings {
     pub num_players: usize,
@@ -280,12 +287,16 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn visible_for_player(&self, viewing_player: Player) -> bool {
+    pub fn visible(&self, game_viewer: GameViewer) -> bool {
         match self {
             Action::InitializeGame(_) | Action::RevealTile { .. } | Action::PlaceTile { .. } => {
                 true
             }
-            Action::DrawTile { player, .. } => *player == viewing_player,
+            Action::DrawTile { player, .. } => match game_viewer {
+                GameViewer::Player(viewing_player) => *player == viewing_player,
+                GameViewer::Spectator => false,
+                GameViewer::Admin => true,
+            },
         }
     }
 }
@@ -481,6 +492,16 @@ impl Game {
         new_game
     }
 
+    pub fn action_history(&self) -> impl Iterator<Item = &Action> {
+        self.action_history.iter()
+    }
+
+    pub fn actions_for_viewer(&self, viewer: GameViewer) -> impl Iterator<Item = &Action> {
+        self.action_history
+            .iter()
+            .filter(move |action| action.visible(viewer))
+    }
+
     /// Returns the tile position at the center of the board.
     pub fn center_pos(&self) -> TilePos {
         TilePos { row: 3, col: 3 }
@@ -625,12 +646,12 @@ impl std::fmt::Debug for Game {
 
         // TODO: There is a better way to do this but I can't look it up because I'm on
         // a plane.
-        write!(f, "Settings: {:?}\n", self.settings);
-        write!(f, "Sides: {:?}\n", self.sides);
-        write!(f, "Remaining tiles: {:?}\n", self.remaining_tiles);
-        write!(f, "Tiles in hand: {:?}\n", self.tiles_in_hand);
-        write!(f, "Current player: {:?}\n", self.current_player);
-        write!(f, "Action history: {:?}\n", self.action_history);
+        write!(f, "Settings: {:?}\n", self.settings)?;
+        write!(f, "Sides: {:?}\n", self.sides)?;
+        write!(f, "Remaining tiles: {:?}\n", self.remaining_tiles)?;
+        write!(f, "Tiles in hand: {:?}\n", self.tiles_in_hand)?;
+        write!(f, "Current player: {:?}\n", self.current_player)?;
+        write!(f, "Action history: {:?}\n", self.action_history)?;
         Ok(())
     }
 }
