@@ -4,4 +4,5 @@ mod app;
 mod backend;
 mod game;
 mod game_ui;
+mod game_view;
 pub use app::FlowsApp;

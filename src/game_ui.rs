@@ -1,4 +1,5 @@
 use crate::game::*;
+use crate::game_view::GameView;
 use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2};
 
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
@@ -194,10 +195,18 @@ impl GameUi {
         ));
     }
 
-    pub fn display(&mut self, ui: &mut Ui, game: &Game) -> Response {
+    pub fn display(&mut self, ui: &mut Ui, game_view: &mut GameView) -> Response {
         let bounding_box = ui.available_size();
         let (window, response) =
             ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
+
+        let game = match game_view.game() {
+            Some(game) => game,
+            None => {
+                // TODO: Draw something to say that the backend is not connected yet
+                return response;
+            }
+        };
         let painter = ui.painter();
 
         let hexagon_radius = DEFAULT_HEXAGON_RADIUS

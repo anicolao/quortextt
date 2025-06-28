@@ -6,7 +6,7 @@ pub struct Rotation(pub u8); // 0 - 5; 1 is 60 degrees clockwise from default ro
 
 impl Rotation {
     pub fn reversed(&self) -> Self {
-        Self(6 - self.0)
+        Self((6 - self.0) % 6)
     }
 }
 
@@ -299,6 +299,22 @@ impl Action {
             },
         }
     }
+
+    /// This function only checks whether the viewer is theoretically allowed to perform the
+    /// action. The actual `Game` is responsible for checking whether the action is legal in
+    /// context.
+    pub fn performable(&self, game_viewer: GameViewer) -> bool {
+        match game_viewer {
+            GameViewer::Spectator => false,
+            GameViewer::Admin => true,
+            GameViewer::Player(viewing_player) => match self {
+                Action::InitializeGame(_) | Action::DrawTile { .. } => false,
+                Action::PlaceTile { player, .. } | Action::RevealTile { player, .. } => {
+                    *player == viewing_player
+                }
+            },
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -384,7 +400,8 @@ impl Game {
                 self.remaining_tiles[tile as usize] -= 1;
             }
             Action::RevealTile { player, tile } => {
-                if self.tiles_in_hand[player] != Some(tile) {
+                if self.tiles_in_hand[player].is_some() && self.tiles_in_hand[player] != Some(tile)
+                {
                     return Err("Must reveal actual tile that player holds".into());
                 }
                 // This action has no effect on the game state.

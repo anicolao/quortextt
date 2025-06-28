@@ -10,11 +10,11 @@ use std::sync::Arc;
 ///
 /// The backend could be a server, a direction connection(s) to peers, or an in-memory local game.
 pub trait Backend {
-    fn actions_after_index(&self, index: usize) -> Vec<Action>;
+    fn actions_from_index(&self, index: usize) -> Vec<Action>;
     fn submit_action(&self, action: Action);
 
     fn action_history(&self) -> Vec<Action> {
-        self.actions_after_index(0)
+        self.actions_from_index(0)
     }
 }
 
@@ -26,8 +26,12 @@ pub struct InMemoryBackend {
 
 impl InMemoryBackend {
     pub fn new(settings: GameSettings) -> Self {
+        let mut game = Game::new(settings);
+        let mut rng =
+            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
+        game.do_automatic_actions(&mut rng);
         Self {
-            game: Arc::new(RwLock::new(Game::new(settings))),
+            game: Arc::new(RwLock::new(game)),
             viewer: GameViewer::Admin,
         }
     }
@@ -41,7 +45,7 @@ impl InMemoryBackend {
 }
 
 impl Backend for InMemoryBackend {
-    fn actions_after_index(&self, index: usize) -> Vec<Action> {
+    fn actions_from_index(&self, index: usize) -> Vec<Action> {
         self.game
             .read()
             .actions_for_viewer(self.viewer)
@@ -51,7 +55,9 @@ impl Backend for InMemoryBackend {
     }
 
     fn submit_action(&self, action: Action) {
-        // TODO: Check whether the viewer is allowed to submit this action
+        if !action.performable(self.viewer) {
+            return;
+        }
         let mut game = self.game.write();
         // TODO: Do something with the (player-independent) legality of this action
         let _ = game.apply_action(action);
