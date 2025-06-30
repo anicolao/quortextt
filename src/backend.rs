@@ -10,6 +10,7 @@ use std::sync::Arc;
 ///
 /// The backend could be a server, a direction connection(s) to peers, or an in-memory local game.
 pub trait Backend {
+    fn viewer(&self) -> GameViewer;
     fn actions_from_index(&self, index: usize) -> Vec<Action>;
     fn submit_action(&self, action: Action);
 
@@ -45,6 +46,10 @@ impl InMemoryBackend {
 }
 
 impl Backend for InMemoryBackend {
+    fn viewer(&self) -> GameViewer {
+        self.viewer
+    }
+
     fn actions_from_index(&self, index: usize) -> Vec<Action> {
         self.game
             .read()
@@ -60,7 +65,11 @@ impl Backend for InMemoryBackend {
         }
         let mut game = self.game.write();
         // TODO: Do something with the (player-independent) legality of this action
-        let _ = game.apply_action(action);
+        let result = game.apply_action(action.clone());
+        println!(
+            "InMemoryBackend received action {:?} and the result was {:?}",
+            action, result
+        );
         let mut rng =
             StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
         game.do_automatic_actions(&mut rng);

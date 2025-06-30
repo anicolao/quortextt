@@ -70,7 +70,7 @@ impl eframe::App for FlowsApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let player_view = &mut self.in_memory_mode.player_views[self.current_displayed_player];
             player_view.poll_backend();
-            self.player_uis[self.current_displayed_player].display(ui, player_view);
+            self.player_uis[self.current_displayed_player].display(ui, ctx, player_view);
         });
     }
 }

@@ -412,7 +412,8 @@ impl Game {
                 pos,
                 rotation,
             } => {
-                if self.tiles_in_hand[player] != Some(tile) {
+                if self.tiles_in_hand[player].is_some() && self.tiles_in_hand[player] != Some(tile)
+                {
                     return Err("Player must play the tile from their hand".into());
                 }
                 if *self.tile(pos) != Tile::Empty {
@@ -524,8 +525,16 @@ impl Game {
         TilePos { row: 3, col: 3 }
     }
 
+    pub fn current_player(&self) -> Player {
+        self.current_player
+    }
+
     pub fn player_on_side(&self, rotation: Rotation) -> Option<Player> {
         self.sides[rotation.0 as usize]
+    }
+
+    pub fn tile_in_hand(&self, player: Player) -> Option<TileType> {
+        self.tiles_in_hand[player]
     }
 
     pub fn tile_mut(&mut self, pos: TilePos) -> Option<&mut Tile> {

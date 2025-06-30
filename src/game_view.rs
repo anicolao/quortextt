@@ -20,6 +20,10 @@ impl GameView {
         s
     }
 
+    pub fn viewer(&self) -> GameViewer {
+        self.backend.viewer()
+    }
+
     pub fn poll_backend(&mut self) {
         let new_actions = self.backend.actions_from_index(self.action_count);
         if !new_actions.is_empty() {

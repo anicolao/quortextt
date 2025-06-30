@@ -1,6 +1,8 @@
 use crate::game::*;
 use crate::game_view::GameView;
-use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2};
+use egui::{
+    Color32, Context, CursorIcon, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2,
+};
 
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
 const DEFAULT_HEXAGON_RADIUS: f32 = 40.0;
@@ -33,11 +35,17 @@ fn player_colour(player: Player) -> Color32 {
 
 pub struct GameUi {
     rotation: Rotation,
+    /// `placement_rotation` is in the context of the underlying game's base rotation, not the
+    /// rotated view shown to the player.
+    placement_rotation: Rotation,
 }
 
 impl GameUi {
     pub fn new(rotation: Rotation) -> Self {
-        Self { rotation }
+        Self {
+            rotation,
+            placement_rotation: Rotation(0),
+        }
     }
 
     fn draw_flow(
@@ -61,6 +69,20 @@ impl GameUi {
         });
     }
 
+    fn hexagon_coords(center: Pos2, radius: f32, rotate: f32) -> Vec<Pos2> {
+        (0..6)
+            .map(|i| {
+                let angle = i as f32 * std::f32::consts::PI / 3.0
+                    + 3.0 * std::f32::consts::PI / 6.0
+                    + rotate;
+                Pos2::new(
+                    center.x + radius * angle.cos(),
+                    center.y + radius * angle.sin(),
+                )
+            })
+            .collect()
+    }
+
     fn draw_inverted_hex(
         bounding_box: Rect,
         center: Pos2,
@@ -70,17 +92,7 @@ impl GameUi {
         border: Stroke,
         rotate: f32,
     ) {
-        let hexagon = (0..6)
-            .map(|i| {
-                let angle = i as f32 * std::f32::consts::PI / 3.0
-                    + 3.0 * std::f32::consts::PI / 6.0
-                    + rotate;
-                Pos2::new(
-                    center.x + hexagon_radius * angle.cos(),
-                    center.y + hexagon_radius * angle.sin(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let hexagon = Self::hexagon_coords(center, hexagon_radius, rotate);
         for i in 0..6 {
             let start = hexagon[i];
             let end = hexagon[(i + 1) % 6];
@@ -132,31 +144,12 @@ impl GameUi {
         border: Stroke,
         rotate: f32,
     ) {
-        let hexagon = (0..6)
-            .map(|i| {
-                let angle = i as f32 * std::f32::consts::PI / 3.0
-                    + 3.0 * std::f32::consts::PI / 6.0
-                    + rotate;
-                Pos2::new(
-                    center.x + hexagon_radius * angle.cos(),
-                    center.y + hexagon_radius * angle.sin(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let hexagon = Self::hexagon_coords(center, hexagon_radius, rotate);
         painter.add(Shape::convex_polygon(hexagon.clone(), fill, border));
     }
 
     fn draw_hex(center: Pos2, hexagon_radius: f32, painter: &Painter, tile: &PlacedTile) {
-        let hexagon = (0..6)
-            .map(|i| {
-                let angle =
-                    i as f32 * std::f32::consts::PI / 3.0 + 3.0 * std::f32::consts::PI / 6.0;
-                Pos2::new(
-                    center.x + hexagon_radius * angle.cos(),
-                    center.y + hexagon_radius * angle.sin(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let hexagon = Self::hexagon_coords(center, hexagon_radius, 0.0);
         painter.add(Shape::convex_polygon(
             hexagon.clone(),
             Color32::from_rgb(0x33, 0x33, 0x33),
@@ -195,24 +188,7 @@ impl GameUi {
         ));
     }
 
-    pub fn display(&mut self, ui: &mut Ui, game_view: &mut GameView) -> Response {
-        let bounding_box = ui.available_size();
-        let (window, response) =
-            ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
-
-        let game = match game_view.game() {
-            Some(game) => game,
-            None => {
-                // TODO: Draw something to say that the backend is not connected yet
-                return response;
-            }
-        };
-        let painter = ui.painter();
-
-        let hexagon_radius = DEFAULT_HEXAGON_RADIUS
-            .min(window.width() / 17.0)
-            .min(window.height() / 15.0);
-
+    fn hex_position(tile: TilePos, board_center: Pos2, hexagon_radius: f32) -> Pos2 {
         let center_offset = hexagon_radius * 0.9;
         // horizontal vector that moves one tile width to the right
         let right = Vec2::new(2.0 * center_offset, 0.0);
@@ -222,6 +198,104 @@ impl GameUi {
             -2.0 * center_offset * 0.86602540378,
         );
         let rup = Vec2::new(-2.0 * center_offset, 0.0);
+
+        board_center
+            + up * -3.0
+            + right * tile.col as f32
+            + up * tile.row as f32
+            + rup * tile.row as f32
+    }
+
+    pub fn display(&mut self, ui: &mut Ui, ctx: &Context, game_view: &mut GameView) -> Response {
+        let bounding_box = ui.available_size();
+        let (window, response) =
+            ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
+
+        let hexagon_radius = DEFAULT_HEXAGON_RADIUS
+            .min(window.width() / 17.0)
+            .min(window.height() / 15.0);
+
+        // Figure out what the user is interacting with. It's necessary to do this early so that we
+        // can floodfill hypthetical paths that might be drawn before we get to the actual tile the
+        // user is hovering.
+        let game = match game_view.game() {
+            Some(game) => game.clone(),
+            None => {
+                // TODO: Draw something to say that the backend is not connected yet
+                return response;
+            }
+        };
+        let center = game.center_pos();
+        let hovered_tile = match response.hover_pos() {
+            None => None,
+            Some(hover_pos) => {
+                let mut hovered_tile = None;
+                for col in 0..7 {
+                    for row in 0..7 {
+                        let tile_pos = TilePos::new(row, col);
+                        let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
+                        let pos = Self::hex_position(rotated_pos, window.center(), hexagon_radius);
+                        if hover_pos.distance(pos) < hexagon_radius * 0.8 {
+                            hovered_tile = Some(tile_pos);
+                            break;
+                        }
+                    }
+                    if hovered_tile.is_some() {
+                        break;
+                    }
+                }
+                hovered_tile
+            }
+        };
+        let hypothetical_game = match hovered_tile {
+            None => None,
+            Some(hovered_tile) => match game.tile(hovered_tile).clone() {
+                Tile::Empty => {
+                    ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
+                    let player_to_simulate = match game_view.viewer() {
+                        GameViewer::Player(player) => Some(player),
+                        GameViewer::Admin => Some(game.current_player()),
+                        GameViewer::Spectator => None,
+                    };
+                    match player_to_simulate {
+                        None => None,
+                        Some(player) => match game.tile_in_hand(player) {
+                            None => None,
+                            Some(tile) => {
+                                if response.clicked() {
+                                    // TODO: Do something with the local legality check
+                                    let _ = game_view.submit_action(Action::PlaceTile {
+                                        player,
+                                        tile,
+                                        pos: hovered_tile,
+                                        rotation: self.placement_rotation,
+                                    });
+                                    None
+                                } else {
+                                    Some(game.with_tile_placed(
+                                        tile,
+                                        hovered_tile,
+                                        self.placement_rotation,
+                                    ))
+                                }
+                            }
+                        },
+                    }
+                }
+                Tile::Placed(_) | Tile::NotOnBoard => None,
+            },
+        };
+        // TODO: This works great with a scroll wheel on a physical mouse but rotates way too fast
+        // with a trackpad scroll.
+        let scroll_delta = ui.input(|i| i.raw_scroll_delta);
+        if scroll_delta.y > 0.0 {
+            self.placement_rotation = self.placement_rotation + Rotation(1);
+        } else if scroll_delta.y < 0.0 {
+            self.placement_rotation = self.placement_rotation + Rotation(5);
+        }
+
+        // Draw the board
+        let painter = ui.painter();
         Self::draw_empty_hex(
             window.center(),
             hexagon_radius * 7.5,
@@ -237,13 +311,7 @@ impl GameUi {
                     for (pos, dir) in game.edges_on_board_edge(side) {
                         let color = player_colour(player);
                         let edge = pos + dir.tile_vec();
-                        let col = edge.col;
-                        let row = edge.row;
-                        let pos = window.center()
-                            + up * -3.0
-                            + right * col as f32
-                            + up * row as f32
-                            + rup * row as f32;
+                        let pos = Self::hex_position(edge, window.center(), hexagon_radius);
                         let fcolor = color;
                         let bcolor = Stroke::new(3.0, color);
                         Self::draw_empty_hex(pos, hexagon_radius, painter, fcolor, bcolor, 0.0);
@@ -251,25 +319,31 @@ impl GameUi {
                 }
             }
         }
-        let center = game.center_pos();
         for col in 0..7 {
             for row in 0..7 {
                 let tile_pos = TilePos::new(row, col);
                 let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
-                let pos = window.center()
-                    + up * -3.0
-                    + right * rotated_pos.col as f32
-                    + up * rotated_pos.row as f32
-                    + rup * rotated_pos.row as f32;
-                let tile = game.tile(tile_pos);
-                match tile {
+                let pos = Self::hex_position(rotated_pos, window.center(), hexagon_radius);
+                let (tile_to_draw, _hypothetical) = match game.tile(tile_pos) {
+                    Tile::NotOnBoard => (Tile::NotOnBoard, false),
+                    Tile::Empty => {
+                        // Check whether the tile is present on the hypothetical game board
+                        match &hypothetical_game {
+                            None => (Tile::Empty, false),
+                            Some(hypothetical_game) => {
+                                (hypothetical_game.tile(tile_pos).clone(), true)
+                            }
+                        }
+                    }
+                    Tile::Placed(tile) => (Tile::Placed(*tile), true),
+                };
+                match tile_to_draw {
                     Tile::NotOnBoard => {}
                     Tile::Empty => {
-                        let border_stroke = match response.hover_pos() {
-                            Some(hover_pos) if hover_pos.distance(pos) < hexagon_radius * 0.8 => {
-                                HIGHLIGHT_BORDER
-                            }
-                            _ => BORDER,
+                        let border_stroke = if hovered_tile == Some(tile_pos) {
+                            HIGHLIGHT_BORDER
+                        } else {
+                            BORDER
                         };
                         Self::draw_empty_hex(
                             pos,
@@ -290,7 +364,7 @@ impl GameUi {
                         }
                         Self::draw_hex(pos, hexagon_radius, painter, &rendered);
                     }
-                };
+                }
             }
         }
         Self::draw_inverted_hex(
