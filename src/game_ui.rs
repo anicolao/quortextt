@@ -38,6 +38,7 @@ pub struct GameUi {
     /// `placement_rotation` is in the context of the underlying game's base rotation, not the
     /// rotated view shown to the player.
     placement_rotation: Rotation,
+    last_rotate_time: f64,
 }
 
 impl GameUi {
@@ -45,6 +46,7 @@ impl GameUi {
         Self {
             rotation,
             placement_rotation: Rotation(0),
+            last_rotate_time: 0.0,
         }
     }
 
@@ -285,13 +287,16 @@ impl GameUi {
                 Tile::Placed(_) | Tile::NotOnBoard => None,
             },
         };
-        // TODO: This works great with a scroll wheel on a physical mouse but rotates way too fast
-        // with a trackpad scroll.
-        let scroll_delta = ui.input(|i| i.raw_scroll_delta);
-        if scroll_delta.y > 0.0 {
-            self.placement_rotation = self.placement_rotation + Rotation(1);
-        } else if scroll_delta.y < 0.0 {
-            self.placement_rotation = self.placement_rotation + Rotation(5);
+        let rotate_time = ctx.input(|i| i.time);
+        // Don't let the user rotate the tile too quickly
+        if (rotate_time - self.last_rotate_time) > 0.1 {
+            let scroll_delta = ui.input(|i| i.raw_scroll_delta);
+            if scroll_delta.y > 0.0 {
+                self.placement_rotation = self.placement_rotation + Rotation(1);
+            } else if scroll_delta.y < 0.0 {
+                self.placement_rotation = self.placement_rotation + Rotation(5);
+            }
+            self.last_rotate_time = rotate_time;
         }
 
         // Draw the board
