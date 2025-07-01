@@ -507,6 +507,7 @@ impl Game {
         // Technically this should at least check that the tile is being placed on the board. Right
         // now you can place a tile in the corners of the square that the board lives within.
         *new_game.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
+        new_game.recompute_flows();
         new_game
     }
 

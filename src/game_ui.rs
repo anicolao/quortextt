@@ -150,12 +150,22 @@ impl GameUi {
         painter.add(Shape::convex_polygon(hexagon.clone(), fill, border));
     }
 
-    fn draw_hex(center: Pos2, hexagon_radius: f32, painter: &Painter, tile: &PlacedTile) {
+    fn draw_hex(
+        center: Pos2,
+        hexagon_radius: f32,
+        painter: &Painter,
+        tile: &PlacedTile,
+        hypothetical: bool,
+    ) {
         let hexagon = Self::hexagon_coords(center, hexagon_radius, 0.0);
+        let alpha = if hypothetical { 0x01 } else { 0xFF };
         painter.add(Shape::convex_polygon(
             hexagon.clone(),
-            Color32::from_rgb(0x33, 0x33, 0x33),
-            Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
+            Color32::from_rgba_premultiplied(0x33, 0x33, 0x33, alpha),
+            Stroke::new(
+                2.0,
+                Color32::from_rgba_premultiplied(0xAA, 0xAA, 0xAA, alpha),
+            ),
         ));
         let thickness = 8.0 / 35.0 * hexagon_radius;
         let flows = tile.all_flows();
@@ -329,18 +339,27 @@ impl GameUi {
                 let tile_pos = TilePos::new(row, col);
                 let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
                 let pos = Self::hex_position(rotated_pos, window.center(), hexagon_radius);
-                let (tile_to_draw, _hypothetical) = match game.tile(tile_pos) {
+                let (tile_to_draw, hypothetical) = match game.tile(tile_pos) {
                     Tile::NotOnBoard => (Tile::NotOnBoard, false),
                     Tile::Empty => {
                         // Check whether the tile is present on the hypothetical game board
                         match &hypothetical_game {
                             None => (Tile::Empty, false),
-                            Some(hypothetical_game) => {
-                                (hypothetical_game.tile(tile_pos).clone(), true)
-                            }
+                            Some(hypothetical_game) => (*hypothetical_game.tile(tile_pos), true),
                         }
                     }
-                    Tile::Placed(tile) => (Tile::Placed(*tile), true),
+                    Tile::Placed(tile) => match &hypothetical_game {
+                        None => (Tile::Placed(*tile), false),
+                        Some(hypothetical_game) => {
+                            // return the hypothetical tile if it is different than the current one
+                            let current = Tile::Placed(*tile);
+                            if *hypothetical_game.tile(tile_pos) != current {
+                                (*hypothetical_game.tile(tile_pos), true)
+                            } else {
+                                (current, false)
+                            }
+                        }
+                    },
                 };
                 match tile_to_draw {
                     Tile::NotOnBoard => {}
@@ -367,7 +386,7 @@ impl GameUi {
                             let rdir = Direction::from_rotation(dir + self.rotation);
                             rendered.set_flow_cache(rdir, f);
                         }
-                        Self::draw_hex(pos, hexagon_radius, painter, &rendered);
+                        Self::draw_hex(pos, hexagon_radius, painter, &rendered, hypothetical);
                     }
                 }
             }
