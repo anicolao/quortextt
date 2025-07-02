@@ -27,6 +27,7 @@ pub struct FlowsApp {
     in_memory_mode: InMemoryMode,
     player_uis: Vec<GameUi>,
     current_displayed_player: usize,
+    displayed_action_count: usize,
 }
 
 impl Default for FlowsApp {
@@ -42,6 +43,7 @@ impl Default for FlowsApp {
                 .map(|i| GameUi::new(Rotation(i as u8 * 2).reversed()))
                 .collect(),
             current_displayed_player: 0,
+            displayed_action_count: 0,
         }
     }
 }
@@ -69,7 +71,12 @@ impl eframe::App for FlowsApp {
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             let player_view = &mut self.in_memory_mode.player_views[self.current_displayed_player];
-            player_view.poll_backend();
+            let num_actions = player_view.poll_backend();
+            if num_actions > self.displayed_action_count && self.displayed_action_count > 0 {
+                self.current_displayed_player += 1;
+                self.current_displayed_player %= self.player_uis.len();
+            }
+            self.displayed_action_count = num_actions;
             self.player_uis[self.current_displayed_player].display(ui, ctx, player_view);
         });
     }
