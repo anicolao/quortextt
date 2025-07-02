@@ -155,9 +155,13 @@ impl GameUi {
         hexagon_radius: f32,
         painter: &Painter,
         tile: &PlacedTile,
-        hypothetical: bool,
+        prior_tile: &Tile,
     ) {
         let hexagon = Self::hexagon_coords(center, hexagon_radius, 0.0);
+        let hypothetical = match prior_tile {
+            Tile::NotOnBoard | Tile::Empty => true,
+            Tile::Placed(prior) => prior != tile,
+        };
         let alpha = if hypothetical { 0x01 } else { 0xFF };
         painter.add(Shape::convex_polygon(
             hexagon.clone(),
@@ -172,23 +176,37 @@ impl GameUi {
         for blank in [true, false] {
             for (e1, e2) in flows.iter() {
                 let player = tile.flow_cache(*e1);
-                let color = match player {
-                    Some(player) => player_colour(player),
-                    None => NEUTRAL_COLOUR,
-                };
                 if blank && player.is_some() {
                     continue;
                 }
                 if !blank && player.is_none() {
                     continue;
                 }
+                let color = match player {
+                    Some(player) => player_colour(player),
+                    None => NEUTRAL_COLOUR,
+                };
+                let hypoflow = match prior_tile {
+                    Tile::NotOnBoard | Tile::Empty => true,
+                    Tile::Placed(prior) => prior.flow_cache(*e1) != tile.flow_cache(*e1),
+                };
+                let render_color = if hypoflow && !blank {
+                    Color32::from_rgba_premultiplied(
+                        color.r() / 2,
+                        color.g() / 2,
+                        color.b() / 2,
+                        alpha,
+                    )
+                } else {
+                    color
+                };
                 Self::draw_flow(
                     center,
                     painter,
                     &hexagon,
                     *e1 as usize,
                     *e2 as usize,
-                    color,
+                    render_color,
                     thickness,
                 );
             }
@@ -340,24 +358,22 @@ impl GameUi {
                 let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
                 let pos = Self::hex_position(rotated_pos, window.center(), hexagon_radius);
                 let (tile_to_draw, hypothetical) = match game.tile(tile_pos) {
-                    Tile::NotOnBoard => (Tile::NotOnBoard, false),
+                    Tile::NotOnBoard => (Tile::NotOnBoard, Tile::NotOnBoard),
                     Tile::Empty => {
                         // Check whether the tile is present on the hypothetical game board
                         match &hypothetical_game {
-                            None => (Tile::Empty, false),
-                            Some(hypothetical_game) => (*hypothetical_game.tile(tile_pos), true),
+                            None => (Tile::Empty, Tile::Empty),
+                            Some(hypothetical_game) => {
+                                (*hypothetical_game.tile(tile_pos), Tile::Empty)
+                            }
                         }
                     }
                     Tile::Placed(tile) => match &hypothetical_game {
-                        None => (Tile::Placed(*tile), false),
+                        None => (Tile::Placed(*tile), Tile::Placed(*tile)),
                         Some(hypothetical_game) => {
                             // return the hypothetical tile if it is different than the current one
                             let current = Tile::Placed(*tile);
-                            if *hypothetical_game.tile(tile_pos) != current {
-                                (*hypothetical_game.tile(tile_pos), true)
-                            } else {
-                                (current, false)
-                            }
+                            (*hypothetical_game.tile(tile_pos), current)
                         }
                     },
                 };
@@ -381,12 +397,41 @@ impl GameUi {
                     Tile::Placed(tile) => {
                         let mut rendered =
                             PlacedTile::new(tile.type_(), tile.rotation() + self.rotation);
-                        for dir in (0..6).map(|x| Rotation(x)) {
+                        for dir in (0..6).map(Rotation) {
                             let f = tile.flow_cache(Direction::from_rotation(dir));
                             let rdir = Direction::from_rotation(dir + self.rotation);
                             rendered.set_flow_cache(rdir, f);
                         }
-                        Self::draw_hex(pos, hexagon_radius, painter, &rendered, hypothetical);
+                        match hypothetical {
+                            Tile::NotOnBoard | Tile::Empty => {
+                                Self::draw_hex(
+                                    pos,
+                                    hexagon_radius,
+                                    painter,
+                                    &rendered,
+                                    &hypothetical,
+                                );
+                            }
+                            Tile::Placed(hypothetical) => {
+                                let mut prior = PlacedTile::new(
+                                    hypothetical.type_(),
+                                    hypothetical.rotation() + self.rotation,
+                                );
+                                for dir in (0..6).map(Rotation) {
+                                    let f = hypothetical.flow_cache(Direction::from_rotation(dir));
+                                    let rdir = Direction::from_rotation(dir + self.rotation);
+                                    prior.set_flow_cache(rdir, f);
+                                }
+                                let prior_tile = Tile::Placed(prior);
+                                Self::draw_hex(
+                                    pos,
+                                    hexagon_radius,
+                                    painter,
+                                    &rendered,
+                                    &prior_tile,
+                                );
+                            }
+                        }
                     }
                 }
             }
