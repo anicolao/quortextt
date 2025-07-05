@@ -321,10 +321,11 @@ impl GameUi {
             let scroll_delta = ui.input(|i| i.raw_scroll_delta);
             if scroll_delta.y > 0.0 {
                 self.placement_rotation = self.placement_rotation + Rotation(1);
+                self.last_rotate_time = rotate_time;
             } else if scroll_delta.y < 0.0 {
                 self.placement_rotation = self.placement_rotation + Rotation(5);
+                self.last_rotate_time = rotate_time;
             }
-            self.last_rotate_time = rotate_time;
         }
 
         // Draw the board
