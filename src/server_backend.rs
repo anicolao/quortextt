@@ -163,7 +163,7 @@ fn handle_client(stream: TcpStream, game: Arc<RwLock<Game>>, game_viewer: GameVi
 }
 
 pub fn run_server() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:10213")?;
+    let listener = TcpListener::bind("0.0.0.0:10213")?;
     let mut game = Arc::new(RwLock::new(Game::new(GameSettings {
         num_players: 2,
         version: 0,
