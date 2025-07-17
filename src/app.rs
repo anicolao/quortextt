@@ -1,95 +1,150 @@
-use egui::{Sense, Stroke};
+use crate::backend::InMemoryBackend;
+use crate::game::{GameSettings, GameViewer, Rotation};
+use crate::game_ui::GameUi;
+use crate::game_view::GameView;
+use crate::server_backend::ServerBackend;
 
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
-    // Example stuff:
-    label: String,
-
-    #[serde(skip)] // This how you opt-out of serialization of a field
-    value: f32,
+struct InMemoryMode {
+    admin_view: GameView,
+    player_views: Vec<GameView>,
+    player_uis: Vec<GameUi>,
+    current_displayed_player: usize,
+    displayed_action_count: usize,
 }
 
-impl Default for TemplateApp {
-    fn default() -> Self {
+impl InMemoryMode {
+    pub fn new(settings: GameSettings) -> Self {
+        let num_players = settings.num_players;
+        let backend = InMemoryBackend::new(settings);
+        let player_views = (0..num_players)
+            .map(|i| GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(i)))))
+            .collect::<Vec<_>>();
+        let admin_view = GameView::new(Box::new(backend));
         Self {
-            // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
+            admin_view,
+            player_views,
+            player_uis: (0..num_players)
+                .map(|i| GameUi::new(Rotation(i as u8 * 2).reversed()))
+                .collect(),
+            current_displayed_player: 0,
+            displayed_action_count: 0,
         }
     }
 }
 
-impl TemplateApp {
-    /// Called once before the first frame.
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+struct ServerMode {
+    player_view: GameView,
+    player_ui: GameUi,
+}
 
-        // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+impl ServerMode {
+    pub fn new(server_ip: &String) -> Self {
+        let backend = ServerBackend::new(server_ip).unwrap();
+        let player_view = GameView::new(Box::new(backend));
+        let player_ui = GameUi::new(Rotation(0));
+        Self {
+            player_view,
+            player_ui,
         }
+    }
+}
 
+enum State {
+    Menu { server_ip: String },
+    InMemoryMode(InMemoryMode),
+    ServerMode(ServerMode),
+}
+
+pub struct FlowsApp {
+    state: State,
+}
+
+impl Default for FlowsApp {
+    fn default() -> Self {
+        Self {
+            state: State::Menu {
+                server_ip: "127.0.0.1:10213".into(),
+            },
+        }
+    }
+}
+
+impl FlowsApp {
+    /// Called once before the first frame.
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Default::default()
     }
 }
 
-impl eframe::App for TemplateApp {
-    /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
-    }
-
+impl eframe::App for FlowsApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
+        let mut new_state = None;
+        match &mut self.state {
+            State::Menu { server_ip } => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    if ui.button("In-memory").clicked() {
+                        new_state = Some(State::InMemoryMode(InMemoryMode::new(GameSettings {
+                            num_players: 2,
+                            version: 0,
+                        })));
+                    }
 
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-
-            egui::menu::bar(ui, |ui| {
-                // NOTE: no File->Quit on web pages!
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        ui.text_edit_singleline(server_ip);
+                        if ui.button("Server").clicked() {
+                            new_state =
+                                Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
+                        }
+                    }
+                });
+            }
+            State::InMemoryMode(in_memory_mode) => {
+                egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        for i in 0..in_memory_mode.player_uis.len() {
+                            ui.selectable_value(
+                                &mut in_memory_mode.current_displayed_player,
+                                i,
+                                format!("Player {i}"),
+                            );
                         }
                     });
-                    ui.add_space(16.0);
-                }
+                });
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    let player_view =
+                        &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
+                    let num_actions = player_view.poll_backend();
+                    if num_actions > in_memory_mode.displayed_action_count
+                        && in_memory_mode.displayed_action_count > 0
+                    {
+                        in_memory_mode.current_displayed_player += 1;
+                        in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
+                    }
+                    in_memory_mode.displayed_action_count = num_actions;
+                    in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
+                        ui,
+                        ctx,
+                        player_view,
+                    );
+                });
+            }
+            State::ServerMode(server_mode) => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    let player_view = &mut server_mode.player_view;
+                    player_view.poll_backend();
+                    server_mode.player_ui.display(ui, ctx, player_view);
+                });
+                ctx.request_repaint_after_secs(1.0 / 60.0);
+            }
+        }
 
-                egui::widgets::global_theme_preference_buttons(ui);
-            });
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let bounding_box = ui.available_size();
-            let (window, response) =
-                ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
-            let painter = ui.painter();
-            painter.line_segment(
-                [window.min, window.max],
-                Stroke::new(2.0, egui::Color32::from_rgb(0xFF, 0x00, 0x00)),
-            );
-        });
+        // It seems dumb that we have to do this, maybe some nicer way to convince the borrow
+        // checker to allow you to just set the state in the match. But this works.
+        match new_state {
+            None => (),
+            Some(s) => self.state = s,
+        }
     }
-}
-
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
-        );
-        ui.label(".");
-    });
 }
