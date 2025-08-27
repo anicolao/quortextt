@@ -3,12 +3,14 @@ use crate::game::*;
 use parking_lot::RwLock;
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpStream;
 use std::sync::Arc;
 
 use std::thread::spawn;
+use tokio::io::AsyncBufReadExt;
+use tokio::sync::{mpsc, oneshot};
 
 pub struct ServerBackend {
     viewer: Arc<RwLock<GameViewer>>,
@@ -36,7 +38,7 @@ impl ServerBackend {
 
         let t_viewer = viewer.clone();
         let t_actions_received = actions_received.clone();
-        let thread = spawn(move || {
+        let _ = spawn(move || {
             let stream_reader = BufReader::new(t_stream);
             for line in stream_reader.lines() {
                 let line = match line {
@@ -80,111 +82,209 @@ impl Backend for ServerBackend {
     }
 
     fn submit_action(&self, action: Action) {
-        self.stream.write().write(
-            serde_json::to_string(&ClientToServerMessage::SubmitAction(action))
-                .unwrap()
-                .as_bytes(),
-        );
-        self.stream.write().write(b"\n");
-    }
-}
-
-fn handle_client(stream: TcpStream, game: Arc<RwLock<Game>>, game_viewer: GameViewer) {
-    let mut write_stream = stream.try_clone().unwrap();
-    let mut buf_reader = BufReader::new(stream);
-    println!("A client connected, they are {:?}", game_viewer);
-    // First, tell them about all the actions so far.
-    buf_reader.get_mut().write(
-        serde_json::to_string(&ServerToClientMessage::YouAreGameViewer(game_viewer))
-            .unwrap()
-            .as_bytes(),
-    );
-    buf_reader.get_mut().write(b"\n");
-    let mut sent_actions = 0;
-    for action in game.read().actions_for_viewer(game_viewer) {
-        sent_actions += 1;
-        buf_reader.get_mut().write(
-            serde_json::to_string(&ServerToClientMessage::AppendAction(action.clone()))
-                .unwrap()
-                .as_bytes(),
-        );
-        buf_reader.get_mut().write(b"\n");
-    }
-
-    let t_game = game.clone();
-    spawn(move || {
-        for line in buf_reader.lines() {
-            let line = match line {
-                Ok(line) => line,
-                Err(_) => break,
-            };
-            println!(
-                "Server received line from viewer {:?}: {}",
-                game_viewer, line
-            );
-            match serde_json::from_str::<ClientToServerMessage>(&line) {
-                Ok(m) => {
-                    match m {
-                        ClientToServerMessage::SubmitAction(action) => {
-                            // Check whether the player can perform the action
-                            if !action.performable(game_viewer) {
-                                continue;
-                            }
-                            t_game.write().apply_action(action);
-                            let mut rng = StdRng::seed_from_u64(
-                                chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64,
-                            );
-                            t_game.write().do_automatic_actions(&mut rng);
-                        }
-                    }
-                }
-                Err(_) => (),
-            }
-        }
-        println!("Client reached end of stream");
-    });
-
-    loop {
-        for action in game
-            .read()
-            .actions_for_viewer(game_viewer)
-            .skip(sent_actions)
-        {
-            sent_actions += 1;
-            write_stream.write(
-                serde_json::to_string(&ServerToClientMessage::AppendAction(action.clone()))
+        self.stream
+            .write()
+            .write(
+                serde_json::to_string(&ClientToServerMessage::SubmitAction(action))
                     .unwrap()
                     .as_bytes(),
-            );
-            write_stream.write(b"\n");
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
+            )
+            .unwrap();
+        self.stream.write().write(b"\n").unwrap();
     }
 }
 
-pub fn run_server() -> std::io::Result<()> {
-    let listener = TcpListener::bind("0.0.0.0:10213")?;
-    let mut game = Arc::new(RwLock::new(Game::new(GameSettings {
+type Responder<T> = oneshot::Sender<Result<T, String>>;
+enum ServerInternalMessage {
+    SubscribeClient {
+        game_viewer: GameViewer,
+        client_writer: mpsc::Sender<ServerToClientMessage>,
+        resp: Responder<usize>,
+    },
+    MessageFromClient {
+        game_viewer: GameViewer,
+        message: ClientToServerMessage,
+    },
+}
+
+struct ServerInternal {
+    message_rx: mpsc::Receiver<ServerInternalMessage>,
+    game: Game,
+    client_views: HashMap<usize, (GameViewer, mpsc::Sender<ServerToClientMessage>)>,
+    next_id: usize,
+}
+
+impl ServerInternal {
+    fn new(message_rx: mpsc::Receiver<ServerInternalMessage>, game: Game) -> Self {
+        Self {
+            message_rx,
+            game,
+            client_views: HashMap::new(),
+            next_id: 0,
+        }
+    }
+
+    async fn update_clients(&self, num_old_messages: usize) {
+        for (viewer, pipe) in self.client_views.values() {
+            for action in self.game.action_history_vec().iter().skip(num_old_messages) {
+                if action.visible(*viewer) {
+                    pipe.send(ServerToClientMessage::AppendAction(action.clone())).await.unwrap();
+                }
+            }
+        }
+    }
+
+    async fn run(&mut self) {
+        while let Some(message) = self.message_rx.recv().await {
+            match message {
+                ServerInternalMessage::SubscribeClient {
+                    game_viewer,
+                    client_writer,
+                    resp,
+                } => {
+                    client_writer
+                        .send(ServerToClientMessage::YouAreGameViewer(game_viewer))
+                        .await
+                        .unwrap();
+                    for action in self.game.actions_for_viewer(game_viewer) {
+                        client_writer
+                            .send(ServerToClientMessage::AppendAction(action.clone()))
+                            .await
+                            .unwrap();
+                    }
+                    let id = self.next_id;
+                    self.next_id += 1;
+                    self.client_views.insert(id, (game_viewer, client_writer));
+                    println!("Got a client, they are {:?}", game_viewer);
+                    resp.send(Ok(id)).unwrap();
+                }
+                ServerInternalMessage::MessageFromClient {
+                    game_viewer,
+                    message,
+                } => match message {
+                    ClientToServerMessage::SubmitAction(action) => {
+                        println!(
+                            "Server received action from viewer {:?}: {:?}",
+                            game_viewer, action
+                        );
+                        let current_action_count = self.game.action_history_vec().len();
+                        if !action.performable(game_viewer) {
+                            continue;
+                        }
+                        match self.game.apply_action(action) {
+                            Ok(()) => {
+                                let mut rng = StdRng::seed_from_u64(
+                                    chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64,
+                                );
+                                self.game.do_automatic_actions(&mut rng);
+                                self.update_clients(current_action_count).await;
+                            },
+                            Err(_) => (), // TODO: Send error back to the client?
+                        }
+                    }
+                },
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+struct Server {
+    message_tx: mpsc::Sender<ServerInternalMessage>,
+}
+
+impl Server {
+    fn new(game: Game) -> Self {
+        let (message_tx, message_rx) = mpsc::channel(32);
+        tokio::spawn(async move {
+            let mut server_internal = ServerInternal::new(message_rx, game);
+            server_internal.run().await
+        });
+        Self { message_tx }
+    }
+
+    async fn send_message<R, F>(&self, message: F) -> Result<R, String>
+    where
+        F: FnOnce(Responder<R>) -> ServerInternalMessage,
+    {
+        let (tx, rx) = oneshot::channel();
+        let result = self.message_tx.send(message(tx)).await;
+        match result {
+            Ok(()) => (),
+            Err(err) => return Err(err.to_string()),
+        };
+        match rx.await {
+            Ok(res) => res,
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    async fn subscribe_client(
+        &self,
+        game_viewer: GameViewer,
+        client_writer: mpsc::Sender<ServerToClientMessage>,
+    ) -> usize {
+        self.send_message(|resp| ServerInternalMessage::SubscribeClient {
+            game_viewer,
+            client_writer,
+            resp,
+        })
+        .await
+        .unwrap()
+    }
+
+    async fn message_from_client(&self, game_viewer: GameViewer, message: ClientToServerMessage) {
+        self.message_tx.send(ServerInternalMessage::MessageFromClient {
+            game_viewer,
+            message,
+        }).await.unwrap();
+    }
+}
+
+pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:10213").await?;
+    let mut game = Game::new(GameSettings {
         num_players: 2,
         version: 0,
-    })));
+    });
     let mut rng = StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
-    game.write().do_automatic_actions(&mut rng);
+    game.do_automatic_actions(&mut rng);
+    let server = Server::new(game);
 
     let mut connections = 0;
-    for stream in listener.incoming() {
-        let stream = stream?;
+    loop {
+        let (mut stream, _) = listener.accept().await?;
         let game_viewer = if connections < 2 {
             GameViewer::Player(connections)
         } else {
             GameViewer::Spectator
         };
-        let t_game = game.clone();
-        spawn(move || {
-            handle_client(stream, t_game, game_viewer);
+        let server_c = server.clone();
+        tokio::spawn(async move {
+            stream.writable().await.unwrap();
+            let (tx, mut rx) = mpsc::channel(32);
+            let (stream_read, stream_write) = stream.split();
+            let mut line_reader = tokio::io::BufReader::new(stream_read).lines();
+            let _client_handle = server_c.subscribe_client(game_viewer, tx).await;
+            loop {
+                tokio::select! {
+                    from_server = rx.recv() => {
+                        stream_write.try_write(
+                            serde_json::to_string(&from_server)
+                                .unwrap()
+                                .as_bytes(),
+                        ).unwrap();
+                        stream_write.try_write(b"\n").unwrap();
+                    },
+                    from_client = line_reader.next_line() => {
+                        if let Some(line) = from_client.unwrap() {
+                            let message = serde_json::from_str::<ClientToServerMessage>(&line).unwrap();
+                            server_c.message_from_client(game_viewer, message).await;
+                        }
+                    },
+                }
+            }
         });
         connections += 1;
     }
-
-    Ok(())
 }
