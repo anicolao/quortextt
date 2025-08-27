@@ -1,0 +1,3 @@
+# Simple server alias
+[alias]
+server = "run --bin server --no-default-features"
