@@ -50,9 +50,6 @@ tokio = { version = "1.46.1", features = ["net", "sync", "rt", "macros", "io-uti
 wasm-bindgen-futures = "0.4.50"
 web-sys = "0.3.70"              # to access the DOM (to hide the loading text)
 
-[target.wasm32-unknown-unknown]
-rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
-
 [profile.release]
 opt-level = 2 # fast and small wasm
 

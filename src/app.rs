@@ -90,13 +90,10 @@ impl eframe::App for FlowsApp {
                         })));
                     }
 
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        ui.text_edit_singleline(server_ip);
-                        if ui.button("Server").clicked() {
-                            new_state =
-                                Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
-                        }
+                    ui.text_edit_singleline(server_ip);
+                    if ui.button("Server").clicked() {
+                        new_state =
+                            Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
                     }
                 });
             }
