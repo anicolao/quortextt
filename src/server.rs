@@ -6,6 +6,9 @@ use std::collections::HashMap;
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::{mpsc, oneshot};
 
+use futures_util::{SinkExt, StreamExt};
+use tokio_websockets::{Message, ServerBuilder};
+
 type Responder<T> = oneshot::Sender<Result<T, String>>;
 enum ServerInternalMessage {
     SubscribeClient {
@@ -180,39 +183,56 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         };
         let server_c = server.clone();
 
+        // Special multiplexing hack
+        // The TCP connection must send some non-"GET " bytes before it will receive anything,
+        // which it accomplishes by sending a Connect message which just gets ignored (but
+        // eventually could contain a handshake or something).
         let mut buf = [0u8; 4];
-        let bytes_read = stream.peek(&mut buf).await;
-        println!(
-            "Peeked at start of connection: {:?} ({:?})",
-            buf, bytes_read
-        );
-
-        if buf == &"GET ".as_bytes()[..] {
-            println!("It's a websocket!");
-        }
+        let _bytes_read = stream.peek(&mut buf).await;
+        let is_websocket = buf == &"GET ".as_bytes()[..];
 
         tokio::spawn(async move {
             stream.writable().await.unwrap();
             let (tx, mut rx) = mpsc::channel(32);
-            let (stream_read, stream_write) = stream.split();
-            let mut line_reader = tokio::io::BufReader::new(stream_read).lines();
             let _client_handle = server_c.subscribe_client(game_viewer, tx).await;
-            loop {
-                tokio::select! {
-                    from_server = rx.recv() => {
-                        stream_write.try_write(
-                            serde_json::to_string(&from_server)
-                                .unwrap()
-                                .as_bytes(),
-                        ).unwrap();
-                        stream_write.try_write(b"\n").unwrap();
-                    },
-                    from_client = line_reader.next_line() => {
-                        if let Some(line) = from_client.unwrap() {
-                            let message = serde_json::from_str::<ClientToServerMessage>(&line).unwrap();
-                            server_c.message_from_client(game_viewer, message).await;
+
+            if !is_websocket {
+                let (stream_read, stream_write) = stream.split();
+                let mut line_reader = tokio::io::BufReader::new(stream_read).lines();
+                loop {
+                    tokio::select! {
+                        from_server = rx.recv() => {
+                            stream_write.try_write(
+                                serde_json::to_string(&from_server)
+                                    .unwrap()
+                                    .as_bytes(),
+                            ).unwrap();
+                            stream_write.try_write(b"\n").unwrap();
+                        },
+                        from_client = line_reader.next_line() => {
+                            if let Some(line) = from_client.unwrap() {
+                                let message = serde_json::from_str::<ClientToServerMessage>(&line).unwrap();
+                                server_c.message_from_client(game_viewer, message).await;
+                            }
+                        },
+                    }
+                }
+            } else {
+                let (_request, mut ws_stream) = ServerBuilder::new().accept(stream).await.unwrap();
+                loop {
+                    tokio::select! {
+                        from_server = rx.recv() => {
+                            ws_stream.send(Message::text(serde_json::to_string(&from_server).unwrap())).await.unwrap();
+                        },
+                        from_client = ws_stream.next() => {
+                            if let Some(Ok(line)) = from_client {
+                                if let Some(s) = line.as_text() {
+                                    let message = serde_json::from_str::<ClientToServerMessage>(s).unwrap();
+                                    server_c.message_from_client(game_viewer, message).await;
+                                }
+                            }
                         }
-                    },
+                    }
                 }
             }
         });
