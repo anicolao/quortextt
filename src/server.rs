@@ -7,7 +7,9 @@ use tokio::io::AsyncBufReadExt;
 use tokio::sync::{mpsc, oneshot};
 
 use futures_util::{SinkExt, StreamExt};
-use tokio_websockets::{Message, ServerBuilder};
+use tokio_tungstenite::accept_async;
+use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio_tungstenite::WebSocketStream;
 
 type Responder<T> = oneshot::Sender<Result<T, String>>;
 enum ServerInternalMessage {
@@ -43,9 +45,16 @@ impl ServerInternal {
         for (viewer, pipe) in self.client_views.values() {
             for action in self.game.action_history_vec().iter().skip(num_old_messages) {
                 if action.visible(*viewer) {
-                    pipe.send(ServerToClientMessage::AppendAction(action.clone()))
+                    match pipe
+                        .send(ServerToClientMessage::AppendAction(action.clone()))
                         .await
-                        .unwrap();
+                    {
+                        Ok(()) => (),
+                        Err(_) => {
+                            // TODO: Drop the connection
+                            ()
+                        }
+                    }
                 }
             }
         }
@@ -218,7 +227,7 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             } else {
-                let (_request, mut ws_stream) = ServerBuilder::new().accept(stream).await.unwrap();
+                let mut ws_stream = accept_async(stream).await.unwrap();
                 loop {
                     tokio::select! {
                         from_server = rx.recv() => {
@@ -226,7 +235,10 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
                         },
                         from_client = ws_stream.next() => {
                             if let Some(Ok(line)) = from_client {
-                                if let Some(s) = line.as_text() {
+                                if let Ok(s) = line.to_text() {
+                                    if s.len() == 0 {
+                                        break;
+                                    }
                                     let message = serde_json::from_str::<ClientToServerMessage>(s).unwrap();
                                     server_c.message_from_client(game_viewer, message).await;
                                 }
@@ -234,6 +246,7 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
+                println!("Websocket connection terminated");
             }
         });
         connections += 1;
