@@ -61,10 +61,13 @@ pub struct FlowsApp {
 
 impl Default for FlowsApp {
     fn default() -> Self {
+        let server_ip = if cfg!(target_arch = "wasm32") {
+            "ws://127.0.0.1:10213".into()
+        } else {
+            "127.0.0.1:10213".into()
+        };
         Self {
-            state: State::Menu {
-                server_ip: "127.0.0.1:10213".into(),
-            },
+            state: State::Menu { server_ip },
         }
     }
 }
@@ -90,13 +93,9 @@ impl eframe::App for FlowsApp {
                         })));
                     }
 
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        ui.text_edit_singleline(server_ip);
-                        if ui.button("Server").clicked() {
-                            new_state =
-                                Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
-                        }
+                    ui.text_edit_singleline(server_ip);
+                    if ui.button("Server").clicked() {
+                        new_state = Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
                     }
                 });
             }
