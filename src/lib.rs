@@ -11,9 +11,7 @@ mod backend;
 mod game_ui;
 #[cfg(feature = "gui")]
 mod game_view;
-
 #[cfg(feature = "gui")]
-#[cfg_attr(target_arch = "wasm32", path = "server_backend_ws.rs")]
 mod server_backend;
 
 #[cfg(feature = "gui")]

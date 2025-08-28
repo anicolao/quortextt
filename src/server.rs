@@ -9,7 +9,6 @@ use tokio::sync::{mpsc, oneshot};
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::accept_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio_tungstenite::WebSocketStream;
 
 type Responder<T> = oneshot::Sender<Result<T, String>>;
 enum ServerInternalMessage {
