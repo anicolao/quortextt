@@ -38,10 +38,12 @@ rand = { version = "0.9.1", default-features = false, features = ["std", "std_rn
 chrono = "0.4.41"
 parking_lot = "0.12.4"
 serde_json = "1.0.140"
+tokio = { version = "1.46.1", features = ["sync", "rt", "macros", "io-util"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = { version = "0.11.8", optional = true }
+tokio = { version = "1.46.1", features = ["net", "sync", "rt", "macros", "io-util"] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

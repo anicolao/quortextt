@@ -511,6 +511,10 @@ impl Game {
         new_game
     }
 
+    pub fn action_history_vec(&self) -> &Vec<Action> {
+        &self.action_history
+    }
+
     pub fn action_history(&self) -> impl Iterator<Item = &Action> {
         self.action_history.iter()
     }
