@@ -25,6 +25,7 @@ impl GameView {
     }
 
     pub fn poll_backend(&mut self) -> usize {
+        self.backend.update();
         let new_actions = self.backend.actions_from_index(self.action_count);
         if !new_actions.is_empty() {
             if !self.locally_applied_actions && self.game.is_some() {

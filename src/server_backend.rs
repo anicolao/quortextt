@@ -1,7 +1,6 @@
 use crate::backend::Backend;
 use crate::game::*;
 use crate::server_protocol::*;
-use parking_lot::RwLock;
 
 #[cfg(target_arch = "wasm32")]
 mod server_connection {
@@ -106,52 +105,44 @@ mod server_connection {
 use server_connection::*;
 
 pub struct ServerBackend {
-    viewer: RwLock<GameViewer>,
-    actions_received: RwLock<Vec<Action>>,
+    viewer: GameViewer,
+    actions_received: Vec<Action>,
     connection: ServerConnection,
 }
 
 impl ServerBackend {
     pub fn new(addr: &str) -> std::io::Result<Self> {
         Ok(Self {
-            viewer: RwLock::new(GameViewer::Spectator),
-            actions_received: RwLock::new(Vec::new()),
+            viewer: GameViewer::Spectator,
+            actions_received: Vec::new(),
             connection: ServerConnection::new(addr),
         })
-    }
-
-    fn handle_messages(&self) {
-        for message in self.connection.receive().into_iter() {
-            match message {
-                ServerToClientMessage::YouAreGameViewer(game_viewer) => {
-                    *self.viewer.write() = game_viewer;
-                }
-                ServerToClientMessage::AppendAction(action) => {
-                    self.actions_received.write().push(action);
-                }
-            }
-        }
     }
 }
 
 impl Backend for ServerBackend {
+    fn update(&mut self) {
+        for message in self.connection.receive().into_iter() {
+            match message {
+                ServerToClientMessage::YouAreGameViewer(game_viewer) => {
+                    self.viewer = game_viewer;
+                }
+                ServerToClientMessage::AppendAction(action) => {
+                    self.actions_received.push(action);
+                }
+            }
+        }
+    }
+
     fn viewer(&self) -> GameViewer {
-        self.handle_messages();
-        *self.viewer.read()
+        self.viewer
     }
 
     fn actions_from_index(&self, index: usize) -> Vec<Action> {
-        self.handle_messages();
-        self.actions_received
-            .read()
-            .iter()
-            .skip(index)
-            .cloned()
-            .collect()
+        self.actions_received.iter().skip(index).cloned().collect()
     }
 
     fn submit_action(&self, action: Action) {
-        self.handle_messages();
         self.connection
             .send(ClientToServerMessage::SubmitAction(action));
     }

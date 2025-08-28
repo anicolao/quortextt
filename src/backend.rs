@@ -10,6 +10,9 @@ use std::sync::Arc;
 ///
 /// The backend could be a server, a direction connection(s) to peers, or an in-memory local game.
 pub trait Backend {
+    /// This should be called once per frame before using the other accessors.
+    fn update(&mut self);
+
     fn viewer(&self) -> GameViewer;
     fn actions_from_index(&self, index: usize) -> Vec<Action>;
     fn submit_action(&self, action: Action);
@@ -46,6 +49,8 @@ impl InMemoryBackend {
 }
 
 impl Backend for InMemoryBackend {
+    fn update(&mut self) {}
+
     fn viewer(&self) -> GameViewer {
         self.viewer
     }
