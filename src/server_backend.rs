@@ -20,6 +20,7 @@ pub struct ServerBackend {
 
 #[derive(Serialize, Deserialize)]
 enum ClientToServerMessage {
+    Connect,
     SubmitAction(Action),
 }
 
@@ -59,11 +60,23 @@ impl ServerBackend {
                 }
             }
         });
-        Ok(Self {
+        let s = Self {
             viewer,
             actions_received,
             stream: RwLock::new(stream),
-        })
+        };
+        s.write_message(ClientToServerMessage::Connect);
+        Ok(s)
+    }
+
+    fn write_message(&self, message: ClientToServerMessage) {
+        self.stream
+            .write()
+            .write(
+                serde_json::to_string(&message) .unwrap() .as_bytes(),
+            )
+            .unwrap();
+        self.stream.write().write(b"\n").unwrap();
     }
 }
 
@@ -82,15 +95,7 @@ impl Backend for ServerBackend {
     }
 
     fn submit_action(&self, action: Action) {
-        self.stream
-            .write()
-            .write(
-                serde_json::to_string(&ClientToServerMessage::SubmitAction(action))
-                    .unwrap()
-                    .as_bytes(),
-            )
-            .unwrap();
-        self.stream.write().write(b"\n").unwrap();
+        self.write_message(ClientToServerMessage::SubmitAction(action));
     }
 }
 
@@ -162,6 +167,7 @@ impl ServerInternal {
                     game_viewer,
                     message,
                 } => match message {
+                    ClientToServerMessage::Connect => (),
                     ClientToServerMessage::SubmitAction(action) => {
                         println!(
                             "Server received action from viewer {:?}: {:?}",
@@ -241,6 +247,7 @@ impl Server {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:10213").await?;
     let mut game = Game::new(GameSettings {
@@ -260,6 +267,15 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
             GameViewer::Spectator
         };
         let server_c = server.clone();
+
+        let mut buf = [0u8; 4];
+        let bytes_read = stream.peek(&mut buf).await;
+        println!("Peeked at start of connection: {:?} ({:?})", buf, bytes_read);
+
+        if buf == &"GET ".as_bytes()[..] {
+            println!("It's a websocket!");
+        }
+
         tokio::spawn(async move {
             stream.writable().await.unwrap();
             let (tx, mut rx) = mpsc::channel(32);
