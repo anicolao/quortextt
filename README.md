@@ -36,7 +36,9 @@ The official egui docs are at <https://docs.rs/egui>. If you prefer watching a v
 
 ### Testing locally
 
-`cargo run --release`
+GUI application: `cargo run --release`
+
+Server only (no GUI dependencies): `cargo run --bin server --no-default-features` or `cargo server`
 
 On Linux you need to first run:
 

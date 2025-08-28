@@ -7,13 +7,22 @@ include = ["LICENSE-APACHE", "LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 rust-version = "1.81"
 default-run = "flows"
 
+[lib]
+name = "flows"
+path = "src/lib.rs"
+
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
+[features]
+default = ["gui"]
+gui = ["dep:egui", "dep:eframe", "dep:env_logger"]
+server = []
+
 [dependencies]
-egui = "0.31"
-eframe = { version = "0.31", default-features = false, features = [
+egui = { version = "0.31", optional = true }
+eframe = { version = "0.31", default-features = false, optional = true, features = [
     "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".
@@ -32,7 +41,7 @@ serde_json = "1.0.140"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.11.8"
+env_logger = { version = "0.11.8", optional = true }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -61,5 +70,11 @@ opt-level = 2
 # eframe = { path = "../egui/crates/eframe" }
 
 [[bin]]
+name = "flows"
+path = "src/main.rs"
+required-features = ["gui"]
+
+[[bin]]
 name = "server"
 path = "src/server.rs"
+required-features = []
