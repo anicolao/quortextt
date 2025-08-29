@@ -259,7 +259,7 @@ impl GameUi {
         // Calculate rotation to put the viewing player's side on the bottom
         let viewing_player = match game_view.viewer() {
             GameViewer::Player(player) => Some(player),
-            GameViewer::Admin => Some(game.current_player()), // Admin sees from current player's perspective
+            GameViewer::Admin => None, // Same as spectator
             GameViewer::Spectator => None, // Spectator uses default rotation
         };
 
