@@ -115,7 +115,7 @@ impl eframe::App for FlowsApp {
                     let player_view =
                         &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
                     let num_actions = player_view.poll_backend();
-                    (if num_actions > in_memory_mode.displayed_action_count
+                    if num_actions > in_memory_mode.displayed_action_count
                                             && in_memory_mode.displayed_action_count > 0
                                         {
                                             in_memory_mode.current_displayed_player += 1;
