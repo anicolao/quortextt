@@ -1,5 +1,5 @@
 use crate::backend::InMemoryBackend;
-use crate::game::{GameSettings, GameViewer, Rotation};
+use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
 use crate::server_backend::ServerBackend;
@@ -24,7 +24,7 @@ impl InMemoryMode {
             admin_view,
             player_views,
             player_uis: (0..num_players)
-                .map(|i| GameUi::new(Rotation(i as u8 * 2).reversed()))
+                .map(|_| GameUi::new())
                 .collect(),
             current_displayed_player: 0,
             displayed_action_count: 0,
@@ -41,7 +41,7 @@ impl ServerMode {
     pub fn new(server_ip: &String) -> Self {
         let backend = ServerBackend::new(server_ip).unwrap();
         let player_view = GameView::new(Box::new(backend));
-        let player_ui = GameUi::new(Rotation(0));
+        let player_ui = GameUi::new();
         Self {
             player_view,
             player_ui,
@@ -115,7 +115,7 @@ impl eframe::App for FlowsApp {
                     let player_view =
                         &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
                     let num_actions = player_view.poll_backend();
-                    (if num_actions > in_memory_mode.displayed_action_count
+                    if num_actions > in_memory_mode.displayed_action_count
                                             && in_memory_mode.displayed_action_count > 0
                                         {
                                             in_memory_mode.current_displayed_player += 1;
