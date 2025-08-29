@@ -115,12 +115,12 @@ impl eframe::App for FlowsApp {
                     let player_view =
                         &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
                     let num_actions = player_view.poll_backend();
-                    if num_actions > in_memory_mode.displayed_action_count
-                        && in_memory_mode.displayed_action_count > 0
-                    {
-                        in_memory_mode.current_displayed_player += 1;
-                        in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
-                    }
+                    (if num_actions > in_memory_mode.displayed_action_count
+                                            && in_memory_mode.displayed_action_count > 0
+                                        {
+                                            in_memory_mode.current_displayed_player += 1;
+                                            in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
+                                        }
                     in_memory_mode.displayed_action_count = num_actions;
                     in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
                         ui,

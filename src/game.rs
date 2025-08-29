@@ -404,7 +404,7 @@ impl Game {
                 {
                     return Err("Must reveal actual tile that player holds".into());
                 }
-                // This action has no effect on the game state.
+                self.tiles_in_hand[player] = Some(tile);
             }
             Action::PlaceTile {
                 player,

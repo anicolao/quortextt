@@ -455,6 +455,66 @@ impl GameUi {
             std::f32::consts::PI / 6.0,
         );
 
+        // Find the current player's side and draw their piece behind their edge
+        let current_player = game.current_player();
+        let mut current_player_side = None;
+        for side in (0..6).map(Rotation) {
+            if let Some(player) = game.player_on_side(side + self.rotation.reversed()) {
+                if player == current_player {
+                    current_player_side = Some(side);
+                    break;
+                }
+            }
+        }
+
+        for side in (0..6).map(Rotation) {
+            match game.player_on_side(side + self.rotation.reversed()) {
+                None => (),
+                Some(player) => {
+                    // If this is the current player's side, draw their piece behind the center of their edge
+                    if Some(side) == current_player_side {
+                        if let Some(tile_type) = game.tile_in_hand(player) {
+                            let edges = game.edges_on_board_edge(side);
+                            if !edges.is_empty() {
+                                // Find the center edge position
+                                let center_edge_idx = edges.len() / 2;
+                                let (center_pos, center_dir) = edges[center_edge_idx];
+                                let (_offset_pos, offset_dir) = edges[center_edge_idx - 1];
+
+                                // Calculate position further out from center, behind the edge
+                                let edge_pos = center_pos + center_dir.tile_vec();
+                                let behind_edge_pos = edge_pos + center_dir.tile_vec();
+                                let bottom_pos = Self::hex_position(
+                                    behind_edge_pos,
+                                    window.center(),
+                                    hexagon_radius,
+                                );
+                                let top_pos = Self::hex_position(
+                                    edge_pos + offset_dir.tile_vec(),
+                                    window.center(),
+                                    hexagon_radius,
+                                );
+                                // find the midpoint of these two positions
+                                let screen_pos = (bottom_pos + top_pos.to_vec2()) * 0.5;
+
+                                // Create a placed tile for rendering
+                                let placed_tile = PlacedTile::new(tile_type, Rotation(0));
+
+                                // Draw the tile (without flows since it's not placed yet)
+                                Self::draw_hex(
+                                    screen_pos,
+                                    hexagon_radius * 0.8, // Slightly smaller than board tiles
+                                    painter,
+                                    &placed_tile,
+                                    &Tile::Empty, // Prior tile is empty since this is hypothetical
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         response
     }
 }
