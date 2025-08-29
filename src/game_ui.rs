@@ -42,9 +42,9 @@ pub struct GameUi {
 }
 
 impl GameUi {
-    pub fn new(rotation: Rotation) -> Self {
+    pub fn new() -> Self {
         Self {
-            rotation,
+            rotation: Rotation(0), // Default rotation, will be calculated automatically
             placement_rotation: Rotation(0),
             last_rotate_time: 0.0,
         }
@@ -255,6 +255,26 @@ impl GameUi {
                 return response;
             }
         };
+
+        // Calculate rotation to put the viewing player's side on the bottom
+        let viewing_player = match game_view.viewer() {
+            GameViewer::Player(player) => Some(player),
+            GameViewer::Admin => Some(game.current_player()), // Admin sees from current player's perspective
+            GameViewer::Spectator => None, // Spectator uses default rotation
+        };
+
+        if let Some(player) = viewing_player {
+            // Find which side the viewing player is on
+            for side in (0..6).map(Rotation) {
+                if let Some(side_player) = game.player_on_side(side) {
+                    if side_player == player {
+                        // Calculate rotation to put this side at the bottom (position 3)
+                        self.rotation = Rotation(3) + side.reversed();
+                        break;
+                    }
+                }
+            }
+        }
         let center = game.center_pos();
         let hovered_tile = match response.hover_pos() {
             None => None,
