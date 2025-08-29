@@ -20,6 +20,10 @@ const HIGHLIGHT_BORDER: Stroke = Stroke {
     width: 2.0,
     color: Color32::from_rgb(0x00, 0xf0, 0x0),
 };
+const GOLDEN_BORDER: Stroke = Stroke {
+    width: 3.0,
+    color: Color32::from_rgb(0xFF, 0xD7, 0x00),
+};
 
 fn player_colour(player: Player) -> Color32 {
     match player {
@@ -48,6 +52,16 @@ impl GameUi {
             placement_rotation: Rotation(0),
             last_rotate_time: 0.0,
         }
+    }
+
+    fn get_most_recent_tile_position(game: &Game) -> Option<TilePos> {
+        // Search through action history in reverse to find the most recent PlaceTile action
+        for action in game.action_history().rev() {
+            if let Action::PlaceTile { pos, .. } = action {
+                return Some(*pos);
+            }
+        }
+        None
     }
 
     fn draw_flow(
@@ -156,6 +170,7 @@ impl GameUi {
         painter: &Painter,
         tile: &PlacedTile,
         prior_tile: &Tile,
+        border_stroke: Stroke,
     ) {
         let hexagon = Self::hexagon_coords(center, hexagon_radius, 0.0);
         let hypothetical = match prior_tile {
@@ -214,7 +229,7 @@ impl GameUi {
         painter.add(Shape::convex_polygon(
             hexagon.clone(),
             Color32::TRANSPARENT,
-            Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
+            border_stroke,
         ));
     }
 
@@ -353,6 +368,10 @@ impl GameUi {
                 }
             }
         }
+        
+        // Get the most recently placed tile position for highlighting
+        let most_recent_tile_pos = Self::get_most_recent_tile_position(&game);
+        
         for col in 0..7 {
             for row in 0..7 {
                 let tile_pos = TilePos::new(row, col);
@@ -405,12 +424,18 @@ impl GameUi {
                         }
                         match hypothetical {
                             Tile::NotOnBoard | Tile::Empty => {
+                                let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
+                                    GOLDEN_BORDER
+                                } else {
+                                    Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
+                                };
                                 Self::draw_hex(
                                     pos,
                                     hexagon_radius,
                                     painter,
                                     &rendered,
                                     &hypothetical,
+                                    border_stroke,
                                 );
                             }
                             Tile::Placed(hypothetical) => {
@@ -424,12 +449,18 @@ impl GameUi {
                                     prior.set_flow_cache(rdir, f);
                                 }
                                 let prior_tile = Tile::Placed(prior);
+                                let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
+                                    GOLDEN_BORDER
+                                } else {
+                                    Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
+                                };
                                 Self::draw_hex(
                                     pos,
                                     hexagon_radius,
                                     painter,
                                     &rendered,
                                     &prior_tile,
+                                    border_stroke,
                                 );
                             }
                         }
@@ -507,6 +538,7 @@ impl GameUi {
                                     painter,
                                     &placed_tile,
                                     &Tile::Empty, // Prior tile is empty since this is hypothetical
+                                    Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
                                 );
                             }
                         }
