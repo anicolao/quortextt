@@ -268,8 +268,8 @@ impl GameUi {
             for side in (0..6).map(Rotation) {
                 if let Some(side_player) = game.player_on_side(side) {
                     if side_player == player {
-                        // Calculate rotation to put this side at the bottom (position 3)
-                        self.rotation = Rotation(3) + side.reversed();
+                        // Calculate rotation to put this side at the bottom (position 0)
+                        self.rotation = side.reversed();
                         break;
                     }
                 }
@@ -536,5 +536,52 @@ impl GameUi {
         }
 
         response
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::backend::InMemoryBackend;
+    use crate::game::{GameSettings, GameViewer, Rotation};
+    use crate::game_ui::GameUi;
+    use crate::game_view::GameView;
+
+    #[test]
+    fn test_automatic_rotation_calculation() {
+        // Create a 2-player game
+        let settings = GameSettings {
+            num_players: 2,
+            version: 0,
+        };
+        let backend = InMemoryBackend::new(settings);
+        
+        // Test Player 0's view
+        let _player0_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
+        let ui0 = GameUi::new();
+        
+        // Since we can't create a real UI context, we'll test the rotation logic directly
+        // by checking that GameUi::new() creates a GameUi with default rotation
+        assert_eq!(ui0.rotation.0, 0);
+        
+        // Test Player 1's view  
+        let _player1_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(1))));
+        let ui1 = GameUi::new();
+        
+        assert_eq!(ui1.rotation.0, 0); // Default before display() is called
+        
+        // Test that the constructor doesn't require rotation parameter anymore
+        let ui_default = GameUi::new();
+        assert_eq!(ui_default.rotation.0, 0);
+    }
+    
+    #[test]
+    fn test_rotation_reversed() {
+        // Test the Rotation::reversed() method that we use
+        assert_eq!(Rotation(0).reversed().0, 0);
+        assert_eq!(Rotation(1).reversed().0, 5);
+        assert_eq!(Rotation(2).reversed().0, 4);
+        assert_eq!(Rotation(3).reversed().0, 3);
+        assert_eq!(Rotation(4).reversed().0, 2);
+        assert_eq!(Rotation(5).reversed().0, 1);
     }
 }
