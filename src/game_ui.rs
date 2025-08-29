@@ -56,7 +56,7 @@ impl GameUi {
 
     fn get_most_recent_tile_position(game: &Game) -> Option<TilePos> {
         // Search through action history in reverse to find the most recent PlaceTile action
-        for action in game.action_history().rev() {
+        for action in game.action_history_vec().iter().rev() {
             if let Action::PlaceTile { pos, .. } = action {
                 return Some(*pos);
             }
