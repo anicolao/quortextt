@@ -27,12 +27,19 @@ const GOLDEN_BORDER: Stroke = Stroke {
 
 fn player_colour(player: Player) -> Color32 {
     match player {
-        0 => Color32::from_rgb(0xFF, 0, 0),
-        1 => Color32::from_rgb(0, 0xFF, 0),
-        2 => Color32::from_rgb(0, 0, 0xFF),
-        3 => Color32::from_rgb(0xFF, 0xFF, 0),
-        4 => Color32::from_rgb(0, 0xFF, 0xFF),
-        5 => Color32::from_rgb(0xFF, 0, 0xFF),
+        // player colours are red, yellow, orange, purple, white, and silver
+        // Red: A strong, clear red. RGB: (230, 25, 75)
+        // Yellow: A vibrant, pure yellow. RGB: (255, 225, 25)
+        // Blue: A rich, standard blue. RGB: (0, 130, 200)
+        // Purple: A violet-purple, keeping it distinct from blue. RGB: (145, 30, 180)
+        // White: Pure white for maximum contrast. RGB: (255, 255, 255)
+        // Cyan: A bright, energetic cyan. RGB: (70, 240, 240)
+        0 => Color32::from_rgb(0xE6, 0x19, 0x4B), // red
+        1 => Color32::from_rgb(0xFF, 0xE1, 0x19), // yellow
+        2 => Color32::from_rgb(0x91, 0x1E, 0xB4), // purple
+        3 => Color32::from_rgb(0x46, 0xF0, 0xF0), // cyan
+        4 => Color32::from_rgb(0, 0x82, 0xC8),    // blue
+        5 => Color32::from_rgb(0xff, 0xff, 0xff), // white
         _ => NEUTRAL_COLOUR,
     }
 }
@@ -274,7 +281,7 @@ impl GameUi {
         // Calculate rotation to put the viewing player's side on the bottom
         let viewing_player = match game_view.viewer() {
             GameViewer::Player(player) => Some(player),
-            GameViewer::Admin => None, // Same as spectator
+            GameViewer::Admin => None,     // Same as spectator
             GameViewer::Spectator => None, // Spectator uses default rotation
         };
 
@@ -388,10 +395,10 @@ impl GameUi {
                 }
             }
         }
-        
+
         // Get the most recently placed tile position for highlighting
         let most_recent_tile_pos = Self::get_most_recent_tile_position(&game);
-        
+
         for col in 0..7 {
             for row in 0..7 {
                 let tile_pos = TilePos::new(row, col);
@@ -586,26 +593,28 @@ mod tests {
             version: 0,
         };
         let backend = InMemoryBackend::new(settings);
-        
+
         // Test Player 0's view
-        let _player0_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
+        let _player0_view =
+            GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
         let ui0 = GameUi::new();
-        
+
         // Since we can't create a real UI context, we'll test the rotation logic directly
         // by checking that GameUi::new() creates a GameUi with default rotation
         assert_eq!(ui0.rotation.0, 0);
-        
-        // Test Player 1's view  
-        let _player1_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(1))));
+
+        // Test Player 1's view
+        let _player1_view =
+            GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(1))));
         let ui1 = GameUi::new();
-        
+
         assert_eq!(ui1.rotation.0, 0); // Default before display() is called
-        
+
         // Test that the constructor doesn't require rotation parameter anymore
         let ui_default = GameUi::new();
         assert_eq!(ui_default.rotation.0, 0);
     }
-    
+
     #[test]
     fn test_rotation_reversed() {
         // Test the Rotation::reversed() method that we use
