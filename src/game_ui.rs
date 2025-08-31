@@ -434,13 +434,6 @@ impl GameUi {
             self.moves_drawer_open = window_rect.width() > window_rect.height();
         }
 
-        let game = if let Some(game) = game_view.game() {
-            game.clone()
-        } else {
-            // TODO: Draw something to say that the backend is not connected yet
-            return;
-        };
-
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             if ui.button("☰").clicked() {
                 self.moves_drawer_open = !self.moves_drawer_open;
@@ -450,28 +443,32 @@ impl GameUi {
 
         egui::SidePanel::left("moves_panel")
             .show_animated(ctx, self.moves_drawer_open, |ui| {
-                let num_players = game.num_players();
-                let mut moves: Vec<Vec<String>> = vec![vec![]; num_players];
-                for action in game.action_history() {
-                    if let Action::PlaceTile {
-                        player,
-                        tile,
-                        pos,
-                        rotation,
-                    } = action
-                    {
-                        moves[*player].push(format_move(*player, *tile, *pos, *rotation, &game));
-                    }
-                }
-
-                ui.columns(num_players, |columns| {
-                    for i in 0..num_players {
-                        columns[i].label(format!("Player {}", i + 1));
-                        for mv in &moves[i] {
-                            columns[i].label(mv);
+                if let Some(game) = game_view.game() {
+                    let num_players = game.num_players();
+                    let mut moves: Vec<Vec<String>> = vec![vec![]; num_players];
+                    for action in game.action_history() {
+                        if let Action::PlaceTile {
+                            player,
+                            tile,
+                            pos,
+                            rotation,
+                        } = action
+                        {
+                            moves[*player].push(format_move(*player, *tile, *pos, *rotation, &game));
                         }
                     }
-                });
+
+                    ui.columns(num_players, |columns| {
+                        for i in 0..num_players {
+                            columns[i].label(format!("Player {}", i + 1));
+                            for mv in &moves[i] {
+                                columns[i].label(mv);
+                            }
+                        }
+                    });
+                } else {
+                    ui.label("Waiting for game connection...");
+                }
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -491,7 +488,7 @@ impl GameUi {
                 Some(game) => game.clone(),
                 None => {
                     // TODO: Draw something to say that the backend is not connected yet
-                    return;
+                    return response;
                 }
             };
 
@@ -1024,16 +1021,16 @@ impl GameUi {
                                 }
                             }
 
-
-                        let is_winning_move = hypo_game.outcome().is_some();
-                        for (path, player) in final_paths {
-                            self.animation_state.flow_animation = Some(FlowAnimation {
-                                start_frame: self.animation_state.frame_count,
-                                path,
-                                player,
-                                is_winning_move,
-                                next: self.animation_state.flow_animation.take().map(Box::new),
-                            });
+                            let is_winning_move = hypo_game.outcome().is_some();
+                            for (path, player) in final_paths {
+                                self.animation_state.flow_animation = Some(FlowAnimation {
+                                    start_frame: self.animation_state.frame_count,
+                                    path,
+                                    player,
+                                    is_winning_move,
+                                    next: self.animation_state.flow_animation.take().map(Box::new),
+                                });
+                            }
                         }
                     }
                 }
@@ -1207,7 +1204,6 @@ impl GameUi {
                     }
                 }
             }
-        }
 
         if let Some(outcome) = game.outcome() {
             let painter = ui.painter();
@@ -1235,6 +1231,7 @@ impl GameUi {
         }
 
         response
+        });
     }
 }
 
