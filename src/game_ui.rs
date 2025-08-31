@@ -134,11 +134,6 @@ struct FlowAnimation {
     next: Option<Box<FlowAnimation>>,
 }
 
-struct FlowSources {
-    start: bool,
-    end: bool,
-}
-
 impl AnimationState {
     fn new() -> Self {
         Self {
@@ -364,55 +359,27 @@ impl GameUi {
         false
     }
 
-    fn get_flow_sources(
+    fn leads_to_source(
         &self,
         path: &[(TilePos, Direction, Direction)],
-        player: Player,
+        hypo_game: &Game,
         game: &Game,
-    ) -> FlowSources {
-        let mut sources = FlowSources {
-            start: false,
-            end: false,
-        };
+    ) -> bool {
         if path.is_empty() {
-            return sources;
+            return false;
         }
-
-        // Check start
-        let (start_pos, start_entrance, _) = path[0];
-        match game.adjacent_tile(start_pos, start_entrance) {
+        let (last_pos, _, last_exit) = path[path.len() - 1];
+        match hypo_game.adjacent_tile(last_pos, last_exit) {
+            AdjacentTile::Tile(_) => false, // Path would have continued.
             AdjacentTile::BoardEdge(_) => {
-                if self.is_player_edge(game, player, start_pos, start_entrance) {
-                    sources.start = true;
-                }
-            }
-            AdjacentTile::Tile(neighbor_pos) => {
-                if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
-                    if neighbor_tile.flow_cache(start_entrance.reversed()) == Some(player) {
-                        sources.start = true;
+                for player in 0..game.num_players() {
+                    if self.is_player_edge(game, player, last_pos, last_exit) {
+                        return true;
                     }
                 }
+                false
             }
         }
-
-        // Check end
-        let (end_pos, _, end_exit) = path[path.len() - 1];
-        match game.adjacent_tile(end_pos, end_exit) {
-            AdjacentTile::BoardEdge(_) => {
-                if self.is_player_edge(game, player, end_pos, end_exit) {
-                    sources.end = true;
-                }
-            }
-            AdjacentTile::Tile(neighbor_pos) => {
-                if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
-                    if neighbor_tile.flow_cache(end_exit.reversed()) == Some(player) {
-                        sources.end = true;
-                    }
-                }
-            }
-        }
-
-        sources
     }
 
     pub fn display(&mut self, ui: &mut Ui, ctx: &Context, game_view: &mut GameView) -> Response {
@@ -870,49 +837,50 @@ impl GameUi {
             if let Some(hypo_game) = &hypothetical_game {
                 if let Some(placed_tile_pos) = hovered_tile {
                     if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
-                        for entrance_idx in 0..6 {
-                            let entrance_dir = Direction::from_rotation(Rotation(entrance_idx));
+                        for (d1, d2) in placed_tile.type_().all_flows() {
+                            let e1 = d1.rotate(placed_tile.rotation());
+                            let e2 = d2.rotate(placed_tile.rotation());
 
-                            if let Some(player) = placed_tile.flow_cache(entrance_dir) {
-                                let exit_dir = placed_tile.exit_from_entrance(entrance_dir);
+                            if let Some(player) = placed_tile.flow_cache(e1) {
+                                let neighbor1_pos = placed_tile_pos + e1.tile_vec();
+                                let path1 = trace_flow(hypo_game, neighbor1_pos, e1.reversed());
 
+                                let neighbor2_pos = placed_tile_pos + e2.tile_vec();
+                                let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
 
-                                let path_backward =
-                                    trace_flow(hypo_game, placed_tile_pos, exit_dir.reversed());
-                                let path_forward =
-                                    trace_flow(hypo_game, placed_tile_pos, entrance_dir);
+                                let source1 = self.leads_to_source(&path1, hypo_game, &game);
+                                let source2 = self.leads_to_source(&path2, hypo_game, &game);
 
-                                let mut final_path =
-                                    path_backward.into_iter().rev().collect::<Vec<_>>();
-                                final_path.pop();
-                                final_path.extend(path_forward);
-
-                                let sources = self.get_flow_sources(&final_path, player, &game);
-
-                                if sources.start {
+                                if source1 && !source2 {
+                                    let mut anim_path = vec![(placed_tile_pos, e1, e2)];
+                                    anim_path.extend(path2);
                                     self.animation_state.flow_animation = Some(FlowAnimation {
                                         start_frame: self.animation_state.frame_count,
-                                        path: final_path.clone(),
+                                        path: anim_path,
                                         player,
-                                        next: self
-                                            .animation_state
-                                            .flow_animation
-                                            .take()
-                                            .map(Box::new),
+                                        next: self.animation_state.flow_animation.take().map(Box::new),
                                     });
-                                }
-                                if sources.end {
-                                    let mut reversed_path = final_path;
-                                    reversed_path.reverse();
+                                } else if !source1 && source2 {
+                                    let mut anim_path = vec![(placed_tile_pos, e2, e1)];
+                                    anim_path.extend(path1);
                                     self.animation_state.flow_animation = Some(FlowAnimation {
                                         start_frame: self.animation_state.frame_count,
-                                        path: reversed_path,
+                                        path: anim_path,
                                         player,
-                                        next: self
-                                            .animation_state
-                                            .flow_animation
-                                            .take()
-                                            .map(Box::new),
+                                        next: self.animation_state.flow_animation.take().map(Box::new),
+                                    });
+                                } else if source1 && source2 {
+                                    self.animation_state.flow_animation = Some(FlowAnimation {
+                                        start_frame: self.animation_state.frame_count,
+                                        path: vec![(placed_tile_pos, e1, e2)],
+                                        player,
+                                        next: self.animation_state.flow_animation.take().map(Box::new),
+                                    });
+                                    self.animation_state.flow_animation = Some(FlowAnimation {
+                                        start_frame: self.animation_state.frame_count,
+                                        path: vec![(placed_tile_pos, e2, e1)],
+                                        player,
+                                        next: self.animation_state.flow_animation.take().map(Box::new),
                                     });
                                 }
                             }

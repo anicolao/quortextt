@@ -530,6 +530,10 @@ impl Game {
         TilePos { row: 3, col: 3 }
     }
 
+    pub fn num_players(&self) -> usize {
+        self.settings.num_players
+    }
+
     pub fn current_player(&self) -> Player {
         self.current_player
     }
