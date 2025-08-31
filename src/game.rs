@@ -321,6 +321,12 @@ impl Action {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum GameOutcome {
+    Victory(Vec<Player>),
+    // TODO: Draw by board full?
+}
+
 #[derive(Clone)]
 pub struct Game {
     settings: GameSettings,
@@ -333,6 +339,7 @@ pub struct Game {
     board: [[Tile; 7]; 7],
     action_history: Vec<Action>,
     current_player: Player,
+    outcome: Option<GameOutcome>,
 }
 
 impl Game {
@@ -368,6 +375,7 @@ impl Game {
             board,
             action_history: vec![Action::InitializeGame(settings)],
             current_player: 0,
+            outcome: None,
         }
     }
 
@@ -415,6 +423,9 @@ impl Game {
                 pos,
                 rotation,
             } => {
+                if self.outcome.is_some() {
+                    return Err("Game is already over".into());
+                }
                 if self.tiles_in_hand[player].is_some() && self.tiles_in_hand[player] != Some(tile)
                 {
                     return Err("Player must play the tile from their hand".into());
@@ -429,7 +440,9 @@ impl Game {
                 *self.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
                 self.tiles_in_hand[player] = None;
                 self.recompute_flows();
-                self.current_player = (self.current_player + 1) % self.settings.num_players;
+                if self.outcome.is_none() {
+                    self.current_player = (self.current_player + 1) % self.settings.num_players;
+                }
             }
         }
         self.action_history.push(action);
@@ -536,6 +549,10 @@ impl Game {
 
     pub fn current_player(&self) -> Player {
         self.current_player
+    }
+
+    pub fn outcome(&self) -> &Option<GameOutcome> {
+        &self.outcome
     }
 
     pub fn player_on_side(&self, rotation: Rotation) -> Option<Player> {
@@ -657,6 +674,38 @@ impl Game {
                     }
                 }
             }
+        }
+        self.update_outcome();
+    }
+
+    fn update_outcome(&mut self) {
+        if self.outcome.is_some() {
+            return;
+        }
+
+        let mut winners = vec![];
+        for side in 0..6 {
+            if let Some(player) = self.sides[side] {
+                let opposite_side = (side + 3) % 6;
+                for (pos, dir) in self.edges_on_board_edge(Rotation(opposite_side as u8)) {
+                    if let Tile::Placed(tile) = self.tile(pos) {
+                        if tile.flow_cache(dir) == Some(player) {
+                            // Player `player` has reached the opposite side.
+                            winners.push(player);
+                            if let Some(teammate) = self.sides[opposite_side] {
+                                winners.push(teammate);
+                            }
+                        }
+                    }
+                }
+                // We don't break here because multiple players can win on the same turn.
+            }
+        }
+
+        if !winners.is_empty() {
+            winners.sort();
+            winners.dedup();
+            self.outcome = Some(GameOutcome::Victory(winners));
         }
     }
 }

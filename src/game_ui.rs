@@ -174,6 +174,7 @@ struct FlowAnimation {
     start_frame: u64,
     path: Vec<(TilePos, Direction, Direction)>,
     player: Player,
+    is_winning_move: bool,
     next: Option<Box<FlowAnimation>>,
 }
 
@@ -1023,14 +1024,16 @@ impl GameUi {
                                 }
                             }
 
-                            for (path, player) in final_paths {
-                                self.animation_state.flow_animation = Some(FlowAnimation {
-                                    start_frame: self.animation_state.frame_count,
-                                    path,
-                                    player,
-                                    next: self.animation_state.flow_animation.take().map(Box::new),
-                                });
-                            }
+
+                        let is_winning_move = hypo_game.outcome().is_some();
+                        for (path, player) in final_paths {
+                            self.animation_state.flow_animation = Some(FlowAnimation {
+                                start_frame: self.animation_state.frame_count,
+                                path,
+                                player,
+                                is_winning_move,
+                                next: self.animation_state.flow_animation.take().map(Box::new),
+                            });
                         }
                     }
                 }
@@ -1079,6 +1082,7 @@ impl GameUi {
 
                 // Draw the partially completed segment
                 let (current_tile_pos, entrance_dir, exit_dir) = &anim.path[current_tile_idx];
+
 
                 let hex_center = Self::hex_position(
                     center + (*current_tile_pos - center).rotate(self.rotation),
@@ -1203,7 +1207,34 @@ impl GameUi {
                     }
                 }
             }
-        });
+        }
+
+        if let Some(outcome) = game.outcome() {
+            let painter = ui.painter();
+            painter.rect_filled(
+                window,
+                0.0,
+                Color32::from_rgba_premultiplied(0, 0, 0, 128),
+            );
+            let text = match outcome {
+                GameOutcome::Victory(winners) => {
+                    if winners.len() > 1 {
+                        format!("Players {:?} win!", winners)
+                    } else {
+                        format!("Player {} wins!", winners[0])
+                    }
+                }
+            };
+            painter.text(
+                window.center(),
+                egui::Align2::CENTER_CENTER,
+                text,
+                egui::FontId::proportional(40.0),
+                Color32::WHITE,
+            );
+        }
+
+        response
     }
 }
 
