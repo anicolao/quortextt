@@ -801,12 +801,23 @@ impl GameUi {
             {
                 if let Some(placed_tile_pos) = hovered_tile {
                     if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
-                        for dir_idx in 0..6 {
-                            let dir = Direction::from_rotation(Rotation(dir_idx));
-                            if let Some(player) = placed_tile.flow_cache(dir) {
+                        for entrance_idx in 0..6 {
+                            let entrance_dir = Direction::from_rotation(Rotation(entrance_idx));
+
+                            if let Some(player) = placed_tile.flow_cache(entrance_dir) {
+                                let exit_dir = placed_tile.exit_from_entrance(entrance_dir);
+
+                                // To avoid creating two animations for each flow, we only create
+                                // one when the entrance direction is smaller than the exit
+                                // direction.
+                                if entrance_dir > exit_dir {
+                                    continue;
+                                }
+
                                 let path_backward =
-                                    trace_flow(hypo_game, placed_tile_pos, dir.reversed());
-                                let path_forward = trace_flow(hypo_game, placed_tile_pos, dir);
+                                    trace_flow(hypo_game, placed_tile_pos, exit_dir.reversed());
+                                let path_forward =
+                                    trace_flow(hypo_game, placed_tile_pos, entrance_dir);
 
                                 let mut final_path =
                                     path_backward.into_iter().rev().collect::<Vec<_>>();
@@ -828,7 +839,8 @@ impl GameUi {
             self.animation_state.flow_animation = None;
         }
 
-        if let Some(anim) = &self.animation_state.flow_animation {
+        let mut anim_opt = self.animation_state.flow_animation.as_ref();
+        while let Some(anim) = anim_opt {
             let now = self.animation_state.frame_count;
             let frames_per_tile = 4 * DEBUG_ANIMATION_SPEED_MULTIPLIER * 10;
             let elapsed_frames = now - anim.start_frame;
@@ -862,6 +874,7 @@ impl GameUi {
 
                 painter.circle_filled(draw_pos, 5.0, player_colour(anim.player));
             }
+            anim_opt = anim.next.as_ref().map(|b| &**b);
         }
 
         Self::draw_inverted_hex(
