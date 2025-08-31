@@ -603,6 +603,8 @@ impl GameUi {
                         is_snap_in: false,
                     });
                     self.animation_state.snapped_to = None;
+                    // cancel flow animation
+                    self.animation_state.flow_animation = None;
                 } else if let Some(end_tile) = target_snap_tile {
                     // MUST SNAP IN
                     let end_pos = Self::hex_position(
