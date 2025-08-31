@@ -1207,11 +1207,7 @@ impl GameUi {
 
         if let Some(outcome) = game.outcome() {
             let painter = ui.painter();
-            painter.rect_filled(
-                window,
-                0.0,
-                Color32::from_rgba_premultiplied(0, 0, 0, 128),
-            );
+            painter.rect_filled(window, 0.0, Color32::from_rgba_premultiplied(0, 0, 0, 128));
             let text = match outcome {
                 GameOutcome::Victory(winners) => {
                     if winners.len() > 1 {
