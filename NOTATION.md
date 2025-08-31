@@ -14,6 +14,8 @@ For each player, the hexes are numbered using:
 - **Rows**: Letters A through G, where A is the row closest to the player's edge
 - **Columns**: Numbers 1 through 7, counting from left to right from the player's perspective
 
+**Important**: Players see and interact with a hexagonal grid, not the game's internal rectangular representation. From each player's perspective, the leftmost tile on each row is always numbered 1. This means coordinates like E1, F1, and G1 exist, while coordinates like E7, F6, and G5 do not exist from the player's perspective because those rows don't extend that far in the hexagonal layout.
+
 ### Player Prefix
 
 Each coordinate is prefixed with the player number:
