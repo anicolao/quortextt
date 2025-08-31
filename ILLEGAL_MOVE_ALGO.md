@@ -44,104 +44,144 @@ function isMoveLegal(move):
   return hasDistinctPotentialPaths(temp_board)
 ```
 
-## 3. Potential Pathfinding Algorithm
+## 3. Potential Pathfinding Algorithm (Advanced)
 
-This is the most critical part of the logic. We need to verify that every team has a path from their starting border to their target border. A "potential path" can cross both empty hexes and hexes with tiles.
+To accurately check for blocking, the algorithm must account for two levels of resource contention between players' potential paths:
+1.  **Inter-Hex Edges**: Two teams cannot claim the same boundary between two hexes.
+2.  **Internal Hex Pathways**: The set of pathways required by all teams within a single *empty* hex must be satisfiable by at least one of the four real tile types.
 
-The "distinctness" rule implies that two different teams cannot rely on the same physical pathway on an already-placed tile for their potential paths.
+Furthermore, the process of finding paths is order-dependent. A greedy search for Player A might claim resources that block Player B, even though a valid solution for both exists. To mitigate this, the algorithm tries multiple player orderings.
 
-### `hasDistinctPotentialPaths(board)`
+The guiding principle is to **overestimate illegality**. It is better to conservatively reject a rare legal move than to ever allow an illegal one.
+
+### `hasDistinctPotentialPaths(board)` - Meta-Controller
+
+This function orchestrates the check by trying different player priority orderings.
 
 ```
 function hasDistinctPotentialPaths(board):
-  used_pathways = new Set() // Stores claimed pathways on occupied hexes
+  teams = board.getTeams()
 
-  for each team in board.teams:
-    path_found = findPotentialPathForTeam(team, board, used_pathways)
+  // First, try the default player order
+  failing_team = checkPathsForOrdering(teams, board)
+  if failing_team is null:
+    return true // A valid set of paths was found
 
-    if not path_found:
-      // This team is blocked, so the move is illegal.
-      return false
+  // If it failed, give the failing team top priority and try again.
+  // This handles many common ordering dependency issues.
+  reordered_teams = [failing_team] + teams.without(failing_team)
+  failing_team_again = checkPathsForOrdering(reordered_teams, board)
+  if failing_team_again is null:
+    return true
 
-  // All teams have a potential path.
-  return true
-```
-
-### `findPotentialPathForTeam(team, board, used_pathways)`
-
-This function uses a Breadth-First Search (BFS) to find if a path exists for a given `team`. The search space is the graph of `(hex, port)` nodes.
-
-```
-function findPotentialPathForTeam(team, board, used_pathways):
-  queue = new Queue()
-  visited = new Set() // Stores visited (hex, port) nodes to avoid loops
-
-  // 1. Initialize Queue
-  // Add all starting points for the team to the queue.
-  for each hex h on team.start_border:
-    port = port_of_h_facing_border
-    queue.add( (h, port) )
-    visited.add( (h, port) )
-
-  // 2. Perform BFS
-  while queue.isNotEmpty:
-    current_hex, current_port = queue.pop()
-
-    // 3. Check for Goal
-    if current_hex is on team.target_border:
-      // We found a path. Now we need to claim the pathways used.
-      // Backtrack from the goal to the start, and for every segment that
-      // crosses an occupied hex, add the pathway to used_pathways.
-      claimPathways(path_from_bfs, used_pathways)
-      return true
-
-    // 4. Explore Neighbors
-    // Get all reachable next (hex, port) tuples from the current one.
-    // This is where we handle empty vs. occupied hexes.
-    neighbors = getReachableNeighbors(current_hex, current_port, board, used_pathways)
-
-    for each neighbor_hex, neighbor_port in neighbors:
-      if (neighbor_hex, neighbor_port) not in visited:
-        visited.add( (neighbor_hex, neighbor_port) )
-        // Store predecessor for backtracking the path later
-        predecessor[ (neighbor_hex, neighbor_port) ] = (current_hex, current_port)
-        queue.add( (neighbor_hex, neighbor_port) )
-
-  // 5. No Path Found
+  // If it still fails, the move is declared illegal. For a more exhaustive
+  // search, one could try all N! permutations, but this is computationally
+  // expensive. Giving the first-failing player top priority is a strong heuristic.
   return false
 ```
 
-### `getReachableNeighbors(...)`
+### `checkPathsForOrdering(ordered_teams, board)`
 
-This helper function determines where we can go from a given `(hex, port)`.
+This function executes the pathfinding for a single, specific player order. It returns `null` on success or the first `team` that could not find a path.
 
 ```
-function getReachableNeighbors(hex, port, board, used_pathways):
-  // First, move to the adjacent hex
-  next_hex, entry_port = board.getNeighbor(hex, port)
+function checkPathsForOrdering(ordered_teams, board):
+  // Resources claimed during this specific ordering attempt
+  claimed_edges = new Set()
+  internal_demands = new Map<Hex, Set<Connection>>() // Connection is a pair of ports
 
-  if next_hex is null: // Hit edge of board
-    return []
+  for each team in ordered_teams:
+    path = findPotentialPathForTeam(team, board, claimed_edges, internal_demands)
 
-  // Now, from (next_hex, entry_port), find all possible exit ports
-  if board.isHexEmpty(next_hex):
-    // If the hex is empty, a potential path can be formed through it.
-    // It can connect the entry_port to ANY of the other 5 ports.
-    return all 5 other ports on next_hex
-  else:
-    // If the hex is occupied, flow is restricted by the tile.
-    tile = board.getTile(next_hex)
-    exit_port = tile.getConnection(entry_port)
+    if path is null:
+      return team // This team is blocked in this ordering
 
-    // Crucially, check if this pathway has been claimed by another team.
-    pathway = (next_hex, entry_port, exit_port)
-    if pathway in used_pathways:
-      return [] // This path is already used.
-    else:
-      return [ (next_hex, exit_port) ]
+    // If a path was found, "claim" the resources it used for the next players.
+    claimResourcesForPath(path, claimed_edges, internal_demands)
+
+  return null // Success, all teams found a path
 ```
 
-## 4. Summary and Edge Cases
+## 4. Core Pathfinding and Helpers
+
+### `findPotentialPathForTeam(...)`
+
+This function uses BFS to find a single valid path for a team, respecting already-claimed resources. The path is returned as a list of hexes.
+
+```
+function findPotentialPathForTeam(team, board, claimed_edges, internal_demands):
+  queue = new Queue() // Stores paths (as lists of hexes)
+  visited_states = new Set() // Prevents cycles
+
+  // 1. Initialize Queue with starting paths
+  for each hex h on team.start_border:
+    queue.add([h]) // A path is a list of hexes
+
+  // 2. Perform BFS
+  while queue.isNotEmpty:
+    current_path = queue.pop()
+    current_hex = current_path.last()
+
+    // 3. Check for Goal
+    if current_hex is on team.target_border:
+      return current_path // Success
+
+    // 4. Explore Neighbors
+    for each neighbor_hex in board.getNeighbors(current_hex):
+
+      // Check if this move is valid before adding to queue
+      if isValidStep(current_path, neighbor_hex, claimed_edges, internal_demands):
+        new_path = current_path.add(neighbor_hex)
+        state_sig = new_path.getSignature() // Avoid re-visiting identical paths
+        if state_sig not in visited_states:
+          visited_states.add(state_sig)
+          queue.add(new_path)
+
+  return null // No path found
+```
+
+### `isValidStep(path, next_hex, claimed_edges, internal_demands)`
+
+This is the core validation logic for a single step in a path.
+
+```
+function isValidStep(path, next_hex, ...):
+  current_hex = path.last()
+
+  // 1. Check Inter-Hex Edge Contention
+  edge_key = get_canonical_edge_key(current_hex, next_hex)
+  if edge_key in claimed_edges:
+    return false
+
+  // 2. Check Internal Pathway Contention for Empty Hexes
+  // This check applies if the path is turning inside an empty hex.
+  if path.length >= 2 and board.isHexEmpty(current_hex):
+    prev_hex = path.before_last()
+    entry_port = get_port_towards(current_hex, prev_hex)
+    exit_port = get_port_towards(current_hex, next_hex)
+    new_demand = (entry_port, exit_port)
+
+    existing_demands = internal_demands.get(current_hex) or []
+    if not isSatisfiable(existing_demands + [new_demand]):
+      return false // No single tile can fulfill all demands for this hex
+
+  return true
+```
+
+### `isSatisfiable(demands)`
+
+Checks if a set of required connections within a single hex can be fulfilled by any single tile.
+
+```
+function isSatisfiable(demands):
+  // Iterate through all 4 tile types and 6 orientations
+  for each tile_config in all_possible_tile_configs:
+    if tile_config.providesAll(demands):
+      return true
+  return false
+```
+
+## 5. Summary and Edge Cases
 
 -   **Winning Move**: The check for a winning move must be based on actual, contiguous flows, not potential paths. This is a simpler graph traversal only considering occupied hexes.
 -   **Unplayable Tile**: If a player draws a tile that cannot be legally placed anywhere (i.e., `isMoveLegal` returns `false` for all possible placements), that player wins. The game logic must handle this by iterating through all 37 hexes and 6 orientations for the drawn tile.
