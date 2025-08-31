@@ -8,6 +8,10 @@ impl Rotation {
     pub fn reversed(&self) -> Self {
         Self((6 - self.0) % 6)
     }
+
+    pub fn as_radians(&self) -> f32 {
+        self.0 as f32 * std::f32::consts::PI / 3.0
+    }
 }
 
 impl std::ops::Add<Rotation> for Rotation {

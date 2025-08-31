@@ -1,9 +1,10 @@
-use crate::game::*;
+use crate::game::{Direction, *};
 use crate::game_view::GameView;
 use egui::{
     Color32, Context, CursorIcon, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2,
 };
 
+const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10;
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
 const DEFAULT_HEXAGON_RADIUS: f32 = 40.0;
 const BG_COLOUR: Color32 = Color32::from_rgb(0xFE, 0xFE, 0xF0);
@@ -24,6 +25,54 @@ const GOLDEN_BORDER: Stroke = Stroke {
     width: 3.0,
     color: Color32::from_rgb(0xFF, 0xD7, 0x00),
 };
+
+fn get_flow_bezier(center: Pos2, hexagon: &Vec<Pos2>, sp: usize, ep: usize) -> [Pos2; 4] {
+    let start = (hexagon[sp] + hexagon[(sp + 1) % 6].to_vec2()) * 0.5;
+    let end = (hexagon[ep] + hexagon[(ep + 1) % 6].to_vec2()) * 0.5;
+    let cp1 = (center + start.to_vec2()) * 0.5;
+    let cp2 = (center + end.to_vec2()) * 0.5;
+    [start, cp1, cp2, end]
+}
+
+fn sample_bezier(points: [Pos2; 4], t: f32) -> Pos2 {
+    let [p0, p1, p2, p3] = points;
+    let t_inv = 1.0 - t;
+    let t_inv2 = t_inv * t_inv;
+    let t_inv3 = t_inv2 * t_inv;
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    let p = p0.to_vec2() * t_inv3
+        + p1.to_vec2() * (3.0 * t_inv2 * t)
+        + p2.to_vec2() * (3.0 * t_inv * t2)
+        + p3.to_vec2() * t3;
+    p.to_pos2()
+}
+
+fn trace_flow(
+    game: &Game,
+    mut pos: TilePos,
+    mut dir: Direction,
+) -> Vec<(TilePos, Direction, Direction)> {
+    let mut path = vec![];
+    loop {
+        match game.tile(pos) {
+            Tile::Placed(tile) => {
+                let exit_dir = tile.exit_from_entrance(dir);
+                path.push((pos, dir, exit_dir));
+                match game.adjacent_tile(pos, exit_dir) {
+                    AdjacentTile::Tile(next_pos) => {
+                        pos = next_pos;
+                        dir = exit_dir.reversed();
+                    }
+                    _ => break,
+                }
+            }
+            _ => break,
+        }
+    }
+    path
+}
 
 fn player_colour(player: Player) -> Color32 {
     match player {
@@ -49,7 +98,52 @@ pub struct GameUi {
     /// `placement_rotation` is in the context of the underlying game's base rotation, not the
     /// rotated view shown to the player.
     placement_rotation: Rotation,
+    animation_state: AnimationState,
+}
+
+struct AnimationState {
+    frame_count: u64,
     last_rotate_time: f64,
+    rotation_state: Option<RotationAnimation>,
+    snap_animation: Option<SnapAnimation>,
+    snapped_to: Option<TilePos>,
+    flow_animation: Option<FlowAnimation>,
+    last_hovered_tile: Option<TilePos>,
+}
+
+struct RotationAnimation {
+    start_frame: u64,
+    end_frame: u64,
+    start_rotation: Rotation,
+    end_rotation: Rotation,
+}
+
+struct SnapAnimation {
+    start_frame: u64,
+    end_frame: u64,
+    start_pos: Pos2,
+    end_pos: Pos2,
+    is_snap_in: bool,
+}
+
+struct FlowAnimation {
+    start_frame: u64,
+    path: Vec<(TilePos, Direction, Direction)>,
+    player: Player,
+}
+
+impl AnimationState {
+    fn new() -> Self {
+        Self {
+            frame_count: 0,
+            last_rotate_time: 0.0,
+            rotation_state: None,
+            snap_animation: None,
+            snapped_to: None,
+            flow_animation: None,
+            last_hovered_tile: None,
+        }
+    }
 }
 
 impl GameUi {
@@ -57,7 +151,7 @@ impl GameUi {
         Self {
             rotation: Rotation(0), // Default rotation, will be calculated automatically
             placement_rotation: Rotation(0),
-            last_rotate_time: 0.0,
+            animation_state: AnimationState::new(),
         }
     }
 
@@ -178,8 +272,9 @@ impl GameUi {
         tile: &PlacedTile,
         prior_tile: &Tile,
         border_stroke: Stroke,
+        rotation_rads: f32,
     ) {
-        let hexagon = Self::hexagon_coords(center, hexagon_radius, 0.0);
+        let hexagon = Self::hexagon_coords(center, hexagon_radius, rotation_rads);
         let hypothetical = match prior_tile {
             Tile::NotOnBoard | Tile::Empty => true,
             Tile::Placed(prior) => prior != tile,
@@ -259,6 +354,7 @@ impl GameUi {
     }
 
     pub fn display(&mut self, ui: &mut Ui, ctx: &Context, game_view: &mut GameView) -> Response {
+        self.animation_state.frame_count += 1;
         let bounding_box = ui.available_size();
         let (window, response) =
             ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
@@ -359,14 +455,138 @@ impl GameUi {
         };
         let rotate_time = ctx.input(|i| i.time);
         // Don't let the user rotate the tile too quickly
-        if (rotate_time - self.last_rotate_time) > 0.1 {
-            let scroll_delta = ui.input(|i| i.raw_scroll_delta);
-            if scroll_delta.y > 0.0 {
-                self.placement_rotation = self.placement_rotation + Rotation(1);
-                self.last_rotate_time = rotate_time;
-            } else if scroll_delta.y < 0.0 {
-                self.placement_rotation = self.placement_rotation + Rotation(5);
-                self.last_rotate_time = rotate_time;
+        if self.animation_state.rotation_state.is_none() {
+            if (rotate_time - self.animation_state.last_rotate_time) > 0.1 {
+                let scroll_delta = ui.input(|i| i.raw_scroll_delta);
+                let rotation_delta = if scroll_delta.y > 0.0 {
+                    Some(Rotation(1))
+                } else if scroll_delta.y < 0.0 {
+                    Some(Rotation(5)) // equivalent to -1
+                } else {
+                    None
+                };
+
+                if let Some(delta) = rotation_delta {
+                    let start_rotation = self.placement_rotation;
+                    let end_rotation = self.placement_rotation + delta;
+                    self.animation_state.rotation_state = Some(RotationAnimation {
+                        start_frame: self.animation_state.frame_count,
+                        end_frame: self.animation_state.frame_count
+                            + 6 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                        start_rotation,
+                        end_rotation,
+                    });
+                    self.placement_rotation = end_rotation; // Update logical rotation immediately
+                    self.animation_state.last_rotate_time = rotate_time;
+                }
+            }
+        }
+
+        let mut visual_rotation_rads = 0.0;
+        if let Some(anim) = &self.animation_state.rotation_state {
+            let now = self.animation_state.frame_count;
+            if now >= anim.end_frame {
+                self.animation_state.rotation_state = None;
+            } else {
+                let progress =
+                    (now - anim.start_frame) as f32 / (anim.end_frame - anim.start_frame) as f32;
+
+                // `Rotation` is in units of 60 degrees.
+                let start_angle = anim.start_rotation.as_radians();
+                let end_angle = anim.end_rotation.as_radians();
+
+                // Handle wrap-around from 5 to 0 or 0 to 5
+                let mut diff = end_angle - start_angle;
+                if diff > std::f32::consts::PI {
+                    diff -= 2.0 * std::f32::consts::PI;
+                }
+                if diff < -std::f32::consts::PI {
+                    diff += 2.0 * std::f32::consts::PI;
+                }
+
+                visual_rotation_rads = start_angle + diff * progress;
+            }
+        }
+
+        let mut tile_draw_pos: Option<Pos2> = None;
+        if hypothetical_game.is_some() {
+            if let Some(pointer_pos) = response.hover_pos() {
+                tile_draw_pos = Some(pointer_pos);
+
+                let is_target_snapped = if let Some(h_tile) = hovered_tile {
+                    let hex_center = Self::hex_position(
+                        center + (h_tile - center).rotate(self.rotation),
+                        window.center(),
+                        hexagon_radius,
+                    );
+                    pointer_pos.distance(hex_center) < hexagon_radius * 0.8
+                } else {
+                    false
+                };
+
+                let is_current_snapped = self.animation_state.snapped_to.is_some();
+
+                if is_target_snapped != is_current_snapped {
+                    if is_target_snapped {
+                        // Snap in
+                        let h_tile = hovered_tile.unwrap();
+                        self.animation_state.snapped_to = Some(h_tile);
+                        let hex_center = Self::hex_position(
+                            center + (h_tile - center).rotate(self.rotation),
+                            window.center(),
+                            hexagon_radius,
+                        );
+                        self.animation_state.snap_animation = Some(SnapAnimation {
+                            start_frame: self.animation_state.frame_count,
+                            end_frame: self.animation_state.frame_count
+                                + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            start_pos: pointer_pos,
+                            end_pos: hex_center,
+                            is_snap_in: true,
+                        });
+                    } else {
+                        // Snap out
+                        let h_tile = self.animation_state.snapped_to.unwrap();
+                        self.animation_state.snapped_to = None;
+                        let hex_center = Self::hex_position(
+                            center + (h_tile - center).rotate(self.rotation),
+                            window.center(),
+                            hexagon_radius,
+                        );
+                        self.animation_state.snap_animation = Some(SnapAnimation {
+                            start_frame: self.animation_state.frame_count,
+                            end_frame: self.animation_state.frame_count
+                                + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            start_pos: hex_center,
+                            end_pos: pointer_pos,
+                            is_snap_in: false,
+                        });
+                    }
+                }
+
+                if let Some(anim) = &mut self.animation_state.snap_animation {
+                    let now = self.animation_state.frame_count;
+                    if now >= anim.end_frame {
+                        self.animation_state.snap_animation = None;
+                    } else {
+                        let progress = (now - anim.start_frame) as f32
+                            / (anim.end_frame - anim.start_frame) as f32;
+                        let eased_progress = progress * progress;
+
+                        if !anim.is_snap_in {
+                            anim.end_pos = pointer_pos;
+                        }
+
+                        tile_draw_pos = Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
+                    }
+                } else if let Some(snapped_tile) = self.animation_state.snapped_to {
+                    let hex_center = Self::hex_position(
+                        center + (snapped_tile - center).rotate(self.rotation),
+                        window.center(),
+                        hexagon_radius,
+                    );
+                    tile_draw_pos = Some(hex_center);
+                }
             }
         }
 
@@ -442,59 +662,178 @@ impl GameUi {
                         );
                     }
                     Tile::Placed(tile) => {
-                        let mut rendered =
-                            PlacedTile::new(tile.type_(), tile.rotation() + self.rotation);
-                        for dir in (0..6).map(Rotation) {
-                            let f = tile.flow_cache(Direction::from_rotation(dir));
-                            let rdir = Direction::from_rotation(dir + self.rotation);
-                            rendered.set_flow_cache(rdir, f);
-                        }
-                        match hypothetical {
-                            Tile::NotOnBoard | Tile::Empty => {
-                                let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
-                                    GOLDEN_BORDER
-                                } else {
-                                    Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
-                                };
-                                Self::draw_hex(
-                                    pos,
-                                    hexagon_radius,
-                                    painter,
-                                    &rendered,
-                                    &hypothetical,
-                                    border_stroke,
-                                );
+                        if Some(tile_pos) == hovered_tile {
+                            // This is the hypothetical tile, which we will draw separately.
+                            // We still draw the empty hex underneath.
+                            Self::draw_empty_hex(
+                                pos,
+                                hexagon_radius,
+                                painter,
+                                FILL_COLOUR,
+                                HIGHLIGHT_BORDER,
+                                0.0,
+                            );
+                        } else {
+                            let mut rendered =
+                                PlacedTile::new(tile.type_(), tile.rotation() + self.rotation);
+                            for dir in (0..6).map(Rotation) {
+                                let f = tile.flow_cache(Direction::from_rotation(dir));
+                                let rdir = Direction::from_rotation(dir + self.rotation);
+                                rendered.set_flow_cache(rdir, f);
                             }
-                            Tile::Placed(hypothetical) => {
-                                let mut prior = PlacedTile::new(
-                                    hypothetical.type_(),
-                                    hypothetical.rotation() + self.rotation,
-                                );
-                                for dir in (0..6).map(Rotation) {
-                                    let f = hypothetical.flow_cache(Direction::from_rotation(dir));
-                                    let rdir = Direction::from_rotation(dir + self.rotation);
-                                    prior.set_flow_cache(rdir, f);
+                            match hypothetical {
+                                Tile::NotOnBoard | Tile::Empty => {
+                                    let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
+                                        GOLDEN_BORDER
+                                    } else {
+                                        Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
+                                    };
+                                    let rotation_rads = if hovered_tile == Some(tile_pos) {
+                                        visual_rotation_rads
+                                    } else {
+                                        0.0
+                                    };
+                                    Self::draw_hex(
+                                        pos,
+                                        hexagon_radius,
+                                        painter,
+                                        &rendered,
+                                        &hypothetical,
+                                        border_stroke,
+                                        rotation_rads,
+                                    );
                                 }
-                                let prior_tile = Tile::Placed(prior);
-                                let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
-                                    GOLDEN_BORDER
-                                } else {
-                                    Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
-                                };
-                                Self::draw_hex(
-                                    pos,
-                                    hexagon_radius,
-                                    painter,
-                                    &rendered,
-                                    &prior_tile,
-                                    border_stroke,
-                                );
+                                Tile::Placed(hypothetical) => {
+                                    let mut prior = PlacedTile::new(
+                                        hypothetical.type_(),
+                                        hypothetical.rotation() + self.rotation,
+                                    );
+                                    for dir in (0..6).map(Rotation) {
+                                        let f = hypothetical
+                                            .flow_cache(Direction::from_rotation(dir));
+                                        let rdir = Direction::from_rotation(dir + self.rotation);
+                                        prior.set_flow_cache(rdir, f);
+                                    }
+                                    let prior_tile = Tile::Placed(prior);
+                                    let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
+                                        GOLDEN_BORDER
+                                    } else {
+                                        Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
+                                    };
+                                    let rotation_rads = if hovered_tile == Some(tile_pos) {
+                                        visual_rotation_rads
+                                    } else {
+                                        0.0
+                                    };
+                                    Self::draw_hex(
+                                        pos,
+                                        hexagon_radius,
+                                        painter,
+                                        &rendered,
+                                        &prior_tile,
+                                        border_stroke,
+                                        rotation_rads,
+                                    );
+                                }
                             }
                         }
                     }
                 }
             }
         }
+
+        // Draw the hypothetical tile separately so it can be rendered on top of the board and at an arbitrary position.
+        if let Some(pos) = tile_draw_pos {
+            let player = match game_view.viewer() {
+                GameViewer::Player(player) => Some(player),
+                GameViewer::Admin => Some(game.current_player()),
+                GameViewer::Spectator => None,
+            };
+            if let Some(player) = player {
+                if let Some(tile_type) = game.tile_in_hand(player) {
+                    let tile = PlacedTile::new(tile_type, self.placement_rotation);
+                    Self::draw_hex(
+                        pos,
+                        hexagon_radius,
+                        painter,
+                        &tile,
+                        &Tile::Empty,
+                        HIGHLIGHT_BORDER,
+                        visual_rotation_rads,
+                    );
+                }
+            }
+        }
+
+        if self.animation_state.last_hovered_tile != hovered_tile {
+            self.animation_state.flow_animation = None;
+        }
+        self.animation_state.last_hovered_tile = hovered_tile;
+
+        if let Some(hypo_game) = &hypothetical_game {
+            if self.animation_state.flow_animation.is_none() {
+                if let Some(placed_tile_pos) = hovered_tile {
+                    if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
+                        for dir_idx in 0..6 {
+                            let dir = Direction::from_rotation(Rotation(dir_idx));
+                            if let Some(player) = placed_tile.flow_cache(dir) {
+                                let path_backward =
+                                    trace_flow(hypo_game, placed_tile_pos, dir.reversed());
+                                let path_forward = trace_flow(hypo_game, placed_tile_pos, dir);
+
+                                let mut final_path =
+                                    path_backward.into_iter().rev().collect::<Vec<_>>();
+                                final_path.pop();
+                                final_path.extend(path_forward);
+
+                                self.animation_state.flow_animation = Some(FlowAnimation {
+                                    start_frame: self.animation_state.frame_count,
+                                    path: final_path,
+                                    player,
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            self.animation_state.flow_animation = None;
+        }
+
+        if let Some(anim) = &self.animation_state.flow_animation {
+            let now = self.animation_state.frame_count;
+            let frames_per_tile = 4 * DEBUG_ANIMATION_SPEED_MULTIPLIER;
+            let elapsed_frames = now - anim.start_frame;
+
+            let total_duration = anim.path.len() as u64 * frames_per_tile;
+
+            if elapsed_frames < total_duration {
+                let current_tile_idx = (elapsed_frames / frames_per_tile) as usize;
+                let progress_in_segment =
+                    (elapsed_frames % frames_per_tile) as f32 / frames_per_tile as f32;
+
+                let (current_tile_pos, entrance_dir, exit_dir) = anim.path[current_tile_idx];
+
+                let hex_center = Self::hex_position(
+                    center + (current_tile_pos - center).rotate(self.rotation),
+                    window.center(),
+                    hexagon_radius,
+                );
+                let hexagon = Self::hexagon_coords(hex_center, hexagon_radius, 0.0);
+
+                let bezier_points = get_flow_bezier(
+                    hex_center,
+                    &hexagon,
+                    entrance_dir as usize,
+                    exit_dir as usize,
+                );
+                let draw_pos = sample_bezier(bezier_points, progress_in_segment);
+
+                painter.circle_filled(draw_pos, 5.0, player_colour(anim.player));
+            }
+        }
+
         Self::draw_inverted_hex(
             window,
             window.center(),
@@ -566,6 +905,7 @@ impl GameUi {
                                     &placed_tile,
                                     &Tile::Empty, // Prior tile is empty since this is hypothetical
                                     Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
+                                    0.0,
                                 );
                             }
                         }
