@@ -109,10 +109,8 @@ impl eframe::App for FlowsApp {
                     in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
                 }
                 in_memory_mode.displayed_action_count = num_actions;
-                in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
-                    ctx,
-                    player_view,
-                );
+                in_memory_mode.player_uis[in_memory_mode.current_displayed_player]
+                    .display(ctx, player_view);
             }
             State::ServerMode(server_mode) => {
                 let player_view = &mut server_mode.player_view;

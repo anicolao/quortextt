@@ -441,35 +441,34 @@ impl GameUi {
             }
         });
 
-        egui::SidePanel::left("moves_panel")
-            .show_animated(ctx, self.moves_drawer_open, |ui| {
-                if let Some(game) = game_view.game() {
-                    let num_players = game.num_players();
-                    let mut moves: Vec<Vec<String>> = vec![vec![]; num_players];
-                    for action in game.action_history() {
-                        if let Action::PlaceTile {
-                            player,
-                            tile,
-                            pos,
-                            rotation,
-                        } = action
-                        {
-                            moves[*player].push(format_move(*player, *tile, *pos, *rotation, &game));
+        egui::SidePanel::left("moves_panel").show_animated(ctx, self.moves_drawer_open, |ui| {
+            if let Some(game) = game_view.game() {
+                let num_players = game.num_players();
+                let mut moves: Vec<Vec<String>> = vec![vec![]; num_players];
+                for action in game.action_history() {
+                    if let Action::PlaceTile {
+                        player,
+                        tile,
+                        pos,
+                        rotation,
+                    } = action
+                    {
+                        moves[*player].push(format_move(*player, *tile, *pos, *rotation, &game));
+                    }
+                }
+
+                ui.columns(num_players, |columns| {
+                    for i in 0..num_players {
+                        columns[i].label(format!("Player {}", i + 1));
+                        for mv in &moves[i] {
+                            columns[i].label(mv);
                         }
                     }
-
-                    ui.columns(num_players, |columns| {
-                        for i in 0..num_players {
-                            columns[i].label(format!("Player {}", i + 1));
-                            for mv in &moves[i] {
-                                columns[i].label(mv);
-                            }
-                        }
-                    });
-                } else {
-                    ui.label("Waiting for game connection...");
-                }
-            });
+                });
+            } else {
+                ui.label("Waiting for game connection...");
+            }
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.animation_state.frame_count += 1;
@@ -521,7 +520,8 @@ impl GameUi {
                         for row in 0..7 {
                             let tile_pos = TilePos::new(row, col);
                             let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
-                            let pos = Self::hex_position(rotated_pos, window.center(), hexagon_radius);
+                            let pos =
+                                Self::hex_position(rotated_pos, window.center(), hexagon_radius);
                             // if we're within range of a tile, and the tile is empty, then we are
                             // hovering it
                             match game.tile(tile_pos) {
@@ -611,8 +611,8 @@ impl GameUi {
                     self.animation_state.rotation_state = None;
                     self.animation_state.flow_animation_dirty = true;
                 } else {
-                    let progress =
-                        (now - anim.start_frame) as f32 / (anim.end_frame - anim.start_frame) as f32;
+                    let progress = (now - anim.start_frame) as f32
+                        / (anim.end_frame - anim.start_frame) as f32;
 
                     // `Rotation` is in units of 60 degrees.
                     let start_angle = anim.start_rotation.as_radians();
@@ -939,14 +939,13 @@ impl GameUi {
 
                                 if let Some(player) = placed_tile.flow_cache(e1) {
                                     let neighbor1_pos = placed_tile_pos + e1.tile_vec();
-                                    let path1 =
-                                        trace_flow(hypo_game, neighbor1_pos, e1.reversed());
+                                    let path1 = trace_flow(hypo_game, neighbor1_pos, e1.reversed());
 
                                     let neighbor2_pos = placed_tile_pos + e2.tile_vec();
-                                    let path2 =
-                                        trace_flow(hypo_game, neighbor2_pos, e2.reversed());
+                                    let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
 
-                                    let mut source1 = self.leads_to_source(&path1, hypo_game, &game);
+                                    let mut source1 =
+                                        self.leads_to_source(&path1, hypo_game, &game);
                                     if !source1 && path1.is_empty() {
                                         if let AdjacentTile::BoardEdge(_) =
                                             hypo_game.adjacent_tile(placed_tile_pos, e1)
@@ -965,7 +964,8 @@ impl GameUi {
                                         }
                                     }
 
-                                    let mut source2 = self.leads_to_source(&path2, hypo_game, &game);
+                                    let mut source2 =
+                                        self.leads_to_source(&path2, hypo_game, &game);
                                     if !source2 && path2.is_empty() {
                                         if let AdjacentTile::BoardEdge(_) =
                                             hypo_game.adjacent_tile(placed_tile_pos, e2)
@@ -1079,7 +1079,6 @@ impl GameUi {
 
                 // Draw the partially completed segment
                 let (current_tile_pos, entrance_dir, exit_dir) = &anim.path[current_tile_idx];
-
 
                 let hex_center = Self::hex_position(
                     center + (*current_tile_pos - center).rotate(self.rotation),
@@ -1205,28 +1204,30 @@ impl GameUi {
                 }
             }
 
-        if let Some(outcome) = game.outcome() {
-            let painter = ui.painter();
-            painter.rect_filled(window, 0.0, Color32::from_rgba_premultiplied(0, 0, 0, 128));
-            let text = match outcome {
-                GameOutcome::Victory(winners) => {
-                    if winners.len() > 1 {
-                        format!("Players {:?} win!", winners)
-                    } else {
-                        format!("Player {} wins!", winners[0])
+            if let Some(outcome) = game.outcome() {
+                let painter = ui.painter();
+                painter.rect_filled(window, 0.0, Color32::from_rgba_premultiplied(0, 0, 0, 128));
+                let text = match outcome {
+                    GameOutcome::Victory(winners) => {
+                        if winners.len() > 1 {
+                            let one_indexed_winners: Vec<usize> =
+                                winners.iter().map(|&p| p + 1).collect();
+                            format!("Players {:?} win!", one_indexed_winners)
+                        } else {
+                            format!("Player {} wins!", winners[0] + 1)
+                        }
                     }
-                }
-            };
-            painter.text(
-                window.center(),
-                egui::Align2::CENTER_CENTER,
-                text,
-                egui::FontId::proportional(40.0),
-                Color32::WHITE,
-            );
-        }
+                };
+                painter.text(
+                    window.center(),
+                    egui::Align2::CENTER_CENTER,
+                    text,
+                    egui::FontId::proportional(40.0),
+                    Color32::WHITE,
+                );
+            }
 
-        response
+            response
         });
     }
 }
@@ -1277,5 +1278,42 @@ mod tests {
         assert_eq!(Rotation(3).reversed().0, 3);
         assert_eq!(Rotation(4).reversed().0, 2);
         assert_eq!(Rotation(5).reversed().0, 1);
+    }
+
+    #[test]
+    fn test_victory_message_player_numbering() {
+        use crate::game::GameOutcome;
+
+        // Test single player victory message uses 1-indexed numbering
+        let single_winner = vec![0]; // Player 0 (internal 0-indexed)
+        let outcome_single = GameOutcome::Victory(single_winner);
+
+        let text_single = match outcome_single {
+            GameOutcome::Victory(winners) => {
+                if winners.len() > 1 {
+                    let one_indexed_winners: Vec<usize> = winners.iter().map(|&p| p + 1).collect();
+                    format!("Players {:?} win!", one_indexed_winners)
+                } else {
+                    format!("Player {} wins!", winners[0] + 1)
+                }
+            }
+        };
+        assert_eq!(text_single, "Player 1 wins!"); // Should show Player 1, not Player 0
+
+        // Test multiple player victory message uses 1-indexed numbering
+        let multiple_winners = vec![0, 2]; // Players 0 and 2 (internal 0-indexed)
+        let outcome_multiple = GameOutcome::Victory(multiple_winners);
+
+        let text_multiple = match outcome_multiple {
+            GameOutcome::Victory(winners) => {
+                if winners.len() > 1 {
+                    let one_indexed_winners: Vec<usize> = winners.iter().map(|&p| p + 1).collect();
+                    format!("Players {:?} win!", one_indexed_winners)
+                } else {
+                    format!("Player {} wins!", winners[0] + 1)
+                }
+            }
+        };
+        assert_eq!(text_multiple, "Players [1, 3] win!"); // Should show Players [1, 3], not [0, 2]
     }
 }
