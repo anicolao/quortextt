@@ -27,18 +27,20 @@ The board uses a hexagonal coordinate system where:
 - **Row 0** (internal coordinate) maps to different player rows depending on perspective
 - **Center tile** is always at position D4 for all players
 - Each player's "A" row contains their starting edge hexes
+- **Players are positioned on different sides** of the hexagonal board, not opposite each other
+- In a 2-player game, players typically occupy adjacent or nearby sides of the hexagon
 
 ### Example Coordinates
 
 Based on the internal coordinate system:
 
-| Internal (row,col) | Player 1 | Player 2 |
+| Internal (row,col) | Player 1 | Player 2 (NE side) |
 |-------------------|----------|----------|
 | (0,0) | P1A1 | P2G1 |
 | (0,3) | P1A4 | P2G4 |
 | (3,3) | P1D4 | P2D4 |
 | (6,3) | P1G4 | P2A4 |
-| (6,6) | P1G7 | P2A7 |
+| (6,6) | P1G7 | P2A1 |
 
 ## Tile Types
 
@@ -147,7 +149,7 @@ The notation system has been tested with the following coordinate conversions:
 | P1A4 | (0,3) | ✓ |
 | P1D4 | (3,3) | ✓ |
 | P2A4 | (6,3) | ✓ |  
-| P2G1 | (0,0) | ✓ |
+| P2A1 | (6,6) | ✓ |
 
 Example parsed moves:
 - `P1A1T0N` → Player 1 at (0,0) tile T0 rotation 0°
@@ -177,15 +179,15 @@ D1  D2  D3  D4  D5  D6  D7
        A1  A2  A3  A4
 ```
 
-### Player 2 Perspective  
+### Player 2 Perspective (Adjacent Side)
 ```
-       A4  A5  A6  A7
-     B3  B4  B5  B6  B7
-   C2  C3  C4  C5  C6  C7
+       A1  A2  A3  A4
+     B1  B2  B3  B4  B5
+   C1  C2  C3  C4  C5  C6
 D1  D2  D3  D4  D5  D6  D7
-   E1  E2  E3  E4  E5  E6
-     F1  F2  F3  F4  F5
-       G1  G2  G3  G4
+   E2  E3  E4  E5  E6  E7
+     F3  F4  F5  F6  F7
+       G4  G5  G6  G7
 ```
 
-Note: The center hex D4 is the same for all players, representing the center of the hexagonal board.
+Note: The center hex D4 is the same for all players, representing the center of the hexagonal board. Each player has their own A1, A2, A3, A4 positions corresponding to different internal board coordinates based on which side of the hexagon they occupy.
