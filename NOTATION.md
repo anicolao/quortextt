@@ -39,8 +39,8 @@ Based on the internal coordinate system:
 | (0,0) | P1A1 | P2G1 |
 | (0,3) | P1A4 | P2G4 |
 | (3,3) | P1D4 | P2D4 |
-| (6,3) | P1G4 | P2A4 |
-| (6,6) | P1G7 | P2A1 |
+| (6,3) | P1G1 | P2A4 |
+| (6,6) | P1G4 | P2A1 |
 
 ## Tile Types
 
@@ -170,9 +170,9 @@ Example parsed moves:
 
 ### Player 1 Perspective
 ```
-       G4  G5  G6  G7
-     F3  F4  F5  F6  F7
-   E2  E3  E4  E5  E6  E7
+       G1  G2  G3  G4
+     F1  F2  F3  F4  F5
+   E1  E2  E3  E4  E5  E6
 D1  D2  D3  D4  D5  D6  D7  
    C1  C2  C3  C4  C5  C6
      B1  B2  B3  B4  B5
@@ -185,9 +185,9 @@ D1  D2  D3  D4  D5  D6  D7
      B1  B2  B3  B4  B5
    C1  C2  C3  C4  C5  C6
 D1  D2  D3  D4  D5  D6  D7
-   E2  E3  E4  E5  E6  E7
-     F3  F4  F5  F6  F7
-       G4  G5  G6  G7
+   E1  E2  E3  E4  E5  E6
+     F1  F2  F3  F4  F5
+       G1  G2  G3  G4
 ```
 
 Note: The center hex D4 is the same for all players, representing the center of the hexagonal board. Each player has their own A1, A2, A3, A4 positions corresponding to different internal board coordinates based on which side of the hexagon they occupy.
