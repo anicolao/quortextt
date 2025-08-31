@@ -29,7 +29,7 @@ const GOLDEN_BORDER: Stroke = Stroke {
     color: Color32::from_rgb(0xFF, 0xD7, 0x00),
 };
 
-fn get_flow_bezier(center: Pos2, hexagon: &Vec<Pos2>, sp: usize, ep: usize) -> [Pos2; 4] {
+fn get_flow_bezier(center: Pos2, hexagon: &[Pos2], sp: usize, ep: usize) -> [Pos2; 4] {
     let start = (hexagon[sp] + hexagon[(sp + 1) % 6].to_vec2()) * 0.5;
     let end = (hexagon[ep] + hexagon[(ep + 1) % 6].to_vec2()) * 0.5;
     let cp1 = (center + start.to_vec2()) * 0.5;
@@ -58,18 +58,13 @@ fn trace_flow(
     mut dir: Direction,
 ) -> Vec<(TilePos, Direction, Direction)> {
     let mut path = vec![];
-    loop {
-        match game.tile(pos) {
-            Tile::Placed(tile) => {
-                let exit_dir = tile.exit_from_entrance(dir);
-                path.push((pos, dir, exit_dir));
-                match game.adjacent_tile(pos, exit_dir) {
-                    AdjacentTile::Tile(next_pos) => {
-                        pos = next_pos;
-                        dir = exit_dir.reversed();
-                    }
-                    _ => break,
-                }
+    while let Tile::Placed(tile) = game.tile(pos) {
+        let exit_dir = tile.exit_from_entrance(dir);
+        path.push((pos, dir, exit_dir));
+        match game.adjacent_tile(pos, exit_dir) {
+            AdjacentTile::Tile(next_pos) => {
+                pos = next_pos;
+                dir = exit_dir.reversed();
             }
             _ => break,
         }
@@ -252,6 +247,7 @@ impl GameUi {
         painter.add(Shape::convex_polygon(hexagon.clone(), fill, border));
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_hex(
         center: Pos2,
         hexagon_radius: f32,
@@ -337,7 +333,7 @@ impl GameUi {
         // diagonal vector that moves one hex up and to the right
         let up = Vec2::new(
             2.0 * center_offset * 0.5,
-            -2.0 * center_offset * 0.86602540378,
+            -2.0 * center_offset * 0.866_025_4,
         );
         let rup = Vec2::new(-2.0 * center_offset, 0.0);
 
@@ -416,7 +412,7 @@ impl GameUi {
         };
         let hypothetical_game = match hovered_tile {
             None => None,
-            Some(hovered_tile) => match game.tile(hovered_tile).clone() {
+            Some(hovered_tile) => match *game.tile(hovered_tile) {
                 Tile::Empty => {
                     ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
                     let player_to_simulate = match game_view.viewer() {
@@ -454,30 +450,30 @@ impl GameUi {
         };
         let rotate_time = ctx.input(|i| i.time);
         // Don't let the user rotate the tile too quickly
-        if self.animation_state.rotation_state.is_none() {
-            if (rotate_time - self.animation_state.last_rotate_time) > 0.1 {
-                let scroll_delta = ui.input(|i| i.raw_scroll_delta);
-                let rotation_delta = if scroll_delta.y > 0.0 {
-                    Some(Rotation(1))
-                } else if scroll_delta.y < 0.0 {
-                    Some(Rotation(5)) // equivalent to -1
-                } else {
-                    None
-                };
+        if self.animation_state.rotation_state.is_none()
+            && (rotate_time - self.animation_state.last_rotate_time) > 0.1
+        {
+            let scroll_delta = ui.input(|i| i.raw_scroll_delta);
+            let rotation_delta = if scroll_delta.y > 0.0 {
+                Some(Rotation(1))
+            } else if scroll_delta.y < 0.0 {
+                Some(Rotation(5)) // equivalent to -1
+            } else {
+                None
+            };
 
-                if let Some(delta) = rotation_delta {
-                    let start_rotation = self.placement_rotation;
-                    let end_rotation = self.placement_rotation + delta;
-                    self.animation_state.rotation_state = Some(RotationAnimation {
-                        start_frame: self.animation_state.frame_count,
-                        end_frame: self.animation_state.frame_count
-                            + 6 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
-                        start_rotation,
-                        end_rotation,
-                    });
-                    self.placement_rotation = end_rotation; // Update logical rotation immediately
-                    self.animation_state.last_rotate_time = rotate_time;
-                }
+            if let Some(delta) = rotation_delta {
+                let start_rotation = self.placement_rotation;
+                let end_rotation = self.placement_rotation + delta;
+                self.animation_state.rotation_state = Some(RotationAnimation {
+                    start_frame: self.animation_state.frame_count,
+                    end_frame: self.animation_state.frame_count
+                        + 6 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                    start_rotation,
+                    end_rotation,
+                });
+                self.placement_rotation = end_rotation; // Update logical rotation immediately
+                self.animation_state.last_rotate_time = rotate_time;
             }
         }
 
@@ -550,39 +546,39 @@ impl GameUi {
             let current_snap_tile = self.animation_state.snapped_to;
 
             // 2. Handle state transitions if not currently animating.
-            if self.animation_state.snap_animation.is_none() {
-                if current_snap_tile != target_snap_tile {
-                    if let Some(start_tile) = current_snap_tile {
-                        // MUST SNAP OUT
-                        let start_pos = Self::hex_position(
-                            center + (start_tile - center).rotate(self.rotation),
-                            window.center(),
-                            hexagon_radius,
-                        );
-                        self.animation_state.snap_animation = Some(SnapAnimation {
-                            start_frame: now,
-                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
-                            start_pos,
-                            end_pos: pointer_pos,
-                            is_snap_in: false,
-                        });
-                        self.animation_state.snapped_to = None;
-                    } else if let Some(end_tile) = target_snap_tile {
-                        // MUST SNAP IN
-                        let end_pos = Self::hex_position(
-                            center + (end_tile - center).rotate(self.rotation),
-                            window.center(),
-                            hexagon_radius,
-                        );
-                        self.animation_state.snap_animation = Some(SnapAnimation {
-                            start_frame: now,
-                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
-                            start_pos: pointer_pos,
-                            end_pos,
-                            is_snap_in: true,
-                        });
-                        self.animation_state.snapped_to = Some(end_tile);
-                    }
+            if self.animation_state.snap_animation.is_none()
+                && current_snap_tile != target_snap_tile
+            {
+                if let Some(start_tile) = current_snap_tile {
+                    // MUST SNAP OUT
+                    let start_pos = Self::hex_position(
+                        center + (start_tile - center).rotate(self.rotation),
+                        window.center(),
+                        hexagon_radius,
+                    );
+                    self.animation_state.snap_animation = Some(SnapAnimation {
+                        start_frame: now,
+                        end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                        start_pos,
+                        end_pos: pointer_pos,
+                        is_snap_in: false,
+                    });
+                    self.animation_state.snapped_to = None;
+                } else if let Some(end_tile) = target_snap_tile {
+                    // MUST SNAP IN
+                    let end_pos = Self::hex_position(
+                        center + (end_tile - center).rotate(self.rotation),
+                        window.center(),
+                        hexagon_radius,
+                    );
+                    self.animation_state.snap_animation = Some(SnapAnimation {
+                        start_frame: now,
+                        end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                        start_pos: pointer_pos,
+                        end_pos,
+                        is_snap_in: true,
+                    });
+                    self.animation_state.snapped_to = Some(end_tile);
                 }
             }
 
@@ -656,7 +652,7 @@ impl GameUi {
             BORDER,
             std::f32::consts::PI / 6.0,
         );
-        for side in (0..6).map(|x| Rotation(x)) {
+        for side in (0..6).map(Rotation) {
             match game.player_on_side(side + self.rotation.reversed()) {
                 None => (),
                 Some(player) => {
@@ -874,7 +870,7 @@ impl GameUi {
 
                 painter.circle_filled(draw_pos, 5.0, player_colour(anim.player));
             }
-            anim_opt = anim.next.as_ref().map(|b| &**b);
+            anim_opt = anim.next.as_deref();
         }
 
         Self::draw_inverted_hex(

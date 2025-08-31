@@ -5,6 +5,7 @@ use crate::game_view::GameView;
 use crate::server_backend::ServerBackend;
 
 struct InMemoryMode {
+    #[allow(dead_code)]
     admin_view: GameView,
     player_views: Vec<GameView>,
     player_uis: Vec<GameUi>,
@@ -36,7 +37,7 @@ struct ServerMode {
 }
 
 impl ServerMode {
-    pub fn new(server_ip: &String) -> Self {
+    pub fn new(server_ip: &str) -> Self {
         let backend = ServerBackend::new(server_ip).unwrap();
         let player_view = GameView::new(Box::new(backend));
         let player_ui = GameUi::new();
@@ -93,7 +94,7 @@ impl eframe::App for FlowsApp {
 
                     ui.text_edit_singleline(server_ip);
                     if ui.button("Server").clicked() {
-                        new_state = Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
+                        new_state = Some(State::ServerMode(ServerMode::new(server_ip)));
                     }
                 });
             }

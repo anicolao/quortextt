@@ -51,7 +51,6 @@ impl ServerInternal {
                         Ok(()) => (),
                         Err(_) => {
                             // TODO: Drop the connection
-                            ()
                         }
                     }
                 }
@@ -97,15 +96,12 @@ impl ServerInternal {
                         if !action.performable(game_viewer) {
                             continue;
                         }
-                        match self.game.apply_action(action) {
-                            Ok(()) => {
-                                let mut rng = StdRng::seed_from_u64(
-                                    chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64,
-                                );
-                                self.game.do_automatic_actions(&mut rng);
-                                self.update_clients(current_action_count).await;
-                            }
-                            Err(_) => (), // TODO: Send error back to the client?
+                        if self.game.apply_action(action).is_ok() {
+                            let mut rng = StdRng::seed_from_u64(
+                                chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64,
+                            );
+                            self.game.do_automatic_actions(&mut rng);
+                            self.update_clients(current_action_count).await;
                         }
                     }
                 },
@@ -197,7 +193,7 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         // eventually could contain a handshake or something).
         let mut buf = [0u8; 4];
         let _bytes_read = stream.peek(&mut buf).await;
-        let is_websocket = buf == &"GET ".as_bytes()[..];
+        let is_websocket = buf == "GET ".as_bytes();
 
         tokio::spawn(async move {
             stream.writable().await.unwrap();
@@ -235,7 +231,7 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
                         from_client = ws_stream.next() => {
                             if let Some(Ok(line)) = from_client {
                                 if let Ok(s) = line.to_text() {
-                                    if s.len() == 0 {
+                                    if s.is_empty() {
                                         break;
                                     }
                                     let message = serde_json::from_str::<ClientToServerMessage>(s).unwrap();
