@@ -56,10 +56,11 @@ impl SvgGenerator {
 fn hexagon_points(center: (f32, f32), radius: f32) -> Vec<(f32, f32)> {
     (0..6)
         .map(|i| {
-            let angle = PI / 6.0 + (i as f32) * PI / 3.0; // Start from top-right, going clockwise
+            // Start from top-right and go clockwise, but flip Y to put north at top
+            let angle = PI / 6.0 + (i as f32) * PI / 3.0;
             (
                 center.0 + radius * angle.cos(),
-                center.1 + radius * angle.sin(),
+                center.1 - radius * angle.sin(), // Flip Y coordinate
             )
         })
         .collect()
@@ -68,6 +69,7 @@ fn hexagon_points(center: (f32, f32), radius: f32) -> Vec<(f32, f32)> {
 fn direction_to_angle(direction: Direction) -> f32 {
     // Map directions to angles, starting from SouthWest=0 and going counter-clockwise
     // SouthWest = 240°, West = 180°, NorthWest = 120°, NorthEast = 60°, East = 0°, SouthEast = 300°
+    // But flip Y coordinate to put north at top
     let base_angles = [240.0, 180.0, 120.0, 60.0, 0.0, 300.0];
     base_angles[direction as usize] * PI / 180.0
 }
@@ -76,7 +78,7 @@ fn get_edge_position(center: (f32, f32), radius: f32, direction: Direction) -> (
     let angle = direction_to_angle(direction);
     (
         center.0 + radius * 0.8 * angle.cos(),
-        center.1 + radius * 0.8 * angle.sin(),
+        center.1 - radius * 0.8 * angle.sin(), // Flip Y coordinate
     )
 }
 
@@ -106,7 +108,7 @@ fn generate_tile_svg(tile_type: TileType, rotation: Rotation) -> String {
         let angle = direction_to_angle(*direction);
         let label_pos = (
             center.0 + (radius + 25.0) * angle.cos(),
-            center.1 + (radius + 25.0) * angle.sin(),
+            center.1 - (radius + 25.0) * angle.sin(), // Flip Y coordinate
         );
         svg.svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="gray">{}</text>"#,
