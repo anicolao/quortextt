@@ -850,12 +850,6 @@ impl GameUi {
                             if let Some(player) = placed_tile.flow_cache(entrance_dir) {
                                 let exit_dir = placed_tile.exit_from_entrance(entrance_dir);
 
-                                // To avoid creating two animations for each flow, we only create
-                                // one when the entrance direction is smaller than the exit
-                                // direction.
-                                if entrance_dir > exit_dir {
-                                    continue;
-                                }
 
                                 let path_backward =
                                     trace_flow(hypo_game, placed_tile_pos, exit_dir.reversed());
