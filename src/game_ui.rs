@@ -854,8 +854,43 @@ impl GameUi {
                                 let neighbor2_pos = placed_tile_pos + e2.tile_vec();
                                 let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
 
-                                let source1 = self.leads_to_source(&path1, hypo_game, &game);
-                                let source2 = self.leads_to_source(&path2, hypo_game, &game);
+                                let mut source1 = self.leads_to_source(&path1, hypo_game, &game);
+                                if !source1 && path1.is_empty() {
+                                    if let AdjacentTile::BoardEdge(_) =
+                                        hypo_game.adjacent_tile(placed_tile_pos, e1)
+                                    {
+                                        for player in 0..game.num_players() {
+                                            if self.is_player_edge(
+                                                &game,
+                                                player,
+                                                placed_tile_pos,
+                                                e1,
+                                            ) {
+                                                source1 = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                let mut source2 = self.leads_to_source(&path2, hypo_game, &game);
+                                if !source2 && path2.is_empty() {
+                                    if let AdjacentTile::BoardEdge(_) =
+                                        hypo_game.adjacent_tile(placed_tile_pos, e2)
+                                    {
+                                        for player in 0..game.num_players() {
+                                            if self.is_player_edge(
+                                                &game,
+                                                player,
+                                                placed_tile_pos,
+                                                e2,
+                                            ) {
+                                                source2 = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
 
                                 if source1 && !source2 {
                                     let mut anim_path = vec![(placed_tile_pos, e1, e2)];
