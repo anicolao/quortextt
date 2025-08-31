@@ -135,6 +135,7 @@ struct FlowAnimation {
     start_frame: u64,
     path: Vec<(TilePos, Direction, Direction)>,
     player: Player,
+    next: Option<Box<FlowAnimation>>,
 }
 
 impl AnimationState {
@@ -311,8 +312,7 @@ impl GameUi {
             let bezier_unrotated =
                 get_flow_bezier(center, &unrotated_hexagon, d1 as usize, d2 as usize);
             let rot = Rot2::from_angle(total_rotation_rads);
-            let bezier_rotated_points =
-                bezier_unrotated.map(|p| center + (rot * (p - center)));
+            let bezier_rotated_points = bezier_unrotated.map(|p| center + (rot * (p - center)));
 
             painter.add(egui::epaint::CubicBezierShape {
                 points: bezier_rotated_points,
@@ -393,18 +393,22 @@ impl GameUi {
             None => None,
             Some(hover_pos) => {
                 let mut hovered_tile = None;
+                let mut best_radius = f32::INFINITY;
                 for col in 0..7 {
                     for row in 0..7 {
                         let tile_pos = TilePos::new(row, col);
                         let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
                         let pos = Self::hex_position(rotated_pos, window.center(), hexagon_radius);
-                        if hover_pos.distance(pos) < hexagon_radius * 0.8 {
-                            hovered_tile = Some(tile_pos);
-                            break;
+                        // if we're within range of a tile, and the tile is empty, then we are
+                        // hovering it
+                        match game.tile(tile_pos) {
+                            Tile::NotOnBoard | Tile::Placed(_) => continue,
+                            Tile::Empty => {}
                         }
-                    }
-                    if hovered_tile.is_some() {
-                        break;
+                        if hover_pos.distance(pos) < best_radius {
+                            hovered_tile = Some(tile_pos);
+                            best_radius = hover_pos.distance(pos);
+                        }
                     }
                 }
                 hovered_tile
@@ -759,7 +763,7 @@ impl GameUi {
                     let base_rotation_for_hypo_tile =
                         if let Some(anim) = &self.animation_state.rotation_state {
                             if self.animation_state.frame_count < anim.end_frame {
-                                anim.start_rotation
+                                Rotation(0)
                             } else {
                                 self.placement_rotation
                             }
@@ -790,7 +794,11 @@ impl GameUi {
         self.animation_state.last_hovered_tile = hovered_tile;
 
         if let Some(hypo_game) = &hypothetical_game {
-            if self.animation_state.flow_animation.is_none() {
+            // only if no animations are running
+            if self.animation_state.flow_animation.is_none()
+                && self.animation_state.snap_animation.is_none()
+                && self.animation_state.rotation_state.is_none()
+            {
                 if let Some(placed_tile_pos) = hovered_tile {
                     if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
                         for dir_idx in 0..6 {
@@ -809,8 +817,8 @@ impl GameUi {
                                     start_frame: self.animation_state.frame_count,
                                     path: final_path,
                                     player,
+                                    next: self.animation_state.flow_animation.take().map(Box::new),
                                 });
-                                break;
                             }
                         }
                     }
@@ -822,7 +830,7 @@ impl GameUi {
 
         if let Some(anim) = &self.animation_state.flow_animation {
             let now = self.animation_state.frame_count;
-            let frames_per_tile = 4 * DEBUG_ANIMATION_SPEED_MULTIPLIER;
+            let frames_per_tile = 4 * DEBUG_ANIMATION_SPEED_MULTIPLIER * 10;
             let elapsed_frames = now - anim.start_frame;
 
             let total_duration = anim.path.len() as u64 * frames_per_tile;
