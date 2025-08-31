@@ -106,6 +106,7 @@ struct AnimationState {
     snap_animation: Option<SnapAnimation>,
     snapped_to: Option<TilePos>,
     flow_animation: Option<FlowAnimation>,
+    flow_animation_dirty: bool,
     last_hovered_tile: Option<TilePos>,
     last_pointer_pos: Option<Pos2>,
     pointer_dwell_frames: u64,
@@ -142,6 +143,7 @@ impl AnimationState {
             snap_animation: None,
             snapped_to: None,
             flow_animation: None,
+            flow_animation_dirty: false,
             last_hovered_tile: None,
             last_pointer_pos: None,
             pointer_dwell_frames: 0,
@@ -344,6 +346,49 @@ impl GameUi {
             + rup * tile.row as f32
     }
 
+    fn is_player_edge(&self, game: &Game, player: Player, pos: TilePos, dir: Direction) -> bool {
+        for side in 0..6 {
+            if game.player_on_side(Rotation(side)) == Some(player)
+                && game
+                    .edges_on_board_edge(Rotation(side))
+                    .contains(&(pos, dir))
+            {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn is_flow_path_valid(
+        &self,
+        path: &[(TilePos, Direction, Direction)],
+        player: Player,
+        game: &Game,
+    ) -> bool {
+        if path.is_empty() {
+            return false;
+        }
+
+        // Check start of path
+        let (start_pos, start_entrance, _) = path[0];
+        match game.adjacent_tile(start_pos, start_entrance) {
+            AdjacentTile::BoardEdge(_) => {
+                if self.is_player_edge(game, player, start_pos, start_entrance) {
+                    return true;
+                }
+            }
+            AdjacentTile::Tile(neighbor_pos) => {
+                if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
+                    if neighbor_tile.flow_cache(start_entrance.reversed()) == Some(player) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
     pub fn display(&mut self, ui: &mut Ui, ctx: &Context, game_view: &mut GameView) -> Response {
         self.animation_state.frame_count += 1;
         let bounding_box = ui.available_size();
@@ -482,6 +527,7 @@ impl GameUi {
             let now = self.animation_state.frame_count;
             if now >= anim.end_frame {
                 self.animation_state.rotation_state = None;
+                self.animation_state.flow_animation_dirty = true;
             } else {
                 let progress =
                     (now - anim.start_frame) as f32 / (anim.end_frame - anim.start_frame) as f32;
@@ -585,6 +631,9 @@ impl GameUi {
             // 3. Update any ongoing animation and determine draw position.
             if let Some(anim) = &mut self.animation_state.snap_animation {
                 if now >= anim.end_frame {
+                    if anim.is_snap_in {
+                        self.animation_state.flow_animation_dirty = true;
+                    }
                     self.animation_state.snap_animation = None;
                 } else {
                     // Snap cancellation
@@ -789,12 +838,10 @@ impl GameUi {
         }
         self.animation_state.last_hovered_tile = hovered_tile;
 
-        if let Some(hypo_game) = &hypothetical_game {
-            // only if no animations are running
-            if self.animation_state.flow_animation.is_none()
-                && self.animation_state.snap_animation.is_none()
-                && self.animation_state.rotation_state.is_none()
-            {
+        if self.animation_state.flow_animation_dirty {
+            self.animation_state.flow_animation = None;
+            self.animation_state.flow_animation_dirty = false;
+            if let Some(hypo_game) = &hypothetical_game {
                 if let Some(placed_tile_pos) = hovered_tile {
                     if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
                         for entrance_idx in 0..6 {
@@ -820,19 +867,23 @@ impl GameUi {
                                 final_path.pop();
                                 final_path.extend(path_forward);
 
-                                self.animation_state.flow_animation = Some(FlowAnimation {
-                                    start_frame: self.animation_state.frame_count,
-                                    path: final_path,
-                                    player,
-                                    next: self.animation_state.flow_animation.take().map(Box::new),
-                                });
+                                if self.is_flow_path_valid(&final_path, player, &game) {
+                                    self.animation_state.flow_animation = Some(FlowAnimation {
+                                        start_frame: self.animation_state.frame_count,
+                                        path: final_path,
+                                        player,
+                                        next: self
+                                            .animation_state
+                                            .flow_animation
+                                            .take()
+                                            .map(Box::new),
+                                    });
+                                }
                             }
                         }
                     }
                 }
             }
-        } else {
-            self.animation_state.flow_animation = None;
         }
 
         let mut anim_opt = self.animation_state.flow_animation.as_ref();
