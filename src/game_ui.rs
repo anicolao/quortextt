@@ -837,6 +837,8 @@ impl GameUi {
             if let Some(hypo_game) = &hypothetical_game {
                 if let Some(placed_tile_pos) = hovered_tile {
                     if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
+                        let mut candidate_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> =
+                            vec![];
                         for (d1, d2) in placed_tile.type_().all_flows() {
                             let e1 = d1.rotate(placed_tile.rotation());
                             let e2 = d2.rotate(placed_tile.rotation());
@@ -854,36 +856,45 @@ impl GameUi {
                                 if source1 && !source2 {
                                     let mut anim_path = vec![(placed_tile_pos, e1, e2)];
                                     anim_path.extend(path2);
-                                    self.animation_state.flow_animation = Some(FlowAnimation {
-                                        start_frame: self.animation_state.frame_count,
-                                        path: anim_path,
-                                        player,
-                                        next: self.animation_state.flow_animation.take().map(Box::new),
-                                    });
+                                    candidate_paths.push((anim_path, player));
                                 } else if !source1 && source2 {
                                     let mut anim_path = vec![(placed_tile_pos, e2, e1)];
                                     anim_path.extend(path1);
-                                    self.animation_state.flow_animation = Some(FlowAnimation {
-                                        start_frame: self.animation_state.frame_count,
-                                        path: anim_path,
-                                        player,
-                                        next: self.animation_state.flow_animation.take().map(Box::new),
-                                    });
+                                    candidate_paths.push((anim_path, player));
                                 } else if source1 && source2 {
-                                    self.animation_state.flow_animation = Some(FlowAnimation {
-                                        start_frame: self.animation_state.frame_count,
-                                        path: vec![(placed_tile_pos, e1, e2)],
-                                        player,
-                                        next: self.animation_state.flow_animation.take().map(Box::new),
-                                    });
-                                    self.animation_state.flow_animation = Some(FlowAnimation {
-                                        start_frame: self.animation_state.frame_count,
-                                        path: vec![(placed_tile_pos, e2, e1)],
-                                        player,
-                                        next: self.animation_state.flow_animation.take().map(Box::new),
-                                    });
+                                    candidate_paths
+                                        .push((vec![(placed_tile_pos, e1, e2)], player));
+                                    candidate_paths
+                                        .push((vec![(placed_tile_pos, e2, e1)], player));
                                 }
                             }
+                        }
+
+                        // Filter out subpaths
+                        let mut final_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> =
+                            vec![];
+                        for (path, player) in candidate_paths.iter() {
+                            let mut is_subpath = false;
+                            for (other_path, _) in candidate_paths.iter() {
+                                if path.len() < other_path.len() {
+                                    if other_path.windows(path.len()).any(|w| w == path) {
+                                        is_subpath = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if !is_subpath {
+                                final_paths.push((path.clone(), *player));
+                            }
+                        }
+
+                        for (path, player) in final_paths {
+                            self.animation_state.flow_animation = Some(FlowAnimation {
+                                start_frame: self.animation_state.frame_count,
+                                path,
+                                player,
+                                next: self.animation_state.flow_animation.take().map(Box::new),
+                            });
                         }
                     }
                 }
