@@ -1058,7 +1058,7 @@ impl GameUi {
 #[cfg(test)]
 mod tests {
     use crate::backend::InMemoryBackend;
-    use crate.game::{GameSettings, GameViewer, Rotation};
+    use crate::game::{GameSettings, GameViewer, Rotation};
     use crate::game_ui::GameUi;
     use crate::game_view::GameView;
 
