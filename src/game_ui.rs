@@ -5,6 +5,8 @@ use egui::{
 };
 
 const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10;
+const SNAP_RADIUS_DWELL: f32 = 0.8;
+const SNAP_RADIUS_MOVING: f32 = 0.3;
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
 const DEFAULT_HEXAGON_RADIUS: f32 = 40.0;
 const BG_COLOUR: Color32 = Color32::from_rgb(0xFE, 0xFE, 0xF0);
@@ -109,6 +111,8 @@ struct AnimationState {
     snapped_to: Option<TilePos>,
     flow_animation: Option<FlowAnimation>,
     last_hovered_tile: Option<TilePos>,
+    last_pointer_pos: Option<Pos2>,
+    pointer_dwell_frames: u64,
 }
 
 struct RotationAnimation {
@@ -142,6 +146,8 @@ impl AnimationState {
             snapped_to: None,
             flow_animation: None,
             last_hovered_tile: None,
+            last_pointer_pos: None,
+            pointer_dwell_frames: 0,
         }
     }
 }
@@ -282,7 +288,7 @@ impl GameUi {
         let alpha = if hypothetical { 0x01 } else { 0xFF };
         painter.add(Shape::convex_polygon(
             hexagon.clone(),
-            Color32::from_rgba_premultiplied(0x33, 0x33, 0x33, alpha),
+            Color32::from_rgba_premultiplied(0x00, 0x00, 0x00, alpha),
             Stroke::new(
                 2.0,
                 Color32::from_rgba_premultiplied(0xAA, 0xAA, 0xAA, alpha),
@@ -515,6 +521,13 @@ impl GameUi {
             let pointer_pos = response.hover_pos().unwrap();
             tile_draw_pos = Some(pointer_pos); // Default to pointer
 
+            if self.animation_state.last_pointer_pos == Some(pointer_pos) {
+                self.animation_state.pointer_dwell_frames += 1;
+            } else {
+                self.animation_state.pointer_dwell_frames = 0;
+            }
+            self.animation_state.last_pointer_pos = Some(pointer_pos);
+
             // 1. Determine the target hex to snap to, if any.
             let target_snap_tile: Option<TilePos> = if let Some(h_tile) = hovered_tile {
                 let hex_center = Self::hex_position(
@@ -522,7 +535,14 @@ impl GameUi {
                     window.center(),
                     hexagon_radius,
                 );
-                if pointer_pos.distance(hex_center) < hexagon_radius * 0.8 {
+                let is_moving = self.animation_state.pointer_dwell_frames < 3;
+                let snap_radius = if is_moving {
+                    SNAP_RADIUS_MOVING
+                } else {
+                    SNAP_RADIUS_DWELL
+                };
+
+                if pointer_pos.distance(hex_center) < hexagon_radius * snap_radius {
                     Some(h_tile)
                 } else {
                     None
@@ -761,7 +781,8 @@ impl GameUi {
             };
             if let Some(player) = player {
                 if let Some(tile_type) = game.tile_in_hand(player) {
-                    let tile = PlacedTile::new(tile_type, self.placement_rotation);
+                    let tile =
+                        PlacedTile::new(tile_type, self.placement_rotation + self.rotation);
                     Self::draw_hex(
                         pos,
                         hexagon_radius,
