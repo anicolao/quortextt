@@ -37,19 +37,19 @@ fn get_flow_bezier(center: Pos2, hexagon: &[Pos2], sp: usize, ep: usize) -> [Pos
     [start, cp1, cp2, end]
 }
 
-fn sample_bezier(points: [Pos2; 4], t: f32) -> Pos2 {
+fn split_bezier(points: [Pos2; 4], t: f32) -> ([Pos2; 4], [Pos2; 4]) {
     let [p0, p1, p2, p3] = points;
-    let t_inv = 1.0 - t;
-    let t_inv2 = t_inv * t_inv;
-    let t_inv3 = t_inv2 * t_inv;
-    let t2 = t * t;
-    let t3 = t2 * t;
 
-    let p = p0.to_vec2() * t_inv3
-        + p1.to_vec2() * (3.0 * t_inv2 * t)
-        + p2.to_vec2() * (3.0 * t_inv * t2)
-        + p3.to_vec2() * t3;
-    p.to_pos2()
+    let p10 = p0.lerp(p1, t);
+    let p11 = p1.lerp(p2, t);
+    let p12 = p2.lerp(p3, t);
+
+    let p20 = p10.lerp(p11, t);
+    let p21 = p11.lerp(p12, t);
+
+    let p30 = p20.lerp(p21, t);
+
+    ([p0, p10, p20, p30], [p30, p21, p12, p3])
 }
 
 fn trace_flow(
@@ -914,6 +914,35 @@ impl GameUi {
                 let progress_in_segment =
                     (elapsed_frames % frames_per_tile) as f32 / frames_per_tile as f32;
 
+                let color = player_colour(anim.player);
+                let thickness = 8.0 / 35.0 * hexagon_radius;
+
+                // Draw fully completed segments
+                for i in 0..current_tile_idx {
+                    let (tile_pos, entrance_dir, exit_dir) = &anim.path[i];
+                    let hex_center = Self::hex_position(
+                        center + (*tile_pos - center).rotate(self.rotation),
+                        window.center(),
+                        hexagon_radius,
+                    );
+                    let hexagon = Self::hexagon_coords(hex_center, hexagon_radius, 0.0);
+                    let rotated_entrance = entrance_dir.rotate(self.rotation);
+                    let rotated_exit = exit_dir.rotate(self.rotation);
+                    let bezier_points = get_flow_bezier(
+                        hex_center,
+                        &hexagon,
+                        rotated_entrance as usize,
+                        rotated_exit as usize,
+                    );
+                    painter.add(egui::epaint::CubicBezierShape {
+                        points: bezier_points,
+                        closed: false,
+                        fill: Color32::TRANSPARENT,
+                        stroke: Stroke::new(thickness, color).into(),
+                    });
+                }
+
+                // Draw the partially completed segment
                 let (current_tile_pos, entrance_dir, exit_dir) = &anim.path[current_tile_idx];
 
                 let hex_center = Self::hex_position(
@@ -932,9 +961,18 @@ impl GameUi {
                     rotated_entrance as usize,
                     rotated_exit as usize,
                 );
-                let draw_pos = sample_bezier(bezier_points, progress_in_segment);
 
-                painter.circle_filled(draw_pos, 5.0, player_colour(anim.player));
+                let (partial_curve, _) = split_bezier(bezier_points, progress_in_segment);
+
+                painter.add(egui::epaint::CubicBezierShape {
+                    points: partial_curve,
+                    closed: false,
+                    fill: Color32::TRANSPARENT,
+                    stroke: Stroke::new(thickness, color).into(),
+                });
+
+                let draw_pos = partial_curve[3];
+                painter.circle_filled(draw_pos, 5.0, color);
             }
             anim_opt = anim.next.as_deref();
         }
