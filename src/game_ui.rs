@@ -781,14 +781,29 @@ impl GameUi {
             };
             if let Some(player) = player {
                 if let Some(tile_type) = game.tile_in_hand(player) {
-                    let tile =
-                        PlacedTile::new(tile_type, self.placement_rotation + self.rotation);
+                    let base_rotation_for_hypo_tile =
+                        if let Some(anim) = &self.animation_state.rotation_state {
+                            if self.animation_state.frame_count < anim.end_frame {
+                                anim.start_rotation
+                            } else {
+                                self.placement_rotation
+                            }
+                        } else {
+                            self.placement_rotation
+                        };
+
+                    let tile = PlacedTile::new(
+                        tile_type,
+                        base_rotation_for_hypo_tile + self.rotation,
+                    );
+                    // To make the tile opaque, we pass a clone of the tile as the "prior" tile.
+                    let prior_tile_for_opacity = Tile::Placed(tile);
                     Self::draw_hex(
                         pos,
                         hexagon_radius,
                         painter,
                         &tile,
-                        &Tile::Empty,
+                        &prior_tile_for_opacity,
                         HIGHLIGHT_BORDER,
                         visual_rotation_rads,
                     );
@@ -881,7 +896,10 @@ impl GameUi {
             || self.animation_state.snap_animation.is_some()
             || self.animation_state.flow_animation.is_some();
 
-        if animations_running {
+        // Also repaint if we are hovering a tile, to allow dwell logic to run.
+        let needs_repaint_for_dwell = hypothetical_game.is_some() && !animations_running;
+
+        if animations_running || needs_repaint_for_dwell {
             ctx.request_repaint();
         }
         Self::draw_empty_hex(
