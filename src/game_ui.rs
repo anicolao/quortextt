@@ -1,7 +1,8 @@
 use crate::game::{Direction, *};
 use crate::game_view::GameView;
 use egui::{
-    Color32, Context, CursorIcon, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, Vec2,
+    emath::Rot2, Color32, Context, CursorIcon, Painter, Pos2, Rect, Response, Sense, Shape, Stroke,
+    Ui, Vec2,
 };
 
 const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10;
@@ -171,27 +172,6 @@ impl GameUi {
         None
     }
 
-    fn draw_flow(
-        center: Pos2,
-        painter: &Painter,
-        hexagon: &Vec<Pos2>,
-        sp: usize,
-        ep: usize,
-        color: Color32,
-        thickness: f32,
-    ) {
-        let start = (hexagon[sp] + hexagon[(sp + 1) % 6].to_vec2()) * 0.5;
-        let end = (hexagon[ep] + hexagon[(ep + 1) % 6].to_vec2()) * 0.5;
-        let cp1 = (center + start.to_vec2()) * 0.5;
-        let cp2 = (center + end.to_vec2()) * 0.5;
-        painter.add(egui::epaint::CubicBezierShape {
-            points: [start, cp1, cp2, end],
-            stroke: Stroke::new(thickness, color).into(),
-            fill: Color32::TRANSPARENT,
-            closed: false,
-        });
-    }
-
     fn hexagon_coords(center: Pos2, radius: f32, rotate: f32) -> Vec<Pos2> {
         (0..6)
             .map(|i| {
@@ -276,66 +256,75 @@ impl GameUi {
         hexagon_radius: f32,
         painter: &Painter,
         tile: &PlacedTile,
+        view_rotation: Rotation,
         prior_tile: &Tile,
         border_stroke: Stroke,
-        rotation_rads: f32,
+        anim_rotation_rads: f32,
     ) {
-        let hexagon = Self::hexagon_coords(center, hexagon_radius, rotation_rads);
+        let total_rotation_rads =
+            tile.rotation().as_radians() + view_rotation.as_radians() + anim_rotation_rads;
+
         let hypothetical = match prior_tile {
             Tile::NotOnBoard | Tile::Empty => true,
             Tile::Placed(prior) => prior != tile,
         };
         let alpha = if hypothetical { 0x01 } else { 0xFF };
+
+        // 1. Draw background
+        let hexagon_points = Self::hexagon_coords(center, hexagon_radius, total_rotation_rads);
         painter.add(Shape::convex_polygon(
-            hexagon.clone(),
-            Color32::from_rgba_premultiplied(0x00, 0x00, 0x00, alpha),
-            Stroke::new(
-                2.0,
-                Color32::from_rgba_premultiplied(0xAA, 0xAA, 0xAA, alpha),
-            ),
+            hexagon_points.clone(),
+            Color32::from_rgba_premultiplied(0, 0, 0, alpha),
+            Stroke::NONE,
         ));
+
+        // 2. Draw flows
         let thickness = 8.0 / 35.0 * hexagon_radius;
-        let flows = tile.all_flows();
-        for blank in [true, false] {
-            for (e1, e2) in flows.iter() {
-                let player = tile.flow_cache(*e1);
-                if blank && player.is_some() {
-                    continue;
-                }
-                if !blank && player.is_none() {
-                    continue;
-                }
-                let color = match player {
-                    Some(player) => player_colour(player),
-                    None => NEUTRAL_COLOUR,
-                };
-                let hypoflow = match prior_tile {
-                    Tile::NotOnBoard | Tile::Empty => true,
-                    Tile::Placed(prior) => prior.flow_cache(*e1) != tile.flow_cache(*e1),
-                };
-                let render_color = if hypoflow && !blank {
-                    Color32::from_rgba_premultiplied(
-                        color.r() / 2,
-                        color.g() / 2,
-                        color.b() / 2,
-                        alpha,
-                    )
-                } else {
-                    color
-                };
-                Self::draw_flow(
-                    center,
-                    painter,
-                    &hexagon,
-                    *e1 as usize,
-                    *e2 as usize,
-                    render_color,
-                    thickness,
-                );
-            }
+        let base_flows = tile.type_().all_flows(); // Un-rotated flows
+        let unrotated_hexagon = Self::hexagon_coords(center, hexagon_radius, 0.0);
+
+        for (d1, d2) in base_flows {
+            let rotated_d1 = d1.rotate(tile.rotation());
+            let player = tile.flow_cache(rotated_d1);
+
+            let blank = player.is_none();
+
+            let prior_player = if let Tile::Placed(p) = prior_tile {
+                p.flow_cache(rotated_d1)
+            } else {
+                None
+            };
+
+            let hypoflow = player != prior_player;
+
+            let color = match player {
+                Some(player) => player_colour(player),
+                None => NEUTRAL_COLOUR,
+            };
+
+            let render_color = if hypoflow && !blank {
+                Color32::from_rgba_premultiplied(color.r() / 2, color.g() / 2, color.b() / 2, alpha)
+            } else {
+                color
+            };
+
+            let bezier_unrotated =
+                get_flow_bezier(center, &unrotated_hexagon, d1 as usize, d2 as usize);
+            let rot = Rot2::from_angle(total_rotation_rads);
+            let bezier_rotated_points =
+                bezier_unrotated.map(|p| center + (rot * (p - center)));
+
+            painter.add(egui::epaint::CubicBezierShape {
+                points: bezier_rotated_points,
+                closed: false,
+                fill: Color32::TRANSPARENT,
+                stroke: Stroke::new(thickness, render_color).into(),
+            });
         }
+
+        // 3. Draw border
         painter.add(Shape::convex_polygon(
-            hexagon.clone(),
+            hexagon_points,
             Color32::TRANSPARENT,
             border_stroke,
         ));
@@ -529,12 +518,14 @@ impl GameUi {
             self.animation_state.last_pointer_pos = Some(pointer_pos);
 
             // 1. Determine the target hex to snap to, if any.
-            let target_snap_tile: Option<TilePos> = if let Some(h_tile) = hovered_tile {
+            let mut target_snap_tile: Option<TilePos> = None;
+            if let Some(h_tile) = hovered_tile {
                 let hex_center = Self::hex_position(
                     center + (h_tile - center).rotate(self.rotation),
                     window.center(),
                     hexagon_radius,
                 );
+                let dist = pointer_pos.distance(hex_center);
                 let is_moving = self.animation_state.pointer_dwell_frames < 3;
                 let snap_radius = if is_moving {
                     SNAP_RADIUS_MOVING
@@ -542,14 +533,15 @@ impl GameUi {
                     SNAP_RADIUS_DWELL
                 };
 
-                if pointer_pos.distance(hex_center) < hexagon_radius * snap_radius {
-                    Some(h_tile)
-                } else {
-                    None
+                if dist < hexagon_radius * snap_radius {
+                    target_snap_tile = Some(h_tile);
+                } else if self.animation_state.snapped_to == Some(h_tile)
+                    && dist < hexagon_radius * SNAP_RADIUS_DWELL
+                {
+                    // Hysteresis: we are snapped to this tile, and we are still within the larger radius, so stay snapped.
+                    target_snap_tile = Some(h_tile);
                 }
-            } else {
-                None
-            };
+            }
 
             let current_snap_tile = self.animation_state.snapped_to;
 
@@ -595,13 +587,43 @@ impl GameUi {
                 if now >= anim.end_frame {
                     self.animation_state.snap_animation = None;
                 } else {
+                    // Snap cancellation
                     if !anim.is_snap_in {
-                        anim.end_pos = pointer_pos; // Snap-out follows pointer
+                        if let Some(h_tile) = target_snap_tile {
+                            if self.animation_state.snapped_to.is_none() {
+                                let hex_center = Self::hex_position(
+                                    center + (h_tile - center).rotate(self.rotation),
+                                    window.center(),
+                                    hexagon_radius,
+                                );
+                                let progress = (now - anim.start_frame) as f32
+                                    / (anim.end_frame - anim.start_frame) as f32;
+                                let eased_progress = progress * progress;
+                                let current_pos = anim.start_pos.lerp(anim.end_pos, eased_progress);
+
+                                // Cancel snap-out and start snap-in
+                                self.animation_state.snap_animation = Some(SnapAnimation {
+                                    start_frame: now,
+                                    end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                    start_pos: current_pos,
+                                    end_pos: hex_center,
+                                    is_snap_in: true,
+                                });
+                                self.animation_state.snapped_to = Some(h_tile);
+                            }
+                        }
                     }
-                    let progress = (now - anim.start_frame) as f32
-                        / (anim.end_frame - anim.start_frame) as f32;
-                    let eased_progress = progress * progress;
-                    tile_draw_pos = Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
+
+                    // Re-borrow anim as it might have been replaced
+                    if let Some(anim) = &mut self.animation_state.snap_animation {
+                        if !anim.is_snap_in {
+                            anim.end_pos = pointer_pos; // Snap-out follows pointer
+                        }
+                        let progress = (now - anim.start_frame) as f32
+                            / (anim.end_frame - anim.start_frame) as f32;
+                        let eased_progress = progress * progress;
+                        tile_draw_pos = Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
+                    }
                 }
             }
 
@@ -704,68 +726,21 @@ impl GameUi {
                                 0.0,
                             );
                         } else {
-                            let mut rendered =
-                                PlacedTile::new(tile.type_(), tile.rotation() + self.rotation);
-                            for dir in (0..6).map(Rotation) {
-                                let f = tile.flow_cache(Direction::from_rotation(dir));
-                                let rdir = Direction::from_rotation(dir + self.rotation);
-                                rendered.set_flow_cache(rdir, f);
-                            }
-                            match hypothetical {
-                                Tile::NotOnBoard | Tile::Empty => {
-                                    let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
-                                        GOLDEN_BORDER
-                                    } else {
-                                        Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
-                                    };
-                                    let rotation_rads = if hovered_tile == Some(tile_pos) {
-                                        visual_rotation_rads
-                                    } else {
-                                        0.0
-                                    };
-                                    Self::draw_hex(
-                                        pos,
-                                        hexagon_radius,
-                                        painter,
-                                        &rendered,
-                                        &hypothetical,
-                                        border_stroke,
-                                        rotation_rads,
-                                    );
-                                }
-                                Tile::Placed(hypothetical) => {
-                                    let mut prior = PlacedTile::new(
-                                        hypothetical.type_(),
-                                        hypothetical.rotation() + self.rotation,
-                                    );
-                                    for dir in (0..6).map(Rotation) {
-                                        let f = hypothetical
-                                            .flow_cache(Direction::from_rotation(dir));
-                                        let rdir = Direction::from_rotation(dir + self.rotation);
-                                        prior.set_flow_cache(rdir, f);
-                                    }
-                                    let prior_tile = Tile::Placed(prior);
-                                    let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
-                                        GOLDEN_BORDER
-                                    } else {
-                                        Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
-                                    };
-                                    let rotation_rads = if hovered_tile == Some(tile_pos) {
-                                        visual_rotation_rads
-                                    } else {
-                                        0.0
-                                    };
-                                    Self::draw_hex(
-                                        pos,
-                                        hexagon_radius,
-                                        painter,
-                                        &rendered,
-                                        &prior_tile,
-                                        border_stroke,
-                                        rotation_rads,
-                                    );
-                                }
-                            }
+                            let border_stroke = if most_recent_tile_pos == Some(tile_pos) {
+                                GOLDEN_BORDER
+                            } else {
+                                Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
+                            };
+                            Self::draw_hex(
+                                pos,
+                                hexagon_radius,
+                                painter,
+                                &tile,
+                                self.rotation,
+                                &hypothetical,
+                                border_stroke,
+                                0.0,
+                            );
                         }
                     }
                 }
@@ -792,10 +767,7 @@ impl GameUi {
                             self.placement_rotation
                         };
 
-                    let tile = PlacedTile::new(
-                        tile_type,
-                        base_rotation_for_hypo_tile + self.rotation,
-                    );
+                    let tile = PlacedTile::new(tile_type, base_rotation_for_hypo_tile);
                     // To make the tile opaque, we pass a clone of the tile as the "prior" tile.
                     let prior_tile_for_opacity = Tile::Placed(tile);
                     Self::draw_hex(
@@ -803,6 +775,7 @@ impl GameUi {
                         hexagon_radius,
                         painter,
                         &tile,
+                        self.rotation,
                         &prior_tile_for_opacity,
                         HIGHLIGHT_BORDER,
                         visual_rotation_rads,
@@ -962,6 +935,7 @@ impl GameUi {
                                     hexagon_radius * 0.8, // Slightly smaller than board tiles
                                     painter,
                                     &placed_tile,
+                                    Rotation(0),  // No view rotation for this one
                                     &Tile::Empty, // Prior tile is empty since this is hypothetical
                                     Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
                                     0.0,
