@@ -157,8 +157,8 @@ The game ends immediately when any of these conditions occur:
 
 #### Constraint Strategy
 - **Force opponent choices:** Create board positions where opponents must make moves that help you
-- **Limit opponent options:** Reduce the number of legal placements available to opponents
-- **Maintain your flexibility:** Keep multiple potential paths open for yourself
+- **Let opponents over-invest:** Allow opponents to focus heavily on one route, then force them to use a different path by blocking at the last minute
+- **Maintain focused paths:** Often it's better to have only one viable path, as this makes you harder to block and easier to force opponents to play tiles that benefit you
 
 #### Positioning Strategy
 - **Control key bottlenecks:** Secure crucial connection points early
@@ -166,26 +166,9 @@ The game ends immediately when any of these conditions occur:
 - **Block efficiently:** Use minimal moves to maximum effect in constraining opponents
 
 #### Forcing Moves
-- **Create situations** where opponents have only one legal move
-- **Make that move beneficial** to your position
-- **Chain forcing moves** to maintain control
+- **Create situations** where opponents must play a move that benefits both players
+- **Make mutual benefit work for you** by ensuring the shared advantage helps your position more
 
-### Advanced Tactics
-
-#### Multi-Path Development
-- Develop **multiple potential routes** simultaneously
-- **Switch between paths** as opportunities arise
-- Force opponents to **defend multiple threats**
-
-#### Timing
-- **Strategic tile saving:** Sometimes delay optimal placement for better timing
-- **End-game acceleration:** Recognize when to push for immediate victory
-- **Opponent tile prediction:** Try to anticipate opponent tile types
-
-#### Team Coordination (4-6 player games)
-- **Coordinate without communication:** Use board position to signal intentions
-- **Complementary development:** One partner advances while other defends
-- **Shared resource management:** Both partners contribute to the team victory
 
 ## Special Situations
 
@@ -203,22 +186,7 @@ The game ends immediately when any of these conditions occur:
 - **Careful tile orientation** can control which flows connect
 - **Flow markers clearly show** each player's controlled paths
 
-## Game Variants
 
-### Learning Variant
-- **Play with tiles face up** for new players
-- Allows **strategic planning** and **educational discussion**
-- Remove this constraint as players become comfortable
-
-### Quick Game
-- **Use only 30 tiles** (remove 10 random tiles)
-- **Faster setup and play** 
-- **More constrained decisions** due to fewer available tiles
-
-### Expert Challenge
-- **No take-backs** on tile placement
-- **Stricter time limits** per turn
-- **Enhanced penalty** for illegal move attempts
 
 ## Tips for New Players
 
