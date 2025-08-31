@@ -1,6 +1,9 @@
 use crate::backend::Backend;
 use crate::game::*;
 use crate::server_protocol::*;
+use parking_lot::RwLock;
+use std::collections::HashMap;
+use std::sync::{Arc, Weak};
 
 #[cfg(target_arch = "wasm32")]
 mod server_connection {
@@ -80,12 +83,10 @@ mod server_connection {
                 }
             });
 
-            let s = Self {
+            Self {
                 stream: RwLock::new(stream),
                 message_buffer,
-            };
-            s.send(ClientToServerMessage::Connect);
-            s
+            }
         }
 
         pub fn receive(&self) -> Vec<ServerToClientMessage> {
@@ -104,46 +105,132 @@ mod server_connection {
 
 use server_connection::*;
 
+pub struct RoomData {
+    pub room_info: RoomInfo,
+    pub actions: Vec<Action>,
+}
+
 pub struct ServerBackend {
-    viewer: GameViewer,
-    actions_received: Vec<Action>,
-    connection: ServerConnection,
+    connection: Arc<ServerConnection>,
+    pub my_user: Option<User>,
+    pub reconnect_token: Option<ReconnectToken>,
+    pub rooms: Vec<RoomPreview>,
+    pub room_datas: HashMap<RoomId, Arc<RwLock<RoomData>>>,
+}
+
+pub struct ServerBackendGame {
+    my_user: User,
+    room_id: RoomId,
+    room_data: Arc<RwLock<RoomData>>,
+    server_connection: Weak<ServerConnection>,
 }
 
 impl ServerBackend {
     pub fn new(addr: &str) -> std::io::Result<Self> {
         Ok(Self {
-            viewer: GameViewer::Spectator,
-            actions_received: Vec::new(),
-            connection: ServerConnection::new(addr),
+            connection: Arc::new(ServerConnection::new(addr)),
+            my_user: None,
+            reconnect_token: None,
+            rooms: Vec::new(),
+            room_datas: HashMap::new(),
         })
     }
-}
 
-impl Backend for ServerBackend {
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         for message in self.connection.receive().into_iter() {
             match message {
-                ServerToClientMessage::YouAreGameViewer(game_viewer) => {
-                    self.viewer = game_viewer;
+                ServerToClientMessage::InvalidRequest { .. } => (),
+                ServerToClientMessage::Connected {
+                    your_user,
+                    reconnect_token,
+                } => {
+                    self.my_user = Some(your_user);
+                    self.reconnect_token = Some(reconnect_token);
+                    // TODO: Persist reconnect token somehow
                 }
-                ServerToClientMessage::AppendAction(action) => {
-                    self.actions_received.push(action);
+                ServerToClientMessage::RoomsList { rooms } => self.rooms = rooms,
+                ServerToClientMessage::RoomInfo { room_id, room_info } => {
+                    match self.room_datas.get(&room_id) {
+                        Some(room_data) => room_data.write().room_info = room_info,
+                        None => {
+                            self.room_datas.insert(
+                                room_id,
+                                Arc::new(RwLock::new(RoomData {
+                                    room_info,
+                                    actions: Vec::new(),
+                                })),
+                            );
+                        }
+                    }
+                }
+                ServerToClientMessage::RoomCurrentActions { room_id, actions } => {
+                    match self.room_datas.get(&room_id) {
+                        Some(room_data) => room_data.write().actions = actions,
+                        None => (), // It's illegal to send the room's current actions before
+                                    // information about the room
+                    }
+                }
+                ServerToClientMessage::RoomAppendAction { room_id, action } => {
+                    match self.room_datas.get(&room_id) {
+                        Some(room_data) => room_data.write().actions.push(action),
+                        None => (), // It's illegal to append an action before sending information about the room
+                    }
                 }
             }
         }
     }
 
+    pub fn game_backend_for_room(&self, room_id: RoomId) -> Option<ServerBackendGame> {
+        match self.room_datas.get(&room_id) {
+            None => None,
+            Some(room_data) => match &self.my_user {
+                None => None,
+                Some(my_user) => Some(ServerBackendGame {
+                    my_user: my_user.clone(),
+                    room_id,
+                    room_data: room_data.clone(),
+                    server_connection: Arc::downgrade(&self.connection),
+                }),
+            },
+        }
+    }
+}
+
+impl Backend for ServerBackendGame {
+    fn update(&mut self) {
+        // We rely on the underlying ServerBackend being recently updated
+    }
+
     fn viewer(&self) -> GameViewer {
-        self.viewer
+        match self
+            .room_data
+            .read()
+            .room_info
+            .user_to_game_viewer
+            .get(&self.my_user.user_id)
+        {
+            Some(game_viewer) => *game_viewer,
+            None => GameViewer::Spectator,
+        }
     }
 
     fn actions_from_index(&self, index: usize) -> Vec<Action> {
-        self.actions_received.iter().skip(index).cloned().collect()
+        self.room_data
+            .read()
+            .actions
+            .iter()
+            .skip(index)
+            .cloned()
+            .collect()
     }
 
     fn submit_action(&self, action: Action) {
-        self.connection
-            .send(ClientToServerMessage::SubmitAction(action));
+        match self.server_connection.upgrade() {
+            Some(connection) => connection.send(ClientToServerMessage::SubmitAction {
+                room_id: self.room_id.clone(),
+                action,
+            }),
+            None => (),
+        }
     }
 }

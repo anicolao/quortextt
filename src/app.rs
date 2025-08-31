@@ -3,6 +3,7 @@ use crate::game::{GameSettings, GameViewer, Rotation};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
 use crate::server_backend::ServerBackend;
+use crate::server_protocol::RoomId;
 
 struct InMemoryMode {
     admin_view: GameView,
@@ -32,19 +33,23 @@ impl InMemoryMode {
     }
 }
 
-struct ServerMode {
+struct ServerModeRoom {
+    room_id: RoomId,
     player_view: GameView,
     player_ui: GameUi,
 }
 
+struct ServerMode {
+    backend: ServerBackend,
+    current_room: Option<ServerModeRoom>,
+}
+
 impl ServerMode {
-    pub fn new(server_ip: &String) -> Self {
+    pub fn new(server_ip: &str) -> Self {
         let backend = ServerBackend::new(server_ip).unwrap();
-        let player_view = GameView::new(Box::new(backend));
-        let player_ui = GameUi::new(Rotation(0));
         Self {
-            player_view,
-            player_ui,
+            backend,
+            current_room: None,
         }
     }
 }
@@ -131,9 +136,15 @@ impl eframe::App for FlowsApp {
             }
             State::ServerMode(server_mode) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    let player_view = &mut server_mode.player_view;
-                    player_view.poll_backend();
-                    server_mode.player_ui.display(ui, ctx, player_view);
+                    server_mode.backend.update();
+                    ui.vertical(|ui| {
+                        for room in server_mode.backend.rooms.iter() {
+                            ui.label(&room.room_id);
+                        }
+                    });
+                    // let player_view = &mut server_mode.player_view;
+                    // player_view.poll_backend();
+                    // server_mode.player_ui.display(ui, ctx, player_view);
                 });
                 ctx.request_repaint_after_secs(1.0 / 60.0);
             }
