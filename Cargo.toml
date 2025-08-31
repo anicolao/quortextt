@@ -80,3 +80,8 @@ required-features = ["gui"]
 name = "server"
 path = "src/server.rs"
 required-features = []
+
+[[bin]]
+name = "tile_generator"
+path = "src/tile_generator.rs"
+required-features = []
