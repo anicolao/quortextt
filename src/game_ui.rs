@@ -134,6 +134,11 @@ struct FlowAnimation {
     next: Option<Box<FlowAnimation>>,
 }
 
+struct FlowSources {
+    start: bool,
+    end: bool,
+}
+
 impl AnimationState {
     fn new() -> Self {
         Self {
@@ -359,64 +364,56 @@ impl GameUi {
         false
     }
 
-// ...
-
-struct FlowSources {
-    start: bool,
-    end: bool,
-}
-
-impl GameUi {
     fn get_flow_sources(
-    &self,
-    path: &[(TilePos, Direction, Direction)],
-    player: Player,
-    game: &Game,
-) -> FlowSources {
-    let mut sources = FlowSources {
-        start: false,
-        end: false,
-    };
-    if path.is_empty() {
-        return sources;
-    }
-
-    // Check start
-    let (start_pos, start_entrance, _) = path[0];
-    match game.adjacent_tile(start_pos, start_entrance) {
-        AdjacentTile::BoardEdge(_) => {
-            if self.is_player_edge(game, player, start_pos, start_entrance) {
-                sources.start = true;
-            }
+        &self,
+        path: &[(TilePos, Direction, Direction)],
+        player: Player,
+        game: &Game,
+    ) -> FlowSources {
+        let mut sources = FlowSources {
+            start: false,
+            end: false,
+        };
+        if path.is_empty() {
+            return sources;
         }
-        AdjacentTile::Tile(neighbor_pos) => {
-            if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
-                if neighbor_tile.flow_cache(start_entrance.reversed()) == Some(player) {
+
+        // Check start
+        let (start_pos, start_entrance, _) = path[0];
+        match game.adjacent_tile(start_pos, start_entrance) {
+            AdjacentTile::BoardEdge(_) => {
+                if self.is_player_edge(game, player, start_pos, start_entrance) {
                     sources.start = true;
                 }
             }
-        }
-    }
-
-    // Check end
-    let (end_pos, _, end_exit) = path[path.len() - 1];
-    match game.adjacent_tile(end_pos, end_exit) {
-        AdjacentTile::BoardEdge(_) => {
-            if self.is_player_edge(game, player, end_pos, end_exit) {
-                sources.end = true;
-            }
-        }
-        AdjacentTile::Tile(neighbor_pos) => {
-            if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
-                if neighbor_tile.flow_cache(end_exit.reversed()) == Some(player) {
-                    sources.end = true;
+            AdjacentTile::Tile(neighbor_pos) => {
+                if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
+                    if neighbor_tile.flow_cache(start_entrance.reversed()) == Some(player) {
+                        sources.start = true;
+                    }
                 }
             }
         }
-    }
 
-    sources
-}
+        // Check end
+        let (end_pos, _, end_exit) = path[path.len() - 1];
+        match game.adjacent_tile(end_pos, end_exit) {
+            AdjacentTile::BoardEdge(_) => {
+                if self.is_player_edge(game, player, end_pos, end_exit) {
+                    sources.end = true;
+                }
+            }
+            AdjacentTile::Tile(neighbor_pos) => {
+                if let Tile::Placed(neighbor_tile) = game.tile(neighbor_pos) {
+                    if neighbor_tile.flow_cache(end_exit.reversed()) == Some(player) {
+                        sources.end = true;
+                    }
+                }
+            }
+        }
+
+        sources
+    }
 
     pub fn display(&mut self, ui: &mut Ui, ctx: &Context, game_view: &mut GameView) -> Response {
         self.animation_state.frame_count += 1;
@@ -1061,7 +1058,7 @@ impl GameUi {
 #[cfg(test)]
 mod tests {
     use crate::backend::InMemoryBackend;
-    use crate::game::{GameSettings, GameViewer, Rotation};
+    use crate.game::{GameSettings, GameViewer, Rotation};
     use crate::game_ui::GameUi;
     use crate::game_view::GameView;
 
