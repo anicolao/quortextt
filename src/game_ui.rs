@@ -813,20 +813,23 @@ impl GameUi {
                 let progress_in_segment =
                     (elapsed_frames % frames_per_tile) as f32 / frames_per_tile as f32;
 
-                let (current_tile_pos, entrance_dir, exit_dir) = anim.path[current_tile_idx];
+                let (current_tile_pos, entrance_dir, exit_dir) = &anim.path[current_tile_idx];
 
                 let hex_center = Self::hex_position(
-                    center + (current_tile_pos - center).rotate(self.rotation),
+                    center + (*current_tile_pos - center).rotate(self.rotation),
                     window.center(),
                     hexagon_radius,
                 );
                 let hexagon = Self::hexagon_coords(hex_center, hexagon_radius, 0.0);
 
+                let rotated_entrance = entrance_dir.rotate(self.rotation);
+                let rotated_exit = exit_dir.rotate(self.rotation);
+
                 let bezier_points = get_flow_bezier(
                     hex_center,
                     &hexagon,
-                    entrance_dir as usize,
-                    exit_dir as usize,
+                    rotated_entrance as usize,
+                    rotated_exit as usize,
                 );
                 let draw_pos = sample_bezier(bezier_points, progress_in_segment);
 
@@ -843,6 +846,13 @@ impl GameUi {
             BG_COLOUR_STROKE,
             std::f32::consts::PI / 6.0,
         );
+        let animations_running = self.animation_state.rotation_state.is_some()
+            || self.animation_state.snap_animation.is_some()
+            || self.animation_state.flow_animation.is_some();
+
+        if animations_running {
+            ctx.request_repaint();
+        }
         Self::draw_empty_hex(
             window.center(),
             hexagon_radius * 7.5,
