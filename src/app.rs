@@ -99,41 +99,25 @@ impl eframe::App for FlowsApp {
                 });
             }
             State::InMemoryMode(in_memory_mode) => {
-                egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        for i in 0..in_memory_mode.player_uis.len() {
-                            ui.selectable_value(
-                                &mut in_memory_mode.current_displayed_player,
-                                i,
-                                format!("Player {i}"),
-                            );
-                        }
-                    });
-                });
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    let player_view =
-                        &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
-                    let num_actions = player_view.poll_backend();
-                    if num_actions > in_memory_mode.displayed_action_count
-                        && in_memory_mode.displayed_action_count > 0
-                    {
-                        in_memory_mode.current_displayed_player += 1;
-                        in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
-                    }
-                    in_memory_mode.displayed_action_count = num_actions;
-                    in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
-                        ui,
-                        ctx,
-                        player_view,
-                    );
-                });
+                let player_view =
+                    &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
+                let num_actions = player_view.poll_backend();
+                if num_actions > in_memory_mode.displayed_action_count
+                    && in_memory_mode.displayed_action_count > 0
+                {
+                    in_memory_mode.current_displayed_player += 1;
+                    in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
+                }
+                in_memory_mode.displayed_action_count = num_actions;
+                in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
+                    ctx,
+                    player_view,
+                );
             }
             State::ServerMode(server_mode) => {
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    let player_view = &mut server_mode.player_view;
-                    player_view.poll_backend();
-                    server_mode.player_ui.display(ui, ctx, player_view);
-                });
+                let player_view = &mut server_mode.player_view;
+                player_view.poll_backend();
+                server_mode.player_ui.display(ctx, player_view);
                 ctx.request_repaint_after_secs(1.0 / 60.0);
             }
         }
