@@ -1,33 +1,25 @@
-// This module contains all the logic for checking illegal moves
-// based on the algorithm designed in ILLEGAL_MOVE_ALGO.md.
-
-use crate::game::{Direction, Game, Tile, TilePos, TileType, Player};
+// This module contains all the logic for checking illegal moves.
+use crate::game::{Direction, Game, Tile, TilePos, TileType, Player, Rotation};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 // A directed edge between two hexes.
 type EdgeKey = (TilePos, TilePos);
-
 type Connection = (Direction, Direction);
 
 pub fn is_move_legal(game: &Game) -> bool {
-    if game.outcome().is_some() {
-        return true;
-    }
+    if game.outcome().is_some() { return true; }
     has_distinct_potential_paths(game)
 }
 
 fn has_distinct_potential_paths(game: &Game) -> bool {
     let players: Vec<Player> = (0..game.num_players()).collect();
-
     if let Some(failing_player) = check_paths_for_ordering(&players, game) {
         let mut reordered_players = vec![failing_player];
         reordered_players.extend(players.iter().filter(|&&p| p != failing_player));
-
         if check_paths_for_ordering(&reordered_players, game).is_some() {
             return false;
         }
     }
-
     true
 }
 
@@ -37,14 +29,12 @@ fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<P
 
     for &player in ordered_players {
         let path = find_potential_path_for_team(player, game, &claimed_edges, &internal_demands);
-
         if let Some(p) = path {
             claim_resources_for_path(&p, &mut claimed_edges, &mut internal_demands, game);
         } else {
             return Some(player);
         }
     }
-
     None
 }
 
@@ -60,16 +50,14 @@ fn find_potential_path_for_team(
     let (start_side, goal_side) = get_player_sides(player);
     let goal_hexes: HashSet<TilePos> = game.edges_on_board_edge(goal_side).into_iter().map(|(p, _)| p).collect();
 
-    // 1. Initialize Queue with valid paths of length 2.
+    // 1. Initialize Queue with valid starting paths of length 2.
     for (pos, border_dir) in game.edges_on_board_edge(start_side) {
         if let Tile::Placed(tile) = game.tile(pos) {
             let exit_dir = tile.exit_from_entrance(border_dir);
             if let Some(neighbor_hex) = game.get_neighbor_pos(pos, exit_dir) {
                 if !game.is_border_edge(neighbor_hex, exit_dir.reversed()) {
                     let edge = (pos, neighbor_hex);
-                    if visited_edges.insert(edge) {
-                        queue.push_back(vec![pos, neighbor_hex]);
-                    }
+                    if visited_edges.insert(edge) { queue.push_back(vec![pos, neighbor_hex]); }
                 }
             }
         }
@@ -78,9 +66,7 @@ fn find_potential_path_for_team(
                  if let Some(neighbor_hex) = game.get_neighbor_pos(pos, dir) {
                     if !game.is_border_edge(neighbor_hex, dir.reversed()) {
                         let edge = (pos, neighbor_hex);
-                         if visited_edges.insert(edge) {
-                            queue.push_back(vec![pos, neighbor_hex]);
-                        }
+                         if visited_edges.insert(edge) { queue.push_back(vec![pos, neighbor_hex]); }
                     }
                  }
             }
@@ -90,10 +76,7 @@ fn find_potential_path_for_team(
     // 2. Perform BFS
     while let Some(current_path) = queue.pop_front() {
         let current_hex = *current_path.last().unwrap();
-
-        if goal_hexes.contains(&current_hex) {
-            return Some(current_path);
-        }
+        if goal_hexes.contains(&current_hex) { return Some(current_path); }
 
         for exit_dir in Direction::all_directions() {
             if let Some(neighbor_hex) = game.get_neighbor_pos(current_hex, exit_dir) {
@@ -109,7 +92,6 @@ fn find_potential_path_for_team(
             }
         }
     }
-
     None
 }
 
@@ -121,20 +103,14 @@ fn is_valid_step(
     internal_demands: &HashMap<TilePos, HashSet<Connection>>,
 ) -> bool {
     let current_hex = *path.last().unwrap();
-
-    let edge_key = (current_hex, next_hex);
-    if claimed_edges.contains(&edge_key) {
-        return false;
-    }
+    if claimed_edges.contains(&(current_hex, next_hex)) { return false; }
 
     if path.len() >= 2 {
         let prev_hex = path[path.len() - 2];
         if let Tile::Placed(tile) = game.tile(current_hex) {
             let entry_dir = game.get_direction_towards(current_hex, prev_hex).unwrap();
             let exit_dir = game.get_direction_towards(current_hex, next_hex).unwrap();
-            if tile.exit_from_entrance(entry_dir) != exit_dir {
-                return false;
-            }
+            if tile.exit_from_entrance(entry_dir) != exit_dir { return false; }
         }
     }
 
@@ -147,34 +123,25 @@ fn is_valid_step(
 
             let mut all_demands = internal_demands.get(&current_hex).cloned().unwrap_or_default();
             all_demands.insert(new_demand);
-            if !is_satisfiable(&all_demands) {
-                return false;
-            }
+            if !is_satisfiable(&all_demands) { return false; }
         }
     }
-
     true
 }
 
 fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
     if demands.is_empty() { return true; }
-
     for i in 0..4 {
         let tile_type = TileType::from_num_sharps(i);
         for r in 0..6 {
-            let rotation = crate::game::Rotation(r);
+            let rotation = Rotation(r);
             let mut provides_all = true;
             for &(d1, d2) in demands {
                 let rotated_d1 = d1.rotate(rotation.reversed());
                 let expected_exit = tile_type.exit_from_entrance(rotated_d1).rotate(rotation);
-                if expected_exit != d2 {
-                    provides_all = false;
-                    break;
-                }
+                if expected_exit != d2 { provides_all = false; break; }
             }
-            if provides_all {
-                return true;
-            }
+            if provides_all { return true; }
         }
     }
     false
@@ -187,9 +154,7 @@ fn claim_resources_for_path(
     game: &Game,
 ) {
     for i in 0..path.len() - 1 {
-        let p1 = path[i];
-        let p2 = path[i+1];
-        claimed_edges.insert((p1, p2));
+        claimed_edges.insert((path[i], path[i+1]));
     }
 
     for i in 1..path.len() - 1 {
@@ -204,11 +169,11 @@ fn claim_resources_for_path(
     }
 }
 
-fn get_player_sides(player: Player) -> (crate::game::Rotation, crate::game::Rotation) {
+fn get_player_sides(player: Player) -> (Rotation, Rotation) {
     match player {
-        0 => (crate::game::Rotation(0), crate::game::Rotation(3)),
-        1 => (crate::game::Rotation(2), crate::game::Rotation(5)),
-        2 => (crate::game::Rotation(4), crate::game::Rotation(1)),
+        0 => (Rotation(0), Rotation(3)),
+        1 => (Rotation(2), Rotation(5)),
+        2 => (Rotation(4), Rotation(1)),
         _ => panic!("Invalid player"),
     }
 }

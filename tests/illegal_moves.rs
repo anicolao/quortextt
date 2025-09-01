@@ -172,6 +172,40 @@ fn test_no_contention_scenario_is_legal() {
 }
 
 #[test]
+fn test_final_scenario_is_illegal() {
+    let mut game = setup_game();
+    let moves = [
+        (0, TileType::NoSharps, TilePos::new(0, 3), Rotation(5)),
+        (1, TileType::OneSharp, TilePos::new(0, 2), Rotation(0)),
+        (0, TileType::ThreeSharps, TilePos::new(1, 2), Rotation(4)),
+        (1, TileType::TwoSharps, TilePos::new(0, 1), Rotation(2)),
+        (0, TileType::OneSharp, TilePos::new(0, 0), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(1, 3), Rotation(0)),
+        (0, TileType::OneSharp, TilePos::new(1, 4), Rotation(1)),
+        (1, TileType::ThreeSharps, TilePos::new(3, 4), Rotation(5)),
+        (0, TileType::OneSharp, TilePos::new(2, 3), Rotation(0)),
+        (1, TileType::OneSharp, TilePos::new(3, 5), Rotation(1)),
+        (0, TileType::NoSharps, TilePos::new(2, 4), Rotation(5)),
+        (1, TileType::TwoSharps, TilePos::new(2, 5), Rotation(5)),
+        (0, TileType::TwoSharps, TilePos::new(4, 6), Rotation(4)),
+        (1, TileType::OneSharp, TilePos::new(4, 5), Rotation(5)),
+        (0, TileType::ThreeSharps, TilePos::new(3, 3), Rotation(3)),
+        (1, TileType::NoSharps, TilePos::new(2, 2), Rotation(1)),
+        (0, TileType::ThreeSharps, TilePos::new(2, 1), Rotation(1)),
+        (1, TileType::ThreeSharps, TilePos::new(3, 2), Rotation(1)),
+    ];
+    for (player, tile, pos, rotation) in moves {
+        game.set_current_player_for_testing(player);
+        game.apply_action(Action::PlaceTile { player, tile, pos, rotation }).unwrap();
+    }
+
+    game.set_current_player_for_testing(0);
+    let final_action = Action::PlaceTile { player: 0, tile: TileType::TwoSharps, pos: TilePos::new(1, 1), rotation: Rotation(5) };
+    let result = game.apply_action(final_action);
+    assert!(result.is_err(), "Final scenario move was considered legal but should be illegal.");
+}
+
+#[test]
 fn test_user_d6_placement_is_legal() {
     let mut game = setup_game();
     let moves = [
