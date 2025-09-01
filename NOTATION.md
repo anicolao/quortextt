@@ -111,12 +111,28 @@ The orientation of each tile is specified by indicating where the "north" refere
 
 ### North Reference Point
 
-For each tile type, "North" (default) orientation means:
+For each tile type, "South" (default) orientation means:
 
 - **T0 (No sharps)**: The straight horizontal flow path (West↔East) runs left-right
-- **T1 (One sharp)**: The sharp corner points upward (north)
-- **T2 (Two sharps)**: The curved path opening points upward
-- **T3 (Three sharps)**: The three sharp corners form connections in standard position
+- **T1 (One sharp)**: The sharp corner points downward (south)
+- **T2 (Two sharps)**: The two sharp corners point downward and upward (south and north)
+- **T3 (Three sharps)**: Three sharp corners form connections with one pointing downward (south)
+
+#### Visual Examples
+
+The following diagrams show each tile type in default (South) orientation:
+
+![T0 Tile - No Sharps](assets/tiles/T0_N.svg)
+**T0 (No Sharps)**: Three curved flow paths - SouthWest↔NorthWest, NorthEast↔SouthEast, West↔East
+
+![T1 Tile - One Sharp](assets/tiles/T1_N.svg)
+**T1 (One Sharp)**: Sharp corner points south - SouthWest↔SouthEast (sharp), NorthWest↔East, West↔NorthEast
+
+![T2 Tile - Two Sharps](assets/tiles/T2_N.svg)
+**T2 (Two Sharps)**: Two sharp corners north and south - SouthWest↔SouthEast (sharp), NorthWest↔NorthEast (sharp), West↔East
+
+![T3 Tile - Three Sharps](assets/tiles/T3_N.svg)
+**T3 (Three Sharps)**: Three sharp corners - SouthWest↔SouthEast (sharp), NorthEast↔East (sharp), West↔NorthWest (sharp)
 
 ## Complete Move Notation
 
