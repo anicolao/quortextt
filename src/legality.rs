@@ -6,9 +6,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 type Connection = (Direction, Direction);
 
 // An inter-hex edge, which is the node in our pathfinding graph.
-// It's represented by the two hexes it connects and the direction from the
-// canonical "source" hex (the one with the smaller coordinate).
-type Node = (TilePos, TilePos, Direction);
+// It's represented by the two hexes it connects.
+type Node = (TilePos, TilePos);
 
 /// Checks if a set of required connections within a single hex can be
 /// fulfilled by any single tile.
@@ -81,13 +80,11 @@ fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<P
 
 // Helper to create a canonical representation of a node (inter-hex edge).
 // The source hex must always be "smaller" than the destination hex.
-fn canonical_node(pos1: TilePos, pos2: TilePos, game: &Game) -> Node {
-    let dir = game.get_direction_towards(pos1, pos2).unwrap();
-    if pos1 < pos2 {
-        (pos1, pos2, dir)
-    } else {
-        (pos2, pos1, dir.reversed())
+fn canonical_node(mut pos1: TilePos, mut pos2: TilePos) -> Node {
+    if pos1 > pos2 {
+        std::mem::swap(&mut pos1, &mut pos2);
     }
+    (pos1, pos2)
 }
 
 fn find_potential_path_for_team(
@@ -107,14 +104,12 @@ fn find_potential_path_for_team(
 
     // 1. Initialize Queue with starting paths.
     for (start_pos, border_dir) in game.edges_on_board_edge(start_side) {
-        let entry_dir = border_dir;
-
         match *game.tile(start_pos) {
             Tile::Placed(placed_tile) => {
                 // Path must follow the tile's connection from the entry point.
-                let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+                let exit_dir = placed_tile.exit_from_entrance(border_dir);
                 if let Some(neighbor_pos) = game.get_neighbor_pos(start_pos, exit_dir) {
-                    let start_node = canonical_node(start_pos, neighbor_pos, game);
+                    let start_node = canonical_node(start_pos, neighbor_pos);
                     if !claimed_edges.contains(&start_node) && !visited_nodes.contains(&start_node)
                     {
                         queue.push_back((vec![start_node], neighbor_pos));
@@ -126,7 +121,7 @@ fn find_potential_path_for_team(
                 // From an empty start hex, a path can go to any neighbor.
                 for exit_dir in Direction::all_directions() {
                     if let Some(neighbor_pos) = game.get_neighbor_pos(start_pos, exit_dir) {
-                        let start_node = canonical_node(start_pos, neighbor_pos, game);
+                        let start_node = canonical_node(start_pos, neighbor_pos);
                         if !claimed_edges.contains(&start_node) && !visited_nodes.contains(&start_node)
                         {
                             queue.push_back((vec![start_node], neighbor_pos));
@@ -185,7 +180,7 @@ fn find_potential_path_for_team(
                 let exit_dir = placed_tile.exit_from_entrance(entry_dir);
 
                 if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
-                    let next_node = canonical_node(current_pos, next_pos, game);
+                    let next_node = canonical_node(current_pos, next_pos);
                     if !visited_nodes.contains(&next_node) && !claimed_edges.contains(&next_node)
                     {
                         let mut new_path = path.clone();
@@ -201,7 +196,7 @@ fn find_potential_path_for_team(
                     if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
                         if next_pos == prev_pos { continue; } // Don't go back
 
-                        let next_node = canonical_node(current_pos, next_pos, game);
+                        let next_node = canonical_node(current_pos, next_pos);
                         if visited_nodes.contains(&next_node) || claimed_edges.contains(&next_node) {
                             continue;
                         }
