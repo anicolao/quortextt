@@ -101,11 +101,9 @@ fn find_potential_path_for_team(
     let mut visited_nodes: HashSet<Node> = HashSet::new();
 
     let (start_side, goal_side) = get_player_sides(player);
-    let goal_hexes: HashSet<TilePos> = game
-        .edges_on_board_edge(goal_side)
-        .into_iter()
-        .map(|(pos, _)| pos)
-        .collect();
+    let goal_edges: HashSet<(TilePos, Direction)> =
+        game.edges_on_board_edge(goal_side).into_iter().collect();
+    let goal_hexes: HashSet<TilePos> = goal_edges.iter().map(|(pos, _)| *pos).collect();
 
     // 1. Initialize Queue with starting paths.
     for (start_pos, border_dir) in game.edges_on_board_edge(start_side) {
@@ -143,13 +141,41 @@ fn find_potential_path_for_team(
 
     // 2. Perform BFS
     while let Some((path, current_pos)) = queue.pop_front() {
-        // 3. Check for Goal: Reaching any hex on the goal border is sufficient.
+        let last_node = path.last().unwrap();
+        let prev_pos = if last_node.0 == current_pos { last_node.1 } else { last_node.0 };
+
+        // 3. Check for Goal
         if goal_hexes.contains(&current_pos) {
-            return Some(path);
+            let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+            match *game.tile(current_pos) {
+                Tile::Placed(placed_tile) => {
+                    let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+                    if goal_edges.contains(&(current_pos, exit_dir)) {
+                        return Some(path); // Success!
+                    }
+                }
+                Tile::Empty => {
+                    // Find the goal directions for this specific hex
+                    for (_, goal_exit_dir) in goal_edges.iter().filter(|(pos, _)| *pos == current_pos)
+                    {
+                        let mut new_demand = (entry_dir, *goal_exit_dir);
+                        if new_demand.0 > new_demand.1 {
+                            std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                        }
+                        let mut all_demands =
+                            internal_demands.get(&current_pos).cloned().unwrap_or_default();
+                        all_demands.insert(new_demand);
+
+                        if is_satisfiable(&all_demands) {
+                            return Some(path); // Success!
+                        }
+                    }
+                }
+                Tile::NotOnBoard => {}
+            }
         }
 
         // 4. Explore Neighbors
-        let last_node = path.last().unwrap();
         let prev_pos = if last_node.0 == current_pos { last_node.1 } else { last_node.0 };
 
         match *game.tile(current_pos) {
