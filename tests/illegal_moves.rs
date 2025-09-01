@@ -121,3 +121,26 @@ fn test_internal_pathway_contention_fails() {
     let result = game.apply_action(illegal_action);
     assert!(result.is_err(), "The move should be illegal due to impossible internal pathway demands.");
 }
+
+#[test]
+fn test_user_provided_scenario() {
+    let mut game = setup_game();
+    game.set_current_player_for_testing(0);
+    game.apply_action(Action::PlaceTile { player: 0, tile: TileType::OneSharp, pos: TilePos::new(0, 0), rotation: Rotation(0) }).unwrap();
+
+    game.set_current_player_for_testing(1);
+    game.apply_action(Action::PlaceTile { player: 1, tile: TileType::TwoSharps, pos: TilePos::new(0, 1), rotation: Rotation(0) }).unwrap();
+
+    game.set_current_player_for_testing(0);
+    game.apply_action(Action::PlaceTile { player: 0, tile: TileType::OneSharp, pos: TilePos::new(0, 2), rotation: Rotation(0) }).unwrap();
+
+    // This is the move the user believes to be illegal.
+    game.set_current_player_for_testing(1);
+    let final_action = Action::PlaceTile { player: 1, tile: TileType::ThreeSharps, pos: TilePos::new(0, 3), rotation: Rotation(0) };
+
+    // My analysis indicates this move is legal because P0 is not blocked.
+    // However, I am writing the test to fail as the user expects,
+    // to provide a basis for discussion.
+    let result = game.apply_action(final_action);
+    assert!(result.is_err(), "User scenario failed: move was considered legal but expected illegal.");
+}

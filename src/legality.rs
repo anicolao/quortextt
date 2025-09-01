@@ -83,11 +83,32 @@ fn find_potential_path_for_team(
     let goal_hexes: HashSet<TilePos> = game.edges_on_board_edge(goal_side).into_iter().map(|(p, _)| p).collect();
 
     // 1. Initialize Queue
-    for (pos, _) in game.edges_on_board_edge(start_side) {
-        if !visited.contains_key(&pos) {
-            let path = vec![pos];
-            queue.push_back(path.clone());
-            visited.insert(pos, path);
+    // A path must start by moving from a border edge to a board-facing edge.
+    for (pos, border_dir) in game.edges_on_board_edge(start_side) {
+        if let Tile::Placed(tile) = game.tile(pos) {
+            let exit_dir = tile.exit_from_entrance(border_dir);
+            if let Some(neighbor_hex) = game.get_neighbor_pos(pos, exit_dir) {
+                // This is a valid starting step into the board.
+                if !visited.contains_key(&neighbor_hex) {
+                    let path = vec![pos, neighbor_hex];
+                    queue.push_back(path.clone());
+                    visited.insert(neighbor_hex, path);
+                }
+            }
+        }
+        // If the tile on the border is empty, any move into the board is possible.
+        if let Tile::Empty = game.tile(pos) {
+            for dir in Direction::all_directions() {
+                 if let Some(neighbor_hex) = game.get_neighbor_pos(pos, dir) {
+                    if !game.is_border_edge(neighbor_hex, dir.reversed()) {
+                         if !visited.contains_key(&neighbor_hex) {
+                            let path = vec![pos, neighbor_hex];
+                            queue.push_back(path.clone());
+                            visited.insert(neighbor_hex, path);
+                        }
+                    }
+                 }
+            }
         }
     }
 
