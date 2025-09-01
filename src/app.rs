@@ -1,3 +1,4 @@
+use crate::ai_backend::EasyAiBackend;
 use crate::backend::InMemoryBackend;
 use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
@@ -31,6 +32,23 @@ impl InMemoryMode {
     }
 }
 
+struct EasyAiMode {
+    human_view: GameView,
+    human_ui: GameUi,
+}
+
+impl EasyAiMode {
+    pub fn new(settings: GameSettings) -> Self {
+        let backend = EasyAiBackend::new(settings);
+        let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
+        let human_ui = GameUi::new();
+        Self {
+            human_view,
+            human_ui,
+        }
+    }
+}
+
 struct ServerMode {
     player_view: GameView,
     player_ui: GameUi,
@@ -51,6 +69,7 @@ impl ServerMode {
 enum State {
     Menu { server_ip: String },
     InMemoryMode(InMemoryMode),
+    EasyAiMode(EasyAiMode),
     ServerMode(ServerMode),
 }
 
@@ -92,6 +111,13 @@ impl eframe::App for FlowsApp {
                         })));
                     }
 
+                    if ui.button("Easy AI").clicked() {
+                        new_state = Some(State::EasyAiMode(EasyAiMode::new(GameSettings {
+                            num_players: 2,
+                            version: 0,
+                        })));
+                    }
+
                     ui.text_edit_singleline(server_ip);
                     if ui.button("Server").clicked() {
                         new_state = Some(State::ServerMode(ServerMode::new(server_ip)));
@@ -111,6 +137,12 @@ impl eframe::App for FlowsApp {
                 in_memory_mode.displayed_action_count = num_actions;
                 in_memory_mode.player_uis[in_memory_mode.current_displayed_player]
                     .display(ctx, player_view);
+            }
+            State::EasyAiMode(easy_ai_mode) => {
+                let human_view = &mut easy_ai_mode.human_view;
+                human_view.poll_backend();
+                easy_ai_mode.human_ui.display(ctx, human_view);
+                ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
             State::ServerMode(server_mode) => {
                 let player_view = &mut server_mode.player_view;

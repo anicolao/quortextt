@@ -46,6 +46,15 @@ impl InMemoryBackend {
             viewer,
         }
     }
+
+    /// Provide access to the game state for AI purposes
+    pub fn with_game<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&Game) -> R,
+    {
+        let game = self.game.read();
+        f(&*game)
+    }
 }
 
 impl Backend for InMemoryBackend {
