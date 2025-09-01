@@ -7,6 +7,8 @@ use crate::game::*;
 pub struct EasyAiBackend {
     inner: InMemoryBackend,
     ai_player: Player,
+    last_action_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    ai_thinking: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl EasyAiBackend {
@@ -15,6 +17,8 @@ impl EasyAiBackend {
         Self {
             inner,
             ai_player: 1, // AI is always player 1
+            last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -22,11 +26,26 @@ impl EasyAiBackend {
         Self {
             inner: self.inner.backend_for_viewer(viewer),
             ai_player: self.ai_player,
+            last_action_count: self.last_action_count.clone(),
+            ai_thinking: self.ai_thinking.clone(),
         }
     }
 
     /// Check if it's the AI's turn and make a move if so
     fn maybe_make_ai_move(&self) {
+        // Check current action count to see if game state changed
+        let current_action_count = self.inner.action_history().len();
+        let last_processed = self
+            .last_action_count
+            .load(std::sync::atomic::Ordering::Relaxed);
+
+        // Only process if the game state has changed and we're not already thinking
+        if current_action_count == last_processed
+            || self.ai_thinking.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            return;
+        }
+
         let (is_ai_turn, ai_tile) = self.inner.with_game(|game| {
             if game.outcome().is_some() {
                 return (false, None); // Game is over
@@ -42,14 +61,32 @@ impl EasyAiBackend {
         });
 
         if !is_ai_turn {
+            // Update our last processed count even if it's not our turn
+            self.last_action_count
+                .store(current_action_count, std::sync::atomic::Ordering::Relaxed);
             return;
         }
 
         if let Some(tile) = ai_tile {
+            // Mark that we're thinking to prevent redundant calculations
+            self.ai_thinking
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+
             // Find the best move for the AI
             if let Some(best_move) = self.find_best_ai_move(tile) {
+                println!("AI submitting move: {:?}", best_move);
                 self.inner.submit_action(best_move);
+                // Update the action count after our move
+                let new_action_count = self.inner.action_history().len();
+                self.last_action_count
+                    .store(new_action_count, std::sync::atomic::Ordering::Relaxed);
+            } else {
+                println!("AI could not find a valid move");
             }
+
+            // Mark that we're done thinking
+            self.ai_thinking
+                .store(false, std::sync::atomic::Ordering::Relaxed);
         }
     }
 
@@ -218,8 +255,7 @@ impl EasyAiBackend {
         // Simple heuristic: placing near the center or human flow paths might block
         // This is a simplified implementation
         let center = TilePos::new(3, 3);
-        let distance_to_center =
-            (pos.row - center.row).abs() + (pos.col - center.col).abs();
+        let distance_to_center = (pos.row - center.row).abs() + (pos.col - center.col).abs();
         distance_to_center <= 2 // Close to center might be blocking
     }
 }
@@ -240,7 +276,7 @@ impl Backend for EasyAiBackend {
 
     fn submit_action(&self, action: Action) {
         self.inner.submit_action(action);
-        // After human move, check if AI should move
-        self.maybe_make_ai_move();
+        // Note: We don't call maybe_make_ai_move here to avoid redundant calculations
+        // The AI move will be triggered by the next update() call
     }
 }
