@@ -5,6 +5,8 @@ pub mod legality;
 pub mod server_protocol;
 
 #[cfg(feature = "gui")]
+mod ai_backend;
+#[cfg(feature = "gui")]
 mod app;
 #[cfg(feature = "gui")]
 mod backend;
