@@ -46,24 +46,32 @@ impl EasyAiBackend {
             return;
         }
 
-        let (is_ai_turn, ai_tile) = self.inner.with_game(|game| {
-            if game.outcome().is_some() {
-                return (false, None); // Game is over
+        let (is_ai_turn, ai_tile, current_player, game_is_over) = self.inner.with_game(|game| {
+            let outcome = game.outcome();
+            let current_player = game.current_player();
+            let game_is_over = outcome.is_some();
+
+            if game_is_over {
+                return (false, None, current_player, game_is_over); // Game is over
             }
 
-            if game.current_player() != self.ai_player {
-                return (false, None); // Not AI's turn
+            if current_player != self.ai_player {
+                return (false, None, current_player, game_is_over); // Not AI's turn
             }
 
             // Check if AI has a tile to play
             let ai_tile = game.tile_in_hand(self.ai_player);
-            (true, ai_tile)
+            (true, ai_tile, current_player, game_is_over)
         });
 
         if !is_ai_turn {
             // Update our last processed count even if it's not our turn
             self.last_action_count
                 .store(current_action_count, std::sync::atomic::Ordering::Relaxed);
+            println!(
+                "AI: Not my turn (current player: {}, AI player: {}, game over: {:?})",
+                current_player, self.ai_player, game_is_over
+            );
             return;
         }
 
@@ -71,6 +79,8 @@ impl EasyAiBackend {
             // Mark that we're thinking to prevent redundant calculations
             self.ai_thinking
                 .store(true, std::sync::atomic::Ordering::Relaxed);
+
+            println!("AI: It's my turn! Looking for moves with tile {:?}", tile);
 
             // Find the best move for the AI
             if let Some(best_move) = self.find_best_ai_move(tile) {
@@ -81,18 +91,21 @@ impl EasyAiBackend {
                 self.last_action_count
                     .store(new_action_count, std::sync::atomic::Ordering::Relaxed);
             } else {
-                println!("AI could not find a valid move");
+                println!("AI could not find a valid move with tile {:?}", tile);
             }
 
             // Mark that we're done thinking
             self.ai_thinking
                 .store(false, std::sync::atomic::Ordering::Relaxed);
+        } else {
+            println!("AI: It's my turn but I have no tile to play");
         }
     }
 
     /// Find the best move for the AI using the Easy AI strategy
     fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
         self.inner.with_game(|game| {
+            println!("AI: Finding best move for tile {:?}", ai_tile);
             // Generate all possible legal moves
             let mut possible_moves = Vec::new();
             for row in 0..7 {
@@ -117,6 +130,7 @@ impl EasyAiBackend {
                 }
             }
 
+            println!("AI: Found {} possible moves", possible_moves.len());
             if possible_moves.is_empty() {
                 return None;
             }
@@ -133,6 +147,7 @@ impl EasyAiBackend {
                 }
             }
 
+            println!("AI: Best move has score {}: {:?}", best_score, best_move);
             Some(best_move.clone())
         })
     }
