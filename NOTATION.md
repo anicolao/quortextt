@@ -111,7 +111,7 @@ The orientation of each tile is specified by indicating where the "north" refere
 
 ### North Reference Point
 
-For each tile type, "North" (default) orientation means:
+For each tile type, "South" (default) orientation means:
 
 - **T0 (No sharps)**: The straight horizontal flow path (West↔East) runs left-right
 - **T1 (One sharp)**: The sharp corner points downward (south)
@@ -120,7 +120,7 @@ For each tile type, "North" (default) orientation means:
 
 #### Visual Examples
 
-The following diagrams show each tile type in default (North) orientation:
+The following diagrams show each tile type in default (South) orientation:
 
 ![T0 Tile - No Sharps](assets/tiles/T0_N.svg)
 **T0 (No Sharps)**: Three curved flow paths - SouthWest↔NorthWest, NorthEast↔SouthEast, West↔East
