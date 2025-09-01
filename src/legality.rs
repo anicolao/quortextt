@@ -4,16 +4,8 @@
 use crate::game::{Direction, Game, Tile, TilePos, TileType, Player};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-struct EdgeKey(TilePos, TilePos);
-
-fn get_canonical_edge_key(p1: TilePos, p2: TilePos) -> EdgeKey {
-    if (p1.row < p2.row) || (p1.row == p2.row && p1.col < p2.col) {
-        EdgeKey(p1, p2)
-    } else {
-        EdgeKey(p2, p1)
-    }
-}
+// A directed edge between two hexes.
+type EdgeKey = (TilePos, TilePos);
 
 type Connection = (Direction, Direction);
 
@@ -63,20 +55,20 @@ fn find_potential_path_for_team(
     internal_demands: &HashMap<TilePos, HashSet<Connection>>,
 ) -> Option<Vec<TilePos>> {
     let mut queue: VecDeque<Vec<TilePos>> = VecDeque::new();
-    let mut visited: HashMap<TilePos, Vec<TilePos>> = HashMap::new();
+    let mut visited_edges: HashSet<EdgeKey> = HashSet::new();
 
     let (start_side, goal_side) = get_player_sides(player);
     let goal_hexes: HashSet<TilePos> = game.edges_on_board_edge(goal_side).into_iter().map(|(p, _)| p).collect();
 
+    // 1. Initialize Queue with valid paths of length 2.
     for (pos, border_dir) in game.edges_on_board_edge(start_side) {
         if let Tile::Placed(tile) = game.tile(pos) {
             let exit_dir = tile.exit_from_entrance(border_dir);
             if let Some(neighbor_hex) = game.get_neighbor_pos(pos, exit_dir) {
                 if !game.is_border_edge(neighbor_hex, exit_dir.reversed()) {
-                    if !visited.contains_key(&neighbor_hex) {
-                        let path = vec![pos, neighbor_hex];
-                        queue.push_back(path.clone());
-                        visited.insert(neighbor_hex, path);
+                    let edge = (pos, neighbor_hex);
+                    if visited_edges.insert(edge) {
+                        queue.push_back(vec![pos, neighbor_hex]);
                     }
                 }
             }
@@ -85,10 +77,9 @@ fn find_potential_path_for_team(
             for dir in Direction::all_directions() {
                  if let Some(neighbor_hex) = game.get_neighbor_pos(pos, dir) {
                     if !game.is_border_edge(neighbor_hex, dir.reversed()) {
-                         if !visited.contains_key(&neighbor_hex) {
-                            let path = vec![pos, neighbor_hex];
-                            queue.push_back(path.clone());
-                            visited.insert(neighbor_hex, path);
+                        let edge = (pos, neighbor_hex);
+                         if visited_edges.insert(edge) {
+                            queue.push_back(vec![pos, neighbor_hex]);
                         }
                     }
                  }
@@ -96,6 +87,7 @@ fn find_potential_path_for_team(
         }
     }
 
+    // 2. Perform BFS
     while let Some(current_path) = queue.pop_front() {
         let current_hex = *current_path.last().unwrap();
 
@@ -105,12 +97,13 @@ fn find_potential_path_for_team(
 
         for exit_dir in Direction::all_directions() {
             if let Some(neighbor_hex) = game.get_neighbor_pos(current_hex, exit_dir) {
-                if visited.contains_key(&neighbor_hex) { continue; }
+                let edge = (current_hex, neighbor_hex);
+                if visited_edges.contains(&edge) { continue; }
 
                 if is_valid_step(&current_path, neighbor_hex, game, claimed_edges, internal_demands) {
                     let mut new_path = current_path.clone();
                     new_path.push(neighbor_hex);
-                    visited.insert(neighbor_hex, new_path.clone());
+                    visited_edges.insert(edge);
                     queue.push_back(new_path);
                 }
             }
@@ -129,7 +122,7 @@ fn is_valid_step(
 ) -> bool {
     let current_hex = *path.last().unwrap();
 
-    let edge_key = get_canonical_edge_key(current_hex, next_hex);
+    let edge_key = (current_hex, next_hex);
     if claimed_edges.contains(&edge_key) {
         return false;
     }
@@ -196,7 +189,7 @@ fn claim_resources_for_path(
     for i in 0..path.len() - 1 {
         let p1 = path[i];
         let p2 = path[i+1];
-        claimed_edges.insert(get_canonical_edge_key(p1, p2));
+        claimed_edges.insert((p1, p2));
     }
 
     for i in 1..path.len() - 1 {

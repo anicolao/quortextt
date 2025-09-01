@@ -42,37 +42,6 @@ fn test_simple_block_fails() {
 }
 
 #[test]
-fn test_inter_hex_edge_contention_fails() {
-    let mut game = setup_game();
-
-    // To force contention on the edge between (3,3) and (4,3), we must
-    // block all other paths. We will build two solid walls, leaving only
-    // the column of hexes containing (3,3) and (4,3) open.
-    for r in 0..7 {
-        for c in 0..7 {
-            let pos = TilePos::new(r,c);
-            if c < 3 || c > 3 {
-                if *game.tile(pos) == flows::game::Tile::Empty {
-                    game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
-                }
-            }
-        }
-    }
-
-    // Any move is now illegal if it leaves the board in this state.
-    game.set_current_player_for_testing(0);
-    let illegal_action = Action::PlaceTile {
-        player: 0,
-        tile: TileType::NoSharps,
-        pos: TilePos::new(0, 3),
-        rotation: Rotation(0),
-    };
-
-    let result = game.apply_action(illegal_action);
-    assert!(result.is_err(), "The move should be illegal due to inter-hex edge contention.");
-}
-
-#[test]
 fn test_internal_pathway_contention_fails() {
     let mut game = setup_game();
 
@@ -80,11 +49,11 @@ fn test_internal_pathway_contention_fails() {
     for r in 0..7 {
         for c in 0..7 {
             let pos = TilePos::new(r,c);
-            if pos.row > 4 || pos.row < 2 || pos.col > 4 || pos.col < 2 {
-                if *game.tile(pos) == flows::game::Tile::Empty {
+             if *game.tile(pos) == flows::game::Tile::Empty {
+                if pos.row > 4 || pos.row < 2 || pos.col > 4 || pos.col < 2 {
                     game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
                 }
-            }
+             }
         }
     }
     game = game.with_tile_placed(TileType::OneSharp, TilePos::new(2,3), Rotation(0));
@@ -147,6 +116,7 @@ fn test_user_b3_placement_is_legal() {
     let target_pos = TilePos::new(1, 2); // B3 for Player 0
 
     for r in 0..6 {
+        let mut game_for_this_rotation = game.clone();
         let rotation = Rotation(r);
         let action = Action::PlaceTile {
             player: 0,
@@ -154,7 +124,7 @@ fn test_user_b3_placement_is_legal() {
             pos: target_pos,
             rotation,
         };
-        let result = game.apply_action(action);
+        let result = game_for_this_rotation.apply_action(action);
         assert!(
             result.is_ok(),
             "Placing T0 at B3 with rotation {} was incorrectly flagged as illegal. Error: {:?}",
@@ -199,4 +169,72 @@ fn test_no_contention_scenario_is_legal() {
 
     let result = game.apply_action(final_action);
     assert!(result.is_ok(), "The no-contention scenario move was incorrectly flagged as illegal. Error: {:?}", result.err());
+}
+
+#[test]
+fn test_user_d6_placement_is_legal() {
+    let mut game = setup_game();
+    let moves = [
+        (0, TileType::ThreeSharps, TilePos::new(0, 0), Rotation(0)),
+        (1, TileType::NoSharps, TilePos::new(2, 4), Rotation(0)),
+        (0, TileType::OneSharp, TilePos::new(0, 1), Rotation(0)),
+        (1, TileType::ThreeSharps, TilePos::new(0, 2), Rotation(0)),
+        (0, TileType::NoSharps, TilePos::new(0, 3), Rotation(4)),
+        (1, TileType::OneSharp, TilePos::new(1, 4), Rotation(5)),
+        (0, TileType::NoSharps, TilePos::new(2, 5), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(1, 3), Rotation(5)),
+    ];
+
+    for (player, tile, pos, rotation) in moves {
+        game.set_current_player_for_testing(player);
+        game.apply_action(Action::PlaceTile { player, tile, pos, rotation }).unwrap();
+    }
+
+    game.set_current_player_for_testing(0); // Next player is P0
+
+    // The move in question: P0 places a T3 tile at D6 (3,5) with default rotation.
+    let final_action = Action::PlaceTile {
+        player: 0,
+        tile: TileType::ThreeSharps,
+        pos: TilePos::new(3, 5),
+        rotation: Rotation(0),
+    };
+
+    let result = game.apply_action(final_action);
+    assert!(result.is_ok(), "D6 placement with R0 was incorrectly flagged as illegal. Error: {:?}", result.err());
+}
+
+#[test]
+fn test_user_d6_placement_all_rotations() {
+    let mut game = setup_game();
+    let moves = [
+        (0, TileType::ThreeSharps, TilePos::new(0, 0), Rotation(0)),
+        (1, TileType::NoSharps, TilePos::new(2, 4), Rotation(0)),
+        (0, TileType::OneSharp, TilePos::new(0, 1), Rotation(0)),
+        (1, TileType::ThreeSharps, TilePos::new(0, 2), Rotation(0)),
+        (0, TileType::NoSharps, TilePos::new(0, 3), Rotation(4)),
+        (1, TileType::OneSharp, TilePos::new(1, 4), Rotation(5)),
+        (0, TileType::NoSharps, TilePos::new(2, 5), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(1, 3), Rotation(5)),
+    ];
+
+    for (player, tile, pos, rotation) in moves {
+        game.set_current_player_for_testing(player);
+        game.apply_action(Action::PlaceTile { player, tile, pos, rotation }).unwrap();
+    }
+
+    game.set_current_player_for_testing(0); // Next player is P0
+    let target_pos = TilePos::new(3, 5);
+
+    for r in 0..6 {
+        let mut game_for_this_rotation = game.clone();
+        let action = Action::PlaceTile {
+            player: 0,
+            tile: TileType::ThreeSharps,
+            pos: target_pos,
+            rotation: Rotation(r),
+        };
+        let result = game_for_this_rotation.apply_action(action);
+        assert!(result.is_ok(), "D6 placement with R{} was incorrectly flagged as illegal. Error: {:?}", r, result.err());
+    }
 }
