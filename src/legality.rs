@@ -3,11 +3,11 @@ use crate::game::{Direction, Game, PlacedTile, Player, Rotation, Tile, TilePos, 
 use std::collections::{HashMap, HashSet, VecDeque};
 
 // A connection is a pair of directions (ports) on a hex that must be connected.
-type Connection = (Direction, Direction);
+pub type Connection = (Direction, Direction);
 
 // An inter-hex edge, which is the node in our pathfinding graph.
 // It's represented by the two hexes it connects.
-type Node = (TilePos, TilePos);
+pub type Node = (TilePos, TilePos);
 
 /// Checks if a set of required connections within a single hex can be
 /// fulfilled by any single tile.
@@ -87,7 +87,7 @@ fn canonical_node(mut pos1: TilePos, mut pos2: TilePos) -> Node {
     (pos1, pos2)
 }
 
-fn find_potential_path_for_team(
+pub fn find_potential_path_for_team(
     player: Player,
     game: &Game,
     claimed_edges: &HashSet<Node>,
