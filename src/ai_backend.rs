@@ -552,11 +552,7 @@ impl EasyAiBackend {
                         ai_tiles_needed, human_tiles_needed
                     );
 
-                    // Formula: human_tiles_needed / max(1, ai_tiles_needed)
-                    // This rewards moves that reduce AI's tiles needed (smaller denominator = larger score)
-                    // and increase human's tiles needed (larger numerator = larger score)
-                    // We use max(1, ai_tiles_needed) to avoid division by zero
-                    let score = human_tiles_needed as f64 / (ai_tiles_needed.max(1) as f64);
+                    let score = human_tiles_needed as f64 - 2.0 * ai_tiles_needed as f64;
 
                     // Bonus for AI being closer to completion
                     if ai_tiles_needed == 0 {
