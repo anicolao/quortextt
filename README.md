@@ -1,7 +1,5 @@
 # Flows (Quortex)
 
-[![Build Status](https://github.com/anicolao/flows/workflows/CI/badge.svg)](https://github.com/anicolao/flows/actions?workflow=CI)
-
 Flows is a strategic tile-placing game also known as "Quortex". Players place hexagonal tiles to create flowing paths from their edge of the board to their goal, while strategically constraining opponents' options.
 
 **Game Overview:**
