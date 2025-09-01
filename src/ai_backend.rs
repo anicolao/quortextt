@@ -357,8 +357,11 @@ impl EasyAiBackend {
             }
         }
 
+        println!("AI: Found {} existing flow nodes for player {}", flow_start_nodes.len(), player);
+
         // If we don't have any existing flows, fall back to the original behavior
         if flow_start_nodes.is_empty() {
+            println!("AI: No existing flows found, falling back to standard BFS");
             return find_potential_path_for_team(player, game, claimed_edges, internal_demands);
         }
 
@@ -383,6 +386,7 @@ impl EasyAiBackend {
                     Tile::Placed(placed_tile) => {
                         let exit_dir = placed_tile.exit_from_entrance(entry_dir);
                         if goal_edges.contains(&(current_pos, exit_dir)) {
+                            println!("AI: Found path from existing flows with length {}", path.len());
                             return Some(path); // Success!
                         }
                     }
@@ -402,6 +406,7 @@ impl EasyAiBackend {
                             all_demands.insert(new_demand);
 
                             if is_satisfiable(&all_demands) {
+                                println!("AI: Found path from existing flows with length {}", path.len());
                                 return Some(path); // Success!
                             }
                         }
