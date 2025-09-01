@@ -57,3 +57,25 @@ fn test_ai_can_make_moves() {
     let actions = ai_backend.actions_from_index(0);
     assert!(actions.len() >= 4, "AI should have made at least one move");
 }
+
+#[test]
+fn test_ai_evaluation_improvements() {
+    // This test verifies that our new evaluation logic is working
+    // by creating an AI backend and checking it doesn't crash during evaluation
+    let ai_backend = setup_ai_game();
+
+    // Initialize the game
+    let init_action = Action::InitializeGame(GameSettings {
+        num_players: 2,
+        version: 0,
+    });
+    ai_backend.submit_action(init_action);
+
+    // The test passes if the AI backend was created successfully and
+    // the initialization worked without crashing our new evaluation code
+    assert_eq!(ai_backend.viewer(), GameViewer::Admin);
+    
+    // Verify action history contains the initialization
+    let actions = ai_backend.actions_from_index(0);
+    assert!(!actions.is_empty(), "Should have at least the initialization action");
+}

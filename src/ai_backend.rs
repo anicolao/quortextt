@@ -485,9 +485,30 @@ impl EasyAiBackend {
         None // No path found
     }
 
-    /// Evaluate how good a move is for the AI using path-finding algorithm
+    /// Count the number of empty hexes in a path that need tiles to be placed
+    /// This represents the number of tiles a player needs to place to complete their path
+    fn count_tiles_needed_for_path(&self, path: &[Node], game: &Game) -> usize {
+        let mut empty_hexes = HashSet::new();
+
+        for node in path {
+            let (pos1, pos2) = *node;
+
+            // Check if either hex in this edge is empty and needs a tile
+            if *game.tile(pos1) == Tile::Empty {
+                empty_hexes.insert(pos1);
+            }
+            if *game.tile(pos2) == Tile::Empty {
+                empty_hexes.insert(pos2);
+            }
+        }
+
+        empty_hexes.len()
+    }
+
+    /// Evaluate how good a move is for the AI using tile-counting algorithm
     /// Returns a floating point score where higher scores are better
-    /// Formula: length(opponent path) / length(my path)
+    /// Formula: tiles_human_needs / max(1, tiles_ai_needs)
+    /// This prioritizes moves that reduce AI's tiles needed and increase human's tiles needed
     /// Special cases: +1000 for winning move, -1000 for losing move
     fn evaluate_move(&self, game: &Game, action: &Action) -> f64 {
         if let Action::PlaceTile {
@@ -518,33 +539,63 @@ impl EasyAiBackend {
             // Find potential paths for both players using the flow-based BFS
             // This allows both players to prioritize extending existing flows
             let ai_path = self.find_potential_path_from_existing_flows(self.ai_player, &test_game);
-
             let human_path = self.find_potential_path_from_existing_flows(human_player, &test_game);
 
             match (ai_path, human_path) {
                 (Some(ai_path), Some(human_path)) => {
-                    let ai_path_length = ai_path.len() as f64;
-                    let human_path_length = human_path.len() as f64;
+                    let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &test_game);
+                    let human_tiles_needed =
+                        self.count_tiles_needed_for_path(&human_path, &test_game);
 
-                    // Formula: opponent_path_length / my_path_length
-                    // This rewards shorter AI paths (smaller denominator = larger score)
-                    // and longer human paths (larger numerator = larger score)
-                    if ai_path_length > 0.0 {
-                        human_path_length / ai_path_length
+                    println!(
+                        "AI: Move evaluation - AI needs {} tiles, Human needs {} tiles",
+                        ai_tiles_needed, human_tiles_needed
+                    );
+
+                    // Formula: human_tiles_needed / max(1, ai_tiles_needed)
+                    // This rewards moves that reduce AI's tiles needed (smaller denominator = larger score)
+                    // and increase human's tiles needed (larger numerator = larger score)
+                    // We use max(1, ai_tiles_needed) to avoid division by zero
+                    let score = human_tiles_needed as f64 / (ai_tiles_needed.max(1) as f64);
+
+                    // Bonus for AI being closer to completion
+                    if ai_tiles_needed == 0 {
+                        1000.0 // AI can complete immediately
                     } else {
-                        // AI path length is 0, which shouldn't happen but handle gracefully
-                        1000.0
+                        score
                     }
                 }
-                (Some(_), None) => {
+                (Some(ai_path), None) => {
+                    let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &test_game);
+                    println!(
+                        "AI: Move evaluation - AI needs {} tiles, Human has no path",
+                        ai_tiles_needed
+                    );
                     // AI has a path, human doesn't - very good for AI
-                    100.0
+                    // Bonus for being closer to completion
+                    if ai_tiles_needed == 0 {
+                        1000.0
+                    } else {
+                        100.0 / (ai_tiles_needed as f64)
+                    }
                 }
-                (None, Some(_)) => {
+                (None, Some(human_path)) => {
+                    let human_tiles_needed =
+                        self.count_tiles_needed_for_path(&human_path, &test_game);
+                    println!(
+                        "AI: Move evaluation - AI has no path, Human needs {} tiles",
+                        human_tiles_needed
+                    );
                     // Human has a path, AI doesn't - very bad for AI
-                    -100.0
+                    // Worse if human is closer to completion
+                    if human_tiles_needed == 0 {
+                        -1000.0
+                    } else {
+                        -100.0 / (human_tiles_needed as f64)
+                    }
                 }
                 (None, None) => {
+                    println!("AI: Move evaluation - Neither player has a path");
                     // Neither player has a path - neutral
                     0.0
                 }
