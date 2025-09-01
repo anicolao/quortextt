@@ -1,7 +1,7 @@
 use crate::backend::{Backend, InMemoryBackend};
 use crate::game::*;
 use crate::legality::{find_potential_path_for_team, Connection, Node};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 /// A backend that adds Easy AI functionality to an InMemoryBackend
 /// The AI player is always player 1, human is player 0
@@ -11,6 +11,59 @@ pub struct EasyAiBackend {
     ai_player: Player,
     last_action_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     ai_thinking: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+// Helper to create a canonical representation of a node (inter-hex edge).
+// The source hex must always be "smaller" than the destination hex.
+fn canonical_node(mut pos1: TilePos, mut pos2: TilePos) -> Node {
+    if pos1 > pos2 {
+        std::mem::swap(&mut pos1, &mut pos2);
+    }
+    (pos1, pos2)
+}
+
+fn get_player_sides(player: Player) -> (Rotation, Rotation) {
+    match player {
+        0 => (Rotation(0), Rotation(3)),
+        1 => (Rotation(2), Rotation(5)),
+        2 => (Rotation(4), Rotation(1)),
+        _ => panic!("Invalid player"),
+    }
+}
+
+/// Checks if a set of required connections within a single hex can be
+/// fulfilled by any single tile.
+fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
+    if demands.is_empty() {
+        return true;
+    }
+    // Iterate through all 4 tile types and 6 rotations
+    for &tile_type in &[
+        TileType::NoSharps,
+        TileType::OneSharp,
+        TileType::TwoSharps,
+        TileType::ThreeSharps,
+    ] {
+        for i in 0..6 {
+            let rotation = Rotation(i);
+            let placed_tile = PlacedTile::new(tile_type, rotation);
+            let provided_connections = placed_tile
+                .all_flows()
+                .into_iter()
+                .map(|(mut d1, mut d2)| {
+                    if d1 > d2 {
+                        std::mem::swap(&mut d1, &mut d2);
+                    }
+                    (d1, d2)
+                })
+                .collect::<HashSet<_>>();
+
+            if demands.is_subset(&provided_connections) {
+                return true; // Found a tile configuration that satisfies all demands
+            }
+        }
+    }
+    false // No single tile can fulfill all demands
 }
 
 /// Helper function to compare two actions for equality
@@ -260,6 +313,171 @@ impl EasyAiBackend {
         Some(best_move.clone())
     }
 
+    /// Find potential path for AI starting from existing flows instead of starting edges
+    /// This allows the AI to prioritize extending existing flows rather than starting new ones
+    fn find_potential_path_from_existing_flows(
+        &self,
+        player: Player,
+        game: &Game,
+        claimed_edges: &HashSet<Node>,
+        internal_demands: &HashMap<TilePos, HashSet<Connection>>,
+    ) -> Option<Vec<Node>> {
+        // The queue stores tuples of (path_of_nodes, current_tip_of_path)
+        let mut queue: VecDeque<(Vec<Node>, TilePos)> = VecDeque::new();
+        let mut visited_nodes: HashSet<Node> = HashSet::new();
+
+        let (_, goal_side) = get_player_sides(player);
+        let goal_edges: HashSet<(TilePos, Direction)> =
+            game.edges_on_board_edge(goal_side).into_iter().collect();
+        let goal_hexes: HashSet<TilePos> = goal_edges.iter().map(|(pos, _)| *pos).collect();
+
+        // 1. Find all existing flow positions for this player
+        let mut flow_start_nodes: Vec<(Node, TilePos)> = Vec::new();
+        
+        for row in 0..7 {
+            for col in 0..7 {
+                let pos = TilePos::new(row, col);
+                if let Tile::Placed(tile) = game.tile(pos) {
+                    // Check each direction of this tile for the player's flow
+                    for direction in Direction::all_directions() {
+                        if tile.flow_cache(direction) == Some(player) {
+                            // This tile has player's flow in this direction
+                            // Find the neighbor in that direction to create a node
+                            if let Some(neighbor_pos) = game.get_neighbor_pos(pos, direction) {
+                                let node = canonical_node(pos, neighbor_pos);
+                                // Only add if this edge hasn't been claimed
+                                if !claimed_edges.contains(&node) && !visited_nodes.contains(&node) {
+                                    flow_start_nodes.push((node, neighbor_pos));
+                                    visited_nodes.insert(node);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If we don't have any existing flows, fall back to the original behavior
+        if flow_start_nodes.is_empty() {
+            return find_potential_path_for_team(player, game, claimed_edges, internal_demands);
+        }
+
+        // 2. Initialize queue with paths starting from existing flows
+        for (start_node, neighbor_pos) in flow_start_nodes {
+            queue.push_back((vec![start_node], neighbor_pos));
+        }
+
+        // 3. Perform BFS (similar to the original implementation)
+        while let Some((path, current_pos)) = queue.pop_front() {
+            let last_node = path.last().unwrap();
+            let prev_pos = if last_node.0 == current_pos {
+                last_node.1
+            } else {
+                last_node.0
+            };
+
+            // 4. Check for Goal
+            if goal_hexes.contains(&current_pos) {
+                let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                match *game.tile(current_pos) {
+                    Tile::Placed(placed_tile) => {
+                        let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+                        if goal_edges.contains(&(current_pos, exit_dir)) {
+                            return Some(path); // Success!
+                        }
+                    }
+                    Tile::Empty => {
+                        // Find the goal directions for this specific hex
+                        for (_, goal_exit_dir) in
+                            goal_edges.iter().filter(|(pos, _)| *pos == current_pos)
+                        {
+                            let mut new_demand = (entry_dir, *goal_exit_dir);
+                            if new_demand.0 > new_demand.1 {
+                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                            }
+                            let mut all_demands = internal_demands
+                                .get(&current_pos)
+                                .cloned()
+                                .unwrap_or_default();
+                            all_demands.insert(new_demand);
+
+                            if is_satisfiable(&all_demands) {
+                                return Some(path); // Success!
+                            }
+                        }
+                    }
+                    Tile::NotOnBoard => {}
+                }
+            }
+
+            // 5. Explore Neighbors
+            let prev_pos = if last_node.0 == current_pos {
+                last_node.1
+            } else {
+                last_node.0
+            };
+
+            match *game.tile(current_pos) {
+                Tile::Placed(placed_tile) => {
+                    // Path is forced by the tile's connections.
+                    let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                    let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+
+                    if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
+                        let next_node = canonical_node(current_pos, next_pos);
+                        if !visited_nodes.contains(&next_node) && !claimed_edges.contains(&next_node) {
+                            let mut new_path = path.clone();
+                            new_path.push(next_node);
+                            visited_nodes.insert(next_node);
+                            queue.push_back((new_path, next_pos));
+                        }
+                    }
+                }
+                Tile::Empty => {
+                    // Case 2: Path goes through an EMPTY hex. Any direction is possible.
+                    for exit_dir in Direction::all_directions() {
+                        if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
+                            if next_pos == prev_pos {
+                                continue;
+                            } // Don't go back
+
+                            let next_node = canonical_node(current_pos, next_pos);
+                            if visited_nodes.contains(&next_node) || claimed_edges.contains(&next_node)
+                            {
+                                continue;
+                            }
+
+                            // Check for internal pathway contention
+                            let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                            let mut new_demand = (entry_dir, exit_dir);
+                            if new_demand.0 > new_demand.1 {
+                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                            }
+                            let mut all_demands = internal_demands
+                                .get(&current_pos)
+                                .cloned()
+                                .unwrap_or_default();
+                            all_demands.insert(new_demand);
+
+                            if !is_satisfiable(&all_demands) {
+                                continue;
+                            }
+
+                            // Enqueue new path
+                            let mut new_path = path.clone();
+                            new_path.push(next_node);
+                            visited_nodes.insert(next_node);
+                            queue.push_back((new_path, next_pos));
+                        }
+                    }
+                }
+                Tile::NotOnBoard => {} // Should not happen in BFS
+            }
+        }
+
+        None // No path found
+    }
+
     /// Evaluate how good a move is for the AI using path-finding algorithm
     /// Returns a floating point score where higher scores are better
     /// Formula: length(opponent path) / length(my path)
@@ -295,13 +513,15 @@ impl EasyAiBackend {
             let internal_demands: HashMap<TilePos, HashSet<Connection>> = HashMap::new();
 
             // Find potential paths for both AI and human
-            let ai_path = find_potential_path_for_team(
+            // Use the new flow-based BFS for AI to prioritize extending existing flows
+            let ai_path = self.find_potential_path_from_existing_flows(
                 self.ai_player,
                 &test_game,
                 &claimed_edges,
                 &internal_demands,
             );
 
+            // Use the standard BFS for human player
             let human_path = find_potential_path_for_team(
                 human_player,
                 &test_game,
