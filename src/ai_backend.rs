@@ -33,6 +33,11 @@ impl EasyAiBackend {
 
     /// Check if it's the AI's turn and make a move if so
     fn maybe_make_ai_move(&self) {
+        // Only the main backend (with Admin viewer) should make AI moves
+        if self.inner.viewer() != GameViewer::Admin {
+            return;
+        }
+
         // Check current action count to see if game state changed
         let current_action_count = self.inner.action_history().len();
         let last_processed = self

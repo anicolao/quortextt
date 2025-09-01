@@ -270,7 +270,7 @@ pub enum Tile {
     Placed(PlacedTile),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum GameViewer {
     Player(Player),
     Spectator,

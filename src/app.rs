@@ -1,5 +1,5 @@
 use crate::ai_backend::EasyAiBackend;
-use crate::backend::InMemoryBackend;
+use crate::backend::{Backend, InMemoryBackend};
 use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
@@ -33,6 +33,7 @@ impl InMemoryMode {
 }
 
 struct EasyAiMode {
+    main_backend: EasyAiBackend,
     human_view: GameView,
     human_ui: GameUi,
 }
@@ -43,6 +44,7 @@ impl EasyAiMode {
         let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
         let human_ui = GameUi::new();
         Self {
+            main_backend: backend,
             human_view,
             human_ui,
         }
@@ -139,6 +141,9 @@ impl eframe::App for FlowsApp {
                     .display(ctx, player_view);
             }
             State::EasyAiMode(easy_ai_mode) => {
+                // Update the main backend for AI logic
+                easy_ai_mode.main_backend.update();
+
                 let human_view = &mut easy_ai_mode.human_view;
                 human_view.poll_backend();
                 easy_ai_mode.human_ui.display(ctx, human_view);
