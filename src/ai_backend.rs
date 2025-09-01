@@ -313,14 +313,12 @@ impl EasyAiBackend {
         Some(best_move.clone())
     }
 
-    /// Find potential path for AI starting from existing flows instead of starting edges
-    /// This allows the AI to prioritize extending existing flows rather than starting new ones
+    /// Find potential path starting from existing flows instead of starting edges
+    /// This allows players to prioritize extending existing flows rather than starting new ones
     fn find_potential_path_from_existing_flows(
         &self,
         player: Player,
         game: &Game,
-        claimed_edges: &HashSet<Node>,
-        internal_demands: &HashMap<TilePos, HashSet<Connection>>,
     ) -> Option<Vec<Node>> {
         // The queue stores tuples of (path_of_nodes, current_tip_of_path)
         let mut queue: VecDeque<(Vec<Node>, TilePos)> = VecDeque::new();
@@ -345,9 +343,8 @@ impl EasyAiBackend {
                             // Find the neighbor in that direction to create a node
                             if let Some(neighbor_pos) = game.get_neighbor_pos(pos, direction) {
                                 let node = canonical_node(pos, neighbor_pos);
-                                // Only add if this edge hasn't been claimed
-                                if !claimed_edges.contains(&node) && !visited_nodes.contains(&node)
-                                {
+                                // Only add if this edge hasn't been visited
+                                if !visited_nodes.contains(&node) {
                                     flow_start_nodes.push((node, neighbor_pos));
                                     visited_nodes.insert(node);
                                 }
@@ -367,7 +364,7 @@ impl EasyAiBackend {
         // If we don't have any existing flows, fall back to the original behavior
         if flow_start_nodes.is_empty() {
             println!("AI: No existing flows found, falling back to standard BFS");
-            return find_potential_path_for_team(player, game, claimed_edges, internal_demands);
+            return find_potential_path_for_team(player, game, &HashSet::new(), &HashMap::new());
         }
 
         // 2. Initialize queue with paths starting from existing flows
@@ -407,10 +404,7 @@ impl EasyAiBackend {
                             if new_demand.0 > new_demand.1 {
                                 std::mem::swap(&mut new_demand.0, &mut new_demand.1);
                             }
-                            let mut all_demands = internal_demands
-                                .get(&current_pos)
-                                .cloned()
-                                .unwrap_or_default();
+                            let mut all_demands = HashSet::new();
                             all_demands.insert(new_demand);
 
                             if is_satisfiable(&all_demands) {
@@ -441,9 +435,7 @@ impl EasyAiBackend {
 
                     if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
                         let next_node = canonical_node(current_pos, next_pos);
-                        if !visited_nodes.contains(&next_node)
-                            && !claimed_edges.contains(&next_node)
-                        {
+                        if !visited_nodes.contains(&next_node) {
                             let mut new_path = path.clone();
                             new_path.push(next_node);
                             visited_nodes.insert(next_node);
@@ -460,9 +452,7 @@ impl EasyAiBackend {
                             } // Don't go back
 
                             let next_node = canonical_node(current_pos, next_pos);
-                            if visited_nodes.contains(&next_node)
-                                || claimed_edges.contains(&next_node)
-                            {
+                            if visited_nodes.contains(&next_node) {
                                 continue;
                             }
 
@@ -473,10 +463,7 @@ impl EasyAiBackend {
                             if new_demand.0 > new_demand.1 {
                                 std::mem::swap(&mut new_demand.0, &mut new_demand.1);
                             }
-                            let mut all_demands = internal_demands
-                                .get(&current_pos)
-                                .cloned()
-                                .unwrap_or_default();
+                            let mut all_demands = HashSet::new();
                             all_demands.insert(new_demand);
 
                             if !is_satisfiable(&all_demands) {
@@ -528,26 +515,11 @@ impl EasyAiBackend {
 
             let human_player = 1 - self.ai_player; // Assumes 2-player game
 
-            // Use empty sets for claimed edges and internal demands since we're just checking potential paths
-            let claimed_edges: HashSet<Node> = HashSet::new();
-            let internal_demands: HashMap<TilePos, HashSet<Connection>> = HashMap::new();
+            // Find potential paths for both players using the flow-based BFS
+            // This allows both players to prioritize extending existing flows
+            let ai_path = self.find_potential_path_from_existing_flows(self.ai_player, &test_game);
 
-            // Find potential paths for both AI and human
-            // Use the new flow-based BFS for AI to prioritize extending existing flows
-            let ai_path = self.find_potential_path_from_existing_flows(
-                self.ai_player,
-                &test_game,
-                &claimed_edges,
-                &internal_demands,
-            );
-
-            // Use the standard BFS for human player
-            let human_path = find_potential_path_for_team(
-                human_player,
-                &test_game,
-                &claimed_edges,
-                &internal_demands,
-            );
+            let human_path = self.find_potential_path_from_existing_flows(human_player, &test_game);
 
             match (ai_path, human_path) {
                 (Some(ai_path), Some(human_path)) => {
