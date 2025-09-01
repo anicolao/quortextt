@@ -2,6 +2,11 @@
 use crate::game::{Direction, Game, Player, PlacedTile, Rotation, Tile, TilePos, TileType};
 use std::collections::{HashMap, HashSet, VecDeque};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LegalityError {
+    BlockedPlayer(Player),
+}
+
 // A connection is a pair of directions (ports) on a hex that must be connected.
 type Connection = (Direction, Direction);
 
@@ -44,26 +49,29 @@ fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
     false // No single tile can fulfill all demands
 }
 
-pub fn is_move_legal(game: &Game) -> bool {
+pub fn is_move_legal(game: &Game) -> Result<(), LegalityError> {
     if game.outcome().is_some() {
-        return true;
+        return Ok(());
     }
     has_distinct_potential_paths(game)
 }
 
-fn has_distinct_potential_paths(game: &Game) -> bool {
+fn has_distinct_potential_paths(game: &Game) -> Result<(), LegalityError> {
     let players: Vec<Player> = (0..game.num_players()).collect();
-    if let Some(failing_player) = check_paths_for_ordering(&players, game) {
-        let mut reordered_players = vec![failing_player];
-        reordered_players.extend(players.iter().filter(|&&p| p != failing_player));
-        if check_paths_for_ordering(&reordered_players, game).is_some() {
-            return false;
+    match check_paths_for_ordering(&players, game) {
+        Ok(()) => Ok(()), // First ordering succeeded, so the move is legal.
+        Err(LegalityError::BlockedPlayer(failing_player)) => {
+            // First ordering failed. Try again with the failing player first.
+            let mut reordered_players = vec![failing_player];
+            reordered_players.extend(players.iter().filter(|&&p| p != failing_player));
+            // If this second check also fails, the move is truly illegal.
+            // Otherwise, it's legal.
+            check_paths_for_ordering(&reordered_players, game)
         }
     }
-    true
 }
 
-fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<Player> {
+fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Result<(), LegalityError> {
     let mut claimed_edges: HashSet<Node> = HashSet::new();
     let mut internal_demands: HashMap<TilePos, HashSet<Connection>> = HashMap::new();
 
@@ -72,10 +80,10 @@ fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<P
         if let Some(p) = path {
             claim_resources_for_path(&p, &mut claimed_edges, &mut internal_demands, game);
         } else {
-            return Some(player);
+            return Err(LegalityError::BlockedPlayer(player));
         }
     }
-    None
+    Ok(())
 }
 
 // Helper to create a canonical representation of a node (inter-hex edge).

@@ -454,7 +454,7 @@ impl Game {
                 *temp_game.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
                 temp_game.recompute_flows(); // Needed for win condition check
 
-                if !crate::legality::is_move_legal(&temp_game) {
+                if crate::legality::is_move_legal(&temp_game).is_err() {
                     return Err("Illegal move: blocks another player".into());
                 }
 

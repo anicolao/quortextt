@@ -1,4 +1,5 @@
 use flows::game::{Action, Game, GameSettings, Rotation, TilePos, TileType};
+use flows::legality::{is_move_legal, LegalityError};
 
 // Helper function to create a default 2-player game.
 // Player 0 is on side 0 (top).
@@ -271,4 +272,28 @@ fn test_user_d6_placement_all_rotations() {
         let result = game_for_this_rotation.apply_action(action);
         assert!(result.is_ok(), "D6 placement with R{} was incorrectly flagged as illegal. Error: {:?}", r, result.err());
     }
+}
+
+#[test]
+fn test_simple_block_returns_correct_error() {
+    let mut game = setup_game();
+
+    // Player 0's goal is the opposite side of the board (side 3, bottom).
+    // We build a horizontal wall that cuts Player 0 off from their goal.
+    let wall_positions = [
+        TilePos::new(3, 0), TilePos::new(3, 1), TilePos::new(3, 2),
+        /* hole at (3,3) */ TilePos::new(3, 4), TilePos::new(3, 5), TilePos::new(3, 6),
+    ];
+
+    for &pos in &wall_positions {
+        // We use a T1 tile because it does not have any paths that cross
+        // the horizontal axis of the board, making it a solid wall for Player 0.
+        game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
+    }
+
+    // The final move places a T1 tile at (3,3), completing the wall.
+    let game_with_illegal_move = game.with_tile_placed(TileType::OneSharp, TilePos::new(3,3), Rotation(0));
+
+    let result = is_move_legal(&game_with_illegal_move);
+    assert_eq!(result, Err(LegalityError::BlockedPlayer(0)), "The move should have been detected as illegal because it completely blocks Player 0.");
 }
