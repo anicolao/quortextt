@@ -1,5 +1,6 @@
 use crate::game::{Direction, *};
 use crate::game_view::GameView;
+use crate::legality::LegalityError;
 use egui::{
     emath::Rot2, Color32, Context, CursorIcon, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2,
 };
@@ -26,6 +27,10 @@ const HIGHLIGHT_BORDER: Stroke = Stroke {
 const GOLDEN_BORDER: Stroke = Stroke {
     width: 3.0,
     color: Color32::from_rgb(0xFF, 0xD7, 0x00),
+};
+const ILLEGAL_BORDER: Stroke = Stroke {
+    width: 3.0,
+    color: Color32::from_rgb(0xFF, 0x00, 0x00),
 };
 
 fn get_flow_bezier(center: Pos2, hexagon: &[Pos2], sp: usize, ep: usize) -> [Pos2; 4] {
@@ -537,8 +542,8 @@ impl GameUi {
                     hovered_tile
                 }
             };
-            let hypothetical_game = match hovered_tile {
-                None => None,
+            let (hypothetical_game, legality_error) = match hovered_tile {
+                None => (None, None),
                 Some(hovered_tile) => match *game.tile(hovered_tile) {
                     Tile::Empty => {
                         ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
@@ -548,9 +553,9 @@ impl GameUi {
                             GameViewer::Spectator => None,
                         };
                         match player_to_simulate {
-                            None => None,
+                            None => (None, None),
                             Some(player) => match game.tile_in_hand(player) {
-                                None => None,
+                                None => (None, None),
                                 Some(tile) => {
                                     if response.clicked() {
                                         // TODO: Do something with the local legality check
@@ -560,19 +565,22 @@ impl GameUi {
                                             pos: hovered_tile,
                                             rotation: self.placement_rotation,
                                         });
-                                        None
+                                        (None, None)
                                     } else {
-                                        Some(game.with_tile_placed(
+                                        let hypo_game = game.with_tile_placed(
                                             tile,
                                             hovered_tile,
                                             self.placement_rotation,
-                                        ))
+                                        );
+                                        let legality_error =
+                                            crate::legality::is_move_legal(&hypo_game).err();
+                                        (Some(hypo_game), legality_error)
                                     }
                                 }
                             },
                         }
                     }
-                    Tile::Placed(_) | Tile::NotOnBoard => None,
+                    Tile::Placed(_) | Tile::NotOnBoard => (None, None),
                 },
             };
             let rotate_time = ctx.input(|i| i.time);
@@ -787,16 +795,40 @@ impl GameUi {
                 std::f32::consts::PI / 6.0,
             );
             for side in (0..6).map(Rotation) {
-                match game.player_on_side(side + self.rotation.reversed()) {
-                    None => (),
-                    Some(player) => {
-                        for (pos, dir) in game.edges_on_board_edge(side) {
-                            let color = player_colour(player);
-                            let edge = pos + dir.tile_vec();
-                            let pos = Self::hex_position(edge, window.center(), hexagon_radius);
-                            let fcolor = color;
-                            let bcolor = Stroke::new(3.0, color);
-                            Self::draw_empty_hex(pos, hexagon_radius, painter, fcolor, bcolor, 0.0);
+                let real_side = side + self.rotation.reversed();
+                if let Some(player) = game.player_on_side(real_side) {
+                    for (pos, dir) in game.edges_on_board_edge(side) {
+                        let color = player_colour(player);
+                        let edge = pos + dir.tile_vec();
+                        let pos = Self::hex_position(edge, window.center(), hexagon_radius);
+                        let fcolor = color;
+                        let bcolor = Stroke::new(3.0, color);
+                        Self::draw_empty_hex(pos, hexagon_radius, painter, fcolor, bcolor, 0.0);
+
+                        if let Some(LegalityError::BlockedPlayer(blocked_player)) = legality_error {
+                            if blocked_player == player {
+                                let x_stroke = Stroke::new(5.0, Color32::BLACK);
+                                painter.line_segment(
+                                    [
+                                        pos - Vec2::new(hexagon_radius / 2.0, hexagon_radius / 2.0),
+                                        pos + Vec2::new(hexagon_radius / 2.0, hexagon_radius / 2.0),
+                                    ],
+                                    x_stroke,
+                                );
+                                painter.line_segment(
+                                    [
+                                        pos + Vec2::new(
+                                            -hexagon_radius / 2.0,
+                                            hexagon_radius / 2.0,
+                                        ),
+                                        pos + Vec2::new(
+                                            hexagon_radius / 2.0,
+                                            -hexagon_radius / 2.0,
+                                        ),
+                                    ],
+                                    x_stroke,
+                                );
+                            }
                         }
                     }
                 }
@@ -904,6 +936,11 @@ impl GameUi {
                         let tile = PlacedTile::new(tile_type, base_rotation_for_hypo_tile);
                         // To make the tile opaque, we pass a clone of the tile as the "prior" tile.
                         let prior_tile_for_opacity = Tile::Placed(tile);
+                        let border = if legality_error.is_some() {
+                            ILLEGAL_BORDER
+                        } else {
+                            HIGHLIGHT_BORDER
+                        };
                         Self::draw_hex(
                             pos,
                             hexagon_radius,
@@ -911,7 +948,7 @@ impl GameUi {
                             &tile,
                             self.rotation,
                             &prior_tile_for_opacity,
-                            HIGHLIGHT_BORDER,
+                            border,
                             visual_rotation_rads,
                         );
                     }
@@ -1210,9 +1247,11 @@ impl GameUi {
                 let text = match outcome {
                     GameOutcome::Victory(winners) => {
                         if winners.len() > 1 {
-                            format!("Players {:?} win!", winners)
+                            let one_indexed_winners: Vec<usize> =
+                                winners.iter().map(|&p| p + 1).collect();
+                            format!("Players {:?} win!", one_indexed_winners)
                         } else {
-                            format!("Player {} wins!", winners[0])
+                            format!("Player {} wins!", winners[0] + 1)
                         }
                     }
                 };
@@ -1276,5 +1315,42 @@ mod tests {
         assert_eq!(Rotation(3).reversed().0, 3);
         assert_eq!(Rotation(4).reversed().0, 2);
         assert_eq!(Rotation(5).reversed().0, 1);
+    }
+
+    #[test]
+    fn test_victory_message_player_numbering() {
+        use crate::game::GameOutcome;
+
+        // Test single player victory message uses 1-indexed numbering
+        let single_winner = vec![0]; // Player 0 (internal 0-indexed)
+        let outcome_single = GameOutcome::Victory(single_winner);
+
+        let text_single = match outcome_single {
+            GameOutcome::Victory(winners) => {
+                if winners.len() > 1 {
+                    let one_indexed_winners: Vec<usize> = winners.iter().map(|&p| p + 1).collect();
+                    format!("Players {:?} win!", one_indexed_winners)
+                } else {
+                    format!("Player {} wins!", winners[0] + 1)
+                }
+            }
+        };
+        assert_eq!(text_single, "Player 1 wins!"); // Should show Player 1, not Player 0
+
+        // Test multiple player victory message uses 1-indexed numbering
+        let multiple_winners = vec![0, 2]; // Players 0 and 2 (internal 0-indexed)
+        let outcome_multiple = GameOutcome::Victory(multiple_winners);
+
+        let text_multiple = match outcome_multiple {
+            GameOutcome::Victory(winners) => {
+                if winners.len() > 1 {
+                    let one_indexed_winners: Vec<usize> = winners.iter().map(|&p| p + 1).collect();
+                    format!("Players {:?} win!", one_indexed_winners)
+                } else {
+                    format!("Player {} wins!", winners[0] + 1)
+                }
+            }
+        };
+        assert_eq!(text_multiple, "Players [1, 3] win!"); // Should show Players [1, 3], not [0, 2]
     }
 }
