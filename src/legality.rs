@@ -107,7 +107,7 @@ fn find_potential_path_for_team(
 
     // 1. Initialize Queue with starting paths.
     for (start_pos, border_dir) in game.edges_on_board_edge(start_side) {
-        let entry_dir = border_dir.reversed();
+        let entry_dir = border_dir;
 
         match *game.tile(start_pos) {
             Tile::Placed(placed_tile) => {
