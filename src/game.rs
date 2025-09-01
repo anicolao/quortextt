@@ -339,8 +339,6 @@ pub enum GameOutcome {
     // TODO: Draw by board full?
 }
 
-use std::collections::HashSet;
-
 #[derive(Clone)]
 pub struct Game {
     settings: GameSettings,
@@ -348,7 +346,6 @@ pub struct Game {
     /// to rotation 0 (top of the board), 1 is the next side clockwise,
     /// and so on around the board.
     sides: [Option<Player>; 6],
-    border_edges: HashSet<(TilePos, Direction)>,
     remaining_tiles: [u8; 4],
     tiles_in_hand: Vec<Option<TileType>>,
     board: [[Tile; 7]; 7],
@@ -382,30 +379,12 @@ impl Game {
             sides[4] = Some(2);
         }
 
-        // We need a temporary game object to call edges_on_board_edge, since it takes &self.
-        let temp_game = Self {
-            settings: settings.clone(),
-            sides,
-            border_edges: HashSet::new(), // Placeholder
-            remaining_tiles: [10; 4],
-            tiles_in_hand: vec![None; settings.num_players],
-            board,
-            action_history: vec![], // Placeholder
-            current_player: 0,
-            outcome: None,
-        };
-
-        let border_edges = (0..6)
-            .flat_map(|i| temp_game.edges_on_board_edge(Rotation(i)))
-            .collect();
-
         Self {
             settings: settings.clone(),
             sides,
-            border_edges,
             remaining_tiles: [10; 4],
             tiles_in_hand: vec![None; settings.num_players],
-            board: temp_game.board,
+            board,
             action_history: vec![Action::InitializeGame(settings)],
             current_player: 0,
             outcome: None,
@@ -653,7 +632,9 @@ impl Game {
     }
 
     pub fn is_border_edge(&self, pos: TilePos, dir: Direction) -> bool {
-        self.border_edges.contains(&(pos, dir))
+        // An edge is a border edge if the tile on the other side is NotOnBoard.
+        let neighbor_pos = pos + dir.tile_vec();
+        *self.tile(neighbor_pos) == Tile::NotOnBoard
     }
 
     pub fn edges_on_board_edge(&self, rotation: Rotation) -> Vec<(TilePos, Direction)> {

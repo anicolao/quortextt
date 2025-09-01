@@ -11,10 +11,6 @@ fn setup_game() -> Game {
     Game::new(settings)
 }
 
-fn all_board_positions() -> impl Iterator<Item = TilePos> {
-    (0..7).flat_map(|r| (0..7).map(move |c| TilePos::new(r, c)))
-}
-
 #[test]
 fn test_simple_block_fails() {
     let mut game = setup_game();
@@ -52,30 +48,25 @@ fn test_inter_hex_edge_contention_fails() {
     // To force contention on the edge between (3,3) and (4,3), we must
     // block all other paths. We will build two solid walls, leaving only
     // the column of hexes containing (3,3) and (4,3) open.
-    for pos in all_board_positions() {
-        if pos.col < 3 || pos.col > 3 {
-             if *game.tile(pos) == flows::game::Tile::Empty {
-                game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
-             }
+    for r in 0..7 {
+        for c in 0..7 {
+            let pos = TilePos::new(r,c);
+            if c < 3 || c > 3 {
+                if *game.tile(pos) == flows::game::Tile::Empty {
+                    game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
+                }
+            }
         }
     }
 
-    // With the walls up, both P0 and P1 MUST travel down the corridor in column 3.
-    // Their paths must cross the edge between (3,3) and (4,3).
     // Any move is now illegal if it leaves the board in this state.
     game.set_current_player_for_testing(0);
     let illegal_action = Action::PlaceTile {
         player: 0,
         tile: TileType::NoSharps,
-        pos: TilePos::new(0, 0), // An arbitrary empty spot
+        pos: TilePos::new(0, 3),
         rotation: Rotation(0),
     };
-
-    // WHY THIS MOVE IS ILLEGAL:
-    // Contending Players: 0 and 1
-    // Contested Resource: The inter-hex edge between (3,3) and (4,3).
-    // Reason: The walls force both players' only potential paths down the same
-    // column. They must both cross the same edges, which is not allowed.
 
     let result = game.apply_action(illegal_action);
     assert!(result.is_err(), "The move should be illegal due to inter-hex edge contention.");
@@ -85,22 +76,19 @@ fn test_inter_hex_edge_contention_fails() {
 fn test_internal_pathway_contention_fails() {
     let mut game = setup_game();
 
-    // We create a situation where both players must route through the empty hex (3,3).
-    // We need to build walls to make this the only possible route.
-    // P0 needs W-E, P1 needs N-S. No tile can satisfy both.
-    for pos in all_board_positions() {
-        // Leave a 3x3 box around the center empty
-        if pos.row > 4 || pos.row < 2 || pos.col > 4 || pos.col < 2 {
-            if *game.tile(pos) == flows::game::Tile::Empty {
-                game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
+    // Force contention on the empty hex (3,3).
+    for r in 0..7 {
+        for c in 0..7 {
+            let pos = TilePos::new(r,c);
+            if pos.row > 4 || pos.row < 2 || pos.col > 4 || pos.col < 2 {
+                if *game.tile(pos) == flows::game::Tile::Empty {
+                    game = game.with_tile_placed(TileType::OneSharp, pos, Rotation(0));
+                }
             }
         }
     }
-    // Now we have a 3x3 empty area. Let's block it up to force contention on (3,3).
-    // Force P0 through horizontally
     game = game.with_tile_placed(TileType::OneSharp, TilePos::new(2,3), Rotation(0));
     game = game.with_tile_placed(TileType::OneSharp, TilePos::new(4,3), Rotation(0));
-    // Force P1 through vertically
     game = game.with_tile_placed(TileType::OneSharp, TilePos::new(3,2), Rotation(0));
 
     // The illegal move is the final blocking piece.
@@ -112,18 +100,12 @@ fn test_internal_pathway_contention_fails() {
         rotation: Rotation(0),
     };
 
-    // WHY THIS MOVE IS ILLEGAL:
-    // Contending Players: 0 and 1
-    // Contested Resource: The internal pathways of the empty hex at (3,3).
-    // Reason: The walls force P0's path to require a W-E connection through (3,3),
-    // and P1's path to require a N-S connection. No tile can do both.
-
     let result = game.apply_action(illegal_action);
     assert!(result.is_err(), "The move should be illegal due to impossible internal pathway demands.");
 }
 
 #[test]
-fn test_user_provided_scenario() {
+fn test_user_provided_scenario_is_illegal() {
     let mut game = setup_game();
     game.set_current_player_for_testing(0);
     game.apply_action(Action::PlaceTile { player: 0, tile: TileType::OneSharp, pos: TilePos::new(0, 0), rotation: Rotation(0) }).unwrap();
@@ -134,13 +116,87 @@ fn test_user_provided_scenario() {
     game.set_current_player_for_testing(0);
     game.apply_action(Action::PlaceTile { player: 0, tile: TileType::OneSharp, pos: TilePos::new(0, 2), rotation: Rotation(0) }).unwrap();
 
-    // This is the move the user believes to be illegal.
     game.set_current_player_for_testing(1);
     let final_action = Action::PlaceTile { player: 1, tile: TileType::ThreeSharps, pos: TilePos::new(0, 3), rotation: Rotation(0) };
 
-    // My analysis indicates this move is legal because P0 is not blocked.
-    // However, I am writing the test to fail as the user expects,
-    // to provide a basis for discussion.
     let result = game.apply_action(final_action);
-    assert!(result.is_err(), "User scenario failed: move was considered legal but expected illegal.");
+    assert!(result.is_err(), "User scenario should be illegal due to blocking P0 at the start.");
+}
+
+#[test]
+fn test_user_b3_placement_is_legal() {
+    let mut game = setup_game();
+    let moves = [
+        (0, TileType::ThreeSharps, TilePos::new(0, 0), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(0, 1), Rotation(0)),
+        (0, TileType::ThreeSharps, TilePos::new(0, 2), Rotation(0)),
+        (1, TileType::ThreeSharps, TilePos::new(0, 3), Rotation(5)),
+        (0, TileType::OneSharp, TilePos::new(2, 4), Rotation(0)),
+        (1, TileType::OneSharp, TilePos::new(2, 3), Rotation(0)),
+        (0, TileType::NoSharps, TilePos::new(1, 3), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(2, 2), Rotation(0)),
+    ];
+
+    for (player, tile, pos, rotation) in moves {
+        game.set_current_player_for_testing(player);
+        let action = Action::PlaceTile { player, tile, pos, rotation };
+        game.apply_action(action).unwrap();
+    }
+
+    game.set_current_player_for_testing(0);
+    let target_pos = TilePos::new(1, 2); // B3 for Player 0
+
+    for r in 0..6 {
+        let rotation = Rotation(r);
+        let action = Action::PlaceTile {
+            player: 0,
+            tile: TileType::NoSharps,
+            pos: target_pos,
+            rotation,
+        };
+        let result = game.apply_action(action);
+        assert!(
+            result.is_ok(),
+            "Placing T0 at B3 with rotation {} was incorrectly flagged as illegal. Error: {:?}",
+            r,
+            result.err()
+        );
+    }
+}
+
+#[test]
+fn test_no_contention_scenario_is_legal() {
+    let mut game = setup_game();
+    let moves = [
+        (0, TileType::ThreeSharps, TilePos::new(0, 0), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(0, 1), Rotation(0)),
+        (0, TileType::ThreeSharps, TilePos::new(0, 2), Rotation(0)),
+        (1, TileType::ThreeSharps, TilePos::new(0, 3), Rotation(5)),
+        (0, TileType::OneSharp, TilePos::new(2, 4), Rotation(0)),
+        (1, TileType::OneSharp, TilePos::new(2, 3), Rotation(0)),
+        (0, TileType::NoSharps, TilePos::new(1, 3), Rotation(0)),
+        (1, TileType::TwoSharps, TilePos::new(2, 2), Rotation(0)),
+        (0, TileType::NoSharps, TilePos::new(1, 2), Rotation(5)),
+        (1, TileType::OneSharp, TilePos::new(1, 4), Rotation(0)),
+        (0, TileType::OneSharp, TilePos::new(2, 5), Rotation(1)),
+        (1, TileType::ThreeSharps, TilePos::new(3, 5), Rotation(0)),
+        (0, TileType::ThreeSharps, TilePos::new(3, 4), Rotation(1)),
+    ];
+
+    for (player, tile, pos, rotation) in moves {
+        game.set_current_player_for_testing(player);
+        game.apply_action(Action::PlaceTile { player, tile, pos, rotation }).unwrap();
+    }
+
+    game.set_current_player_for_testing(1); // Next player is P1
+
+    let final_action = Action::PlaceTile {
+        player: 1,
+        tile: TileType::OneSharp,
+        pos: TilePos::new(1, 1),
+        rotation: Rotation(3),
+    };
+
+    let result = game.apply_action(final_action);
+    assert!(result.is_ok(), "The no-contention scenario move was incorrectly flagged as illegal. Error: {:?}", result.err());
 }

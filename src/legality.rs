@@ -4,9 +4,6 @@
 use crate::game::{Direction, Game, Tile, TilePos, TileType, Player};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-// A unique, order-independent key for an edge between two hexes.
-// We use a sorted tuple of the two TilePos structs.
-// TilePos doesn't derive Ord, so we implement it manually for the key.
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 struct EdgeKey(TilePos, TilePos);
 
@@ -18,30 +15,23 @@ fn get_canonical_edge_key(p1: TilePos, p2: TilePos) -> EdgeKey {
     }
 }
 
-// A required connection within a single hex, represented by an entry and exit port.
 type Connection = (Direction, Direction);
 
-/// The main entry point for checking if the state of a game board is legal.
-/// This assumes a tile has just been placed.
 pub fn is_move_legal(game: &Game) -> bool {
-    // A winning move is always legal.
     if game.outcome().is_some() {
         return true;
     }
     has_distinct_potential_paths(game)
 }
 
-/// Orchestrates the check by trying different player priority orderings.
 fn has_distinct_potential_paths(game: &Game) -> bool {
     let players: Vec<Player> = (0..game.num_players()).collect();
 
     if let Some(failing_player) = check_paths_for_ordering(&players, game) {
-        // If the default order fails, put the failing player first and try again.
         let mut reordered_players = vec![failing_player];
         reordered_players.extend(players.iter().filter(|&&p| p != failing_player));
 
         if check_paths_for_ordering(&reordered_players, game).is_some() {
-            // If it still fails with the failing player going first, the move is illegal.
             return false;
         }
     }
@@ -49,8 +39,6 @@ fn has_distinct_potential_paths(game: &Game) -> bool {
     true
 }
 
-/// Executes pathfinding for a single, specific player order.
-/// Returns `None` on success or the first `player` that could not find a path.
 fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<Player> {
     let mut claimed_edges: HashSet<EdgeKey> = HashSet::new();
     let mut internal_demands: HashMap<TilePos, HashSet<Connection>> = HashMap::new();
@@ -61,14 +49,13 @@ fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<P
         if let Some(p) = path {
             claim_resources_for_path(&p, &mut claimed_edges, &mut internal_demands, game);
         } else {
-            return Some(player); // This player is blocked in this ordering.
+            return Some(player);
         }
     }
 
-    None // Success, all players found a path.
+    None
 }
 
-/// Uses BFS to find a single valid path for a team, respecting already-claimed resources.
 fn find_potential_path_for_team(
     player: Player,
     game: &Game,
@@ -76,27 +63,24 @@ fn find_potential_path_for_team(
     internal_demands: &HashMap<TilePos, HashSet<Connection>>,
 ) -> Option<Vec<TilePos>> {
     let mut queue: VecDeque<Vec<TilePos>> = VecDeque::new();
-    // Using a HashMap for visited allows us to store the path to get there.
     let mut visited: HashMap<TilePos, Vec<TilePos>> = HashMap::new();
 
     let (start_side, goal_side) = get_player_sides(player);
     let goal_hexes: HashSet<TilePos> = game.edges_on_board_edge(goal_side).into_iter().map(|(p, _)| p).collect();
 
-    // 1. Initialize Queue
-    // A path must start by moving from a border edge to a board-facing edge.
     for (pos, border_dir) in game.edges_on_board_edge(start_side) {
         if let Tile::Placed(tile) = game.tile(pos) {
             let exit_dir = tile.exit_from_entrance(border_dir);
             if let Some(neighbor_hex) = game.get_neighbor_pos(pos, exit_dir) {
-                // This is a valid starting step into the board.
-                if !visited.contains_key(&neighbor_hex) {
-                    let path = vec![pos, neighbor_hex];
-                    queue.push_back(path.clone());
-                    visited.insert(neighbor_hex, path);
+                if !game.is_border_edge(neighbor_hex, exit_dir.reversed()) {
+                    if !visited.contains_key(&neighbor_hex) {
+                        let path = vec![pos, neighbor_hex];
+                        queue.push_back(path.clone());
+                        visited.insert(neighbor_hex, path);
+                    }
                 }
             }
         }
-        // If the tile on the border is empty, any move into the board is possible.
         if let Tile::Empty = game.tile(pos) {
             for dir in Direction::all_directions() {
                  if let Some(neighbor_hex) = game.get_neighbor_pos(pos, dir) {
@@ -112,19 +96,16 @@ fn find_potential_path_for_team(
         }
     }
 
-    // 2. Perform BFS
     while let Some(current_path) = queue.pop_front() {
         let current_hex = *current_path.last().unwrap();
 
         if goal_hexes.contains(&current_hex) {
-            return Some(current_path); // Goal reached
+            return Some(current_path);
         }
 
         for exit_dir in Direction::all_directions() {
             if let Some(neighbor_hex) = game.get_neighbor_pos(current_hex, exit_dir) {
-                if visited.contains_key(&neighbor_hex) {
-                    continue;
-                }
+                if visited.contains_key(&neighbor_hex) { continue; }
 
                 if is_valid_step(&current_path, neighbor_hex, game, claimed_edges, internal_demands) {
                     let mut new_path = current_path.clone();
@@ -139,7 +120,6 @@ fn find_potential_path_for_team(
     None
 }
 
-/// The core validation logic for a single step in a path.
 fn is_valid_step(
     path: &[TilePos],
     next_hex: TilePos,
@@ -149,25 +129,22 @@ fn is_valid_step(
 ) -> bool {
     let current_hex = *path.last().unwrap();
 
-    // 1. Check Inter-Hex Edge Contention
     let edge_key = get_canonical_edge_key(current_hex, next_hex);
     if claimed_edges.contains(&edge_key) {
         return false;
     }
 
-    // 2. Check if the current hex allows the traversal
     if path.len() >= 2 {
         let prev_hex = path[path.len() - 2];
         if let Tile::Placed(tile) = game.tile(current_hex) {
             let entry_dir = game.get_direction_towards(current_hex, prev_hex).unwrap();
             let exit_dir = game.get_direction_towards(current_hex, next_hex).unwrap();
             if tile.exit_from_entrance(entry_dir) != exit_dir {
-                return false; // This placed tile blocks the required path.
+                return false;
             }
         }
     }
 
-    // 3. Check Internal Pathway Contention for Empty Hexes
     if let Tile::Empty = game.tile(current_hex) {
         if path.len() >= 2 {
             let prev_hex = path[path.len() - 2];
@@ -175,12 +152,10 @@ fn is_valid_step(
             let exit_dir = game.get_direction_towards(current_hex, next_hex).unwrap();
             let new_demand = (entry_dir, exit_dir);
 
-            if let Some(existing_demands) = internal_demands.get(&current_hex) {
-                let mut all_demands = existing_demands.clone();
-                all_demands.insert(new_demand);
-                if !is_satisfiable(&all_demands) {
-                    return false;
-                }
+            let mut all_demands = internal_demands.get(&current_hex).cloned().unwrap_or_default();
+            all_demands.insert(new_demand);
+            if !is_satisfiable(&all_demands) {
+                return false;
             }
         }
     }
@@ -188,7 +163,6 @@ fn is_valid_step(
     true
 }
 
-/// Checks if a set of required connections can be fulfilled by any single tile.
 fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
     if demands.is_empty() { return true; }
 
@@ -198,23 +172,21 @@ fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
             let rotation = crate::game::Rotation(r);
             let mut provides_all = true;
             for &(d1, d2) in demands {
-                // Check if this tile config provides this demand
                 let rotated_d1 = d1.rotate(rotation.reversed());
                 let expected_exit = tile_type.exit_from_entrance(rotated_d1).rotate(rotation);
                 if expected_exit != d2 {
                     provides_all = false;
-                    break; // Try next orientation
+                    break;
                 }
             }
             if provides_all {
-                return true; // Found a tile config that works
+                return true;
             }
         }
     }
     false
 }
 
-/// After a path is found, claim the resources it uses.
 fn claim_resources_for_path(
     path: &[TilePos],
     claimed_edges: &mut HashSet<EdgeKey>,
