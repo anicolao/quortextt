@@ -53,7 +53,7 @@ impl InMemoryBackend {
         F: FnOnce(&Game) -> R,
     {
         let game = self.game.read();
-        f(&*game)
+        f(&game)
     }
 }
 

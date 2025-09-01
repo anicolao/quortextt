@@ -31,7 +31,7 @@ impl EasyAiBackend {
             if game.outcome().is_some() {
                 return (false, None); // Game is over
             }
-            
+
             if game.current_player() != self.ai_player {
                 return (false, None); // Not AI's turn
             }
@@ -69,7 +69,7 @@ impl EasyAiBackend {
                                 pos,
                                 rotation: Rotation(rotation),
                             };
-                            
+
                             // Check if this move is legal
                             let mut temp_game = game.clone();
                             if temp_game.apply_action(action.clone()).is_ok() {
@@ -103,25 +103,31 @@ impl EasyAiBackend {
     /// Evaluate how good a move is for the AI
     /// Higher scores are better
     fn evaluate_move(&self, game: &Game, action: &Action) -> i32 {
-        if let Action::PlaceTile { pos, rotation, tile, .. } = action {
+        if let Action::PlaceTile {
+            pos,
+            rotation,
+            tile,
+            ..
+        } = action
+        {
             // Create a game state with this move applied
             let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-            
+
             // Get the AI's target side (opposite of where AI starts)
             let ai_side = self.get_ai_start_side(&test_game);
             let target_side = (ai_side + 3) % 6;
-            
+
             // Calculate how close AI flows are to the target
             let ai_progress = self.calculate_flow_progress(&test_game, self.ai_player, target_side);
-            
+
             // Check if human is about to win and if this move can block
             let human_threat = self.assess_human_threat(&test_game);
-            let blocking_value = if human_threat > 0 && self.can_block_human(&test_game, *pos) { 
-                human_threat * 100 // High priority for blocking 
-            } else { 
-                0 
+            let blocking_value = if human_threat > 0 && self.can_block_human(&test_game, *pos) {
+                human_threat * 100 // High priority for blocking
+            } else {
+                0
             };
-            
+
             ai_progress + blocking_value
         } else {
             0
@@ -148,7 +154,7 @@ impl EasyAiBackend {
                 }
             }
         }
-        
+
         // Calculate distance of flows to target side
         // This is a simplified heuristic - count how many tiles have the player's flow
         let mut flow_tiles = 0;
@@ -165,7 +171,7 @@ impl EasyAiBackend {
                 }
             }
         }
-        
+
         // Simple heuristic: more flow tiles = better progress
         flow_tiles * 10
     }
@@ -175,7 +181,7 @@ impl EasyAiBackend {
         let human_player = 1 - self.ai_player; // Assumes 2-player game
         let human_side = self.get_human_start_side(game);
         let human_target_side = (human_side + 3) % 6;
-        
+
         // Check if human can win in one move
         for (pos, dir) in game.edges_on_board_edge(Rotation(human_target_side as u8)) {
             if let Tile::Placed(tile) = game.tile(pos) {
@@ -184,10 +190,12 @@ impl EasyAiBackend {
                 }
             }
         }
-        
+
         // Simple threat assessment: count human flow tiles near target
-        let human_flow_progress = self.calculate_flow_progress(game, human_player, human_target_side);
-        if human_flow_progress > 50 { // Threshold for "close to winning"
+        let human_flow_progress =
+            self.calculate_flow_progress(game, human_player, human_target_side);
+        if human_flow_progress > 50 {
+            // Threshold for "close to winning"
             100
         } else {
             0
@@ -210,7 +218,8 @@ impl EasyAiBackend {
         // Simple heuristic: placing near the center or human flow paths might block
         // This is a simplified implementation
         let center = TilePos::new(3, 3);
-        let distance_to_center = ((pos.row - center.row).abs() + (pos.col - center.col).abs()) as i32;
+        let distance_to_center =
+            (pos.row - center.row).abs() + (pos.col - center.col).abs();
         distance_to_center <= 2 // Close to center might be blocking
     }
 }

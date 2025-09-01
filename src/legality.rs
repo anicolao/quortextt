@@ -1,5 +1,5 @@
 // This module contains all the logic for checking illegal moves.
-use crate::game::{Direction, Game, Player, PlacedTile, Rotation, Tile, TilePos, TileType};
+use crate::game::{Direction, Game, PlacedTile, Player, Rotation, Tile, TilePos, TileType};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 // A connection is a pair of directions (ports) on a hex that must be connected.
@@ -122,7 +122,8 @@ fn find_potential_path_for_team(
                 for exit_dir in Direction::all_directions() {
                     if let Some(neighbor_pos) = game.get_neighbor_pos(start_pos, exit_dir) {
                         let start_node = canonical_node(start_pos, neighbor_pos);
-                        if !claimed_edges.contains(&start_node) && !visited_nodes.contains(&start_node)
+                        if !claimed_edges.contains(&start_node)
+                            && !visited_nodes.contains(&start_node)
                         {
                             queue.push_back((vec![start_node], neighbor_pos));
                             visited_nodes.insert(start_node);
@@ -137,7 +138,11 @@ fn find_potential_path_for_team(
     // 2. Perform BFS
     while let Some((path, current_pos)) = queue.pop_front() {
         let last_node = path.last().unwrap();
-        let prev_pos = if last_node.0 == current_pos { last_node.1 } else { last_node.0 };
+        let prev_pos = if last_node.0 == current_pos {
+            last_node.1
+        } else {
+            last_node.0
+        };
 
         // 3. Check for Goal
         if goal_hexes.contains(&current_pos) {
@@ -151,14 +156,17 @@ fn find_potential_path_for_team(
                 }
                 Tile::Empty => {
                     // Find the goal directions for this specific hex
-                    for (_, goal_exit_dir) in goal_edges.iter().filter(|(pos, _)| *pos == current_pos)
+                    for (_, goal_exit_dir) in
+                        goal_edges.iter().filter(|(pos, _)| *pos == current_pos)
                     {
                         let mut new_demand = (entry_dir, *goal_exit_dir);
                         if new_demand.0 > new_demand.1 {
                             std::mem::swap(&mut new_demand.0, &mut new_demand.1);
                         }
-                        let mut all_demands =
-                            internal_demands.get(&current_pos).cloned().unwrap_or_default();
+                        let mut all_demands = internal_demands
+                            .get(&current_pos)
+                            .cloned()
+                            .unwrap_or_default();
                         all_demands.insert(new_demand);
 
                         if is_satisfiable(&all_demands) {
@@ -171,7 +179,11 @@ fn find_potential_path_for_team(
         }
 
         // 4. Explore Neighbors
-        let prev_pos = if last_node.0 == current_pos { last_node.1 } else { last_node.0 };
+        let prev_pos = if last_node.0 == current_pos {
+            last_node.1
+        } else {
+            last_node.0
+        };
 
         match *game.tile(current_pos) {
             Tile::Placed(placed_tile) => {
@@ -181,8 +193,7 @@ fn find_potential_path_for_team(
 
                 if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
                     let next_node = canonical_node(current_pos, next_pos);
-                    if !visited_nodes.contains(&next_node) && !claimed_edges.contains(&next_node)
-                    {
+                    if !visited_nodes.contains(&next_node) && !claimed_edges.contains(&next_node) {
                         let mut new_path = path.clone();
                         new_path.push(next_node);
                         visited_nodes.insert(next_node);
@@ -194,10 +205,13 @@ fn find_potential_path_for_team(
                 // Case 2: Path goes through an EMPTY hex. Any direction is possible.
                 for exit_dir in Direction::all_directions() {
                     if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
-                        if next_pos == prev_pos { continue; } // Don't go back
+                        if next_pos == prev_pos {
+                            continue;
+                        } // Don't go back
 
                         let next_node = canonical_node(current_pos, next_pos);
-                        if visited_nodes.contains(&next_node) || claimed_edges.contains(&next_node) {
+                        if visited_nodes.contains(&next_node) || claimed_edges.contains(&next_node)
+                        {
                             continue;
                         }
 
@@ -207,7 +221,10 @@ fn find_potential_path_for_team(
                         if new_demand.0 > new_demand.1 {
                             std::mem::swap(&mut new_demand.0, &mut new_demand.1);
                         }
-                        let mut all_demands = internal_demands.get(&current_pos).cloned().unwrap_or_default();
+                        let mut all_demands = internal_demands
+                            .get(&current_pos)
+                            .cloned()
+                            .unwrap_or_default();
                         all_demands.insert(new_demand);
 
                         if !is_satisfiable(&all_demands) {
@@ -256,8 +273,16 @@ fn claim_resources_for_path(
 
         // If the turn happens in an empty hex, record the demand.
         if *game.tile(turn_hex) == Tile::Empty {
-            let prev_hex = if node_a.0 == turn_hex { node_a.1 } else { node_a.0 };
-            let next_hex = if node_b.0 == turn_hex { node_b.1 } else { node_b.0 };
+            let prev_hex = if node_a.0 == turn_hex {
+                node_a.1
+            } else {
+                node_a.0
+            };
+            let next_hex = if node_b.0 == turn_hex {
+                node_b.1
+            } else {
+                node_b.0
+            };
 
             let entry_dir = game.get_direction_towards(turn_hex, prev_hex).unwrap();
             let exit_dir = game.get_direction_towards(turn_hex, next_hex).unwrap();
