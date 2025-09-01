@@ -817,8 +817,14 @@ impl GameUi {
                                 );
                                 painter.line_segment(
                                     [
-                                        pos + Vec2::new(-hexagon_radius / 2.0, hexagon_radius / 2.0),
-                                        pos + Vec2::new(hexagon_radius / 2.0, -hexagon_radius / 2.0),
+                                        pos + Vec2::new(
+                                            -hexagon_radius / 2.0,
+                                            hexagon_radius / 2.0,
+                                        ),
+                                        pos + Vec2::new(
+                                            hexagon_radius / 2.0,
+                                            -hexagon_radius / 2.0,
+                                        ),
                                     ],
                                     x_stroke,
                                 );

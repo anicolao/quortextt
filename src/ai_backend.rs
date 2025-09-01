@@ -333,7 +333,7 @@ impl EasyAiBackend {
 
         // 1. Find all existing flow positions for this player
         let mut flow_start_nodes: Vec<(Node, TilePos)> = Vec::new();
-        
+
         for row in 0..7 {
             for col in 0..7 {
                 let pos = TilePos::new(row, col);
@@ -346,7 +346,8 @@ impl EasyAiBackend {
                             if let Some(neighbor_pos) = game.get_neighbor_pos(pos, direction) {
                                 let node = canonical_node(pos, neighbor_pos);
                                 // Only add if this edge hasn't been claimed
-                                if !claimed_edges.contains(&node) && !visited_nodes.contains(&node) {
+                                if !claimed_edges.contains(&node) && !visited_nodes.contains(&node)
+                                {
                                     flow_start_nodes.push((node, neighbor_pos));
                                     visited_nodes.insert(node);
                                 }
@@ -357,7 +358,11 @@ impl EasyAiBackend {
             }
         }
 
-        println!("AI: Found {} existing flow nodes for player {}", flow_start_nodes.len(), player);
+        println!(
+            "AI: Found {} existing flow nodes for player {}",
+            flow_start_nodes.len(),
+            player
+        );
 
         // If we don't have any existing flows, fall back to the original behavior
         if flow_start_nodes.is_empty() {
@@ -386,7 +391,10 @@ impl EasyAiBackend {
                     Tile::Placed(placed_tile) => {
                         let exit_dir = placed_tile.exit_from_entrance(entry_dir);
                         if goal_edges.contains(&(current_pos, exit_dir)) {
-                            println!("AI: Found path from existing flows with length {}", path.len());
+                            println!(
+                                "AI: Found path from existing flows with length {}",
+                                path.len()
+                            );
                             return Some(path); // Success!
                         }
                     }
@@ -406,7 +414,10 @@ impl EasyAiBackend {
                             all_demands.insert(new_demand);
 
                             if is_satisfiable(&all_demands) {
-                                println!("AI: Found path from existing flows with length {}", path.len());
+                                println!(
+                                    "AI: Found path from existing flows with length {}",
+                                    path.len()
+                                );
                                 return Some(path); // Success!
                             }
                         }
@@ -430,7 +441,9 @@ impl EasyAiBackend {
 
                     if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
                         let next_node = canonical_node(current_pos, next_pos);
-                        if !visited_nodes.contains(&next_node) && !claimed_edges.contains(&next_node) {
+                        if !visited_nodes.contains(&next_node)
+                            && !claimed_edges.contains(&next_node)
+                        {
                             let mut new_path = path.clone();
                             new_path.push(next_node);
                             visited_nodes.insert(next_node);
@@ -447,13 +460,15 @@ impl EasyAiBackend {
                             } // Don't go back
 
                             let next_node = canonical_node(current_pos, next_pos);
-                            if visited_nodes.contains(&next_node) || claimed_edges.contains(&next_node)
+                            if visited_nodes.contains(&next_node)
+                                || claimed_edges.contains(&next_node)
                             {
                                 continue;
                             }
 
                             // Check for internal pathway contention
-                            let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                            let entry_dir =
+                                game.get_direction_towards(current_pos, prev_pos).unwrap();
                             let mut new_demand = (entry_dir, exit_dir);
                             if new_demand.0 > new_demand.1 {
                                 std::mem::swap(&mut new_demand.0, &mut new_demand.1);
