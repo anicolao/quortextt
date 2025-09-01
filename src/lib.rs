@@ -1,6 +1,7 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 pub mod game;
+pub mod legality;
 pub mod server_protocol;
 
 #[cfg(feature = "gui")]

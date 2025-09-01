@@ -22,7 +22,7 @@ impl std::ops::Add<Rotation> for Rotation {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TilePos {
     pub row: i32,
     pub col: i32,
@@ -98,7 +98,7 @@ impl std::ops::Sub for TilePos {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub enum Direction {
     SouthWest = 0,
     West = 1,
@@ -127,6 +127,18 @@ impl Direction {
 
     pub fn reversed(&self) -> Self {
         self.rotate(Rotation(3))
+    }
+
+    pub fn all_directions() -> impl Iterator<Item = Self> {
+        [
+            Self::SouthWest,
+            Self::West,
+            Self::NorthWest,
+            Self::NorthEast,
+            Self::East,
+            Self::SouthEast,
+        ]
+        .into_iter()
     }
 
     // Turn the direction into (row delta, column delta), which are what you need to add to
@@ -436,7 +448,17 @@ impl Game {
                 if self.current_player != player {
                     return Err("Wrong player's turn".into());
                 }
-                // TODO: Check whether move is legal by checking connectivity after placing.
+
+                // Check for legality
+                let mut temp_game = self.clone();
+                *temp_game.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
+                temp_game.recompute_flows(); // Needed for win condition check
+
+                if !crate::legality::is_move_legal(&temp_game) {
+                    return Err("Illegal move: blocks another player".into());
+                }
+
+                // If legal, apply to the actual game
                 *self.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
                 self.tiles_in_hand[player] = None;
                 self.recompute_flows();
@@ -551,6 +573,10 @@ impl Game {
         self.current_player
     }
 
+    pub fn set_current_player_for_testing(&mut self, player: Player) {
+        self.current_player = player;
+    }
+
     pub fn outcome(&self) -> &Option<GameOutcome> {
         &self.outcome
     }
@@ -584,6 +610,25 @@ impl Game {
             return AdjacentTile::BoardEdge(direction);
         }
         AdjacentTile::Tile(pos + direction.tile_vec())
+    }
+
+    pub fn get_neighbor_pos(&self, pos: TilePos, direction: Direction) -> Option<TilePos> {
+        let neighbor_pos = pos + direction.tile_vec();
+        if *self.tile(neighbor_pos) == Tile::NotOnBoard {
+            None
+        } else {
+            Some(neighbor_pos)
+        }
+    }
+
+    pub fn get_direction_towards(&self, from: TilePos, to: TilePos) -> Option<Direction> {
+        let d = to - from;
+        for dir in Direction::all_directions() {
+            if dir.tile_vec() == d {
+                return Some(dir);
+            }
+        }
+        None
     }
 
     pub fn edges_on_board_edge(&self, rotation: Rotation) -> Vec<(TilePos, Direction)> {
