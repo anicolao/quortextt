@@ -1,6 +1,49 @@
 // This module contains all the logic for checking illegal moves.
-use crate::game::{Direction, Game, Player, Rotation, Tile, TilePos, TileType};
+use crate::game::{Direction, Game, Player, PlacedTile, Rotation, Tile, TilePos, TileType};
 use std::collections::{HashMap, HashSet, VecDeque};
+
+// A connection is a pair of directions (ports) on a hex that must be connected.
+type Connection = (Direction, Direction);
+
+// An inter-hex edge, which is the node in our pathfinding graph.
+// It's represented by the two hexes it connects and the direction from the
+// canonical "source" hex (the one with the smaller coordinate).
+type Node = (TilePos, TilePos, Direction);
+
+/// Checks if a set of required connections within a single hex can be
+/// fulfilled by any single tile.
+fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
+    if demands.is_empty() {
+        return true;
+    }
+    // Iterate through all 4 tile types and 6 rotations
+    for &tile_type in &[
+        TileType::NoSharps,
+        TileType::OneSharp,
+        TileType::TwoSharps,
+        TileType::ThreeSharps,
+    ] {
+        for i in 0..6 {
+            let rotation = Rotation(i);
+            let placed_tile = PlacedTile::new(tile_type, rotation);
+            let provided_connections = placed_tile
+                .all_flows()
+                .into_iter()
+                .map(|(mut d1, mut d2)| {
+                    if d1 > d2 {
+                        std::mem::swap(&mut d1, &mut d2);
+                    }
+                    (d1, d2)
+                })
+                .collect::<HashSet<_>>();
+
+            if demands.is_subset(&provided_connections) {
+                return true; // Found a tile configuration that satisfies all demands
+            }
+        }
+    }
+    false // No single tile can fulfill all demands
+}
 
 pub fn is_move_legal(game: &Game) -> bool {
     if game.outcome().is_some() {
@@ -8,10 +51,6 @@ pub fn is_move_legal(game: &Game) -> bool {
     }
     has_distinct_potential_paths(game)
 }
-
-// Define the node type as the tuple (source_hex, dest_hex, source_dir):
-type Node = (TilePos, TilePos, Direction);
-type Connection = (Direction, Direction);
 
 fn has_distinct_potential_paths(game: &Game) -> bool {
     let players: Vec<Player> = (0..game.num_players()).collect();
@@ -40,38 +79,179 @@ fn check_paths_for_ordering(ordered_players: &[Player], game: &Game) -> Option<P
     None
 }
 
+// Helper to create a canonical representation of a node (inter-hex edge).
+// The source hex must always be "smaller" than the destination hex.
+fn canonical_node(pos1: TilePos, pos2: TilePos, game: &Game) -> Node {
+    let dir = game.get_direction_towards(pos1, pos2).unwrap();
+    if pos1 < pos2 {
+        (pos1, pos2, dir)
+    } else {
+        (pos2, pos1, dir.reversed())
+    }
+}
+
 fn find_potential_path_for_team(
     player: Player,
     game: &Game,
     claimed_edges: &HashSet<Node>,
     internal_demands: &HashMap<TilePos, HashSet<Connection>>,
-) -> Option<Vec<TilePos>> {
-    // we are going to implement a DFS on a graph of nodes made up of
-    // edges between hexes on the game board. A node will be represented
-    // by (source_hex, dest_hex, source_dir), where source_dir points
-    // from source_hex to dest_hex. The source_hex will always be the
-    // hex that is at a "lesser" position than the dest_hex, to make
-    // this representation canonical. A "lesser" position means that
-    // the y coordinate is smaller, or if the y coordinates are equal,
-    // the x coordinate is smaller.
+) -> Option<Vec<Node>> {
+    // The queue stores tuples of (path_of_nodes, current_tip_of_path)
+    let mut queue: VecDeque<(Vec<Node>, TilePos)> = VecDeque::new();
+    let mut visited_nodes: HashSet<Node> = HashSet::new();
 
-    let mut queue: VecDeque<Vec<Node>> = VecDeque::new();
-    //
-    // We start by adding all nodes that start from the player's starting side.
-    // Then, we repeatedly pop a path from the queue, and extend it by one hex
-    // in all possible directions. If we reach the goal side, we return the path.
-    // If we exhaust the queue, we return None.
     let (start_side, goal_side) = get_player_sides(player);
+    let goal_hexes: HashSet<TilePos> = game
+        .edges_on_board_edge(goal_side)
+        .into_iter()
+        .map(|(pos, _)| pos)
+        .collect();
 
-    None
+    // 1. Initialize Queue with starting paths.
+    for (start_pos, border_dir) in game.edges_on_board_edge(start_side) {
+        let entry_dir = border_dir.reversed();
+
+        match *game.tile(start_pos) {
+            Tile::Placed(placed_tile) => {
+                // Path must follow the tile's connection from the entry point.
+                let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+                if let Some(neighbor_pos) = game.get_neighbor_pos(start_pos, exit_dir) {
+                    let start_node = canonical_node(start_pos, neighbor_pos, game);
+                    if !claimed_edges.contains(&start_node) && !visited_nodes.contains(&start_node)
+                    {
+                        queue.push_back((vec![start_node], neighbor_pos));
+                        visited_nodes.insert(start_node);
+                    }
+                }
+            }
+            Tile::Empty => {
+                // From an empty start hex, a path can go to any neighbor.
+                for exit_dir in Direction::all_directions() {
+                    if let Some(neighbor_pos) = game.get_neighbor_pos(start_pos, exit_dir) {
+                        let start_node = canonical_node(start_pos, neighbor_pos, game);
+                        if !claimed_edges.contains(&start_node) && !visited_nodes.contains(&start_node)
+                        {
+                            queue.push_back((vec![start_node], neighbor_pos));
+                            visited_nodes.insert(start_node);
+                        }
+                    }
+                }
+            }
+            Tile::NotOnBoard => {} // Should not happen
+        }
+    }
+
+    // 2. Perform BFS
+    while let Some((path, current_pos)) = queue.pop_front() {
+        // 3. Check for Goal: Reaching any hex on the goal border is sufficient.
+        if goal_hexes.contains(&current_pos) {
+            return Some(path);
+        }
+
+        // 4. Explore Neighbors
+        let last_node = path.last().unwrap();
+        let prev_pos = if last_node.0 == current_pos { last_node.1 } else { last_node.0 };
+
+        match *game.tile(current_pos) {
+            Tile::Placed(placed_tile) => {
+                // Path is forced by the tile's connections.
+                let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+
+                if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
+                    let next_node = canonical_node(current_pos, next_pos, game);
+                    if !visited_nodes.contains(&next_node) && !claimed_edges.contains(&next_node)
+                    {
+                        let mut new_path = path.clone();
+                        new_path.push(next_node);
+                        visited_nodes.insert(next_node);
+                        queue.push_back((new_path, next_pos));
+                    }
+                }
+            }
+            Tile::Empty => {
+                // Case 2: Path goes through an EMPTY hex. Any direction is possible.
+                for exit_dir in Direction::all_directions() {
+                    if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
+                        if next_pos == prev_pos { continue; } // Don't go back
+
+                        let next_node = canonical_node(current_pos, next_pos, game);
+                        if visited_nodes.contains(&next_node) || claimed_edges.contains(&next_node) {
+                            continue;
+                        }
+
+                        // Check for internal pathway contention
+                        let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                        let mut new_demand = (entry_dir, exit_dir);
+                        if new_demand.0 > new_demand.1 {
+                            std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                        }
+                        let mut all_demands = internal_demands.get(&current_pos).cloned().unwrap_or_default();
+                        all_demands.insert(new_demand);
+
+                        if !is_satisfiable(&all_demands) {
+                            continue;
+                        }
+
+                        // Enqueue new path
+                        let mut new_path = path.clone();
+                        new_path.push(next_node);
+                        visited_nodes.insert(next_node);
+                        queue.push_back((new_path, next_pos));
+                    }
+                }
+            }
+            Tile::NotOnBoard => {} // Should not happen in BFS
+        }
+    }
+
+    None // No path found
 }
 
 fn claim_resources_for_path(
-    path: &[TilePos],
+    path: &[Node],
     claimed_edges: &mut HashSet<Node>,
     internal_demands: &mut HashMap<TilePos, HashSet<Connection>>,
     game: &Game,
 ) {
+    // 1. Claim all inter-hex edges used by the path.
+    claimed_edges.extend(path.iter().copied());
+
+    // 2. For any empty hexes the path turns through, claim the internal connection.
+    if path.len() < 2 {
+        return; // No turns in a path with less than 2 edges.
+    }
+
+    for window in path.windows(2) {
+        let node_a = window[0];
+        let node_b = window[1];
+
+        // Find the hex where the path turns.
+        let turn_hex = if node_a.0 == node_b.0 || node_a.0 == node_b.1 {
+            node_a.0
+        } else {
+            node_a.1
+        };
+
+        // If the turn happens in an empty hex, record the demand.
+        if *game.tile(turn_hex) == Tile::Empty {
+            let prev_hex = if node_a.0 == turn_hex { node_a.1 } else { node_a.0 };
+            let next_hex = if node_b.0 == turn_hex { node_b.1 } else { node_b.0 };
+
+            let entry_dir = game.get_direction_towards(turn_hex, prev_hex).unwrap();
+            let exit_dir = game.get_direction_towards(turn_hex, next_hex).unwrap();
+
+            let mut connection = (entry_dir, exit_dir);
+            if connection.0 > connection.1 {
+                std::mem::swap(&mut connection.0, &mut connection.1);
+            }
+
+            internal_demands
+                .entry(turn_hex)
+                .or_default()
+                .insert(connection);
+        }
+    }
 }
 
 fn get_player_sides(player: Player) -> (Rotation, Rotation) {

@@ -22,7 +22,7 @@ impl std::ops::Add<Rotation> for Rotation {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TilePos {
     pub row: i32,
     pub col: i32,
