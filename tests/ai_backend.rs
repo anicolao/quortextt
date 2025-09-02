@@ -74,10 +74,13 @@ fn test_ai_evaluation_improvements() {
     // The test passes if the AI backend was created successfully and
     // the initialization worked without crashing our new evaluation code
     assert_eq!(ai_backend.viewer(), GameViewer::Admin);
-    
+
     // Verify action history contains the initialization
     let actions = ai_backend.actions_from_index(0);
-    assert!(!actions.is_empty(), "Should have at least the initialization action");
+    assert!(
+        !actions.is_empty(),
+        "Should have at least the initialization action"
+    );
 }
 
 #[test]
