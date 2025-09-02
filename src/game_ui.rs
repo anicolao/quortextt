@@ -520,7 +520,7 @@ impl GameUi {
                 None => None,
                 Some(hover_pos) => {
                     let mut hovered_tile = None;
-                    let mut best_radius = f32::INFINITY;
+                    let mut best_radius = DEFAULT_HEXAGON_RADIUS * 1.1;
                     for col in 0..7 {
                         for row in 0..7 {
                             let tile_pos = TilePos::new(row, col);
