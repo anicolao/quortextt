@@ -78,9 +78,8 @@ mod server_connection {
                         Ok(line) => line,
                         Err(_) => break,
                     };
-                    match serde_json::from_str::<ServerToClientMessage>(&line) {
-                        Ok(m) => t_message_buffer.write().push_back(m),
-                        Err(_) => (),
+                    if let Ok(m) = serde_json::from_str::<ServerToClientMessage>(&line) {
+                        t_message_buffer.write().push_back(m)
                     }
                 }
             });
@@ -98,9 +97,9 @@ mod server_connection {
         pub fn send(&self, message: ClientToServerMessage) {
             self.stream
                 .write()
-                .write(serde_json::to_string(&message).unwrap().as_bytes())
+                .write_all(serde_json::to_string(&message).unwrap().as_bytes())
                 .unwrap();
-            self.stream.write().write(b"\n").unwrap();
+            self.stream.write().write_all(b"\n").unwrap();
         }
     }
 }

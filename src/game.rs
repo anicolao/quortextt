@@ -8,6 +8,10 @@ impl Rotation {
     pub fn reversed(&self) -> Self {
         Self((6 - self.0) % 6)
     }
+
+    pub fn as_radians(&self) -> f32 {
+        self.0 as f32 * std::f32::consts::PI / 3.0
+    }
 }
 
 impl std::ops::Add<Rotation> for Rotation {
@@ -378,8 +382,7 @@ impl Game {
         match action_history
             .into_iter()
             .skip(1)
-            .map(|action| game.apply_action(action))
-            .collect::<Result<(), String>>()
+            .try_for_each(|action| game.apply_action(action))
         {
             Err(err) => Err(err),
             Ok(()) => Ok(game),
@@ -404,7 +407,7 @@ impl Game {
                 {
                     return Err("Must reveal actual tile that player holds".into());
                 }
-                // This action has no effect on the game state.
+                self.tiles_in_hand[player] = Some(tile);
             }
             Action::PlaceTile {
                 player,
@@ -487,15 +490,12 @@ impl Game {
             }
         }
         if !tile_is_revealed {
-            match self.tiles_in_hand[self.current_player] {
-                Some(tile) => self
-                    .apply_action(Action::RevealTile {
-                        player: self.current_player,
-                        tile,
-                    })
-                    .unwrap(),
-                // The `None` case should never be reached because we just drew tiles above.
-                None => (),
+            if let Some(tile) = self.tiles_in_hand[self.current_player] {
+                self.apply_action(Action::RevealTile {
+                    player: self.current_player,
+                    tile,
+                })
+                .unwrap()
             }
         }
     }
@@ -528,6 +528,10 @@ impl Game {
     /// Returns the tile position at the center of the board.
     pub fn center_pos(&self) -> TilePos {
         TilePos { row: 3, col: 3 }
+    }
+
+    pub fn num_players(&self) -> usize {
+        self.settings.num_players
     }
 
     pub fn current_player(&self) -> Player {
@@ -638,9 +642,8 @@ impl Game {
     pub fn recompute_flows(&mut self) {
         for i in 0..7 {
             for j in 0..7 {
-                match self.board[i][j] {
-                    Tile::Placed(mut tile) => tile.flow_cache = [None; 6],
-                    _ => (),
+                if let Tile::Placed(mut tile) = self.board[i][j] {
+                    tile.flow_cache = [None; 6]
                 }
             }
         }
@@ -672,17 +675,17 @@ impl std::fmt::Debug for Game {
                     Tile::Placed(tile) => write!(f, "{} ", tile.type_.num_sharps())?,
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         // TODO: There is a better way to do this but I can't look it up because I'm on
         // a plane.
-        write!(f, "Settings: {:?}\n", self.settings)?;
-        write!(f, "Sides: {:?}\n", self.sides)?;
-        write!(f, "Remaining tiles: {:?}\n", self.remaining_tiles)?;
-        write!(f, "Tiles in hand: {:?}\n", self.tiles_in_hand)?;
-        write!(f, "Current player: {:?}\n", self.current_player)?;
-        write!(f, "Action history: {:?}\n", self.action_history)?;
+        writeln!(f, "Settings: {:?}", self.settings)?;
+        writeln!(f, "Sides: {:?}", self.sides)?;
+        writeln!(f, "Remaining tiles: {:?}", self.remaining_tiles)?;
+        writeln!(f, "Tiles in hand: {:?}", self.tiles_in_hand)?;
+        writeln!(f, "Current player: {:?}", self.current_player)?;
+        writeln!(f, "Action history: {:?}", self.action_history)?;
         Ok(())
     }
 }

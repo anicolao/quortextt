@@ -1,11 +1,12 @@
 use crate::backend::InMemoryBackend;
-use crate::game::{GameSettings, GameViewer, Rotation};
+use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
 use crate::server_backend::{ServerBackend, ServerCredentials};
 use crate::server_protocol::RoomId;
 
 struct InMemoryMode {
+    #[allow(dead_code)]
     admin_view: GameView,
     player_views: Vec<GameView>,
     player_uis: Vec<GameUi>,
@@ -24,9 +25,7 @@ impl InMemoryMode {
         Self {
             admin_view,
             player_views,
-            player_uis: (0..num_players)
-                .map(|i| GameUi::new(Rotation(i as u8 * 2).reversed()))
-                .collect(),
+            player_uis: (0..num_players).map(|_| GameUi::new()).collect(),
             current_displayed_player: 0,
             displayed_action_count: 0,
         }
@@ -57,7 +56,7 @@ impl ServerMode {
     pub fn set_current_room(&mut self, room_id: RoomId) {
         if let Some(game_backend) = self.backend.game_backend_for_room(room_id.clone()) {
             let player_view = GameView::new(Box::new(game_backend));
-            let player_ui = GameUi::new(Rotation(0));
+            let player_ui = GameUi::new();
             self.current_room = Some(ServerModeRoom {
                 room_id,
                 player_view,

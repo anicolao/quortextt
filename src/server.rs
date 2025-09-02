@@ -573,7 +573,7 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         // eventually could contain a handshake or something).
         let mut buf = [0u8; 4];
         let _bytes_read = stream.peek(&mut buf).await;
-        let is_websocket = buf == &"GET ".as_bytes()[..];
+        let is_websocket = buf == "GET ".as_bytes();
 
         tokio::spawn(async move {
             stream.writable().await.unwrap();
@@ -611,7 +611,7 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
                         from_client = ws_stream.next() => {
                             if let Some(Ok(line)) = from_client {
                                 if let Ok(s) = line.to_text() {
-                                    if s.len() == 0 {
+                                    if s.is_empty() {
                                         break;
                                     }
                                     let message = serde_json::from_str::<ClientToServerMessage>(s).unwrap();

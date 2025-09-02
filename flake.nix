@@ -28,7 +28,11 @@
             targets.wasm32-unknown-unknown.stable.rust-std
           ];
       in {
-        devShells.default = pkgs.mkShell {packages = with pkgs; [cargo wasm-pack rust-toolchain];};
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [cargo wasm-pack rust-toolchain trunk lld];
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "lld";
+          };
+
       }
     );
 }
