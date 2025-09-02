@@ -552,7 +552,7 @@ impl EasyAiBackend {
                         ai_tiles_needed, human_tiles_needed
                     );
 
-                    let score = human_tiles_needed as f64 - 2.0 * ai_tiles_needed as f64;
+                    let score = -30.0 / (human_tiles_needed as f64) - 1.2 * ai_tiles_needed as f64;
 
                     // Bonus for AI being closer to completion
                     if ai_tiles_needed == 0 {

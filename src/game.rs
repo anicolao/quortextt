@@ -382,7 +382,7 @@ impl Game {
         Self {
             settings: settings.clone(),
             sides,
-            remaining_tiles: [10; 4],
+            remaining_tiles: [16, 12, 8, 4],
             tiles_in_hand: vec![None; settings.num_players],
             board,
             action_history: vec![Action::InitializeGame(settings)],
