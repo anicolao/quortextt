@@ -1400,38 +1400,30 @@ impl GameUi {
                 let estimated_dialog_height = 150.0; // Approximate height for title + scores + button + spacing
                 let dialog_margin = 20.0;
 
-                // Check if there's enough space below the board
+                // Check if there's enough space below the board within the current game area
                 let space_below = window.bottom() - board_bottom;
                 let use_bottom_position = space_below >= (estimated_dialog_height + dialog_margin);
 
-                // Get the global screen coordinates (ctx.available_rect() gives us the full screen)
-                let screen_rect = ctx.available_rect();
+                // Convert board coordinates to screen coordinates accounting for the current UI layout
+                // window.min gives us the top-left of the game area, window.center() gives the center
 
-                let (anchor, offset) = if use_bottom_position {
-                    // Position centered horizontally, below the board
-                    // For CENTER_TOP anchor, offset is relative to the center-top of the screen
-                    (
-                        egui::Align2::CENTER_TOP,
-                        [
-                            board_center.x - screen_rect.center().x,
-                            board_bottom + dialog_margin - screen_rect.top(),
-                        ],
+                let dialog_pos = if use_bottom_position {
+                    // Position centered horizontally below the board, relative to the game area
+                    Pos2::new(
+                        board_center.x - hexagon_radius * 1.5, // Center the dialog horizontally on the board
+                        board_bottom + dialog_margin,
                     )
                 } else {
-                    // Position on the right side, centered vertically, near the rightmost point
-                    // For LEFT_CENTER anchor, offset is relative to the left-center of the screen
-                    (
-                        egui::Align2::LEFT_CENTER,
-                        [
-                            board_right + dialog_margin - screen_rect.left(),
-                            board_center.y - screen_rect.center().y,
-                        ],
+                    // Position on the right side, centered vertically, near the rightmost point of the board
+                    Pos2::new(
+                        board_right + dialog_margin,
+                        board_center.y - estimated_dialog_height / 2.0,
                     )
                 };
 
                 // Show victory window with scores and play again button
                 egui::Window::new("Game Over")
-                    .anchor(anchor, offset)
+                    .fixed_pos(dialog_pos)
                     .resizable(false)
                     .collapsible(false)
                     .show(ctx, |ui| {
