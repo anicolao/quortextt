@@ -6,6 +6,9 @@ use crate::game_view::GameView;
 use crate::server_backend::{ServerBackend, ServerCredentials};
 use crate::server_protocol::RoomId;
 
+use rand::distr::{SampleString, Uniform};
+use rand::{rngs::StdRng, SeedableRng};
+
 struct InMemoryMode {
     #[allow(dead_code)]
     admin_view: GameView,
@@ -52,6 +55,15 @@ impl ServerMode {
             backend,
             current_room: None,
         }
+    }
+
+    pub fn create_room(&mut self, game_settings: GameSettings) {
+        let mut rng =
+            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
+        let alphabetic = Uniform::new('A', 'Z').unwrap();
+        let room_id = alphabetic.sample_string(&mut rng, 4);
+        self.backend.create_room(room_id.clone(), game_settings);
+        self.set_current_room(room_id);
     }
 
     pub fn set_current_room(&mut self, room_id: RoomId) {
@@ -165,8 +177,11 @@ impl eframe::App for FlowsApp {
                     in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
                 }
                 in_memory_mode.displayed_action_count = num_actions;
-                in_memory_mode.player_uis[in_memory_mode.current_displayed_player]
-                    .display(ctx, player_view);
+                in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
+                    ctx,
+                    player_view,
+                    None,
+                );
             }
             State::EasyAiMode(easy_ai_mode) => {
                 // Update the main backend for AI logic
@@ -174,29 +189,28 @@ impl eframe::App for FlowsApp {
 
                 let human_view = &mut easy_ai_mode.human_view;
                 human_view.poll_backend();
-                easy_ai_mode.human_ui.display(ctx, human_view);
+                easy_ai_mode.human_ui.display(ctx, human_view, None);
                 ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
             State::ServerMode(server_mode) => {
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    server_mode.backend.update();
-                    let my_user_id = server_mode.backend.my_user.as_ref().map(|x| x.user_id);
+                server_mode.backend.update();
+                let my_user_id = server_mode.backend.my_user.as_ref().map(|x| x.user_id);
 
-                    if let Some(current_room) = &mut server_mode.current_room {
-                        let mut go_back = false;
-                        if ui.button("Back to lobby").clicked() {
-                            go_back = true;
-                        }
-                        current_room.player_view.poll_backend();
-                        current_room
-                            .player_ui
-                            .display(ctx, &mut current_room.player_view);
-                        if go_back {
-                            server_mode.current_room = None;
-                        }
-                    } else {
+                if let Some(current_room) = &mut server_mode.current_room {
+                    let mut go_back = false;
+                    current_room.player_view.poll_backend();
+                    current_room.player_ui.display(
+                        ctx,
+                        &mut current_room.player_view,
+                        Some(&mut go_back),
+                    );
+                    if go_back {
+                        server_mode.current_room = None;
+                    }
+                } else {
+                    egui::CentralPanel::default().show(ctx, |ui| {
                         if ui.button("Create 2-person game").clicked() {
-                            server_mode.backend.create_room(GameSettings {
+                            server_mode.create_room(GameSettings {
                                 num_players: 2,
                                 version: 0,
                             });
@@ -274,8 +288,8 @@ impl eframe::App for FlowsApp {
                         if let Some(room_id) = room_to_view {
                             server_mode.set_current_room(room_id);
                         }
-                    }
-                });
+                    });
+                }
                 ctx.request_repaint_after_secs(1.0 / 60.0);
             }
         }

@@ -2,8 +2,6 @@ use crate::backend::Backend;
 use crate::game::*;
 use crate::server_protocol::*;
 use parking_lot::RwLock;
-use rand::distr::{SampleString, Uniform};
-use rand::{rngs::StdRng, SeedableRng};
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
@@ -196,11 +194,7 @@ impl ServerBackend {
         }
     }
 
-    pub fn create_room(&self, game_settings: GameSettings) {
-        let mut rng =
-            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
-        let alphabetic = Uniform::new('A', 'Z').unwrap();
-        let room_id = alphabetic.sample_string(&mut rng, 4);
+    pub fn create_room(&self, room_id: RoomId, game_settings: GameSettings) {
         self.connection.send(ClientToServerMessage::CreateRoom {
             room_id,
             game_settings,
@@ -217,18 +211,32 @@ impl ServerBackend {
             .send(ClientToServerMessage::JoinRoomGame { room_id });
     }
 
-    pub fn game_backend_for_room(&self, room_id: RoomId) -> Option<ServerBackendGame> {
-        match self.room_datas.get(&room_id) {
+    pub fn game_backend_for_room(&mut self, room_id: RoomId) -> Option<ServerBackendGame> {
+        match &self.my_user {
             None => None,
-            Some(room_data) => match &self.my_user {
-                None => None,
-                Some(my_user) => Some(ServerBackendGame {
+            Some(my_user) => {
+                let room_data = self.room_datas.entry(room_id.clone()).or_insert_with(|| {
+                    Arc::new(RwLock::new(RoomData {
+                        room_info: RoomInfo {
+                            // This is a bit of a hack, but we need to put something in the map
+                            // so that once the game does load from the server, we can show it.
+                            game_settings: GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            players: Vec::new(),
+                            user_to_game_viewer: HashMap::new(),
+                        },
+                        actions: Vec::new(),
+                    }))
+                });
+                Some(ServerBackendGame {
                     my_user: my_user.clone(),
                     room_id,
                     room_data: room_data.clone(),
                     server_connection: Arc::downgrade(&self.connection),
-                }),
-            },
+                })
+            }
         }
     }
 }

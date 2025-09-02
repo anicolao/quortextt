@@ -445,6 +445,7 @@ impl ServerInternal {
                 };
                 match self.server_data.join_room_game(*user_id, room_id.clone()) {
                     Ok(()) => {
+                        self.subscribe_to_room(connection_id, room_id.clone()).await;
                         self.update_room_listeners(room_id).await;
                         self.broadcast_rooms_list(None).await;
                     }
