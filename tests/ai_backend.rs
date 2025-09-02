@@ -90,28 +90,32 @@ fn test_ai_debugging_flag() {
         num_players: 2,
         version: 0,
     };
-    
+
     // Test with debugging enabled
     let ai_backend_debug = EasyAiBackend::new(settings.clone(), true);
     assert_eq!(ai_backend_debug.viewer(), GameViewer::Admin);
-    
+
     // Test with debugging disabled (default)
     let ai_backend_no_debug = EasyAiBackend::new(settings, false);
     assert_eq!(ai_backend_no_debug.viewer(), GameViewer::Admin);
-    
+
     // Both backends should work the same functionally
     let init_action = Action::InitializeGame(GameSettings {
         num_players: 2,
         version: 0,
     });
-    
+
     ai_backend_debug.submit_action(init_action.clone());
     ai_backend_no_debug.submit_action(init_action);
-    
+
     // Both should have the same action history
     let actions_debug = ai_backend_debug.actions_from_index(0);
     let actions_no_debug = ai_backend_no_debug.actions_from_index(0);
-    
+
     assert_eq!(actions_debug.len(), actions_no_debug.len());
     assert!(!actions_debug.is_empty());
+    assert!(
+        !actions.is_empty(),
+        "Should have at least the initialization action"
+    );
 }

@@ -36,7 +36,7 @@ impl InMemoryMode {
             last_game_action_count: 0,
         }
     }
-    
+
     pub fn reset_game(&mut self, settings: GameSettings) {
         let backend = InMemoryBackend::new(settings);
         self.player_views = (0..self.num_players)
@@ -48,7 +48,7 @@ impl InMemoryMode {
         self.last_game_action_count = 0;
         // Note: scores are preserved across game resets
     }
-    
+
     pub fn update_scores(&mut self, winners: &[usize]) {
         for &winner in winners {
             if winner < self.scores.len() {
@@ -79,14 +79,16 @@ impl EasyAiMode {
             last_game_action_count: 0,
         }
     }
-    
+
     pub fn reset_game(&mut self, settings: GameSettings) {
         self.main_backend = EasyAiBackend::new(settings);
-        self.human_view = GameView::new(Box::new(self.main_backend.backend_for_viewer(GameViewer::Player(0))));
+        self.human_view = GameView::new(Box::new(
+            self.main_backend.backend_for_viewer(GameViewer::Player(0)),
+        ));
         self.last_game_action_count = 0;
         // Note: scores are preserved across game resets
     }
-    
+
     pub fn update_scores(&mut self, winners: &[usize]) {
         for &winner in winners {
             if winner < self.scores.len() {
@@ -193,7 +195,7 @@ impl eframe::App for FlowsApp {
                 // Check if game just ended and update scores
                 let mut winners_to_update: Option<Vec<usize>> = None;
                 let current_displayed_player = in_memory_mode.current_displayed_player;
-                
+
                 {
                     let player_view = &mut in_memory_mode.player_views[current_displayed_player];
                     let num_actions = player_view.poll_backend();
@@ -204,32 +206,36 @@ impl eframe::App for FlowsApp {
                         in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
                     }
                     in_memory_mode.displayed_action_count = num_actions;
-                    
+
                     if let Some(game) = player_view.game() {
                         let current_action_count = game.action_history_vec().len();
                         if let Some(outcome) = game.outcome() {
                             match outcome {
                                 crate::game::GameOutcome::Victory(winners) => {
                                     // Only update scores once when game ends
-                                    if current_action_count > in_memory_mode.last_game_action_count {
+                                    if current_action_count > in_memory_mode.last_game_action_count
+                                    {
                                         winners_to_update = Some(winners.clone());
-                                        in_memory_mode.last_game_action_count = current_action_count;
+                                        in_memory_mode.last_game_action_count =
+                                            current_action_count;
                                     }
                                 }
                             }
                         }
                     }
                 }
-                
+
                 // Update scores after borrowing from player_view is done
                 if let Some(winners) = winners_to_update {
                     in_memory_mode.update_scores(&winners);
                 }
-                
-                let player_view = &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
-                let ui_response = in_memory_mode.player_uis[in_memory_mode.current_displayed_player]
+
+                let player_view =
+                    &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
+                let ui_response = in_memory_mode.player_uis
+                    [in_memory_mode.current_displayed_player]
                     .display(ctx, player_view, &in_memory_mode.scores);
-                    
+
                 if ui_response.play_again_requested {
                     in_memory_mode.reset_game(GameSettings {
                         num_players: in_memory_mode.num_players,
@@ -246,7 +252,7 @@ impl eframe::App for FlowsApp {
                 {
                     let human_view = &mut easy_ai_mode.human_view;
                     human_view.poll_backend();
-                    
+
                     if let Some(game) = human_view.game() {
                         let current_action_count = game.action_history_vec().len();
                         if let Some(outcome) = game.outcome() {
@@ -262,30 +268,35 @@ impl eframe::App for FlowsApp {
                         }
                     }
                 }
-                
+
                 // Update scores after borrowing from human_view is done
                 if let Some(winners) = winners_to_update {
                     easy_ai_mode.update_scores(&winners);
                 }
 
                 let human_view = &mut easy_ai_mode.human_view;
-                let ui_response = easy_ai_mode.human_ui.display(ctx, human_view, &easy_ai_mode.scores);
-                
+                let ui_response =
+                    easy_ai_mode
+                        .human_ui
+                        .display(ctx, human_view, &easy_ai_mode.scores);
+
                 if ui_response.play_again_requested {
                     easy_ai_mode.reset_game(GameSettings {
                         num_players: 2,
                         version: 0,
                     });
                 }
-                
+
                 ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
             State::ServerMode(server_mode) => {
                 let player_view = &mut server_mode.player_view;
                 player_view.poll_backend();
-                // For now, use empty scores for server mode  
+                // For now, use empty scores for server mode
                 let empty_scores = vec![0; 2];
-                let _ui_response = server_mode.player_ui.display(ctx, player_view, &empty_scores);
+                let _ui_response = server_mode
+                    .player_ui
+                    .display(ctx, player_view, &empty_scores);
                 ctx.request_repaint_after_secs(1.0 / 60.0);
             }
         }
