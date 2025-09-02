@@ -1386,9 +1386,40 @@ impl GameUi {
                 let painter = ui.painter();
                 painter.rect_filled(window, 0.0, Color32::from_rgba_premultiplied(0, 0, 0, 128));
 
+                // Calculate board bounds for dialog positioning
+                let board_center = window.center();
+                let board_radius = hexagon_radius * 7.5;
+
+                // Calculate bottom of the hexagonal board
+                let board_bottom = board_center.y + board_radius;
+                // Calculate right edge of the hexagonal board (using cos(30°) = √3/2)
+                let board_right = board_center.x + board_radius * 0.866_025_4;
+
+                // Estimate dialog height (rough calculation)
+                let estimated_dialog_height = 150.0; // Approximate height for title + scores + button + spacing
+                let dialog_margin = 20.0;
+
+                // Check if there's enough space below the board
+                let space_below = window.bottom() - board_bottom;
+                let use_bottom_position = space_below >= (estimated_dialog_height + dialog_margin);
+
+                let (anchor, offset) = if use_bottom_position {
+                    // Position centered horizontally, below the board
+                    (
+                        egui::Align2::CENTER_TOP,
+                        [0.0, board_bottom + dialog_margin - board_center.y],
+                    )
+                } else {
+                    // Position on the right side, centered vertically, near the rightmost point
+                    (
+                        egui::Align2::LEFT_CENTER,
+                        [board_right + dialog_margin - board_center.x, 0.0],
+                    )
+                };
+
                 // Show victory window with scores and play again button
                 egui::Window::new("Game Over")
-                    .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                    .anchor(anchor, offset)
                     .resizable(false)
                     .collapsible(false)
                     .show(ctx, |ui| {
