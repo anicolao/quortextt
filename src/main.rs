@@ -1,9 +1,24 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+#[cfg(not(target_arch = "wasm32"))]
+use clap::Parser;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Parser)]
+#[command(name = "flows")]
+#[command(about = "A tile-placing game")]
+struct Args {
+    /// Enable AI debugging output
+    #[arg(long, default_value_t = false)]
+    ai_debugging: bool,
+}
+
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    let args = Args::parse();
+
     #[cfg(feature = "gui")]
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
@@ -21,7 +36,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Flows",
         native_options,
-        Box::new(|cc| Ok(Box::new(flows::FlowsApp::new(cc)))),
+        Box::new(move |cc| Ok(Box::new(flows::FlowsApp::new_with_ai_debugging(cc, args.ai_debugging)))),
     )
 }
 

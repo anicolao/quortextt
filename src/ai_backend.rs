@@ -3,6 +3,15 @@ use crate::game::*;
 use crate::legality::{find_potential_path_for_team, Connection, Node};
 use std::collections::{HashMap, HashSet, VecDeque};
 
+/// Macro for conditional AI debugging output
+macro_rules! ai_debug {
+    ($self:expr, $($arg:tt)*) => {
+        if $self.ai_debugging {
+            println!($($arg)*);
+        }
+    };
+}
+
 /// A backend that adds Easy AI functionality to an InMemoryBackend
 /// The AI player is always player 1, human is player 0
 #[derive(Clone)]
@@ -11,6 +20,7 @@ pub struct EasyAiBackend {
     ai_player: Player,
     last_action_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     ai_thinking: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ai_debugging: bool,
 }
 
 // Helper to create a canonical representation of a node (inter-hex edge).
@@ -111,13 +121,14 @@ fn actions_equal(a1: &Action, a2: &Action) -> bool {
 }
 
 impl EasyAiBackend {
-    pub fn new(settings: GameSettings) -> Self {
+    pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
         let inner = InMemoryBackend::new(settings);
         Self {
             inner,
             ai_player: 1, // AI is always player 1
             last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            ai_debugging,
         }
     }
 
@@ -127,6 +138,7 @@ impl EasyAiBackend {
             ai_player: self.ai_player,
             last_action_count: self.last_action_count.clone(),
             ai_thinking: self.ai_thinking.clone(),
+            ai_debugging: self.ai_debugging,
         }
     }
 
@@ -172,7 +184,8 @@ impl EasyAiBackend {
             // Update our last processed count even if it's not our turn
             self.last_action_count
                 .store(current_action_count, std::sync::atomic::Ordering::Relaxed);
-            println!(
+            ai_debug!(
+                self,
                 "AI: Not my turn (current player: {}, AI player: {}, game over: {:?})",
                 current_player, self.ai_player, game_is_over
             );
@@ -184,32 +197,32 @@ impl EasyAiBackend {
             self.ai_thinking
                 .store(true, std::sync::atomic::Ordering::Relaxed);
 
-            println!("AI: It's my turn! Looking for moves with tile {:?}", tile);
+            ai_debug!(self, "AI: It's my turn! Looking for moves with tile {:?}", tile);
 
             // Find the best move for the AI
             if let Some(best_move) = self.find_best_ai_move(tile) {
-                println!("AI submitting move: {:?}", best_move);
+                ai_debug!(self, "AI submitting move: {:?}", best_move);
                 self.inner.submit_action(best_move);
                 // Update the action count after our move
                 let new_action_count = self.inner.action_history().len();
                 self.last_action_count
                     .store(new_action_count, std::sync::atomic::Ordering::Relaxed);
             } else {
-                println!("AI could not find a valid move with tile {:?}", tile);
+                ai_debug!(self, "AI could not find a valid move with tile {:?}", tile);
             }
 
             // Mark that we're done thinking
             self.ai_thinking
                 .store(false, std::sync::atomic::Ordering::Relaxed);
         } else {
-            println!("AI: It's my turn but I have no tile to play");
+            ai_debug!(self, "AI: It's my turn but I have no tile to play");
         }
     }
 
     /// Find the best move for the AI using the Easy AI strategy
     fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
         self.inner.with_game(|game| {
-            println!("AI: Finding best move for tile {:?}", ai_tile);
+            ai_debug!(self, "AI: Finding best move for tile {:?}", ai_tile);
             // Generate all possible legal moves and check for immediate wins/losses
             let mut possible_moves = Vec::new();
             let mut winning_moves = Vec::new();
@@ -254,7 +267,8 @@ impl EasyAiBackend {
                 }
             }
 
-            println!(
+            ai_debug!(
+                self,
                 "AI: Found {} possible moves, {} winning, {} losing",
                 possible_moves.len(),
                 winning_moves.len(),
@@ -267,7 +281,7 @@ impl EasyAiBackend {
 
             // Always play a winning move if available
             if !winning_moves.is_empty() {
-                println!("AI: Playing winning move: {:?}", winning_moves[0]);
+                ai_debug!(self, "AI: Playing winning move: {:?}", winning_moves[0]);
                 return Some(winning_moves[0].clone());
             }
 
@@ -309,7 +323,7 @@ impl EasyAiBackend {
             }
         }
 
-        println!("AI: Best move has score {:.2}: {:?}", best_score, best_move);
+        ai_debug!(self, "AI: Best move has score {:.2}: {:?}", best_score, best_move);
         Some(best_move.clone())
     }
 
@@ -355,7 +369,8 @@ impl EasyAiBackend {
             }
         }
 
-        println!(
+        ai_debug!(
+            self,
             "AI: Found {} existing flow nodes for player {}",
             flow_start_nodes.len(),
             player
@@ -363,7 +378,7 @@ impl EasyAiBackend {
 
         // If we don't have any existing flows, fall back to the original behavior
         if flow_start_nodes.is_empty() {
-            println!("AI: No existing flows found, falling back to standard BFS");
+            ai_debug!(self, "AI: No existing flows found, falling back to standard BFS");
             return find_potential_path_for_team(player, game, &HashSet::new(), &HashMap::new());
         }
 
@@ -388,7 +403,8 @@ impl EasyAiBackend {
                     Tile::Placed(placed_tile) => {
                         let exit_dir = placed_tile.exit_from_entrance(entry_dir);
                         if goal_edges.contains(&(current_pos, exit_dir)) {
-                            println!(
+                            ai_debug!(
+                                self,
                                 "AI: Found path from existing flows with length {}",
                                 path.len()
                             );
@@ -408,7 +424,8 @@ impl EasyAiBackend {
                             all_demands.insert(new_demand);
 
                             if is_satisfiable(&all_demands) {
-                                println!(
+                                ai_debug!(
+                                    self,
                                     "AI: Found path from existing flows with length {}",
                                     path.len()
                                 );
@@ -547,7 +564,8 @@ impl EasyAiBackend {
                     let human_tiles_needed =
                         self.count_tiles_needed_for_path(&human_path, &test_game);
 
-                    println!(
+                    ai_debug!(
+                        self,
                         "AI: Move evaluation - AI needs {} tiles, Human needs {} tiles",
                         ai_tiles_needed, human_tiles_needed
                     );
@@ -563,7 +581,8 @@ impl EasyAiBackend {
                 }
                 (Some(ai_path), None) => {
                     let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &test_game);
-                    println!(
+                    ai_debug!(
+                        self,
                         "AI: Move evaluation - AI needs {} tiles, Human has no path",
                         ai_tiles_needed
                     );
@@ -578,7 +597,8 @@ impl EasyAiBackend {
                 (None, Some(human_path)) => {
                     let human_tiles_needed =
                         self.count_tiles_needed_for_path(&human_path, &test_game);
-                    println!(
+                    ai_debug!(
+                        self,
                         "AI: Move evaluation - AI has no path, Human needs {} tiles",
                         human_tiles_needed
                     );
@@ -591,7 +611,7 @@ impl EasyAiBackend {
                     }
                 }
                 (None, None) => {
-                    println!("AI: Move evaluation - Neither player has a path");
+                    ai_debug!(self, "AI: Move evaluation - Neither player has a path");
                     // Neither player has a path - neutral
                     0.0
                 }
