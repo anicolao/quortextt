@@ -1390,10 +1390,11 @@ impl GameUi {
                 let board_center = window.center();
                 let board_radius = hexagon_radius * 7.5;
 
-                // Calculate bottom of the hexagonal board
-                let board_bottom = board_center.y + board_radius;
-                // Calculate right edge of the hexagonal board (using cos(30°) = √3/2)
-                let board_right = board_center.x + board_radius * 0.866_025_4;
+                // For a hexagon with rotation PI/6 (30°), vertices are at 120°, 180°, 240°, 300°, 0°, 60°
+                // Bottom of hexagon (highest y): vertices at 0° and 120°/240° -> center.y + radius * sin(60°) = center.y + radius * √3/2
+                let board_bottom = board_center.y + board_radius * 0.866_025_4; // √3/2
+                                                                                // Right edge of hexagon: vertex at 0° -> center.x + radius
+                let board_right = board_center.x + board_radius;
 
                 // Estimate dialog height (rough calculation)
                 let estimated_dialog_height = 150.0; // Approximate height for title + scores + button + spacing
