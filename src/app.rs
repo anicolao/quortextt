@@ -39,8 +39,8 @@ struct EasyAiMode {
 }
 
 impl EasyAiMode {
-    pub fn new(settings: GameSettings) -> Self {
-        let backend = EasyAiBackend::new(settings);
+    pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
+        let backend = EasyAiBackend::new(settings, ai_debugging);
         let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
         let human_ui = GameUi::new();
         Self {
@@ -77,6 +77,7 @@ enum State {
 
 pub struct FlowsApp {
     state: State,
+    ai_debugging: bool,
 }
 
 impl Default for FlowsApp {
@@ -88,6 +89,7 @@ impl Default for FlowsApp {
         };
         Self {
             state: State::Menu { server_ip },
+            ai_debugging: false, // Default disabled
         }
     }
 }
@@ -96,6 +98,19 @@ impl FlowsApp {
     /// Called once before the first frame.
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Default::default()
+    }
+
+    /// Called once before the first frame with AI debugging setting.
+    pub fn new_with_ai_debugging(_cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+        let server_ip = if cfg!(target_arch = "wasm32") {
+            "ws://127.0.0.1:10213".into()
+        } else {
+            "127.0.0.1:10213".into()
+        };
+        Self {
+            state: State::Menu { server_ip },
+            ai_debugging,
+        }
     }
 }
 
@@ -114,10 +129,13 @@ impl eframe::App for FlowsApp {
                     }
 
                     if ui.button("Easy AI").clicked() {
-                        new_state = Some(State::EasyAiMode(EasyAiMode::new(GameSettings {
-                            num_players: 2,
-                            version: 0,
-                        })));
+                        new_state = Some(State::EasyAiMode(EasyAiMode::new(
+                            GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            self.ai_debugging,
+                        )));
                     }
 
                     ui.text_edit_singleline(server_ip);
