@@ -135,10 +135,9 @@ flows/
 │   ├── server_backend.rs # Server communication backend
 │   └── server_protocol.rs # Client-server message protocol
 ├── assets/              # Web assets (icons, service worker)
-├── .github/workflows/   # CI/CD pipelines
 ├── Cargo.toml          # Project configuration with GUI/server features
 ├── Trunk.toml          # Web build configuration
-├── check.sh            # Local CI-like validation script
+├── check.sh            # Local validation script
 └── rust-toolchain      # Rust 1.89 with wasm32 target
 ```
 
@@ -159,18 +158,6 @@ flows/
 - In-memory single-player mode
 - WebSocket and TCP protocol support
 
-### CI/CD Integration
-
-**GitHub Actions Workflows:**
-- `rust.yml`: Main CI pipeline (check, test, fmt, clippy, build)
-- `pages.yml`: Auto-deploy web version to GitHub Pages
-- `typos.yml`: Spelling check
-
-**Important CI Notes:**
-- CI currently fails on clippy step due to 19 warnings
-- All other checks (build, test, format) pass successfully
-- Web deployment works but requires manual clippy fix first
-
 ### Known Issues and Workarounds
 
 1. **Clippy Errors (19 total):**
@@ -178,7 +165,7 @@ flows/
    - Inefficient `write!` macro usage (should use `writeln!`)
    - Unnecessary `.clone()` calls on Copy types
    - Pattern matching that should use `if let`
-   - Must be fixed for CI to pass
+   - Must be fixed for local development validation
 
 2. **GUI Limitations:**
    - Cannot run native GUI in headless environments

@@ -1,87 +1,130 @@
-# eframe template
+# Flows (Quortex)
 
-[![dependency status](https://deps.rs/repo/github/emilk/eframe_template/status.svg)](https://deps.rs/repo/github/emilk/eframe_template)
-[![Build Status](https://github.com/emilk/eframe_template/workflows/CI/badge.svg)](https://github.com/emilk/eframe_template/actions?workflow=CI)
+Flows is a strategic tile-placing game also known as "Quortex". Players place hexagonal tiles to create flowing paths from their edge of the board to their goal, while strategically constraining opponents' options.
 
-This is a template repo for [eframe](https://github.com/emilk/egui/tree/master/crates/eframe), a framework for writing apps using [egui](https://github.com/emilk/egui/).
+**Game Overview:**
+- 2-6 players, ages 8+
+- 25-35 minute play time  
+- Strategic tile placement with path-building mechanics
+- Both competitive and cooperative elements
 
-The goal is for this to be the simplest way to get started writing a GUI app in Rust.
+You can play Flows natively on your desktop or in your web browser. The game supports both local single-player mode and networked multiplayer.
 
-You can compile your app natively or for the web, and share it using Github Pages.
+## Quick Start
 
-## Getting started
+**Play Online:** Visit [https://anicolao.github.io/flows/](https://anicolao.github.io/flows/) to play immediately in your browser.
 
-Start by clicking "Use this template" at https://github.com/emilk/eframe_template/ or follow [these instructions](https://docs.github.com/en/free-pro-team@latest/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template).
+**Local Installation:**
+1. [Install Rust](https://rustup.rs/) if you haven't already
+2. Clone this repository: `git clone https://github.com/anicolao/flows.git`
+3. Run the game: `cargo run --release`
 
-Change the name of the crate: Choose a good name for your project, and change the name to it in:
-* `Cargo.toml`
-    * Change the `package.name` from `eframe_template` to `your_crate`.
-    * Change the `package.authors`
-* `main.rs`
-    * Change `eframe_template::TemplateApp` to `your_crate::TemplateApp`
-* `index.html`
-    * Change the `<title>eframe template</title>` to `<title>your_crate</title>`. optional.
-* `assets/sw.js`
-  * Change the `'./eframe_template.js'` to `./your_crate.js` (in `filesToCache` array)
-  * Change the `'./eframe_template_bg.wasm'` to `./your_crate_bg.wasm` (in `filesToCache` array)
+**Game Rules:** See [RULES.md](RULES.md) for complete gameplay instructions.
 
-Alternatively, you can run `fill_template.sh` which will ask for the needed names and email and perform the above patches for you. This is particularly useful if you clone this repository outside GitHub and hence cannot make use of its
-templating function.
+## How to Play
 
-### Learning about egui
+### Game Components
+- **Hexagonal board** with colored border pieces (6 colored, 4 black)
+- **40 game tiles** in 4 types (10 of each):
+  - **No Sharps** (Basketball): Curved flowing paths
+  - **One Sharp** (Kimono): One sharp corner connection  
+  - **Two Sharps** (Rink): Two sharp angular connections
+  - **Three Sharps** (Sharps): Three sharp angular connections
+- **Player flow markers** in 6 colors
 
-`src/app.rs` contains a simple example app. This is just to give some inspiration - most of it can be removed if you like.
+### Objective
+Create a continuous path of your color from your edge of the board to the opposite side.
 
-The official egui docs are at <https://docs.rs/egui>. If you prefer watching a video introduction, check out <https://www.youtube.com/watch?v=NtUkr_z7l84>. For inspiration, check out the [the egui web demo](https://emilk.github.io/egui/index.html) and follow the links in it to its source code.
+### Game Modes
+- **2-3 players:** Individual competition - connect your edge to the opposite black edge
+- **4-6 players:** Team play - teammates sit opposite each other and try to connect their edges
+- **5 players:** One player has no teammate but gets an extra turn
 
-### Testing locally
+### Basic Gameplay
+1. Each player draws a tile face-down and places it anywhere on the board
+2. When tiles connect to colored edges or other flowing tiles, flows automatically extend through the new pathways
+3. Players must place tiles legally (see Rules for details)
+4. First player/team to complete a path wins
 
-GUI application: `cargo run --release`
+For complete rules, strategies, and examples, see [RULES.md](RULES.md).
 
-Server only (no GUI dependencies): `cargo run --bin server --no-default-features` or `cargo server`
+## Development and Technical Details
 
-On Linux you need to first run:
+### System Requirements
 
-`sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev`
+**Linux Prerequisites:**
+```bash
+sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev
+```
 
-On Fedora Rawhide you need to run:
+**Fedora Prerequisites:**
+```bash
+dnf install clang clang-devel clang-tools-extra libxkbcommon-devel pkg-config openssl-devel libxcb-devel gtk3-devel atk fontconfig-devel
+```
 
-`dnf install clang clang-devel clang-tools-extra libxkbcommon-devel pkg-config openssl-devel libxcb-devel gtk3-devel atk fontconfig-devel`
+### Running the Game
 
-### Web Locally
+**Desktop GUI:**
+```bash
+cargo run --release
+```
 
-You can compile your app to [WASM](https://en.wikipedia.org/wiki/WebAssembly) and publish it as a web page.
+**Server Mode (multiplayer):**
+```bash
+cargo run --bin server --no-default-features --release
+```
+Server runs on port 10213 and supports WebSocket and TCP connections.
 
-We use [Trunk](https://trunkrs.dev/) to build for web target.
-1. Install the required target with `rustup target add wasm32-unknown-unknown`.
-2. Install Trunk with `cargo install --locked trunk`.
-3. Run `trunk serve` to build and serve on `http://127.0.0.1:8080`. Trunk will rebuild automatically if you edit the project.
-4. Open `http://127.0.0.1:8080/index.html#dev` in a browser. See the warning below.
+### Web Development
 
-> `assets/sw.js` script will try to cache our app, and loads the cached version when it cannot connect to server allowing your app to work offline (like PWA).
-> appending `#dev` to `index.html` will skip this caching, allowing us to load the latest builds during development.
+**Setup:**
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install --locked trunk
+```
 
-### Web Deploy
-1. Just run `trunk build --release`.
-2. It will generate a `dist` directory as a "static html" website
-3. Upload the `dist` directory to any of the numerous free hosting websites including [GitHub Pages](https://docs.github.com/en/free-pro-team@latest/github/working-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
-4. we already provide a workflow that auto-deploys our app to GitHub pages if you enable it.
-> To enable Github Pages, you need to go to Repository -> Settings -> Pages -> Source -> set to `gh-pages` branch and `/` (root).
->
-> If `gh-pages` is not available in `Source`, just create and push a branch called `gh-pages` and it should be available.
->
-> If you renamed the `main` branch to something else (say you re-initialized the repository with `master` as the initial branch), be sure to edit the github workflows `.github/workflows/pages.yml` file to reflect the change
-> ```yml
-> on:
->   push:
->     branches:
->       - <branch name>
-> ```
+**Development Server:**
+```bash
+trunk serve
+```
+Visit `http://127.0.0.1:8080` (append `#dev` to skip service worker caching)
 
-You can test the template app at <https://emilk.github.io/eframe_template/>.
+**Production Build:**
+```bash
+trunk build --release
+```
+Generates a `dist/` directory for web deployment.
 
-## Updating egui
+### Architecture
 
-As of 2023, egui is in active development with frequent releases with breaking changes. [eframe_template](https://github.com/emilk/eframe_template/) will be updated in lock-step to always use the latest version of egui.
+**Technologies:**
+- **Language:** Rust 1.89+
+- **GUI Framework:** [egui](https://github.com/emilk/egui) with [eframe](https://github.com/emilk/egui/tree/master/crates/eframe)
+- **Web Target:** WebAssembly via [Trunk](https://trunkrs.dev/)
+- **Networking:** WebSocket and TCP support for multiplayer
 
-When updating `egui` and `eframe` it is recommended you do so one version at the time, and read about the changes in [the egui changelog](https://github.com/emilk/egui/blob/master/CHANGELOG.md) and [eframe changelog](https://github.com/emilk/egui/blob/master/crates/eframe/CHANGELOG.md).
+**Game Modes:**
+- **In-Memory:** Local single-player or pass-and-play
+- **Server:** Networked multiplayer with spectator support
+
+### Documentation
+
+- **[RULES.md](RULES.md)** - Complete game rules and strategy
+- **[NOTATION.md](NOTATION.md)** - Game notation system for recording moves
+- **Source Code** - Well-documented Rust code with examples
+
+### Contributing
+
+This project uses standard Rust development tools:
+- `cargo fmt` for code formatting
+- `cargo clippy` for linting  
+- `cargo test` for testing
+- `./check.sh` for comprehensive validation
+
+## License
+
+Licensed under either of:
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.

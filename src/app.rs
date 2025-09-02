@@ -1,4 +1,5 @@
-use crate::backend::InMemoryBackend;
+use crate::ai_backend::EasyAiBackend;
+use crate::backend::{Backend, InMemoryBackend};
 use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
@@ -66,9 +67,29 @@ impl ServerMode {
     }
 }
 
+struct EasyAiMode {
+    main_backend: EasyAiBackend,
+    human_view: GameView,
+    human_ui: GameUi,
+}
+
+impl EasyAiMode {
+    pub fn new(settings: GameSettings) -> Self {
+        let backend = EasyAiBackend::new(settings);
+        let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
+        let human_ui = GameUi::new();
+        Self {
+            main_backend: backend,
+            human_view,
+            human_ui,
+        }
+    }
+}
+
 enum State {
     Menu { server_ip: String, username: String },
     InMemoryMode(InMemoryMode),
+    EasyAiMode(EasyAiMode),
     ServerMode(ServerMode),
 }
 
@@ -116,6 +137,13 @@ impl eframe::App for FlowsApp {
                         })));
                     }
 
+                    if ui.button("Easy AI").clicked() {
+                        new_state = Some(State::EasyAiMode(EasyAiMode::new(GameSettings {
+                            num_players: 2,
+                            version: 0,
+                        })));
+                    }
+
                     ui.text_edit_singleline(server_ip);
                     ui.text_edit_singleline(username);
                     if ui.button("Server").clicked() {
@@ -127,34 +155,27 @@ impl eframe::App for FlowsApp {
                 });
             }
             State::InMemoryMode(in_memory_mode) => {
-                egui::TopBottomPanel::top("top-panel").show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        for i in 0..in_memory_mode.player_uis.len() {
-                            ui.selectable_value(
-                                &mut in_memory_mode.current_displayed_player,
-                                i,
-                                format!("Player {i}"),
-                            );
-                        }
-                    });
-                });
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    let player_view =
-                        &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
-                    let num_actions = player_view.poll_backend();
-                    if num_actions > in_memory_mode.displayed_action_count
-                        && in_memory_mode.displayed_action_count > 0
-                    {
-                        in_memory_mode.current_displayed_player += 1;
-                        in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
-                    }
-                    in_memory_mode.displayed_action_count = num_actions;
-                    in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
-                        ui,
-                        ctx,
-                        player_view,
-                    );
-                });
+                let player_view =
+                    &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
+                let num_actions = player_view.poll_backend();
+                if num_actions > in_memory_mode.displayed_action_count
+                    && in_memory_mode.displayed_action_count > 0
+                {
+                    in_memory_mode.current_displayed_player += 1;
+                    in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
+                }
+                in_memory_mode.displayed_action_count = num_actions;
+                in_memory_mode.player_uis[in_memory_mode.current_displayed_player]
+                    .display(ctx, player_view);
+            }
+            State::EasyAiMode(easy_ai_mode) => {
+                // Update the main backend for AI logic
+                easy_ai_mode.main_backend.update();
+
+                let human_view = &mut easy_ai_mode.human_view;
+                human_view.poll_backend();
+                easy_ai_mode.human_ui.display(ctx, human_view);
+                ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
             State::ServerMode(server_mode) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
@@ -169,7 +190,7 @@ impl eframe::App for FlowsApp {
                         current_room.player_view.poll_backend();
                         current_room
                             .player_ui
-                            .display(ui, ctx, &mut current_room.player_view);
+                            .display(ctx, &mut current_room.player_view);
                         if go_back {
                             server_mode.current_room = None;
                         }

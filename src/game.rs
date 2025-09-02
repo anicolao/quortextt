@@ -22,7 +22,7 @@ impl std::ops::Add<Rotation> for Rotation {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TilePos {
     pub row: i32,
     pub col: i32,
@@ -98,7 +98,7 @@ impl std::ops::Sub for TilePos {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub enum Direction {
     SouthWest = 0,
     West = 1,
@@ -127,6 +127,18 @@ impl Direction {
 
     pub fn reversed(&self) -> Self {
         self.rotate(Rotation(3))
+    }
+
+    pub fn all_directions() -> impl Iterator<Item = Self> {
+        [
+            Self::SouthWest,
+            Self::West,
+            Self::NorthWest,
+            Self::NorthEast,
+            Self::East,
+            Self::SouthEast,
+        ]
+        .into_iter()
     }
 
     // Turn the direction into (row delta, column delta), which are what you need to add to
@@ -258,7 +270,7 @@ pub enum Tile {
     Placed(PlacedTile),
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum GameViewer {
     Player(Player),
     Spectator,
@@ -321,6 +333,12 @@ impl Action {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum GameOutcome {
+    Victory(Vec<Player>),
+    // TODO: Draw by board full?
+}
+
 #[derive(Clone)]
 pub struct Game {
     settings: GameSettings,
@@ -333,6 +351,7 @@ pub struct Game {
     board: [[Tile; 7]; 7],
     action_history: Vec<Action>,
     current_player: Player,
+    outcome: Option<GameOutcome>,
 }
 
 impl Game {
@@ -363,11 +382,12 @@ impl Game {
         Self {
             settings: settings.clone(),
             sides,
-            remaining_tiles: [10; 4],
+            remaining_tiles: [16, 12, 8, 4],
             tiles_in_hand: vec![None; settings.num_players],
             board,
             action_history: vec![Action::InitializeGame(settings)],
             current_player: 0,
+            outcome: None,
         }
     }
 
@@ -415,6 +435,9 @@ impl Game {
                 pos,
                 rotation,
             } => {
+                if self.outcome.is_some() {
+                    return Err("Game is already over".into());
+                }
                 if self.tiles_in_hand[player].is_some() && self.tiles_in_hand[player] != Some(tile)
                 {
                     return Err("Player must play the tile from their hand".into());
@@ -425,11 +448,23 @@ impl Game {
                 if self.current_player != player {
                     return Err("Wrong player's turn".into());
                 }
-                // TODO: Check whether move is legal by checking connectivity after placing.
+
+                // Check for legality
+                let mut temp_game = self.clone();
+                *temp_game.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
+                temp_game.recompute_flows(); // Needed for win condition check
+
+                if crate::legality::is_move_legal(&temp_game).is_err() {
+                    return Err("Illegal move: blocks another player".into());
+                }
+
+                // If legal, apply to the actual game
                 *self.tile_mut(pos).unwrap() = Tile::Placed(PlacedTile::new(tile, rotation));
                 self.tiles_in_hand[player] = None;
                 self.recompute_flows();
-                self.current_player = (self.current_player + 1) % self.settings.num_players;
+                if self.outcome.is_none() {
+                    self.current_player = (self.current_player + 1) % self.settings.num_players;
+                }
             }
         }
         self.action_history.push(action);
@@ -538,6 +573,14 @@ impl Game {
         self.current_player
     }
 
+    pub fn set_current_player_for_testing(&mut self, player: Player) {
+        self.current_player = player;
+    }
+
+    pub fn outcome(&self) -> &Option<GameOutcome> {
+        &self.outcome
+    }
+
     pub fn player_on_side(&self, rotation: Rotation) -> Option<Player> {
         self.sides[rotation.0 as usize]
     }
@@ -567,6 +610,31 @@ impl Game {
             return AdjacentTile::BoardEdge(direction);
         }
         AdjacentTile::Tile(pos + direction.tile_vec())
+    }
+
+    pub fn get_neighbor_pos(&self, pos: TilePos, direction: Direction) -> Option<TilePos> {
+        let neighbor_pos = pos + direction.tile_vec();
+        if *self.tile(neighbor_pos) == Tile::NotOnBoard {
+            None
+        } else {
+            Some(neighbor_pos)
+        }
+    }
+
+    pub fn get_direction_towards(&self, from: TilePos, to: TilePos) -> Option<Direction> {
+        let d = to - from;
+        for dir in Direction::all_directions() {
+            if dir.tile_vec() == d {
+                return Some(dir);
+            }
+        }
+        None
+    }
+
+    pub fn is_border_edge(&self, pos: TilePos, dir: Direction) -> bool {
+        // An edge is a border edge if the tile on the other side is NotOnBoard.
+        let neighbor_pos = pos + dir.tile_vec();
+        *self.tile(neighbor_pos) == Tile::NotOnBoard
     }
 
     pub fn edges_on_board_edge(&self, rotation: Rotation) -> Vec<(TilePos, Direction)> {
@@ -657,6 +725,38 @@ impl Game {
                     }
                 }
             }
+        }
+        self.update_outcome();
+    }
+
+    fn update_outcome(&mut self) {
+        if self.outcome.is_some() {
+            return;
+        }
+
+        let mut winners = vec![];
+        for side in 0..6 {
+            if let Some(player) = self.sides[side] {
+                let opposite_side = (side + 3) % 6;
+                for (pos, dir) in self.edges_on_board_edge(Rotation(opposite_side as u8)) {
+                    if let Tile::Placed(tile) = self.tile(pos) {
+                        if tile.flow_cache(dir) == Some(player) {
+                            // Player `player` has reached the opposite side.
+                            winners.push(player);
+                            if let Some(teammate) = self.sides[opposite_side] {
+                                winners.push(teammate);
+                            }
+                        }
+                    }
+                }
+                // We don't break here because multiple players can win on the same turn.
+            }
+        }
+
+        if !winners.is_empty() {
+            winners.sort();
+            winners.dedup();
+            self.outcome = Some(GameOutcome::Victory(winners));
         }
     }
 }

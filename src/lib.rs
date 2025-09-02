@@ -1,12 +1,15 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 pub mod game;
+pub mod legality;
 pub mod server_protocol;
 
 #[cfg(feature = "gui")]
+pub mod ai_backend;
+#[cfg(feature = "gui")]
 mod app;
 #[cfg(feature = "gui")]
-mod backend;
+pub mod backend;
 #[cfg(feature = "gui")]
 mod game_ui;
 #[cfg(feature = "gui")]
