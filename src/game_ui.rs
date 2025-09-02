@@ -147,6 +147,11 @@ pub struct GameUi {
     user_has_toggled_drawer: bool,
 }
 
+#[derive(Debug, Default)]
+pub struct GameUiResponse {
+    pub play_again_requested: bool,
+}
+
 struct AnimationState {
     frame_count: u64,
     last_rotate_time: f64,
@@ -448,7 +453,7 @@ impl GameUi {
         }
     }
 
-    pub fn display(&mut self, ctx: &Context, game_view: &mut GameView) {
+    pub fn display(&mut self, ctx: &Context, game_view: &mut GameView, scores: &[usize]) -> GameUiResponse {
         let window_rect = ctx.available_rect();
         if !self.user_has_toggled_drawer {
             self.moves_drawer_open = window_rect.width() > window_rect.height();
@@ -490,6 +495,8 @@ impl GameUi {
             }
         });
 
+        let mut ui_response = GameUiResponse::default();
+        
         egui::CentralPanel::default().show(ctx, |ui| {
             self.animation_state.frame_count += 1;
             let bounding_box = ui.available_size();
@@ -1365,30 +1372,53 @@ impl GameUi {
             }
 
             if let Some(outcome) = game.outcome() {
+                // Draw semi-transparent overlay
                 let painter = ui.painter();
                 painter.rect_filled(window, 0.0, Color32::from_rgba_premultiplied(0, 0, 0, 128));
-                let text = match outcome {
-                    GameOutcome::Victory(winners) => {
-                        if winners.len() > 1 {
-                            let one_indexed_winners: Vec<usize> =
-                                winners.iter().map(|&p| p + 1).collect();
-                            format!("Players {:?} win!", one_indexed_winners)
-                        } else {
-                            format!("Player {} wins!", winners[0] + 1)
-                        }
-                    }
-                };
-                painter.text(
-                    window.center(),
-                    egui::Align2::CENTER_CENTER,
-                    text,
-                    egui::FontId::proportional(40.0),
-                    Color32::WHITE,
-                );
+                
+                // Show victory window with scores and play again button
+                egui::Window::new("Game Over")
+                    .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                    .resizable(false)
+                    .collapsible(false)
+                    .show(ctx, |ui| {
+                        ui.vertical_centered(|ui| {
+                            // Display victory message
+                            let text = match outcome {
+                                GameOutcome::Victory(winners) => {
+                                    if winners.len() > 1 {
+                                        let one_indexed_winners: Vec<usize> =
+                                            winners.iter().map(|&p| p + 1).collect();
+                                        format!("Players {:?} win!", one_indexed_winners)
+                                    } else {
+                                        format!("Player {} wins!", winners[0] + 1)
+                                    }
+                                }
+                            };
+                            ui.heading(text);
+                            
+                            ui.add_space(10.0);
+                            
+                            // Display current scores
+                            ui.label("Current Scores:");
+                            for (player_idx, &score) in scores.iter().enumerate() {
+                                ui.label(format!("Player {}: {}", player_idx + 1, score));
+                            }
+                            
+                            ui.add_space(10.0);
+                            
+                            // Play again button
+                            if ui.button("Play Again").clicked() {
+                                ui_response.play_again_requested = true;
+                            }
+                        });
+                    });
             }
 
             response
         });
+
+        ui_response
     }
 }
 
