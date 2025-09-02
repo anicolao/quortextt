@@ -158,6 +158,7 @@ struct AnimationState {
     last_hovered_tile: Option<TilePos>,
     last_pointer_pos: Option<Pos2>,
     pointer_dwell_frames: u64,
+    hover_animation: Option<HoverAnimation>,
 }
 
 struct RotationAnimation {
@@ -183,6 +184,12 @@ struct FlowAnimation {
     next: Option<Box<FlowAnimation>>,
 }
 
+struct HoverAnimation {
+    start_frame: u64,
+    end_frame: u64,
+    is_fade_in: bool, // true for fade-in (None -> Some), false for fade-out (Some -> None)
+}
+
 impl AnimationState {
     fn new() -> Self {
         Self {
@@ -196,6 +203,7 @@ impl AnimationState {
             last_hovered_tile: None,
             last_pointer_pos: None,
             pointer_dwell_frames: 0,
+            hover_animation: None,
         }
     }
 }
@@ -310,6 +318,7 @@ impl GameUi {
         prior_tile: &Tile,
         border_stroke: Stroke,
         anim_rotation_rads: f32,
+        hover_alpha: Option<f32>, // Optional alpha override for hover animations (0.0 to 1.0)
     ) {
         let total_rotation_rads =
             tile.rotation().as_radians() + view_rotation.as_radians() + anim_rotation_rads;
@@ -318,7 +327,12 @@ impl GameUi {
             Tile::NotOnBoard | Tile::Empty => true,
             Tile::Placed(prior) => prior != tile,
         };
-        let alpha = if hypothetical { 0x01 } else { 0xFF };
+        let base_alpha = if hypothetical { 0x01 } else { 0xFF };
+        let alpha = if let Some(hover_alpha) = hover_alpha {
+            ((base_alpha as f32 * hover_alpha) as u8).max(1) // Ensure at least 1 for visibility
+        } else {
+            base_alpha
+        };
 
         // 1. Draw background
         let hexagon_points = Self::hexagon_coords(center, hexagon_radius, total_rotation_rads);
@@ -640,6 +654,14 @@ impl GameUi {
             }
 
             let now = self.animation_state.frame_count;
+
+            // Clean up completed hover animation
+            if let Some(hover_anim) = &self.animation_state.hover_animation {
+                if now >= hover_anim.end_frame {
+                    self.animation_state.hover_animation = None;
+                }
+            }
+
             let mut tile_draw_pos: Option<Pos2> = None;
 
             if hypothetical_game.is_some() {
@@ -906,6 +928,7 @@ impl GameUi {
                                     &hypothetical,
                                     border_stroke,
                                     0.0,
+                                    None, // No hover animation for board tiles
                                 );
                             }
                         }
@@ -941,6 +964,30 @@ impl GameUi {
                         } else {
                             HIGHLIGHT_BORDER
                         };
+                        // Calculate hover animation alpha if applicable
+                        let hover_alpha =
+                            if let Some(hover_anim) = &self.animation_state.hover_animation {
+                                let now = self.animation_state.frame_count;
+                                if now < hover_anim.end_frame {
+                                    let progress = (now - hover_anim.start_frame) as f32
+                                        / (hover_anim.end_frame - hover_anim.start_frame) as f32;
+                                    let progress = progress.clamp(0.0, 1.0);
+
+                                    if hover_anim.is_fade_in {
+                                        // Fade-in: 0.0 -> 1.0
+                                        Some(progress)
+                                    } else {
+                                        // Fade-out: 1.0 -> 0.0
+                                        Some(1.0 - progress)
+                                    }
+                                } else {
+                                    // Animation completed
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
                         Self::draw_hex(
                             pos,
                             hexagon_radius,
@@ -950,6 +997,7 @@ impl GameUi {
                             &prior_tile_for_opacity,
                             border,
                             visual_rotation_rads,
+                            hover_alpha,
                         );
                     }
                 }
@@ -957,6 +1005,30 @@ impl GameUi {
 
             if self.animation_state.last_hovered_tile != hovered_tile {
                 self.animation_state.flow_animation = None;
+
+                // Detect hover transitions for fade animation
+                let now = self.animation_state.frame_count;
+                match (self.animation_state.last_hovered_tile, hovered_tile) {
+                    (None, Some(_)) => {
+                        // Fade-in: None -> Some hovered tile
+                        self.animation_state.hover_animation = Some(HoverAnimation {
+                            start_frame: now,
+                            end_frame: now + 5 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            is_fade_in: true,
+                        });
+                    }
+                    (Some(_), None) => {
+                        // Fade-out: Some -> None hovered tile
+                        self.animation_state.hover_animation = Some(HoverAnimation {
+                            start_frame: now,
+                            end_frame: now + 5 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            is_fade_in: false,
+                        });
+                    }
+                    _ => {
+                        // No transition or tile-to-tile transition, no hover animation needed
+                    }
+                }
             }
             self.animation_state.last_hovered_tile = hovered_tile;
 
@@ -1233,6 +1305,7 @@ impl GameUi {
                                         &Tile::Empty, // Prior tile is empty since this is hypothetical
                                         Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
                                         0.0,
+                                        None, // No hover animation for tiles in hand
                                     );
                                 }
                             }
