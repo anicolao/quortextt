@@ -2,7 +2,7 @@ use crate::backend::InMemoryBackend;
 use crate::game::{GameSettings, GameViewer, Rotation};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
-use crate::server_backend::ServerBackend;
+use crate::server_backend::{ServerBackend, ServerCredentials};
 use crate::server_protocol::RoomId;
 
 struct InMemoryMode {
@@ -45,17 +45,30 @@ struct ServerMode {
 }
 
 impl ServerMode {
-    pub fn new(server_ip: &str) -> Self {
-        let backend = ServerBackend::new(server_ip).unwrap();
+    pub fn new(server_ip: &str, username: String) -> Self {
+        let backend =
+            ServerBackend::new(server_ip, ServerCredentials::NewUser { username }).unwrap();
         Self {
             backend,
             current_room: None,
         }
     }
+
+    pub fn set_current_room(&mut self, room_id: RoomId) {
+        if let Some(game_backend) = self.backend.game_backend_for_room(room_id.clone()) {
+            let player_view = GameView::new(Box::new(game_backend));
+            let player_ui = GameUi::new(Rotation(0));
+            self.current_room = Some(ServerModeRoom {
+                room_id,
+                player_view,
+                player_ui,
+            });
+        }
+    }
 }
 
 enum State {
-    Menu { server_ip: String },
+    Menu { server_ip: String, username: String },
     InMemoryMode(InMemoryMode),
     ServerMode(ServerMode),
 }
@@ -72,7 +85,10 @@ impl Default for FlowsApp {
             "127.0.0.1:10213".into()
         };
         Self {
-            state: State::Menu { server_ip },
+            state: State::Menu {
+                server_ip,
+                username: "Test".into(),
+            },
         }
     }
 }
@@ -89,7 +105,10 @@ impl eframe::App for FlowsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let mut new_state = None;
         match &mut self.state {
-            State::Menu { server_ip } => {
+            State::Menu {
+                server_ip,
+                username,
+            } => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     if ui.button("In-memory").clicked() {
                         new_state = Some(State::InMemoryMode(InMemoryMode::new(GameSettings {
@@ -99,8 +118,12 @@ impl eframe::App for FlowsApp {
                     }
 
                     ui.text_edit_singleline(server_ip);
+                    ui.text_edit_singleline(username);
                     if ui.button("Server").clicked() {
-                        new_state = Some(State::ServerMode(ServerMode::new(&server_ip.clone())));
+                        new_state = Some(State::ServerMode(ServerMode::new(
+                            &server_ip.clone(),
+                            username.clone(),
+                        )));
                     }
                 });
             }
@@ -137,14 +160,101 @@ impl eframe::App for FlowsApp {
             State::ServerMode(server_mode) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     server_mode.backend.update();
-                    ui.vertical(|ui| {
-                        for room in server_mode.backend.rooms.iter() {
-                            ui.label(&room.room_id);
+                    let my_user_id = server_mode.backend.my_user.as_ref().map(|x| x.user_id);
+
+                    if let Some(current_room) = &mut server_mode.current_room {
+                        let mut go_back = false;
+                        if ui.button("Back to lobby").clicked() {
+                            go_back = true;
                         }
-                    });
-                    // let player_view = &mut server_mode.player_view;
-                    // player_view.poll_backend();
-                    // server_mode.player_ui.display(ui, ctx, player_view);
+                        current_room.player_view.poll_backend();
+                        current_room
+                            .player_ui
+                            .display(ui, ctx, &mut current_room.player_view);
+                        if go_back {
+                            server_mode.current_room = None;
+                        }
+                    } else {
+                        if ui.button("Create 2-person game").clicked() {
+                            server_mode.backend.create_room(GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            });
+                        }
+                        let mut room_to_view = None;
+                        egui_extras::TableBuilder::new(ui)
+                            .columns(egui_extras::Column::auto(), 3)
+                            .column(egui_extras::Column::remainder())
+                            .header(20.0, |mut header| {
+                                header.col(|ui| {
+                                    ui.strong("Room code");
+                                });
+                                header.col(|ui| {
+                                    ui.strong("Settings");
+                                });
+                                header.col(|ui| {
+                                    ui.strong("Players");
+                                });
+                                header.col(|ui| {
+                                    ui.strong("Actions");
+                                });
+                            })
+                            .body(|mut body| {
+                                body.rows(20.0, server_mode.backend.rooms.len(), |mut row| {
+                                    let room = &server_mode.backend.rooms[row.index()];
+                                    row.col(|ui| {
+                                        ui.label(&room.room_id);
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(format!(
+                                            "{}/{} players",
+                                            room.players.len(),
+                                            room.game_settings.num_players
+                                        ));
+                                    });
+                                    row.col(|ui| {
+                                        let player_names: Vec<String> = room
+                                            .players
+                                            .iter()
+                                            .map(|p| p.username.clone())
+                                            .collect();
+                                        ui.label(player_names.join(", "));
+                                    });
+                                    row.col(|ui| {
+                                        let room_has_space =
+                                            room.players.len() < room.game_settings.num_players;
+                                        let user_in_room = room
+                                            .players
+                                            .iter()
+                                            .any(|p| Some(p.user_id) == my_user_id);
+                                        if room_has_space && !user_in_room {
+                                            if ui.button("Join").clicked() {
+                                                server_mode.backend.join_room(room.room_id.clone());
+                                                room_to_view = Some(room.room_id.clone());
+                                            }
+                                        }
+                                        if user_in_room {
+                                            if ui.button("View").clicked() {
+                                                server_mode
+                                                    .backend
+                                                    .spectate_room(room.room_id.clone());
+                                                room_to_view = Some(room.room_id.clone());
+                                            }
+                                        } else {
+                                            if ui.button("Spectate").clicked() {
+                                                server_mode
+                                                    .backend
+                                                    .spectate_room(room.room_id.clone());
+                                                room_to_view = Some(room.room_id.clone());
+                                            }
+                                        }
+                                    });
+                                });
+                            });
+                        if let Some(room_id) = room_to_view {
+                            server_mode.set_current_room(room_id);
+                        }
+                    }
                 });
                 ctx.request_repaint_after_secs(1.0 / 60.0);
             }

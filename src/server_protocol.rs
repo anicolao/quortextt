@@ -7,7 +7,7 @@ pub type Username = String;
 pub type RoomId = String;
 pub type ReconnectToken = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientToServerMessage {
     // === Logging in ===
     LoginAsNewUser {
@@ -38,27 +38,27 @@ pub enum ClientToServerMessage {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
     pub user_id: UserId,
     pub username: Username,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoomPreview {
     pub room_id: RoomId,
     pub game_settings: GameSettings,
     pub players: Vec<User>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoomInfo {
     pub game_settings: GameSettings,
     pub players: Vec<User>,
     pub user_to_game_viewer: HashMap<UserId, GameViewer>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerToClientMessage {
     // Error handling
     InvalidRequest {

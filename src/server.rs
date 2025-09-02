@@ -114,11 +114,12 @@ impl ServerData {
         let mut rng = rand::rng();
         let mut game = Game::new(game_settings.clone());
         game.do_automatic_actions(&mut rng);
+        let actions_sent = game.action_history_vec().len();
         let room_data = RoomData {
             game_settings,
             user_to_game_viewer: HashMap::new(),
             players_joined: 0,
-            actions_sent: 0,
+            actions_sent,
             game,
         };
         self.room_data.insert(room_id.clone(), room_data);
@@ -315,7 +316,38 @@ impl ServerInternal {
             .insert(connection_id);
     }
 
-    async fn broadcast_rooms_list(&mut self) {}
+    async fn broadcast_rooms_list(&mut self, single_connection: Option<ConnectionId>) {
+        let rooms = self
+            .server_data
+            .room_data
+            .keys()
+            .map(|room_id| {
+                let RoomInfo {
+                    game_settings,
+                    players,
+                    ..
+                } = self.server_data.room_info(room_id);
+                RoomPreview {
+                    room_id: room_id.clone(),
+                    game_settings,
+                    players,
+                }
+            })
+            .collect::<Vec<_>>();
+        let connection_id_list = match single_connection {
+            Some(cid) => vec![cid],
+            None => self.client_writers.keys().copied().collect(),
+        };
+        for connection_id in connection_id_list.into_iter() {
+            self.send_message(
+                connection_id,
+                ServerToClientMessage::RoomsList {
+                    rooms: rooms.clone(),
+                },
+            )
+            .await;
+        }
+    }
 
     fn generate_connection_id(&mut self) -> ConnectionId {
         let new_connection_id = self.next_connection_id;
@@ -328,9 +360,11 @@ impl ServerInternal {
         connection_id: ConnectionId,
         message: ClientToServerMessage,
     ) {
+        println!("Connection {}: {:?}", connection_id, message);
         match message {
             ClientToServerMessage::LoginAsNewUser { username } => {
                 let user_id = self.server_data.login_new_user(username);
+                self.connection_to_user_id.insert(connection_id, user_id);
                 let user_data = self.server_data.user_data.get(&user_id).unwrap();
                 self.send_message(
                     connection_id,
@@ -343,6 +377,7 @@ impl ServerInternal {
                     },
                 )
                 .await;
+                self.broadcast_rooms_list(Some(connection_id)).await;
             }
             ClientToServerMessage::LoginAsExistingUser { reconnect_token } => {
                 let user_id = match self.server_data.login_existing_user(reconnect_token) {
@@ -353,6 +388,7 @@ impl ServerInternal {
                         return;
                     }
                 };
+                self.connection_to_user_id.insert(connection_id, user_id);
                 let user_data = self.server_data.user_data.get(&user_id).unwrap();
                 self.send_message(
                     connection_id,
@@ -365,6 +401,7 @@ impl ServerInternal {
                     },
                 )
                 .await;
+                self.broadcast_rooms_list(Some(connection_id)).await;
             }
             ClientToServerMessage::CreateRoom {
                 room_id,
@@ -373,6 +410,7 @@ impl ServerInternal {
                 let user_id = match self.connection_to_user_id.get(&connection_id) {
                     Some(user_id) => user_id,
                     None => {
+                        println!("Non-user tried to create a game");
                         // TODO: Send error to client
                         return;
                     }
@@ -385,7 +423,7 @@ impl ServerInternal {
                             .unwrap();
                         // Subscribe the connection to the room
                         self.subscribe_to_room(connection_id, room_id).await;
-                        self.broadcast_rooms_list().await;
+                        self.broadcast_rooms_list(None).await;
                     }
                     Err(err) => {
                         println!("Error creating room {}: {}", room_id, err);
@@ -408,7 +446,7 @@ impl ServerInternal {
                 match self.server_data.join_room_game(*user_id, room_id.clone()) {
                     Ok(()) => {
                         self.update_room_listeners(room_id).await;
-                        self.broadcast_rooms_list().await;
+                        self.broadcast_rooms_list(None).await;
                     }
                     Err(err) => {
                         println!("Error joining game in room {}: {}", room_id, err);

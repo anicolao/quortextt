@@ -2,6 +2,8 @@ use crate::backend::Backend;
 use crate::game::*;
 use crate::server_protocol::*;
 use parking_lot::RwLock;
+use rand::distr::{SampleString, Uniform};
+use rand::{rngs::StdRng, SeedableRng};
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
@@ -125,10 +127,24 @@ pub struct ServerBackendGame {
     server_connection: Weak<ServerConnection>,
 }
 
+pub enum ServerCredentials {
+    NewUser { username: Username },
+    ExistingUser { reconnect_token: ReconnectToken },
+}
+
 impl ServerBackend {
-    pub fn new(addr: &str) -> std::io::Result<Self> {
+    pub fn new(addr: &str, credentials: ServerCredentials) -> std::io::Result<Self> {
+        let connection = ServerConnection::new(addr);
+        match credentials {
+            ServerCredentials::NewUser { username } => {
+                connection.send(ClientToServerMessage::LoginAsNewUser { username })
+            }
+            ServerCredentials::ExistingUser { reconnect_token } => {
+                connection.send(ClientToServerMessage::LoginAsExistingUser { reconnect_token })
+            }
+        }
         Ok(Self {
-            connection: Arc::new(ServerConnection::new(addr)),
+            connection: Arc::new(connection),
             my_user: None,
             reconnect_token: None,
             rooms: Vec::new(),
@@ -138,6 +154,7 @@ impl ServerBackend {
 
     pub fn update(&mut self) {
         for message in self.connection.receive().into_iter() {
+            println!("Receied message from server: {:?}", message);
             match message {
                 ServerToClientMessage::InvalidRequest { .. } => (),
                 ServerToClientMessage::Connected {
@@ -178,6 +195,27 @@ impl ServerBackend {
                 }
             }
         }
+    }
+
+    pub fn create_room(&self, game_settings: GameSettings) {
+        let mut rng =
+            StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
+        let alphabetic = Uniform::new('A', 'Z').unwrap();
+        let room_id = alphabetic.sample_string(&mut rng, 4);
+        self.connection.send(ClientToServerMessage::CreateRoom {
+            room_id,
+            game_settings,
+        });
+    }
+
+    pub fn spectate_room(&self, room_id: RoomId) {
+        self.connection
+            .send(ClientToServerMessage::SubscribeRoom { room_id });
+    }
+
+    pub fn join_room(&self, room_id: RoomId) {
+        self.connection
+            .send(ClientToServerMessage::JoinRoomGame { room_id });
     }
 
     pub fn game_backend_for_room(&self, room_id: RoomId) -> Option<ServerBackendGame> {
