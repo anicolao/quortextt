@@ -1404,17 +1404,28 @@ impl GameUi {
                 let space_below = window.bottom() - board_bottom;
                 let use_bottom_position = space_below >= (estimated_dialog_height + dialog_margin);
 
+                // Get the global screen coordinates (ctx.available_rect() gives us the full screen)
+                let screen_rect = ctx.available_rect();
+
                 let (anchor, offset) = if use_bottom_position {
                     // Position centered horizontally, below the board
+                    // For CENTER_TOP anchor, offset is relative to the center-top of the screen
                     (
                         egui::Align2::CENTER_TOP,
-                        [0.0, board_bottom + dialog_margin - board_center.y],
+                        [
+                            board_center.x - screen_rect.center().x,
+                            board_bottom + dialog_margin - screen_rect.top(),
+                        ],
                     )
                 } else {
                     // Position on the right side, centered vertically, near the rightmost point
+                    // For LEFT_CENTER anchor, offset is relative to the left-center of the screen
                     (
                         egui::Align2::LEFT_CENTER,
-                        [board_right + dialog_margin - board_center.x, 0.0],
+                        [
+                            board_right + dialog_margin - screen_rect.left(),
+                            board_center.y - screen_rect.center().y,
+                        ],
                     )
                 };
 
