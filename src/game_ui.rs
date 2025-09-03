@@ -166,6 +166,7 @@ struct AnimationState {
     last_pointer_pos: Option<Pos2>,
     pointer_dwell_frames: u64,
     hover_animation: Option<HoverAnimation>,
+    last_known_action_count: usize,
 }
 
 struct RotationAnimation {
@@ -188,6 +189,7 @@ struct FlowAnimation {
     path: Vec<(TilePos, Direction, Direction)>,
     player: Player,
     is_winning_move: bool,
+    is_opponent_move: bool,
     next: Option<Box<FlowAnimation>>,
 }
 
@@ -212,6 +214,7 @@ impl AnimationState {
             last_pointer_pos: None,
             pointer_dwell_frames: 0,
             hover_animation: None,
+            last_known_action_count: 0,
         }
     }
 }
@@ -236,6 +239,170 @@ impl GameUi {
             }
         }
         None
+    }
+
+    /// Check if there's currently any flow animation running
+    pub fn has_flow_animation(&self) -> bool {
+        self.animation_state.flow_animation.is_some()
+    }
+
+    /// Check if there's currently an opponent flow animation running
+    pub fn has_opponent_flow_animation(&self) -> bool {
+        let mut current = self.animation_state.flow_animation.as_ref();
+        while let Some(anim) = current {
+            if anim.is_opponent_move {
+                return true;
+            }
+            current = anim.next.as_deref();
+        }
+        false
+    }
+
+    /// Trigger flow animation for an opponent move
+    pub fn trigger_opponent_flow_animation(&mut self, game: &Game, placed_tile_pos: TilePos) {
+        // Reuse the existing hover animation logic by creating a hypothetical game
+        let tile = match game.tile(placed_tile_pos) {
+            Tile::Placed(tile) => tile,
+            _ => return,
+        };
+
+        let hypo_game = game.clone();
+        self.generate_flow_animations_for_tile(&hypo_game, placed_tile_pos, tile, true);
+    }
+
+    /// Clear only user animations, preserving opponent animations
+    fn clear_user_animations(&mut self) {
+        // Walk the animation chain and keep only opponent animations
+        let mut new_head: Option<FlowAnimation> = None;
+        let mut current = self.animation_state.flow_animation.take();
+
+        while let Some(mut anim) = current {
+            current = anim.next.take().map(|boxed| *boxed);
+
+            if anim.is_opponent_move {
+                // Keep this animation - it's from an opponent
+                anim.next = new_head.map(Box::new);
+                new_head = Some(anim);
+            }
+            // Drop user animations
+        }
+
+        self.animation_state.flow_animation = new_head;
+    }
+
+    /// Check if a specific flow path is currently being animated
+    fn is_flow_path_animated(&self, tile_pos: TilePos, direction: Direction) -> bool {
+        let mut current = self.animation_state.flow_animation.as_ref();
+        while let Some(anim) = current {
+            // Check if this tile and direction are part of this animation
+            for (anim_pos, anim_entrance, anim_exit) in &anim.path {
+                if *anim_pos == tile_pos && (anim_entrance == &direction || anim_exit == &direction)
+                {
+                    // This flow is part of an active animation - check if animation is still active
+                    let now = self.animation_state.frame_count;
+                    let frames_per_tile = 20 * DEBUG_ANIMATION_SPEED_MULTIPLIER;
+                    let total_duration = anim.path.len() as u64 * frames_per_tile;
+
+                    if now < anim.start_frame + total_duration {
+                        return true; // Animation is still active
+                    }
+                }
+            }
+            current = anim.next.as_deref();
+        }
+        false
+    }
+
+    /// Generate flow animations for a placed tile (reused for hover and opponent moves)
+    fn generate_flow_animations_for_tile(
+        &mut self,
+        hypo_game: &Game,
+        placed_tile_pos: TilePos,
+        placed_tile: &PlacedTile,
+        is_opponent_move: bool,
+    ) {
+        let mut candidate_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> = vec![];
+
+        for (d1, d2) in placed_tile.type_().all_flows() {
+            let e1 = d1.rotate(placed_tile.rotation());
+            let e2 = d2.rotate(placed_tile.rotation());
+
+            if let Some(player) = placed_tile.flow_cache(e1) {
+                let neighbor1_pos = placed_tile_pos + e1.tile_vec();
+                let path1 = trace_flow(hypo_game, neighbor1_pos, e1.reversed());
+
+                let neighbor2_pos = placed_tile_pos + e2.tile_vec();
+                let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
+
+                let mut source1 = self.leads_to_source(&path1, hypo_game, hypo_game);
+                if !source1 && path1.is_empty() {
+                    if let AdjacentTile::BoardEdge(_) = hypo_game.adjacent_tile(placed_tile_pos, e1)
+                    {
+                        for player in 0..hypo_game.num_players() {
+                            if self.is_player_edge(hypo_game, player, placed_tile_pos, e1) {
+                                source1 = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                let mut source2 = self.leads_to_source(&path2, hypo_game, hypo_game);
+                if !source2 && path2.is_empty() {
+                    if let AdjacentTile::BoardEdge(_) = hypo_game.adjacent_tile(placed_tile_pos, e2)
+                    {
+                        for player in 0..hypo_game.num_players() {
+                            if self.is_player_edge(hypo_game, player, placed_tile_pos, e2) {
+                                source2 = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if source1 && !source2 {
+                    let mut anim_path = vec![(placed_tile_pos, e1, e2)];
+                    anim_path.extend(path2);
+                    candidate_paths.push((anim_path, player));
+                } else if !source1 && source2 {
+                    let mut anim_path = vec![(placed_tile_pos, e2, e1)];
+                    anim_path.extend(path1);
+                    candidate_paths.push((anim_path, player));
+                } else if source1 && source2 {
+                    candidate_paths.push((vec![(placed_tile_pos, e1, e2)], player));
+                    candidate_paths.push((vec![(placed_tile_pos, e2, e1)], player));
+                }
+            }
+        }
+
+        // Filter out subpaths
+        let mut final_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> = vec![];
+        for (path, player) in candidate_paths.iter() {
+            let mut is_subpath = false;
+            for (other_path, _) in candidate_paths.iter() {
+                if path.len() < other_path.len() {
+                    if other_path.windows(path.len()).any(|w| w == path) {
+                        is_subpath = true;
+                        break;
+                    }
+                }
+            }
+            if !is_subpath {
+                final_paths.push((path.clone(), *player));
+            }
+        }
+
+        let is_winning_move = hypo_game.outcome().is_some();
+        for (path, player) in final_paths {
+            self.animation_state.flow_animation = Some(FlowAnimation {
+                start_frame: self.animation_state.frame_count,
+                path,
+                player,
+                is_winning_move,
+                is_opponent_move,
+                next: self.animation_state.flow_animation.take().map(Box::new),
+            });
+        }
     }
 
     fn hexagon_coords(center: Pos2, radius: f32, rotate: f32) -> Vec<Pos2> {
@@ -319,6 +486,8 @@ impl GameUi {
 
     #[allow(clippy::too_many_arguments)]
     fn draw_hex(
+        &self,
+        tile_pos: TilePos,
         center: Pos2,
         hexagon_radius: f32,
         painter: &Painter,
@@ -358,7 +527,16 @@ impl GameUi {
 
         for (d1, d2) in base_flows {
             let rotated_d1 = d1.rotate(tile.rotation());
-            let player = tile.flow_cache(rotated_d1);
+
+            // Check if this flow is currently being animated by an opponent
+            let is_animated = self.is_flow_path_animated(tile_pos, rotated_d1);
+
+            let player = if is_animated {
+                // Suppress flow color during animation to make animation visible
+                None
+            } else {
+                tile.flow_cache(rotated_d1)
+            };
 
             let blank = player.is_none();
 
@@ -525,6 +703,16 @@ impl GameUi {
                     return response;
                 }
             };
+
+            // Check for new opponent moves and trigger animations
+            let current_action_count = game.action_history_vec().len();
+            if current_action_count > self.animation_state.last_known_action_count {
+                // New actions detected - check if any are opponent moves
+                if let Some(last_tile_pos) = Self::get_most_recent_tile_position(&game) {
+                    self.trigger_opponent_flow_animation(&game, last_tile_pos);
+                }
+                self.animation_state.last_known_action_count = current_action_count;
+            }
 
             // Calculate rotation to put the viewing player's side on the bottom
             let viewing_player = match game_view.viewer() {
@@ -788,8 +976,8 @@ impl GameUi {
                                 is_snap_in: false,
                             });
                             self.animation_state.snapped_to = None;
-                            // cancel flow animation
-                            self.animation_state.flow_animation = None;
+                            // cancel flow animation only for user animations, preserve opponent animations
+                            self.clear_user_animations();
                         } else if let Some(end_tile) = target_snap_tile {
                             // MUST SNAP IN
                             let end_pos = Self::hex_position(
@@ -987,7 +1175,8 @@ impl GameUi {
                                 } else {
                                     Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
                                 };
-                                Self::draw_hex(
+                                self.draw_hex(
+                                    tile_pos,
                                     pos,
                                     hexagon_radius,
                                     painter,
@@ -1056,7 +1245,8 @@ impl GameUi {
                                 None
                             };
 
-                        Self::draw_hex(
+                        self.draw_hex(
+                            hovered_tile.unwrap_or_else(|| TilePos::new(0, 0)), // Dummy pos if not hovering
                             pos,
                             hexagon_radius,
                             painter,
@@ -1072,7 +1262,8 @@ impl GameUi {
             }
 
             if self.animation_state.last_hovered_tile != hovered_tile {
-                self.animation_state.flow_animation = None;
+                // Clear only user animations when hover changes, keep opponent animations
+                self.clear_user_animations();
 
                 // Detect hover transitions for fade animation
                 let now = self.animation_state.frame_count;
@@ -1103,113 +1294,19 @@ impl GameUi {
             self.animation_state.last_hovered_tile = hovered_tile;
 
             if self.animation_state.flow_animation_dirty {
-                self.animation_state.flow_animation = None;
+                // Clear only user animations when dirty, keep opponent animations
+                self.clear_user_animations();
                 self.animation_state.flow_animation_dirty = false;
                 if let Some(hypo_game) = &hypothetical_game {
                     if let Some(placed_tile_pos) = hovered_tile {
                         if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
-                            let mut candidate_paths: Vec<(
-                                Vec<(TilePos, Direction, Direction)>,
-                                Player,
-                            )> = vec![];
-                            for (d1, d2) in placed_tile.type_().all_flows() {
-                                let e1 = d1.rotate(placed_tile.rotation());
-                                let e2 = d2.rotate(placed_tile.rotation());
-
-                                if let Some(player) = placed_tile.flow_cache(e1) {
-                                    let neighbor1_pos = placed_tile_pos + e1.tile_vec();
-                                    let path1 = trace_flow(hypo_game, neighbor1_pos, e1.reversed());
-
-                                    let neighbor2_pos = placed_tile_pos + e2.tile_vec();
-                                    let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
-
-                                    let mut source1 =
-                                        self.leads_to_source(&path1, hypo_game, &game);
-                                    if !source1 && path1.is_empty() {
-                                        if let AdjacentTile::BoardEdge(_) =
-                                            hypo_game.adjacent_tile(placed_tile_pos, e1)
-                                        {
-                                            for player in 0..game.num_players() {
-                                                if self.is_player_edge(
-                                                    &game,
-                                                    player,
-                                                    placed_tile_pos,
-                                                    e1,
-                                                ) {
-                                                    source1 = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    let mut source2 =
-                                        self.leads_to_source(&path2, hypo_game, &game);
-                                    if !source2 && path2.is_empty() {
-                                        if let AdjacentTile::BoardEdge(_) =
-                                            hypo_game.adjacent_tile(placed_tile_pos, e2)
-                                        {
-                                            for player in 0..game.num_players() {
-                                                if self.is_player_edge(
-                                                    &game,
-                                                    player,
-                                                    placed_tile_pos,
-                                                    e2,
-                                                ) {
-                                                    source2 = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if source1 && !source2 {
-                                        let mut anim_path = vec![(placed_tile_pos, e1, e2)];
-                                        anim_path.extend(path2);
-                                        candidate_paths.push((anim_path, player));
-                                    } else if !source1 && source2 {
-                                        let mut anim_path = vec![(placed_tile_pos, e2, e1)];
-                                        anim_path.extend(path1);
-                                        candidate_paths.push((anim_path, player));
-                                    } else if source1 && source2 {
-                                        candidate_paths
-                                            .push((vec![(placed_tile_pos, e1, e2)], player));
-                                        candidate_paths
-                                            .push((vec![(placed_tile_pos, e2, e1)], player));
-                                    }
-                                }
-                            }
-
-                            // Filter out subpaths
-                            let mut final_paths: Vec<(
-                                Vec<(TilePos, Direction, Direction)>,
-                                Player,
-                            )> = vec![];
-                            for (path, player) in candidate_paths.iter() {
-                                let mut is_subpath = false;
-                                for (other_path, _) in candidate_paths.iter() {
-                                    if path.len() < other_path.len() {
-                                        if other_path.windows(path.len()).any(|w| w == path) {
-                                            is_subpath = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if !is_subpath {
-                                    final_paths.push((path.clone(), *player));
-                                }
-                            }
-
-                            let is_winning_move = hypo_game.outcome().is_some();
-                            for (path, player) in final_paths {
-                                self.animation_state.flow_animation = Some(FlowAnimation {
-                                    start_frame: self.animation_state.frame_count,
-                                    path,
-                                    player,
-                                    is_winning_move,
-                                    next: self.animation_state.flow_animation.take().map(Box::new),
-                                });
-                            }
+                            // Generate hover animations (not opponent moves)
+                            self.generate_flow_animations_for_tile(
+                                hypo_game,
+                                placed_tile_pos,
+                                placed_tile,
+                                false,
+                            );
                         }
                     }
                 }
@@ -1366,7 +1463,8 @@ impl GameUi {
                                     let placed_tile = PlacedTile::new(tile_type, Rotation(0));
 
                                     // Draw the tile (without flows since it's not placed yet)
-                                    Self::draw_hex(
+                                    self.draw_hex(
+                                        TilePos::new(0, 0), // Dummy position for tile in hand
                                         screen_pos,
                                         hexagon_radius * 0.8, // Slightly smaller than board tiles
                                         painter,

@@ -43,7 +43,7 @@ tokio = { version = "1.46.1", features = ["sync", "rt", "macros", "io-util"] }
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = { version = "0.11.8", optional = true }
-clap = { version = "4.4", features = ["derive"] }
+clap = { version = "4.5.11", features = ["derive"] }
 tokio = { version = "1.46.1", features = ["net", "sync", "rt", "macros", "io-util"] }
 tokio-tungstenite = "0.27.0"
 futures-util = { version = "0.3.31", features = ["sink"] }

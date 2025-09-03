@@ -11,9 +11,9 @@ mod app;
 #[cfg(feature = "gui")]
 pub mod backend;
 #[cfg(feature = "gui")]
-mod game_ui;
+pub mod game_ui;
 #[cfg(feature = "gui")]
-mod game_view;
+pub mod game_view;
 #[cfg(feature = "gui")]
 mod server_backend;
 
