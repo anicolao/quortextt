@@ -477,15 +477,15 @@ impl ServerInternal {
                                 let path = std::path::Path::new(&game_save_dir).join(&room_id);
                                 tokio::fs::write(
                                     &path,
-                                    format!(
-                                        "{:?}",
+                                    serde_json::to_string(
                                         self.server_data
                                             .room_data
                                             .get(&room_id)
                                             .unwrap()
                                             .game
-                                            .action_history_vec()
+                                            .action_history_vec(),
                                     )
+                                    .unwrap()
                                     .as_bytes(),
                                 )
                                 .await;

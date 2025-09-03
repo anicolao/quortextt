@@ -124,7 +124,10 @@ impl FlowsApp {
             "127.0.0.1:10213".into()
         };
         Self {
-            state: State::Menu { server_ip, username: "Test".into() },
+            state: State::Menu {
+                server_ip,
+                username: "Test".into(),
+            },
             ai_debugging,
         }
     }

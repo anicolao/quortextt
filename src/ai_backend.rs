@@ -187,7 +187,9 @@ impl EasyAiBackend {
             ai_debug!(
                 self,
                 "AI: Not my turn (current player: {}, AI player: {}, game over: {:?})",
-                current_player, self.ai_player, game_is_over
+                current_player,
+                self.ai_player,
+                game_is_over
             );
             return;
         }
@@ -197,7 +199,11 @@ impl EasyAiBackend {
             self.ai_thinking
                 .store(true, std::sync::atomic::Ordering::Relaxed);
 
-            ai_debug!(self, "AI: It's my turn! Looking for moves with tile {:?}", tile);
+            ai_debug!(
+                self,
+                "AI: It's my turn! Looking for moves with tile {:?}",
+                tile
+            );
 
             // Find the best move for the AI
             if let Some(best_move) = self.find_best_ai_move(tile) {
@@ -323,7 +329,12 @@ impl EasyAiBackend {
             }
         }
 
-        ai_debug!(self, "AI: Best move has score {:.2}: {:?}", best_score, best_move);
+        ai_debug!(
+            self,
+            "AI: Best move has score {:.2}: {:?}",
+            best_score,
+            best_move
+        );
         Some(best_move.clone())
     }
 
@@ -378,7 +389,10 @@ impl EasyAiBackend {
 
         // If we don't have any existing flows, fall back to the original behavior
         if flow_start_nodes.is_empty() {
-            ai_debug!(self, "AI: No existing flows found, falling back to standard BFS");
+            ai_debug!(
+                self,
+                "AI: No existing flows found, falling back to standard BFS"
+            );
             return find_potential_path_for_team(player, game, &HashSet::new(), &HashMap::new());
         }
 
@@ -567,7 +581,8 @@ impl EasyAiBackend {
                     ai_debug!(
                         self,
                         "AI: Move evaluation - AI needs {} tiles, Human needs {} tiles",
-                        ai_tiles_needed, human_tiles_needed
+                        ai_tiles_needed,
+                        human_tiles_needed
                     );
 
                     let score = -30.0 / (human_tiles_needed as f64) - 1.2 * ai_tiles_needed as f64;

@@ -573,7 +573,9 @@ impl GameUi {
                 None => {
                     // Check if we have a fade-out animation that needs a hypothetical game
                     if let Some(hover_anim) = &self.animation_state.hover_animation {
-                        if !hover_anim.is_fade_in && self.animation_state.frame_count < hover_anim.end_frame {
+                        if !hover_anim.is_fade_in
+                            && self.animation_state.frame_count < hover_anim.end_frame
+                        {
                             // We're in a fade-out animation, create hypothetical game for the animated tile
                             let player_to_simulate = match game_view.viewer() {
                                 GameViewer::Player(player) => Some(player),
@@ -602,7 +604,7 @@ impl GameUi {
                     } else {
                         (None, None)
                     }
-                },
+                }
                 Some(hovered_tile) => match *game.tile(hovered_tile) {
                     Tile::Empty => {
                         ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
@@ -722,7 +724,9 @@ impl GameUi {
                     }
                     self.animation_state.last_pointer_pos = Some(pointer_pos);
                 } else if let Some(hover_anim) = &self.animation_state.hover_animation {
-                    if !hover_anim.is_fade_in && self.animation_state.frame_count < hover_anim.end_frame {
+                    if !hover_anim.is_fade_in
+                        && self.animation_state.frame_count < hover_anim.end_frame
+                    {
                         // Fade-out animation case: pointer is gone, but we still need to draw the tile
                         tile_draw_pos = Some(Self::hex_position(
                             center + (hover_anim.tile_pos - center).rotate(self.rotation),
@@ -845,7 +849,8 @@ impl GameUi {
                                 let progress = (now - anim.start_frame) as f32
                                     / (anim.end_frame - anim.start_frame) as f32;
                                 let eased_progress = progress * progress;
-                                tile_draw_pos = Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
+                                tile_draw_pos =
+                                    Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
                             }
                         }
                     }
@@ -1493,7 +1498,7 @@ mod tests {
     fn test_hover_animation_logic() {
         use crate::game::TilePos;
         use crate::game_ui::HoverAnimation;
-        
+
         // Test fade-in animation calculation
         let fade_in = HoverAnimation {
             start_frame: 10,
@@ -1501,25 +1506,33 @@ mod tests {
             is_fade_in: true,
             tile_pos: TilePos::new(3, 3),
         };
-        
+
         // Test alpha calculation at different frames during fade-in
         for frame in 10..=25 {
             let progress = if frame < fade_in.end_frame {
-                (frame - fade_in.start_frame) as f32 / (fade_in.end_frame - fade_in.start_frame) as f32
+                (frame - fade_in.start_frame) as f32
+                    / (fade_in.end_frame - fade_in.start_frame) as f32
             } else {
                 1.0
             };
             let progress = progress.clamp(0.0, 1.0);
-            let alpha = if fade_in.is_fade_in { progress } else { 1.0 - progress };
-            
+            let alpha = if fade_in.is_fade_in {
+                progress
+            } else {
+                1.0 - progress
+            };
+
             match frame {
                 10 => assert_eq!(alpha, 0.0, "Frame 10 should have alpha 0.0"),
-                17 => assert!((alpha - 0.466667).abs() < 0.001, "Frame 17 should have alpha ~0.467"),
+                17 => assert!(
+                    (alpha - 0.466667).abs() < 0.001,
+                    "Frame 17 should have alpha ~0.467"
+                ),
                 25 => assert_eq!(alpha, 1.0, "Frame 25 should have alpha 1.0"),
                 _ => {}
             }
         }
-        
+
         // Test fade-out animation calculation
         let fade_out = HoverAnimation {
             start_frame: 30,
@@ -1527,20 +1540,28 @@ mod tests {
             is_fade_in: false,
             tile_pos: TilePos::new(2, 2),
         };
-        
+
         // Test alpha calculation at different frames during fade-out
         for frame in 30..=45 {
             let progress = if frame < fade_out.end_frame {
-                (frame - fade_out.start_frame) as f32 / (fade_out.end_frame - fade_out.start_frame) as f32
+                (frame - fade_out.start_frame) as f32
+                    / (fade_out.end_frame - fade_out.start_frame) as f32
             } else {
                 1.0
             };
             let progress = progress.clamp(0.0, 1.0);
-            let alpha = if fade_out.is_fade_in { progress } else { 1.0 - progress };
-            
+            let alpha = if fade_out.is_fade_in {
+                progress
+            } else {
+                1.0 - progress
+            };
+
             match frame {
                 30 => assert_eq!(alpha, 1.0, "Frame 30 should have alpha 1.0"),
-                37 => assert!((alpha - 0.533333).abs() < 0.001, "Frame 37 should have alpha ~0.533"),
+                37 => assert!(
+                    (alpha - 0.533333).abs() < 0.001,
+                    "Frame 37 should have alpha ~0.533"
+                ),
                 45 => assert_eq!(alpha, 0.0, "Frame 45 should have alpha 0.0"),
                 _ => {}
             }
@@ -1551,14 +1572,14 @@ mod tests {
     fn test_hover_animation_transitions() {
         use crate::game::TilePos;
         use crate::game_ui::{AnimationState, HoverAnimation};
-        
+
         // Test transition from None to Some (fade-in)
         let mut anim_state = AnimationState::new();
         anim_state.frame_count = 50;
-        
+
         let last_hovered = None;
         let current_hovered = Some(TilePos::new(3, 3));
-        
+
         // Simulate the transition detection logic
         if last_hovered != current_hovered {
             let now = anim_state.frame_count;
@@ -1584,7 +1605,7 @@ mod tests {
                 _ => {}
             }
         }
-        
+
         // Verify fade-in animation was created correctly
         assert!(anim_state.hover_animation.is_some());
         let anim = anim_state.hover_animation.as_ref().unwrap();
@@ -1592,14 +1613,14 @@ mod tests {
         assert_eq!(anim.end_frame, 65);
         assert!(anim.is_fade_in);
         assert_eq!(anim.tile_pos, TilePos::new(3, 3));
-        
+
         // Test transition from Some to None (fade-out)
         let mut anim_state2 = AnimationState::new();
         anim_state2.frame_count = 100;
-        
+
         let last_hovered2 = Some(TilePos::new(2, 2));
         let current_hovered2 = None;
-        
+
         // Simulate the transition detection logic
         if last_hovered2 != current_hovered2 {
             let now = anim_state2.frame_count;
@@ -1623,7 +1644,7 @@ mod tests {
                 _ => {}
             }
         }
-        
+
         // Verify fade-out animation was created correctly
         assert!(anim_state2.hover_animation.is_some());
         let anim2 = anim_state2.hover_animation.as_ref().unwrap();
