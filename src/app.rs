@@ -81,7 +81,7 @@ impl EasyAiMode {
     }
 
     pub fn reset_game(&mut self, settings: GameSettings) {
-        self.main_backend = EasyAiBackend::new(settings);
+        self.main_backend = EasyAiBackend::new(settings, false);
         self.human_view = GameView::new(Box::new(
             self.main_backend.backend_for_viewer(GameViewer::Player(0)),
         ));
