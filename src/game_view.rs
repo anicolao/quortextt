@@ -86,31 +86,55 @@ impl GameView {
         }
     }
 
-    pub fn history_backward(&mut self) {
-        let new_cursor = match self.history_cursor {
-            Some(0) => Some(0),
-            Some(cursor) => Some(cursor - 1),
-            None => {
-                if self.action_count > 0 {
-                    Some(self.action_count - 1)
-                } else {
-                    None
-                }
-            }
-        };
+    fn find_prev_move(&self, from_index: usize) -> Option<usize> {
+        self.backend
+            .action_history()
+            .iter()
+            .enumerate()
+            .take(from_index)
+            .rfind(|(_, action)| matches!(action, Action::PlaceTile { .. }))
+            .map(|(i, _)| i)
+    }
 
-        if new_cursor.is_some() && new_cursor != self.history_cursor {
-            self.history_cursor = new_cursor;
+    fn find_next_move(&self, from_index: usize) -> Option<usize> {
+        self.backend
+            .action_history()
+            .iter()
+            .enumerate()
+            .skip(from_index + 1)
+            .find(|(_, action)| matches!(action, Action::PlaceTile { .. }))
+            .map(|(i, _)| i)
+    }
+
+    pub fn can_history_backward(&self) -> bool {
+        let start_index = self.history_cursor.unwrap_or(self.action_count);
+        if start_index == 0 {
+            return false;
+        }
+        self.find_prev_move(start_index).is_some()
+    }
+
+    pub fn can_history_forward(&self) -> bool {
+        self.history_cursor.is_some()
+    }
+
+    pub fn history_backward(&mut self) {
+        let start_index = self.history_cursor.unwrap_or(self.action_count);
+        if start_index == 0 {
+            return;
+        }
+        if let Some(prev_move_index) = self.find_prev_move(start_index) {
+            self.history_cursor = Some(prev_move_index);
             self.poll_backend();
         }
     }
 
     pub fn history_forward(&mut self) {
         if let Some(cursor) = self.history_cursor {
-            if cursor + 1 < self.action_count {
-                self.history_cursor = Some(cursor + 1);
+            if let Some(next_move_index) = self.find_next_move(cursor) {
+                self.history_cursor = Some(next_move_index);
             } else {
-                self.history_cursor = None; // Reached the end, go live
+                self.history_cursor = None; // Go live
             }
             self.poll_backend();
         }

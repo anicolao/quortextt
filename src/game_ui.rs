@@ -718,11 +718,19 @@ impl GameUi {
                 });
 
                 ui.horizontal(|ui| {
-                    if ui.button("⬅").clicked() {
+                    let back_button = egui::Button::new("⬅");
+                    if ui
+                        .add_enabled(game_view.can_history_backward(), back_button)
+                        .clicked()
+                    {
                         self.animation_state.new_move_action_index = None;
                         game_view.history_backward();
                     }
-                    if ui.button("➡").clicked() {
+                    let forward_button = egui::Button::new("➡");
+                    if ui
+                        .add_enabled(game_view.can_history_forward(), forward_button)
+                        .clicked()
+                    {
                         self.animation_state.new_move_action_index = None;
                         game_view.history_forward();
                     }
@@ -821,49 +829,12 @@ impl GameUi {
                 }
             };
             let is_history_mode = game_view.history_cursor().is_some();
-            let (hypothetical_game, legality_error) = match hovered_tile {
-                None => {
-                    // Check if we have a fade-out animation that needs a hypothetical game
-                    if let Some(hover_anim) = &self.animation_state.hover_animation {
-                        if !hover_anim.is_fade_in
-                            && self.animation_state.frame_count < hover_anim.end_frame
-                        {
-                            // We're in a fade-out animation, create hypothetical game for the animated tile
-                            let player_to_simulate = match game_view.viewer() {
-                                GameViewer::Player(player) => Some(player),
-                                GameViewer::Admin => Some(game.current_player()),
-                                GameViewer::Spectator => None,
-                            };
-                            match player_to_simulate {
-                                None => (None, None),
-                                Some(player) => match game.tile_in_hand(player) {
-                                    None => (None, None),
-                                    Some(tile) => {
-                                        let hypo_game = game.with_tile_placed(
-                                            tile,
-                                            hover_anim.tile_pos,
-                                            self.placement_rotation,
-                                        );
-                                        let legality_error =
-                                            crate::legality::is_move_legal(&hypo_game).err();
-                                        (Some(hypo_game), legality_error)
-                                    }
-                                },
-                            }
-                        } else {
-                            (None, None)
-                        }
-                    } else {
-                        (None, None)
-                    }
-                }
-                Some(hovered_tile) => {
-                    if is_history_mode {
-                        if let GameViewer::Player(_) = game_view.viewer() {
-                            self.animation_state.new_move_action_index = None;
-                            game_view.go_to_live();
-                        }
-                    }
+            let (hypothetical_game, legality_error) = if let Some(hovered_tile) = hovered_tile {
+                if is_history_mode && matches!(game_view.viewer(), GameViewer::Player(_)) {
+                    self.animation_state.new_move_action_index = None;
+                    game_view.go_to_live();
+                    (None, None)
+                } else {
                     match *game.tile(hovered_tile) {
                         Tile::Empty => {
                             ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
@@ -902,6 +873,40 @@ impl GameUi {
                         }
                         Tile::Placed(_) | Tile::NotOnBoard => (None, None),
                     }
+                }
+            } else {
+                // Check if we have a fade-out animation that needs a hypothetical game
+                if let Some(hover_anim) = &self.animation_state.hover_animation {
+                    if !hover_anim.is_fade_in
+                        && self.animation_state.frame_count < hover_anim.end_frame
+                    {
+                        // We're in a fade-out animation, create hypothetical game for the animated tile
+                        let player_to_simulate = match game_view.viewer() {
+                            GameViewer::Player(player) => Some(player),
+                            GameViewer::Admin => Some(game.current_player()),
+                            GameViewer::Spectator => None,
+                        };
+                        match player_to_simulate {
+                            None => (None, None),
+                            Some(player) => match game.tile_in_hand(player) {
+                                None => (None, None),
+                                Some(tile) => {
+                                    let hypo_game = game.with_tile_placed(
+                                        tile,
+                                        hover_anim.tile_pos,
+                                        self.placement_rotation,
+                                    );
+                                    let legality_error =
+                                        crate::legality::is_move_legal(&hypo_game).err();
+                                    (Some(hypo_game), legality_error)
+                                }
+                            },
+                        }
+                    } else {
+                        (None, None)
+                    }
+                } else {
+                    (None, None)
                 }
             };
             let rotate_time = ctx.input(|i| i.time);
