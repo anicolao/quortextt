@@ -123,14 +123,20 @@ impl GameView {
     }
 
     pub fn history_backward(&mut self) {
-        let start_index = self.history_cursor.unwrap_or(self.action_count);
-        if start_index == 0 {
-            return;
-        }
-        if let Some(prev_move_index) = self.find_prev_move(start_index) {
+        let start_from = if let Some(cursor) = self.history_cursor {
+            cursor
+        } else {
+            // Live mode: find the last move to start searching backwards from.
+            self.find_prev_move(self.action_count).unwrap_or(0)
+        };
+
+        if let Some(prev_move_index) = self.find_prev_move(start_from) {
             self.history_cursor = Some(prev_move_index);
-            self.poll_backend();
+        } else {
+            // No moves before start_from, go to empty board state.
+            self.history_cursor = Some(0);
         }
+        self.poll_backend();
     }
 
     pub fn history_forward(&mut self) {

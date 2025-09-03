@@ -768,10 +768,11 @@ impl GameUi {
             }
 
             let is_history_mode = game_view.history_cursor().is_some();
-            if is_history_mode && response.hovered() && matches!(game_view.viewer(), GameViewer::Player(_)) {
+            if is_history_mode
+                && response.hovered()
+                && matches!(game_view.viewer(), GameViewer::Player(_))
+            {
                 game_view.go_to_live();
-                ctx.request_repaint();
-                return response;
             }
 
             let game = game_view.game().as_ref().unwrap().clone();
