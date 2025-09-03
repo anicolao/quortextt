@@ -18,7 +18,7 @@ impl GameView {
             locally_applied_actions: false,
             game: None,
         };
-        s.poll_backend();
+        s.poll_backend(true);
         s
     }
 
@@ -26,12 +26,15 @@ impl GameView {
         self.backend.viewer()
     }
 
-    pub fn poll_backend(&mut self) -> usize {
+    pub fn poll_backend(&mut self, force: bool) -> usize {
         self.backend.update();
         let new_actions = self.backend.actions_from_index(self.action_count);
 
-        if !new_actions.is_empty() || self.history_cursor.is_some() {
-            if !self.locally_applied_actions && self.game.is_some() && self.history_cursor.is_none()
+        if force || !new_actions.is_empty() || self.history_cursor.is_some() {
+            if !self.locally_applied_actions
+                && self.game.is_some()
+                && self.history_cursor.is_none()
+                && !force
             {
                 self.action_count += new_actions.len();
                 let game = self.game.as_mut().unwrap();
@@ -57,7 +60,7 @@ impl GameView {
 
     pub fn submit_action(&mut self, action: Action) -> Result<(), String> {
         self.history_cursor = None; // Always jump to live on new action
-        self.poll_backend(); // Replay to get to latest state before applying the new action
+        self.poll_backend(true); // Replay to get to latest state before applying the new action
         self.game
             .as_mut()
             .ok_or("Game not initialized".to_owned())?
@@ -79,11 +82,12 @@ impl GameView {
         self.history_cursor
     }
 
-    pub fn go_to_live(&mut self) {
+    pub fn go_to_live(&mut self) -> Game {
         if self.history_cursor.is_some() {
             self.history_cursor = None;
-            self.poll_backend();
+            self.poll_backend(true);
         }
+        self.game.as_ref().unwrap().clone()
     }
 
     fn find_prev_move(&self, from_index: usize) -> Option<usize> {
@@ -136,7 +140,7 @@ impl GameView {
             // No moves before start_from, go to empty board state.
             self.history_cursor = Some(0);
         }
-        self.poll_backend();
+        self.poll_backend(false);
     }
 
     pub fn history_forward(&mut self) {
@@ -146,7 +150,7 @@ impl GameView {
             } else {
                 self.history_cursor = None; // Go live
             }
-            self.poll_backend();
+            self.poll_backend(false);
         }
     }
 }

@@ -198,7 +198,7 @@ impl eframe::App for FlowsApp {
 
                 {
                     let player_view = &mut in_memory_mode.player_views[current_displayed_player];
-                    let num_actions = player_view.poll_backend();
+                    let num_actions = player_view.poll_backend(false);
                     if num_actions > in_memory_mode.displayed_action_count
                         && in_memory_mode.displayed_action_count > 0
                     {
@@ -251,7 +251,7 @@ impl eframe::App for FlowsApp {
                 let mut winners_to_update: Option<Vec<usize>> = None;
                 {
                     let human_view = &mut easy_ai_mode.human_view;
-                    human_view.poll_backend();
+                    human_view.poll_backend(false);
 
                     if let Some(game) = human_view.game() {
                         let current_action_count = game.action_history_vec().len();
@@ -291,7 +291,7 @@ impl eframe::App for FlowsApp {
             }
             State::ServerMode(server_mode) => {
                 let player_view = &mut server_mode.player_view;
-                player_view.poll_backend();
+                player_view.poll_backend(false);
                 // For now, use empty scores for server mode
                 let empty_scores = vec![0; 2];
                 let _ui_response = server_mode

@@ -737,7 +737,7 @@ impl GameUi {
                     if game_view.history_cursor().is_some() {
                         if ui.button("Go to Live").clicked() {
                             self.animation_state.new_move_action_index = None;
-                            game_view.go_to_live();
+                            let _ = game_view.go_to_live();
                             ui.ctx().request_repaint();
                         }
                     }
@@ -767,15 +767,15 @@ impl GameUi {
                 return response;
             }
 
+            let mut game = game_view.game().as_ref().unwrap().clone();
+
             let is_history_mode = game_view.history_cursor().is_some();
             if is_history_mode
                 && response.hovered()
                 && matches!(game_view.viewer(), GameViewer::Player(_))
             {
-                game_view.go_to_live();
+                game = game_view.go_to_live();
             }
-
-            let game = game_view.game().as_ref().unwrap().clone();
 
             // Check for new opponent moves and trigger animations
             let current_action_count = game.action_history_vec().len();
