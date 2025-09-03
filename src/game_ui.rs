@@ -2,7 +2,8 @@ use crate::game::{Direction, *};
 use crate::game_view::GameView;
 use crate::legality::LegalityError;
 use egui::{
-    emath::Rot2, Color32, Context, CursorIcon, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2,
+    emath::Rot2, Color32, Context, CursorIcon, Key, Painter, Pos2, Rect, Sense, Shape, Stroke,
+    Vec2,
 };
 
 const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10;
@@ -167,6 +168,8 @@ struct AnimationState {
     pointer_dwell_frames: u64,
     hover_animation: Option<HoverAnimation>,
     last_known_action_count: usize,
+    new_move_action_index: Option<usize>,
+    last_total_action_count: usize,
 }
 
 struct RotationAnimation {
@@ -215,6 +218,8 @@ impl AnimationState {
             pointer_dwell_frames: 0,
             hover_animation: None,
             last_known_action_count: 0,
+            new_move_action_index: None,
+            last_total_action_count: 0,
         }
     }
 }
@@ -661,7 +666,8 @@ impl GameUi {
         egui::SidePanel::left("moves_panel").show_animated(ctx, self.moves_drawer_open, |ui| {
             if let Some(game) = game_view.game() {
                 let num_players = game.num_players();
-                let mut moves: Vec<Vec<String>> = vec![vec![]; num_players];
+                let mut moves: Vec<Vec<(String, usize)>> = vec![vec![]; num_players];
+                let mut action_index = 0;
                 for action in game.action_history() {
                     if let Action::PlaceTile {
                         player,
@@ -670,16 +676,55 @@ impl GameUi {
                         rotation,
                     } = action
                     {
-                        moves[*player].push(format_move(*player, *tile, *pos, *rotation, &game));
+                        moves[*player].push((
+                            format_move(*player, *tile, *pos, *rotation, &game),
+                            action_index,
+                        ));
                     }
+                    action_index += 1;
                 }
 
+                let time = ui.input(|i| i.time);
+                let ctx = ui.ctx().clone();
                 ui.columns(num_players, |columns| {
                     for i in 0..num_players {
                         columns[i].label(format!("Player {}", i + 1));
-                        for mv in &moves[i] {
-                            columns[i].label(mv);
+                        for (mv, move_action_index) in &moves[i] {
+                            let is_current_move =
+                                game_view.history_cursor() == Some(*move_action_index);
+                            let is_future_move = game_view
+                                .history_cursor()
+                                .map_or(false, |cursor| *move_action_index > cursor);
+
+                            let mut label = egui::RichText::new(mv);
+                            if is_current_move {
+                                label = label.strong();
+                            }
+                            if is_future_move {
+                                label = label.color(Color32::DARK_GRAY);
+                            }
+                            if self.animation_state.new_move_action_index == Some(*move_action_index)
+                            {
+                                let glow = (time.sin() * 0.5 + 0.5) as f32;
+                                let r = 255;
+                                let g = (255.0 * (1.0 - glow)) as u8;
+                                let b = 0;
+                                label = label.color(Color32::from_rgb(r, g, b));
+                                ctx.request_repaint();
+                            }
+                            columns[i].label(label);
                         }
+                    }
+                });
+
+                ui.horizontal(|ui| {
+                    if ui.button("⬅").clicked() {
+                        self.animation_state.new_move_action_index = None;
+                        game_view.history_backward();
+                    }
+                    if ui.button("➡").clicked() {
+                        self.animation_state.new_move_action_index = None;
+                        game_view.history_forward();
                     }
                 });
             } else {
@@ -719,6 +764,15 @@ impl GameUi {
                 }
                 self.animation_state.last_known_action_count = current_action_count;
             }
+
+            let total_action_count = game_view.total_actions();
+            if total_action_count > self.animation_state.last_total_action_count {
+                if game_view.history_cursor().is_some() {
+                    // We are in history mode and a new move has arrived.
+                    self.animation_state.new_move_action_index = Some(total_action_count - 1);
+                }
+            }
+            self.animation_state.last_total_action_count = total_action_count;
 
             // Calculate rotation to put the viewing player's side on the bottom
             let viewing_player = match game_view.viewer() {
@@ -766,6 +820,7 @@ impl GameUi {
                     hovered_tile
                 }
             };
+            let is_history_mode = game_view.history_cursor().is_some();
             let (hypothetical_game, legality_error) = match hovered_tile {
                 None => {
                     // Check if we have a fade-out animation that needs a hypothetical game
@@ -802,44 +857,52 @@ impl GameUi {
                         (None, None)
                     }
                 }
-                Some(hovered_tile) => match *game.tile(hovered_tile) {
-                    Tile::Empty => {
-                        ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
-                        let player_to_simulate = match game_view.viewer() {
-                            GameViewer::Player(player) => Some(player),
-                            GameViewer::Admin => Some(game.current_player()),
-                            GameViewer::Spectator => None,
-                        };
-                        match player_to_simulate {
-                            None => (None, None),
-                            Some(player) => match game.tile_in_hand(player) {
-                                None => (None, None),
-                                Some(tile) => {
-                                    if response.clicked() {
-                                        // TODO: Do something with the local legality check
-                                        let _ = game_view.submit_action(Action::PlaceTile {
-                                            player,
-                                            tile,
-                                            pos: hovered_tile,
-                                            rotation: self.placement_rotation,
-                                        });
-                                        (None, None)
-                                    } else {
-                                        let hypo_game = game.with_tile_placed(
-                                            tile,
-                                            hovered_tile,
-                                            self.placement_rotation,
-                                        );
-                                        let legality_error =
-                                            crate::legality::is_move_legal(&hypo_game).err();
-                                        (Some(hypo_game), legality_error)
-                                    }
-                                }
-                            },
+                Some(hovered_tile) => {
+                    if is_history_mode {
+                        if let GameViewer::Player(_) = game_view.viewer() {
+                            self.animation_state.new_move_action_index = None;
+                            game_view.go_to_live();
                         }
                     }
-                    Tile::Placed(_) | Tile::NotOnBoard => (None, None),
-                },
+                    match *game.tile(hovered_tile) {
+                        Tile::Empty => {
+                            ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
+                            let player_to_simulate = match game_view.viewer() {
+                                GameViewer::Player(player) => Some(player),
+                                GameViewer::Admin => Some(game.current_player()),
+                                GameViewer::Spectator => None,
+                            };
+                            match player_to_simulate {
+                                None => (None, None),
+                                Some(player) => match game.tile_in_hand(player) {
+                                    None => (None, None),
+                                    Some(tile) => {
+                                        if response.clicked() {
+                                            // TODO: Do something with the local legality check
+                                            let _ = game_view.submit_action(Action::PlaceTile {
+                                                player,
+                                                tile,
+                                                pos: hovered_tile,
+                                                rotation: self.placement_rotation,
+                                            });
+                                            (None, None)
+                                        } else {
+                                            let hypo_game = game.with_tile_placed(
+                                                tile,
+                                                hovered_tile,
+                                                self.placement_rotation,
+                                            );
+                                            let legality_error =
+                                                crate::legality::is_move_legal(&hypo_game).err();
+                                            (Some(hypo_game), legality_error)
+                                        }
+                                    }
+                                },
+                            }
+                        }
+                        Tile::Placed(_) | Tile::NotOnBoard => (None, None),
+                    }
+                }
             };
             let rotate_time = ctx.input(|i| i.time);
             // Don't let the user rotate the tile too quickly
@@ -868,6 +931,15 @@ impl GameUi {
                     self.placement_rotation = end_rotation; // Update logical rotation immediately
                     self.animation_state.last_rotate_time = rotate_time;
                 }
+            }
+
+            if ui.input(|i| i.key_pressed(Key::ArrowLeft)) {
+                self.animation_state.new_move_action_index = None;
+                game_view.history_backward();
+            }
+            if ui.input(|i| i.key_pressed(Key::ArrowRight)) {
+                self.animation_state.new_move_action_index = None;
+                game_view.history_forward();
             }
 
             let mut visual_rotation_rads = 0.0;
