@@ -1,6 +1,7 @@
 use crate::backend::{Backend, InMemoryBackend};
 use crate::game::*;
-use std::collections::{HashMap, VecDeque};
+use crate::legality::Connection;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Macro for conditional AI debugging output
 macro_rules! ai_debug {
@@ -73,64 +74,74 @@ impl PathLengthEvaluator {
     /// that need to be placed.
     fn get_shortest_path_len(&self, player: Player, game: &Game) -> Option<usize> {
         let (start_side, goal_side) = get_player_sides(player);
+        let goal_edges: HashSet<(TilePos, Direction)> =
+            game.edges_on_board_edge(goal_side).into_iter().collect();
 
         // Dijkstra's algorithm
         let mut costs = HashMap::new(); // pos -> cost
-        let mut pq = VecDeque::new(); // (cost, pos)
+        let mut predecessors = HashMap::new(); // pos -> prev_pos
+        let mut pq = VecDeque::new(); // (cost, pos, prev_pos)
 
         // Initialize queue with all hexes on the starting side
         for (pos, dir) in game.edges_on_board_edge(start_side) {
             if *game.tile(pos) == Tile::Empty {
-                pq.push_back((1, pos)); // Cost 1 to place the first tile
+                pq.push_back((1, pos, pos)); // Cost 1, pos, dummy predecessor
                 costs.insert(pos, 1);
+                predecessors.insert(pos, pos);
             } else if let Tile::Placed(tile) = game.tile(pos) {
                 if tile.flow_cache(dir) == Some(player) {
-                    // Already has flow, cost is 0 to start here.
-                    // Follow the flow to its end.
                     let (end_pos, _) = self.follow_flow(pos, dir, player, game);
                     if costs.get(&end_pos).map_or(true, |&c| c > 0) {
-                        pq.push_back((0, end_pos));
+                        pq.push_back((0, end_pos, end_pos)); // Cost 0, pos, dummy predecessor
                         costs.insert(end_pos, 0);
+                        predecessors.insert(end_pos, end_pos);
                     }
                 }
             }
         }
 
-        while let Some((cost, pos)) = pq.pop_front() {
-            // If we've found a better path to this node already, skip.
+        while let Some((cost, pos, prev_pos)) = pq.pop_front() {
             if cost > *costs.get(&pos).unwrap_or(&usize::MAX) {
                 continue;
             }
+            predecessors.insert(pos, prev_pos);
 
             // Check for goal condition
             if game.is_on_board_edge(pos, goal_side) {
-                return Some(cost);
+                let entry_dir = game.get_direction_towards(pos, prev_pos).unwrap();
+                for (_, goal_exit_dir) in goal_edges.iter().filter(|(p, _)| *p == pos) {
+                    let mut new_demand = (entry_dir, *goal_exit_dir);
+                    if new_demand.0 > new_demand.1 {
+                        std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                    }
+                    if is_satisfiable(&HashSet::from([new_demand])) {
+                        return Some(cost);
+                    }
+                }
             }
 
             // Explore neighbors
             for dir in Direction::all_directions() {
                 if let Some(next_pos) = game.get_neighbor_pos(pos, dir) {
-                    let new_cost = cost + 1; // Cost to place a tile in the current empty hex
                     if *game.tile(next_pos) == Tile::Empty {
+                        let new_cost = cost + 1;
                         if new_cost < *costs.get(&next_pos).unwrap_or(&usize::MAX) {
                             costs.insert(next_pos, new_cost);
-                            pq.push_back((new_cost, next_pos));
+                            pq.push_back((new_cost, next_pos, pos));
                         }
                     } else if let Tile::Placed(tile) = game.tile(next_pos) {
                         let entry_dir = dir.reversed();
                         if tile.flow_cache(entry_dir) == Some(player) {
                             let (end_pos, _) = self.follow_flow(next_pos, entry_dir, player, game);
-                            // Cost to connect to an existing flow is 'cost', not 'new_cost'
                             if cost < *costs.get(&end_pos).unwrap_or(&usize::MAX) {
                                 costs.insert(end_pos, cost);
-                                pq.push_back((cost, end_pos));
+                                pq.push_back((cost, end_pos, pos));
                             }
                         }
                     }
                 }
             }
         }
-
         None // No path found
     }
 }
@@ -143,8 +154,14 @@ impl EvaluationStrategy for PathLengthEvaluator {
     fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool) -> f64 {
         if let Some(outcome) = game.outcome() {
             return match outcome {
-                GameOutcome::Victory(winners) if winners.contains(&player) => 1000.0,
-                GameOutcome::Victory(_) => -1000.0,
+                GameOutcome::Victory(winners) if winners.contains(&player) => {
+                    if winners.len() == 1 {
+                        1000.0 // Solo victory
+                    } else {
+                        500.0 // Shared victory (tie)
+                    }
+                }
+                GameOutcome::Victory(_) => -1000.0, // A loss
             };
         }
 
@@ -192,6 +209,41 @@ fn get_player_sides(player: Player) -> (Rotation, Rotation) {
         2 => (Rotation(4), Rotation(1)),
         _ => panic!("Invalid player"),
     }
+}
+
+/// Checks if a set of required connections within a single hex can be
+/// fulfilled by any single tile.
+fn is_satisfiable(demands: &HashSet<Connection>) -> bool {
+    if demands.is_empty() {
+        return true;
+    }
+    // Iterate through all 4 tile types and 6 rotations
+    for &tile_type in &[
+        TileType::NoSharps,
+        TileType::OneSharp,
+        TileType::TwoSharps,
+        TileType::ThreeSharps,
+    ] {
+        for i in 0..6 {
+            let rotation = Rotation(i);
+            let placed_tile = PlacedTile::new(tile_type, rotation);
+            let provided_connections = placed_tile
+                .all_flows()
+                .into_iter()
+                .map(|(mut d1, mut d2)| {
+                    if d1 > d2 {
+                        std::mem::swap(&mut d1, &mut d2);
+                    }
+                    (d1, d2)
+                })
+                .collect::<HashSet<_>>();
+
+            if demands.is_subset(&provided_connections) {
+                return true; // Found a tile configuration that satisfies all demands
+            }
+        }
+    }
+    false // No single tile can fulfill all demands
 }
 
 /// Helper function to compare two actions for equality
