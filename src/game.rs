@@ -1,7 +1,8 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeSet, HashSet};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, PartialOrd, Ord, Hash)]
 pub struct Rotation(pub u8); // 0 - 5; 1 is 60 degrees clockwise from default rotation
 
 impl Rotation {
@@ -164,6 +165,26 @@ pub enum TileType {
 }
 
 impl TileType {
+    pub fn get_unique_rotations(tile_type: TileType) -> Vec<Rotation> {
+        let mut unique_flows = HashSet::new();
+        let mut unique_rotations = Vec::new();
+
+        for i in 0..6 {
+            let rotation = Rotation(i);
+            let placed_tile = PlacedTile::new(tile_type, rotation);
+            let flows = placed_tile.all_flows();
+            let flow_set: BTreeSet<(Direction, Direction)> = flows
+                .iter()
+                .map(|(d1, d2)| if d1 < d2 { (*d1, *d2) } else { (*d2, *d1) })
+                .collect();
+
+            if unique_flows.insert(flow_set) {
+                unique_rotations.push(rotation);
+            }
+        }
+        unique_rotations
+    }
+
     pub fn num_sharps(&self) -> usize {
         *self as usize
     }
@@ -635,6 +656,15 @@ impl Game {
         // An edge is a border edge if the tile on the other side is NotOnBoard.
         let neighbor_pos = pos + dir.tile_vec();
         *self.tile(neighbor_pos) == Tile::NotOnBoard
+    }
+
+    pub fn is_on_board_edge(&self, pos: TilePos, side: Rotation) -> bool {
+        for (edge_pos, _) in self.edges_on_board_edge(side) {
+            if pos == edge_pos {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn edges_on_board_edge(&self, rotation: Rotation) -> Vec<(TilePos, Direction)> {

@@ -68,7 +68,7 @@ struct MediumAiMode {
 
 impl MediumAiMode {
     pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
-        let backend = MediumAiBackend::new(settings, 3, ai_debugging); // Default depth of 3
+        let backend = MediumAiBackend::new(settings, 2, ai_debugging); // Default depth of 2
         let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
         let human_ui = GameUi::new();
         Self {
@@ -81,7 +81,7 @@ impl MediumAiMode {
     }
 
     pub fn reset_game(&mut self, settings: GameSettings) {
-        self.main_backend = MediumAiBackend::new(settings, 3, false);
+        self.main_backend = MediumAiBackend::new(settings, 2, false);
         self.human_view = GameView::new(Box::new(
             self.main_backend.backend_for_viewer(GameViewer::Player(0)),
         ));
