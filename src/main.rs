@@ -12,12 +12,23 @@ struct Args {
     /// Enable AI debugging output
     #[arg(long, default_value_t = false)]
     ai_debugging: bool,
+    
+    /// Enable debug animations slowdown. Takes optional factor (default: 10.0)
+    #[arg(long, value_name = "FACTOR")]
+    debug_animations_slowdown: Option<Option<f32>>,
 }
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     let args = Args::parse();
+
+    // Process debug animations slowdown argument
+    let animation_slowdown = match args.debug_animations_slowdown {
+        Some(Some(factor)) => factor,    // --debug-animations-slowdown=X
+        Some(None) => 10.0,              // --debug-animations-slowdown (no value)
+        None => 1.0,                     // not specified
+    };
 
     #[cfg(feature = "gui")]
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -37,9 +48,10 @@ fn main() -> eframe::Result {
         "Flows",
         native_options,
         Box::new(move |cc| {
-            Ok(Box::new(flows::FlowsApp::new_with_ai_debugging(
+            Ok(Box::new(flows::FlowsApp::new_with_debugging(
                 cc,
                 args.ai_debugging,
+                animation_slowdown,
             )))
         }),
     )
