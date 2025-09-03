@@ -280,9 +280,15 @@ impl GameUi {
             current = anim.next.take().map(|boxed| *boxed);
 
             if anim.is_opponent_move {
-                // Keep this animation - it's from an opponent
-                anim.next = new_head.map(Box::new);
-                new_head = Some(anim);
+                // if the animation is still active, keep it
+                if self.animation_state.frame_count
+                    < anim.start_frame
+                        + (anim.path.len() as u64 * 20 * DEBUG_ANIMATION_SPEED_MULTIPLIER)
+                {
+                    // Keep this animation - it's from an opponent, and not done rendering
+                    anim.next = new_head.map(Box::new);
+                    new_head = Some(anim);
+                }
             }
             // Drop user animations
         }
@@ -1558,6 +1564,7 @@ impl GameUi {
                             if ui.button("Play Again").clicked() {
                                 ui_response.play_again_requested = true;
                             }
+                            self.animation_state.flow_animation = None;
                         });
                     });
 
