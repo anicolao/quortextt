@@ -1,4 +1,4 @@
-use crate::ai_backend::EasyAiBackend;
+use crate::ai_backend::{EasyAiBackend, MediumAiBackend};
 use crate::backend::{Backend, InMemoryBackend};
 use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
@@ -45,6 +45,46 @@ impl InMemoryMode {
         self.admin_view = GameView::new(Box::new(backend));
         self.current_displayed_player = 0;
         self.displayed_action_count = 0;
+        self.last_game_action_count = 0;
+        // Note: scores are preserved across game resets
+    }
+
+    pub fn update_scores(&mut self, winners: &[usize]) {
+        for &winner in winners {
+            if winner < self.scores.len() {
+                self.scores[winner] += 1;
+            }
+        }
+    }
+}
+
+struct MediumAiMode {
+    main_backend: MediumAiBackend,
+    human_view: GameView,
+    human_ui: GameUi,
+    scores: Vec<usize>, // Win count for each player (0 = human, 1 = AI)
+    last_game_action_count: usize,
+}
+
+impl MediumAiMode {
+    pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
+        let backend = MediumAiBackend::new(settings, 3, ai_debugging); // Default depth of 3
+        let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
+        let human_ui = GameUi::new();
+        Self {
+            main_backend: backend,
+            human_view,
+            human_ui,
+            scores: vec![0; 2], // Human and AI scores
+            last_game_action_count: 0,
+        }
+    }
+
+    pub fn reset_game(&mut self, settings: GameSettings) {
+        self.main_backend = MediumAiBackend::new(settings, 3, false);
+        self.human_view = GameView::new(Box::new(
+            self.main_backend.backend_for_viewer(GameViewer::Player(0)),
+        ));
         self.last_game_action_count = 0;
         // Note: scores are preserved across game resets
     }
@@ -119,6 +159,7 @@ enum State {
     Menu { server_ip: String },
     InMemoryMode(InMemoryMode),
     EasyAiMode(EasyAiMode),
+    MediumAiMode(MediumAiMode),
     ServerMode(ServerMode),
 }
 
@@ -177,6 +218,16 @@ impl eframe::App for FlowsApp {
 
                     if ui.button("Easy AI").clicked() {
                         new_state = Some(State::EasyAiMode(EasyAiMode::new(
+                            GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            self.ai_debugging,
+                        )));
+                    }
+
+                    if ui.button("Medium AI").clicked() {
+                        new_state = Some(State::MediumAiMode(MediumAiMode::new(
                             GameSettings {
                                 num_players: 2,
                                 version: 0,
@@ -282,6 +333,54 @@ impl eframe::App for FlowsApp {
 
                 if ui_response.play_again_requested {
                     easy_ai_mode.reset_game(GameSettings {
+                        num_players: 2,
+                        version: 0,
+                    });
+                }
+
+                ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
+            }
+            State::MediumAiMode(medium_ai_mode) => {
+                // Update the main backend for AI logic
+                medium_ai_mode.main_backend.update();
+
+                // Check if game just ended and update scores
+                let mut winners_to_update: Option<Vec<usize>> = None;
+                {
+                    let human_view = &mut medium_ai_mode.human_view;
+                    human_view.poll_backend(false);
+
+                    if let Some(game) = human_view.game() {
+                        let current_action_count = game.action_history_vec().len();
+                        if let Some(outcome) = game.outcome() {
+                            match outcome {
+                                crate::game::GameOutcome::Victory(winners) => {
+                                    // Only update scores once when game ends
+                                    if current_action_count > medium_ai_mode.last_game_action_count
+                                    {
+                                        winners_to_update = Some(winners.clone());
+                                        medium_ai_mode.last_game_action_count =
+                                            current_action_count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update scores after borrowing from human_view is done
+                if let Some(winners) = winners_to_update {
+                    medium_ai_mode.update_scores(&winners);
+                }
+
+                let human_view = &mut medium_ai_mode.human_view;
+                let ui_response =
+                    medium_ai_mode
+                        .human_ui
+                        .display(ctx, human_view, &medium_ai_mode.scores);
+
+                if ui_response.play_again_requested {
+                    medium_ai_mode.reset_game(GameSettings {
                         num_players: 2,
                         version: 0,
                     });

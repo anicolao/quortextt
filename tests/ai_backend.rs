@@ -1,4 +1,4 @@
-use flows::ai_backend::EasyAiBackend;
+use flows::ai_backend::{EasyAiBackend, MediumAiBackend};
 use flows::backend::Backend;
 use flows::game::{Action, GameSettings, GameViewer, Rotation, TilePos, TileType};
 
@@ -80,6 +80,46 @@ fn test_ai_evaluation_improvements() {
     assert!(
         !actions.is_empty(),
         "Should have at least the initialization action"
+    );
+}
+
+#[test]
+fn test_medium_ai_can_make_a_move() {
+    let settings = GameSettings {
+        num_players: 2,
+        version: 0,
+    };
+    let mut ai_backend = MediumAiBackend::new(settings, 1, false);
+
+    // The backend auto-initializes and draws tiles. Find the human's tile.
+    let human_tile = ai_backend
+        .actions_from_index(0)
+        .iter()
+        .find_map(|a| match a {
+            Action::RevealTile { player: 0, tile } => Some(*tile),
+            _ => None,
+        })
+        .expect("Human player (0) should have revealed a tile");
+
+    // Human makes a valid move.
+    ai_backend.submit_action(Action::PlaceTile {
+        player: 0,
+        tile: human_tile,
+        pos: TilePos::new(3, 3),
+        rotation: Rotation(0),
+    });
+
+    let actions_before_ai_move = ai_backend.actions_from_index(0).len();
+
+    // Now, trigger the AI's turn.
+    ai_backend.update();
+
+    let actions_after_ai_move = ai_backend.actions_from_index(0).len();
+
+    // A successful AI turn should result in at least one new action (the PlaceTile).
+    assert!(
+        actions_after_ai_move > actions_before_ai_move,
+        "AI should have made a move, increasing the action count."
     );
 }
 

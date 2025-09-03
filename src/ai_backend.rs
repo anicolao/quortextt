@@ -18,9 +18,329 @@ macro_rules! ai_debug {
 pub struct EasyAiBackend {
     inner: InMemoryBackend,
     ai_player: Player,
+    evaluator: Box<dyn EvaluationStrategy>,
     last_action_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     ai_thinking: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ai_debugging: bool,
+}
+
+/// Trait for different AI evaluation strategies
+pub trait EvaluationStrategy: Send + Sync {
+    fn evaluate(&self, game: &Game, player: Player) -> f64;
+    fn clone_box(&self) -> Box<dyn EvaluationStrategy>;
+}
+
+impl Clone for Box<dyn EvaluationStrategy> {
+    fn clone(&self) -> Box<dyn EvaluationStrategy> {
+        self.clone_box()
+    }
+}
+
+/// An evaluation strategy based on the shortest path length for each player
+#[derive(Clone)]
+pub struct PathLengthEvaluator {
+    ai_debugging: bool,
+}
+
+impl PathLengthEvaluator {
+    pub fn new(ai_debugging: bool) -> Self {
+        Self { ai_debugging }
+    }
+
+    /// Find potential path starting from existing flows instead of starting edges
+    /// This allows players to prioritize extending existing flows rather than starting new ones
+    fn find_potential_path_from_existing_flows(
+        &self,
+        player: Player,
+        game: &Game,
+    ) -> Option<Vec<Node>> {
+        // The queue stores tuples of (path_of_nodes, current_tip_of_path)
+        let mut queue: VecDeque<(Vec<Node>, TilePos)> = VecDeque::new();
+        let mut visited_nodes: HashSet<Node> = HashSet::new();
+
+        let (_, goal_side) = get_player_sides(player);
+        let goal_edges: HashSet<(TilePos, Direction)> =
+            game.edges_on_board_edge(goal_side).into_iter().collect();
+        let goal_hexes: HashSet<TilePos> = goal_edges.iter().map(|(pos, _)| *pos).collect();
+
+        // 1. Find all existing flow positions for this player
+        let mut flow_start_nodes: Vec<(Node, TilePos)> = Vec::new();
+
+        for row in 0..7 {
+            for col in 0..7 {
+                let pos = TilePos::new(row, col);
+                if let Tile::Placed(tile) = game.tile(pos) {
+                    // Check each direction of this tile for the player's flow
+                    for direction in Direction::all_directions() {
+                        if tile.flow_cache(direction) == Some(player) {
+                            // This tile has player's flow in this direction
+                            // Find the neighbor in that direction to create a node
+                            if let Some(neighbor_pos) = game.get_neighbor_pos(pos, direction) {
+                                let node = canonical_node(pos, neighbor_pos);
+                                // Only add if this edge hasn't been visited
+                                if !visited_nodes.contains(&node) {
+                                    flow_start_nodes.push((node, neighbor_pos));
+                                    visited_nodes.insert(node);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if self.ai_debugging {
+            println!(
+                "AI: Found {} existing flow nodes for player {}",
+                flow_start_nodes.len(),
+                player
+            );
+        }
+
+        // If we don't have any existing flows, fall back to the original behavior
+        if flow_start_nodes.is_empty() {
+            if self.ai_debugging {
+                println!("AI: No existing flows found, falling back to standard BFS");
+            }
+            return find_potential_path_for_team(player, game, &HashSet::new(), &HashMap::new());
+        }
+
+        // 2. Initialize queue with paths starting from existing flows
+        for (start_node, neighbor_pos) in flow_start_nodes {
+            queue.push_back((vec![start_node], neighbor_pos));
+        }
+
+        // 3. Perform BFS (similar to the original implementation)
+        while let Some((path, current_pos)) = queue.pop_front() {
+            let last_node = path.last().unwrap();
+            let prev_pos = if last_node.0 == current_pos {
+                last_node.1
+            } else {
+                last_node.0
+            };
+
+            // 4. Check for Goal
+            if goal_hexes.contains(&current_pos) {
+                let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                match *game.tile(current_pos) {
+                    Tile::Placed(placed_tile) => {
+                        let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+                        if goal_edges.contains(&(current_pos, exit_dir)) {
+                            if self.ai_debugging {
+                                println!(
+                                    "AI: Found path from existing flows with length {}",
+                                    path.len()
+                                );
+                            }
+                            return Some(path); // Success!
+                        }
+                    }
+                    Tile::Empty => {
+                        // Find the goal directions for this specific hex
+                        for (_, goal_exit_dir) in
+                            goal_edges.iter().filter(|(pos, _)| *pos == current_pos)
+                        {
+                            let mut new_demand = (entry_dir, *goal_exit_dir);
+                            if new_demand.0 > new_demand.1 {
+                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                            }
+                            let mut all_demands = HashSet::new();
+                            all_demands.insert(new_demand);
+
+                            if is_satisfiable(&all_demands) {
+                                if self.ai_debugging {
+                                    println!(
+                                        "AI: Found path from existing flows with length {}",
+                                        path.len()
+                                    );
+                                }
+                                return Some(path); // Success!
+                            }
+                        }
+                    }
+                    Tile::NotOnBoard => {}
+                }
+            }
+
+            // 5. Explore Neighbors
+            let prev_pos = if last_node.0 == current_pos {
+                last_node.1
+            } else {
+                last_node.0
+            };
+
+            match *game.tile(current_pos) {
+                Tile::Placed(placed_tile) => {
+                    // Path is forced by the tile's connections.
+                    let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
+                    let exit_dir = placed_tile.exit_from_entrance(entry_dir);
+
+                    if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
+                        let next_node = canonical_node(current_pos, next_pos);
+                        if !visited_nodes.contains(&next_node) {
+                            let mut new_path = path.clone();
+                            new_path.push(next_node);
+                            visited_nodes.insert(next_node);
+                            queue.push_back((new_path, next_pos));
+                        }
+                    }
+                }
+                Tile::Empty => {
+                    // Case 2: Path goes through an EMPTY hex. Any direction is possible.
+                    for exit_dir in Direction::all_directions() {
+                        if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
+                            if next_pos == prev_pos {
+                                continue;
+                            } // Don't go back
+
+                            let next_node = canonical_node(current_pos, next_pos);
+                            if visited_nodes.contains(&next_node) {
+                                continue;
+                            }
+
+                            // Check for internal pathway contention
+                            let entry_dir =
+                                game.get_direction_towards(current_pos, prev_pos).unwrap();
+                            let mut new_demand = (entry_dir, exit_dir);
+                            if new_demand.0 > new_demand.1 {
+                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                            }
+                            let mut all_demands = HashSet::new();
+                            all_demands.insert(new_demand);
+
+                            if !is_satisfiable(&all_demands) {
+                                continue;
+                            }
+
+                            // Enqueue new path
+                            let mut new_path = path.clone();
+                            new_path.push(next_node);
+                            visited_nodes.insert(next_node);
+                            queue.push_back((new_path, next_pos));
+                        }
+                    }
+                }
+                Tile::NotOnBoard => {} // Should not happen in BFS
+            }
+        }
+
+        None // No path found
+    }
+
+    /// Count the number of empty hexes in a path that need tiles to be placed
+    /// This represents the number of tiles a player needs to place to complete their path
+    fn count_tiles_needed_for_path(&self, path: &[Node], game: &Game) -> usize {
+        let mut empty_hexes = HashSet::new();
+
+        for node in path {
+            let (pos1, pos2) = *node;
+
+            // Check if either hex in this edge is empty and needs a tile
+            if *game.tile(pos1) == Tile::Empty {
+                empty_hexes.insert(pos1);
+            }
+            if *game.tile(pos2) == Tile::Empty {
+                empty_hexes.insert(pos2);
+            }
+        }
+
+        empty_hexes.len()
+    }
+}
+
+impl EvaluationStrategy for PathLengthEvaluator {
+    fn clone_box(&self) -> Box<dyn EvaluationStrategy> {
+        Box::new(self.clone())
+    }
+
+    /// Evaluate how good a move is for the AI using tile-counting algorithm
+    /// Returns a floating point score where higher scores are better
+    /// Formula: tiles_human_needs / max(1, tiles_ai_needs)
+    /// This prioritizes moves that reduce AI's tiles needed and increase human's tiles needed
+    /// Special cases: +1000 for winning move, -1000 for losing move
+    fn evaluate(&self, game: &Game, player: Player) -> f64 {
+        // Check for immediate win/loss
+        if let Some(outcome) = game.outcome() {
+            match outcome {
+                GameOutcome::Victory(winners) if winners.contains(&player) => {
+                    return 1000.0; // AI wins
+                }
+                GameOutcome::Victory(winners) if !winners.contains(&player) => {
+                    return -1000.0; // AI loses
+                }
+                _ => {}
+            }
+        }
+
+        let opponent_player = 1 - player; // Assumes 2-player game
+
+        // Find potential paths for both players using the flow-based BFS
+        // This allows both players to prioritize extending existing flows
+        let ai_path = self.find_potential_path_from_existing_flows(player, &game);
+        let human_path = self.find_potential_path_from_existing_flows(opponent_player, &game);
+
+        match (ai_path, human_path) {
+            (Some(ai_path), Some(human_path)) => {
+                let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &game);
+                let human_tiles_needed = self.count_tiles_needed_for_path(&human_path, &game);
+
+                if self.ai_debugging {
+                    println!(
+                        "AI: Move evaluation - AI needs {} tiles, Human needs {} tiles",
+                        ai_tiles_needed, human_tiles_needed
+                    );
+                }
+
+                let score = -30.0 / (human_tiles_needed as f64) - 1.2 * ai_tiles_needed as f64;
+
+                // Bonus for AI being closer to completion
+                if ai_tiles_needed == 0 {
+                    1000.0 // AI can complete immediately
+                } else {
+                    score
+                }
+            }
+            (Some(ai_path), None) => {
+                let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &game);
+                if self.ai_debugging {
+                    println!(
+                        "AI: Move evaluation - AI needs {} tiles, Human has no path",
+                        ai_tiles_needed
+                    );
+                }
+                // AI has a path, human doesn't - very good for AI
+                // Bonus for being closer to completion
+                if ai_tiles_needed == 0 {
+                    1000.0
+                } else {
+                    100.0 / (ai_tiles_needed as f64)
+                }
+            }
+            (None, Some(human_path)) => {
+                let human_tiles_needed = self.count_tiles_needed_for_path(&human_path, &game);
+                if self.ai_debugging {
+                    println!(
+                        "AI: Move evaluation - AI has no path, Human needs {} tiles",
+                        human_tiles_needed
+                    );
+                }
+                // Human has a path, AI doesn't - very bad for AI
+                // Worse if human is closer to completion
+                if human_tiles_needed == 0 {
+                    -1000.0
+                } else {
+                    -100.0 / (human_tiles_needed as f64)
+                }
+            }
+            (None, None) => {
+                if self.ai_debugging {
+                    println!("AI: Move evaluation - Neither player has a path");
+                }
+                // Neither player has a path - neutral
+                0.0
+            }
+        }
+    }
 }
 
 // Helper to create a canonical representation of a node (inter-hex edge).
@@ -126,6 +446,7 @@ impl EasyAiBackend {
         Self {
             inner,
             ai_player: 1, // AI is always player 1
+            evaluator: Box::new(PathLengthEvaluator::new(ai_debugging)),
             last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             ai_debugging,
@@ -136,6 +457,7 @@ impl EasyAiBackend {
         Self {
             inner: self.inner.backend_for_viewer(viewer),
             ai_player: self.ai_player,
+            evaluator: self.evaluator.clone(),
             last_action_count: self.last_action_count.clone(),
             ai_thinking: self.ai_thinking.clone(),
             ai_debugging: self.ai_debugging,
@@ -318,14 +640,23 @@ impl EasyAiBackend {
             return None;
         }
 
-        let mut best_move = &moves[0];
-        let mut best_score = self.evaluate_move(game, &moves[0]);
+        let mut best_move = None;
+        let mut best_score = -f64::INFINITY;
 
-        for move_action in &moves[1..] {
-            let score = self.evaluate_move(game, move_action);
-            if score > best_score {
-                best_score = score;
-                best_move = move_action;
+        for move_action in moves {
+            if let Action::PlaceTile {
+                pos,
+                rotation,
+                tile,
+                ..
+            } = move_action
+            {
+                let test_game = game.with_tile_placed(*tile, *pos, *rotation);
+                let score = self.evaluator.evaluate(&test_game, self.ai_player);
+                if score > best_score {
+                    best_score = score;
+                    best_move = Some(move_action.clone());
+                }
             }
         }
 
@@ -335,305 +666,7 @@ impl EasyAiBackend {
             best_score,
             best_move
         );
-        Some(best_move.clone())
-    }
-
-    /// Find potential path starting from existing flows instead of starting edges
-    /// This allows players to prioritize extending existing flows rather than starting new ones
-    fn find_potential_path_from_existing_flows(
-        &self,
-        player: Player,
-        game: &Game,
-    ) -> Option<Vec<Node>> {
-        // The queue stores tuples of (path_of_nodes, current_tip_of_path)
-        let mut queue: VecDeque<(Vec<Node>, TilePos)> = VecDeque::new();
-        let mut visited_nodes: HashSet<Node> = HashSet::new();
-
-        let (_, goal_side) = get_player_sides(player);
-        let goal_edges: HashSet<(TilePos, Direction)> =
-            game.edges_on_board_edge(goal_side).into_iter().collect();
-        let goal_hexes: HashSet<TilePos> = goal_edges.iter().map(|(pos, _)| *pos).collect();
-
-        // 1. Find all existing flow positions for this player
-        let mut flow_start_nodes: Vec<(Node, TilePos)> = Vec::new();
-
-        for row in 0..7 {
-            for col in 0..7 {
-                let pos = TilePos::new(row, col);
-                if let Tile::Placed(tile) = game.tile(pos) {
-                    // Check each direction of this tile for the player's flow
-                    for direction in Direction::all_directions() {
-                        if tile.flow_cache(direction) == Some(player) {
-                            // This tile has player's flow in this direction
-                            // Find the neighbor in that direction to create a node
-                            if let Some(neighbor_pos) = game.get_neighbor_pos(pos, direction) {
-                                let node = canonical_node(pos, neighbor_pos);
-                                // Only add if this edge hasn't been visited
-                                if !visited_nodes.contains(&node) {
-                                    flow_start_nodes.push((node, neighbor_pos));
-                                    visited_nodes.insert(node);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        ai_debug!(
-            self,
-            "AI: Found {} existing flow nodes for player {}",
-            flow_start_nodes.len(),
-            player
-        );
-
-        // If we don't have any existing flows, fall back to the original behavior
-        if flow_start_nodes.is_empty() {
-            ai_debug!(
-                self,
-                "AI: No existing flows found, falling back to standard BFS"
-            );
-            return find_potential_path_for_team(player, game, &HashSet::new(), &HashMap::new());
-        }
-
-        // 2. Initialize queue with paths starting from existing flows
-        for (start_node, neighbor_pos) in flow_start_nodes {
-            queue.push_back((vec![start_node], neighbor_pos));
-        }
-
-        // 3. Perform BFS (similar to the original implementation)
-        while let Some((path, current_pos)) = queue.pop_front() {
-            let last_node = path.last().unwrap();
-            let prev_pos = if last_node.0 == current_pos {
-                last_node.1
-            } else {
-                last_node.0
-            };
-
-            // 4. Check for Goal
-            if goal_hexes.contains(&current_pos) {
-                let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
-                match *game.tile(current_pos) {
-                    Tile::Placed(placed_tile) => {
-                        let exit_dir = placed_tile.exit_from_entrance(entry_dir);
-                        if goal_edges.contains(&(current_pos, exit_dir)) {
-                            ai_debug!(
-                                self,
-                                "AI: Found path from existing flows with length {}",
-                                path.len()
-                            );
-                            return Some(path); // Success!
-                        }
-                    }
-                    Tile::Empty => {
-                        // Find the goal directions for this specific hex
-                        for (_, goal_exit_dir) in
-                            goal_edges.iter().filter(|(pos, _)| *pos == current_pos)
-                        {
-                            let mut new_demand = (entry_dir, *goal_exit_dir);
-                            if new_demand.0 > new_demand.1 {
-                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
-                            }
-                            let mut all_demands = HashSet::new();
-                            all_demands.insert(new_demand);
-
-                            if is_satisfiable(&all_demands) {
-                                ai_debug!(
-                                    self,
-                                    "AI: Found path from existing flows with length {}",
-                                    path.len()
-                                );
-                                return Some(path); // Success!
-                            }
-                        }
-                    }
-                    Tile::NotOnBoard => {}
-                }
-            }
-
-            // 5. Explore Neighbors
-            let prev_pos = if last_node.0 == current_pos {
-                last_node.1
-            } else {
-                last_node.0
-            };
-
-            match *game.tile(current_pos) {
-                Tile::Placed(placed_tile) => {
-                    // Path is forced by the tile's connections.
-                    let entry_dir = game.get_direction_towards(current_pos, prev_pos).unwrap();
-                    let exit_dir = placed_tile.exit_from_entrance(entry_dir);
-
-                    if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
-                        let next_node = canonical_node(current_pos, next_pos);
-                        if !visited_nodes.contains(&next_node) {
-                            let mut new_path = path.clone();
-                            new_path.push(next_node);
-                            visited_nodes.insert(next_node);
-                            queue.push_back((new_path, next_pos));
-                        }
-                    }
-                }
-                Tile::Empty => {
-                    // Case 2: Path goes through an EMPTY hex. Any direction is possible.
-                    for exit_dir in Direction::all_directions() {
-                        if let Some(next_pos) = game.get_neighbor_pos(current_pos, exit_dir) {
-                            if next_pos == prev_pos {
-                                continue;
-                            } // Don't go back
-
-                            let next_node = canonical_node(current_pos, next_pos);
-                            if visited_nodes.contains(&next_node) {
-                                continue;
-                            }
-
-                            // Check for internal pathway contention
-                            let entry_dir =
-                                game.get_direction_towards(current_pos, prev_pos).unwrap();
-                            let mut new_demand = (entry_dir, exit_dir);
-                            if new_demand.0 > new_demand.1 {
-                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
-                            }
-                            let mut all_demands = HashSet::new();
-                            all_demands.insert(new_demand);
-
-                            if !is_satisfiable(&all_demands) {
-                                continue;
-                            }
-
-                            // Enqueue new path
-                            let mut new_path = path.clone();
-                            new_path.push(next_node);
-                            visited_nodes.insert(next_node);
-                            queue.push_back((new_path, next_pos));
-                        }
-                    }
-                }
-                Tile::NotOnBoard => {} // Should not happen in BFS
-            }
-        }
-
-        None // No path found
-    }
-
-    /// Count the number of empty hexes in a path that need tiles to be placed
-    /// This represents the number of tiles a player needs to place to complete their path
-    fn count_tiles_needed_for_path(&self, path: &[Node], game: &Game) -> usize {
-        let mut empty_hexes = HashSet::new();
-
-        for node in path {
-            let (pos1, pos2) = *node;
-
-            // Check if either hex in this edge is empty and needs a tile
-            if *game.tile(pos1) == Tile::Empty {
-                empty_hexes.insert(pos1);
-            }
-            if *game.tile(pos2) == Tile::Empty {
-                empty_hexes.insert(pos2);
-            }
-        }
-
-        empty_hexes.len()
-    }
-
-    /// Evaluate how good a move is for the AI using tile-counting algorithm
-    /// Returns a floating point score where higher scores are better
-    /// Formula: tiles_human_needs / max(1, tiles_ai_needs)
-    /// This prioritizes moves that reduce AI's tiles needed and increase human's tiles needed
-    /// Special cases: +1000 for winning move, -1000 for losing move
-    fn evaluate_move(&self, game: &Game, action: &Action) -> f64 {
-        if let Action::PlaceTile {
-            pos,
-            rotation,
-            tile,
-            ..
-        } = action
-        {
-            // Create a game state with this move applied
-            let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-
-            // Check for immediate win/loss (this should be caught earlier, but double-check)
-            if let Some(outcome) = test_game.outcome() {
-                match outcome {
-                    GameOutcome::Victory(winners) if winners.contains(&self.ai_player) => {
-                        return 1000.0; // AI wins
-                    }
-                    GameOutcome::Victory(winners) if !winners.contains(&self.ai_player) => {
-                        return -1000.0; // AI loses
-                    }
-                    _ => {}
-                }
-            }
-
-            let human_player = 1 - self.ai_player; // Assumes 2-player game
-
-            // Find potential paths for both players using the flow-based BFS
-            // This allows both players to prioritize extending existing flows
-            let ai_path = self.find_potential_path_from_existing_flows(self.ai_player, &test_game);
-            let human_path = self.find_potential_path_from_existing_flows(human_player, &test_game);
-
-            match (ai_path, human_path) {
-                (Some(ai_path), Some(human_path)) => {
-                    let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &test_game);
-                    let human_tiles_needed =
-                        self.count_tiles_needed_for_path(&human_path, &test_game);
-
-                    ai_debug!(
-                        self,
-                        "AI: Move evaluation - AI needs {} tiles, Human needs {} tiles",
-                        ai_tiles_needed,
-                        human_tiles_needed
-                    );
-
-                    let score = -30.0 / (human_tiles_needed as f64) - 1.2 * ai_tiles_needed as f64;
-
-                    // Bonus for AI being closer to completion
-                    if ai_tiles_needed == 0 {
-                        1000.0 // AI can complete immediately
-                    } else {
-                        score
-                    }
-                }
-                (Some(ai_path), None) => {
-                    let ai_tiles_needed = self.count_tiles_needed_for_path(&ai_path, &test_game);
-                    ai_debug!(
-                        self,
-                        "AI: Move evaluation - AI needs {} tiles, Human has no path",
-                        ai_tiles_needed
-                    );
-                    // AI has a path, human doesn't - very good for AI
-                    // Bonus for being closer to completion
-                    if ai_tiles_needed == 0 {
-                        1000.0
-                    } else {
-                        100.0 / (ai_tiles_needed as f64)
-                    }
-                }
-                (None, Some(human_path)) => {
-                    let human_tiles_needed =
-                        self.count_tiles_needed_for_path(&human_path, &test_game);
-                    ai_debug!(
-                        self,
-                        "AI: Move evaluation - AI has no path, Human needs {} tiles",
-                        human_tiles_needed
-                    );
-                    // Human has a path, AI doesn't - very bad for AI
-                    // Worse if human is closer to completion
-                    if human_tiles_needed == 0 {
-                        -1000.0
-                    } else {
-                        -100.0 / (human_tiles_needed as f64)
-                    }
-                }
-                (None, None) => {
-                    ai_debug!(self, "AI: Move evaluation - Neither player has a path");
-                    // Neither player has a path - neutral
-                    0.0
-                }
-            }
-        } else {
-            0.0
-        }
+        best_move
     }
 }
 
@@ -655,5 +688,280 @@ impl Backend for EasyAiBackend {
         self.inner.submit_action(action);
         // Note: We don't call maybe_make_ai_move here to avoid redundant calculations
         // The AI move will be triggered by the next update() call
+    }
+}
+
+/// A backend that adds Medium AI functionality to an InMemoryBackend
+/// This AI uses alpha-beta search to find the best move.
+#[derive(Clone)]
+pub struct MediumAiBackend {
+    inner: InMemoryBackend,
+    ai_player: Player,
+    evaluator: Box<dyn EvaluationStrategy>,
+    search_depth: usize,
+    last_action_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    ai_thinking: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ai_debugging: bool,
+}
+
+impl MediumAiBackend {
+    pub fn new(settings: GameSettings, search_depth: usize, ai_debugging: bool) -> Self {
+        let inner = InMemoryBackend::new(settings);
+        Self {
+            inner,
+            ai_player: 1, // AI is always player 1
+            evaluator: Box::new(PathLengthEvaluator::new(ai_debugging)),
+            search_depth,
+            last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            ai_debugging,
+        }
+    }
+
+    pub fn backend_for_viewer(&self, viewer: GameViewer) -> Self {
+        Self {
+            inner: self.inner.backend_for_viewer(viewer),
+            ai_player: self.ai_player,
+            evaluator: self.evaluator.clone(),
+            search_depth: self.search_depth,
+            last_action_count: self.last_action_count.clone(),
+            ai_thinking: self.ai_thinking.clone(),
+            ai_debugging: self.ai_debugging,
+        }
+    }
+
+    /// Check if it's the AI's turn and make a move if so
+    fn maybe_make_ai_move(&self) {
+        if self.inner.viewer() != GameViewer::Admin {
+            return;
+        }
+
+        let current_action_count = self.inner.action_history().len();
+        let last_processed = self
+            .last_action_count
+            .load(std::sync::atomic::Ordering::Relaxed);
+
+        if current_action_count == last_processed
+            || self.ai_thinking.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            return;
+        }
+
+        let (is_ai_turn, ai_tile) = self.inner.with_game(|game| {
+            if game.outcome().is_some() || game.current_player() != self.ai_player {
+                (false, None)
+            } else {
+                (true, game.tile_in_hand(self.ai_player))
+            }
+        });
+
+        if !is_ai_turn {
+            self.last_action_count
+                .store(current_action_count, std::sync::atomic::Ordering::Relaxed);
+            return;
+        }
+
+        if let Some(tile) = ai_tile {
+            self.ai_thinking
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+            ai_debug!(self, "AI (Medium): Thinking with tile {:?}...", tile);
+
+            if let Some(best_move) = self.find_best_ai_move(tile) {
+                ai_debug!(self, "AI (Medium) submitting move: {:?}", best_move);
+                self.inner.submit_action(best_move);
+                let new_action_count = self.inner.action_history().len();
+                self.last_action_count
+                    .store(new_action_count, std::sync::atomic::Ordering::Relaxed);
+            } else {
+                ai_debug!(
+                    self,
+                    "AI (Medium) could not find a valid move with tile {:?}",
+                    tile
+                );
+            }
+
+            self.ai_thinking
+                .store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+
+    /// Find the best move for the AI using alpha-beta search
+    fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
+        self.inner.with_game(|game| {
+            let mut best_move = None;
+            let mut max_eval = -f64::INFINITY;
+            let mut alpha = -f64::INFINITY;
+            let beta = f64::INFINITY;
+
+            let possible_moves = self.get_legal_moves(game, self.ai_player, ai_tile);
+
+            for action in possible_moves {
+                let mut temp_game = game.clone();
+                if temp_game.apply_action(action.clone()).is_ok() {
+                    let (eval, _) = self.alpha_beta_search(
+                        &temp_game,
+                        self.search_depth - 1,
+                        alpha,
+                        beta,
+                        false, // Now it's opponent's turn
+                    );
+                    if eval > max_eval {
+                        max_eval = eval;
+                        best_move = Some(action);
+                    }
+                    alpha = alpha.max(eval);
+                }
+            }
+            best_move
+        })
+    }
+
+    /// Alpha-beta search implementation
+    fn alpha_beta_search(
+        &self,
+        game: &Game,
+        depth: usize,
+        mut alpha: f64,
+        mut beta: f64,
+        maximizing_player: bool,
+    ) -> (f64, Option<Action>) {
+        if depth == 0 || game.outcome().is_some() {
+            let score = self.evaluator.evaluate(game, self.ai_player);
+            return (score, None);
+        }
+
+        let current_player = game.current_player();
+
+        // This is a chance node if the current player has no tile
+        if game.tile_in_hand(current_player).is_none() {
+            let mut worst_case_eval = f64::INFINITY;
+            let possible_tiles = [
+                TileType::NoSharps,
+                TileType::OneSharp,
+                TileType::TwoSharps,
+                TileType::ThreeSharps,
+            ];
+
+            for tile_type in possible_tiles {
+                let mut temp_game = game.clone();
+                if temp_game
+                    .apply_action(Action::RevealTile {
+                        player: current_player,
+                        tile: tile_type,
+                    })
+                    .is_ok()
+                {
+                    let (eval, _) =
+                        self.alpha_beta_search(&temp_game, depth, alpha, beta, maximizing_player);
+                    worst_case_eval = worst_case_eval.min(eval);
+                }
+            }
+            return (
+                if worst_case_eval.is_infinite() {
+                    self.evaluator.evaluate(game, self.ai_player)
+                } else {
+                    worst_case_eval
+                },
+                None,
+            );
+        }
+
+        // This is a normal min/max node
+        let tile_in_hand = game.tile_in_hand(current_player).unwrap();
+        let possible_moves = self.get_legal_moves(game, current_player, tile_in_hand);
+
+        if possible_moves.is_empty() {
+            return (self.evaluator.evaluate(game, self.ai_player), None);
+        }
+
+        if maximizing_player {
+            let mut max_eval = -f64::INFINITY;
+            let mut best_move = possible_moves.get(0).cloned();
+            for action in possible_moves {
+                let mut temp_game = game.clone();
+                if temp_game.apply_action(action.clone()).is_ok() {
+                    let (eval, _) =
+                        self.alpha_beta_search(&temp_game, depth - 1, alpha, beta, false);
+                    if eval > max_eval {
+                        max_eval = eval;
+                        best_move = Some(action);
+                    }
+                    alpha = alpha.max(eval);
+                    if beta <= alpha {
+                        break;
+                    }
+                }
+            }
+            (max_eval, best_move)
+        } else {
+            // Minimizing player
+            let mut min_eval = f64::INFINITY;
+            let mut best_move = possible_moves.get(0).cloned();
+            for action in possible_moves {
+                let mut temp_game = game.clone();
+                if temp_game.apply_action(action.clone()).is_ok() {
+                    let (eval, _) =
+                        self.alpha_beta_search(&temp_game, depth - 1, alpha, beta, true);
+                    if eval < min_eval {
+                        min_eval = eval;
+                        best_move = Some(action);
+                    }
+                    beta = beta.min(eval);
+                    if beta <= alpha {
+                        break;
+                    }
+                }
+            }
+            (min_eval, best_move)
+        }
+    }
+
+    /// Helper to get all legal moves for a player
+    fn get_legal_moves(
+        &self,
+        game: &Game,
+        player: Player,
+        tile: TileType,
+    ) -> Vec<Action> {
+        let mut moves = Vec::new();
+        for row in 0..7 {
+            for col in 0..7 {
+                let pos = TilePos::new(row, col);
+                if *game.tile(pos) == Tile::Empty {
+                    for rotation in 0..6 {
+                        let action = Action::PlaceTile {
+                            player,
+                            tile,
+                            pos,
+                            rotation: Rotation(rotation),
+                        };
+                        let mut temp_game = game.clone();
+                        if temp_game.apply_action(action.clone()).is_ok() {
+                            moves.push(action);
+                        }
+                    }
+                }
+            }
+        }
+        moves
+    }
+}
+
+impl Backend for MediumAiBackend {
+    fn update(&mut self) {
+        self.inner.update();
+        self.maybe_make_ai_move();
+    }
+
+    fn viewer(&self) -> GameViewer {
+        self.inner.viewer()
+    }
+
+    fn actions_from_index(&self, index: usize) -> Vec<Action> {
+        self.inner.actions_from_index(index)
+    }
+
+    fn submit_action(&self, action: Action) {
+        self.inner.submit_action(action);
     }
 }
