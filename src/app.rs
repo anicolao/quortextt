@@ -15,10 +15,11 @@ struct InMemoryMode {
     scores: Vec<usize>, // Win count for each player
     num_players: usize,
     last_game_action_count: usize, // To track when a new game starts
+    animation_slowdown: f32,
 }
 
 impl InMemoryMode {
-    pub fn new(settings: GameSettings) -> Self {
+    pub fn new(settings: GameSettings, animation_slowdown: f32) -> Self {
         let num_players = settings.num_players;
         let backend = InMemoryBackend::new(settings);
         let player_views = (0..num_players)
@@ -28,12 +29,15 @@ impl InMemoryMode {
         Self {
             admin_view,
             player_views,
-            player_uis: (0..num_players).map(|_| GameUi::new()).collect(),
+            player_uis: (0..num_players)
+                .map(|_| GameUi::new_with_slowdown(animation_slowdown))
+                .collect(),
             current_displayed_player: 0,
             displayed_action_count: 0,
             scores: vec![0; num_players],
             num_players,
             last_game_action_count: 0,
+            animation_slowdown,
         }
     }
 
@@ -104,19 +108,21 @@ struct EasyAiMode {
     human_ui: GameUi,
     scores: Vec<usize>, // Win count for each player (0 = human, 1 = AI)
     last_game_action_count: usize,
+    animation_slowdown: f32,
 }
 
 impl EasyAiMode {
-    pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
+    pub fn new(settings: GameSettings, ai_debugging: bool, animation_slowdown: f32) -> Self {
         let backend = EasyAiBackend::new(settings, ai_debugging);
         let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
-        let human_ui = GameUi::new();
+        let human_ui = GameUi::new_with_slowdown(animation_slowdown);
         Self {
             main_backend: backend,
             human_view,
             human_ui,
             scores: vec![0; 2], // Human and AI scores
             last_game_action_count: 0,
+            animation_slowdown,
         }
     }
 
@@ -141,16 +147,18 @@ impl EasyAiMode {
 struct ServerMode {
     player_view: GameView,
     player_ui: GameUi,
+    animation_slowdown: f32,
 }
 
 impl ServerMode {
-    pub fn new(server_ip: &str) -> Self {
+    pub fn new(server_ip: &str, animation_slowdown: f32) -> Self {
         let backend = ServerBackend::new(server_ip).unwrap();
         let player_view = GameView::new(Box::new(backend));
-        let player_ui = GameUi::new();
+        let player_ui = GameUi::new_with_slowdown(animation_slowdown);
         Self {
             player_view,
             player_ui,
+            animation_slowdown,
         }
     }
 }
@@ -166,6 +174,7 @@ enum State {
 pub struct FlowsApp {
     state: State,
     ai_debugging: bool,
+    animation_slowdown: f32,
 }
 
 impl Default for FlowsApp {
@@ -177,7 +186,8 @@ impl Default for FlowsApp {
         };
         Self {
             state: State::Menu { server_ip },
-            ai_debugging: false, // Default disabled
+            ai_debugging: false,     // Default disabled
+            animation_slowdown: 1.0, // Default no slowdown
         }
     }
 }
@@ -189,7 +199,11 @@ impl FlowsApp {
     }
 
     /// Called once before the first frame with AI debugging setting.
-    pub fn new_with_ai_debugging(_cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+    pub fn new_with_debugging(
+        _cc: &eframe::CreationContext<'_>,
+        ai_debugging: bool,
+        animation_slowdown: f32,
+    ) -> Self {
         let server_ip = if cfg!(target_arch = "wasm32") {
             "ws://127.0.0.1:10213".into()
         } else {
@@ -198,7 +212,12 @@ impl FlowsApp {
         Self {
             state: State::Menu { server_ip },
             ai_debugging,
+            animation_slowdown,
         }
+    }
+
+    pub fn new_with_ai_debugging(_cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+        Self::new_with_debugging(_cc, ai_debugging, 1.0)
     }
 }
 
@@ -210,10 +229,13 @@ impl eframe::App for FlowsApp {
             State::Menu { server_ip } => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     if ui.button("In-memory").clicked() {
-                        new_state = Some(State::InMemoryMode(InMemoryMode::new(GameSettings {
-                            num_players: 2,
-                            version: 0,
-                        })));
+                        new_state = Some(State::InMemoryMode(InMemoryMode::new(
+                            GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            self.animation_slowdown,
+                        )));
                     }
 
                     if ui.button("Easy AI").clicked() {
@@ -223,6 +245,7 @@ impl eframe::App for FlowsApp {
                                 version: 0,
                             },
                             self.ai_debugging,
+                            self.animation_slowdown,
                         )));
                     }
 
@@ -238,7 +261,10 @@ impl eframe::App for FlowsApp {
 
                     ui.text_edit_singleline(server_ip);
                     if ui.button("Server").clicked() {
-                        new_state = Some(State::ServerMode(ServerMode::new(server_ip)));
+                        new_state = Some(State::ServerMode(ServerMode::new(
+                            server_ip,
+                            self.animation_slowdown,
+                        )));
                     }
                 });
             }

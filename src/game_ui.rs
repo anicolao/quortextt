@@ -6,7 +6,7 @@ use egui::{
     Vec2,
 };
 
-const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10;
+// const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10; // Now replaced with configurable animation_slowdown
 const SNAP_RADIUS_DWELL: f32 = 0.8;
 const SNAP_RADIUS_MOVING: f32 = 0.3;
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
@@ -148,6 +148,8 @@ pub struct GameUi {
     user_has_toggled_drawer: bool,
     /// Real dimensions of the game over dialog, measured from previous frame
     dialog_size: Option<Vec2>,
+    /// Animation slowdown factor (1.0 = normal speed, 10.0 = 10x slower)
+    animation_slowdown: f32,
 }
 
 #[derive(Debug, Default)]
@@ -224,6 +226,10 @@ impl AnimationState {
 
 impl GameUi {
     pub fn new() -> Self {
+        Self::new_with_slowdown(1.0)
+    }
+
+    pub fn new_with_slowdown(animation_slowdown: f32) -> Self {
         Self {
             rotation: Rotation(0), // Default rotation, will be calculated automatically
             placement_rotation: Rotation(0),
@@ -231,7 +237,13 @@ impl GameUi {
             moves_drawer_open: false,
             user_has_toggled_drawer: false,
             dialog_size: None,
+            animation_slowdown,
         }
+    }
+
+    /// Get the animation speed multiplier as a u64 for frame calculations
+    fn animation_speed_multiplier(&self) -> u64 {
+        (self.animation_slowdown.max(1.0) as u64).max(1)
     }
 
     fn get_most_recent_tile_position(game: &Game) -> Option<TilePos> {
@@ -286,7 +298,7 @@ impl GameUi {
                 // if the animation is still active, keep it
                 if self.animation_state.frame_count
                     < anim.start_frame
-                        + (anim.path.len() as u64 * 20 * DEBUG_ANIMATION_SPEED_MULTIPLIER)
+                        + (anim.path.len() as u64 * 20 * self.animation_speed_multiplier())
                 {
                     // Keep this animation - it's from an opponent, and not done rendering
                     anim.next = new_head.map(Box::new);
@@ -309,7 +321,7 @@ impl GameUi {
                 {
                     // This flow is part of an active animation - check if animation is still active
                     let now = self.animation_state.frame_count;
-                    let frames_per_tile = 20 * DEBUG_ANIMATION_SPEED_MULTIPLIER;
+                    let frames_per_tile = 20 * self.animation_speed_multiplier();
                     let total_duration = anim.path.len() as u64 * frames_per_tile;
 
                     if now < anim.start_frame + total_duration {
@@ -928,7 +940,7 @@ impl GameUi {
                     self.animation_state.rotation_state = Some(RotationAnimation {
                         start_frame: self.animation_state.frame_count,
                         end_frame: self.animation_state.frame_count
-                            + 6 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            + 6 * self.animation_speed_multiplier(),
                         start_rotation,
                         end_rotation,
                     });
@@ -1052,7 +1064,7 @@ impl GameUi {
                             );
                             self.animation_state.snap_animation = Some(SnapAnimation {
                                 start_frame: now,
-                                end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                end_frame: now + 10 * self.animation_speed_multiplier(),
                                 start_pos,
                                 end_pos: pointer_pos,
                                 is_snap_in: false,
@@ -1069,7 +1081,7 @@ impl GameUi {
                             );
                             self.animation_state.snap_animation = Some(SnapAnimation {
                                 start_frame: now,
-                                end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                end_frame: now + 10 * self.animation_speed_multiplier(),
                                 start_pos: pointer_pos,
                                 end_pos,
                                 is_snap_in: true,
@@ -1104,7 +1116,7 @@ impl GameUi {
                                         // Cancel snap-out and start snap-in
                                         self.animation_state.snap_animation = Some(SnapAnimation {
                                             start_frame: now,
-                                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                            end_frame: now + 10 * self.animation_speed_multiplier(),
                                             start_pos: current_pos,
                                             end_pos: hex_center,
                                             is_snap_in: true,
@@ -1354,7 +1366,7 @@ impl GameUi {
                         // Fade-in: None -> Some hovered tile
                         self.animation_state.hover_animation = Some(HoverAnimation {
                             start_frame: now,
-                            end_frame: now + 15 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            end_frame: now + 15 * self.animation_speed_multiplier(),
                             is_fade_in: true,
                             tile_pos: pos,
                         });
@@ -1363,7 +1375,7 @@ impl GameUi {
                         // Fade-out: Some -> None hovered tile
                         self.animation_state.hover_animation = Some(HoverAnimation {
                             start_frame: now,
-                            end_frame: now + 15 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            end_frame: now + 15 * self.animation_speed_multiplier(),
                             is_fade_in: false,
                             tile_pos: pos,
                         });
@@ -1397,7 +1409,7 @@ impl GameUi {
             let mut anim_opt = self.animation_state.flow_animation.as_ref();
             while let Some(anim) = anim_opt {
                 let now = self.animation_state.frame_count;
-                let frames_per_tile = 20 * DEBUG_ANIMATION_SPEED_MULTIPLIER;
+                let frames_per_tile = 20 * self.animation_speed_multiplier();
 
                 let total_duration = anim.path.len() as u64 * frames_per_tile;
                 // clamp to total duration so we don't overshoot
@@ -1907,5 +1919,28 @@ mod tests {
     fn test_game_ui_response_default() {
         let response = GameUiResponse::default();
         assert!(!response.play_again_requested);
+    }
+
+    #[test]
+    fn test_animation_slowdown_multiplier() {
+        // Test default slowdown (1.0)
+        let ui_normal = GameUi::new();
+        assert_eq!(ui_normal.animation_speed_multiplier(), 1);
+
+        // Test 10x slowdown
+        let ui_slow = GameUi::new_with_slowdown(10.0);
+        assert_eq!(ui_slow.animation_speed_multiplier(), 10);
+
+        // Test 2.5x slowdown (should round up to 2)
+        let ui_mid = GameUi::new_with_slowdown(2.5);
+        assert_eq!(ui_mid.animation_speed_multiplier(), 2);
+
+        // Test fractional slowdown less than 1 (should be clamped to 1)
+        let ui_fast = GameUi::new_with_slowdown(0.5);
+        assert_eq!(ui_fast.animation_speed_multiplier(), 1);
+
+        // Test zero slowdown (should be clamped to 1)
+        let ui_zero = GameUi::new_with_slowdown(0.0);
+        assert_eq!(ui_zero.animation_speed_multiplier(), 1);
     }
 }
