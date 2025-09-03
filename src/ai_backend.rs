@@ -26,7 +26,7 @@ pub struct EasyAiBackend {
 
 /// Trait for different AI evaluation strategies
 pub trait EvaluationStrategy: Send + Sync {
-    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool) -> f64;
+    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool, eval_count: &mut u64) -> f64;
     fn clone_box(&self) -> Box<dyn EvaluationStrategy>;
 }
 
@@ -151,7 +151,8 @@ impl EvaluationStrategy for PathLengthEvaluator {
         Box::new(self.clone())
     }
 
-    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool) -> f64 {
+    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool, eval_count: &mut u64) -> f64 {
+        *eval_count += 1;
         if let Some(outcome) = game.outcome() {
             return match outcome {
                 GameOutcome::Victory(winners) if winners.contains(&player) => {
@@ -477,6 +478,7 @@ impl EasyAiBackend {
 
         let mut best_move = None;
         let mut best_score = -f64::INFINITY;
+        let mut eval_count = 0; // Not used for Easy AI, but needed for trait
 
         for move_action in moves {
             if let Action::PlaceTile {
@@ -487,9 +489,12 @@ impl EasyAiBackend {
             } = move_action
             {
                 let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-                let score =
-                    self.evaluator
-                        .evaluate(&test_game, self.ai_player, self.ai_debugging);
+                let score = self.evaluator.evaluate(
+                    &test_game,
+                    self.ai_player,
+                    self.ai_debugging,
+                    &mut eval_count,
+                );
                 if score > best_score {
                     best_score = score;
                     best_move = Some(move_action.clone());
@@ -651,6 +656,9 @@ impl MediumAiBackend {
     /// Find the best move for the AI using alpha-beta search
     fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
         self.inner.with_game(|game| {
+            let mut nodes_traversed = 0;
+            let mut nodes_pruned = 0;
+            let mut eval_count = 0;
             let (_, best_move) = self.alpha_beta_search(
                 game,
                 self.search_depth,
@@ -658,8 +666,18 @@ impl MediumAiBackend {
                 f64::INFINITY,
                 true,
                 ai_tile,
+                &mut nodes_traversed,
+                &mut nodes_pruned,
+                &mut eval_count,
             );
-            ai_debug!(self, "AI (Medium) chose move: {:?}", best_move);
+            ai_debug!(
+                self,
+                "AI (Medium) Search Complete. Evals: {}, Nodes: {}, Pruned: {}. Chose: {:?}",
+                eval_count,
+                nodes_traversed,
+                nodes_pruned,
+                best_move
+            );
             best_move
         })
     }
@@ -673,9 +691,15 @@ impl MediumAiBackend {
         mut beta: f64,
         maximizing_player: bool,
         tile_for_this_turn: TileType,
+        nodes_traversed: &mut u64,
+        nodes_pruned: &mut u64,
+        eval_count: &mut u64,
     ) -> (f64, Option<Action>) {
+        *nodes_traversed += 1;
         if depth == 0 || game.outcome().is_some() {
-            let score = self.evaluator.evaluate(game, self.ai_player, self.ai_debugging);
+            let score =
+                self.evaluator
+                    .evaluate(game, self.ai_player, self.ai_debugging, eval_count);
             return (score, None);
         }
 
@@ -683,7 +707,11 @@ impl MediumAiBackend {
         let possible_moves = get_legal_moves(game, current_player, tile_for_this_turn);
 
         if possible_moves.is_empty() {
-            return (self.evaluator.evaluate(game, self.ai_player, self.ai_debugging), None);
+            return (
+                self.evaluator
+                    .evaluate(game, self.ai_player, self.ai_debugging, eval_count),
+                None,
+            );
         }
 
         if maximizing_player {
@@ -693,7 +721,7 @@ impl MediumAiBackend {
                 let mut temp_game = game.clone();
                 if temp_game.apply_action(action.clone()).is_ok() {
                     // Opponent's turn is a chance node
-                    let mut worst_case_eval = f64::INFINITY;
+                    let mut scores = Vec::new();
                     let possible_tiles = [
                         TileType::NoSharps,
                         TileType::OneSharp,
@@ -708,8 +736,16 @@ impl MediumAiBackend {
                             beta,
                             false,
                             tile_type,
+                            nodes_traversed,
+                            nodes_pruned,
+                            eval_count,
                         );
-                        worst_case_eval = worst_case_eval.min(eval);
+                        scores.push(eval);
+                    }
+
+                    let worst_case_eval = scores.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                    if self.ai_debugging && depth == self.search_depth - 1 {
+                        log_score_histogram(&scores);
                     }
 
                     if worst_case_eval > max_eval {
@@ -718,6 +754,7 @@ impl MediumAiBackend {
                     }
                     alpha = alpha.max(worst_case_eval);
                     if beta <= alpha {
+                        *nodes_pruned += 1;
                         break;
                     }
                 }
@@ -731,7 +768,7 @@ impl MediumAiBackend {
                 let mut temp_game = game.clone();
                 if temp_game.apply_action(action.clone()).is_ok() {
                     // AI's next turn is a chance node
-                    let mut worst_case_eval = f64::INFINITY;
+                    let mut scores = Vec::new();
                     let possible_tiles = [
                         TileType::NoSharps,
                         TileType::OneSharp,
@@ -746,8 +783,16 @@ impl MediumAiBackend {
                             beta,
                             true,
                             tile_type,
+                            nodes_traversed,
+                            nodes_pruned,
+                            eval_count,
                         );
-                        worst_case_eval = worst_case_eval.min(eval);
+                        scores.push(eval);
+                    }
+
+                    let worst_case_eval = scores.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                    if self.ai_debugging && depth == self.search_depth - 1 {
+                        log_score_histogram(&scores);
                     }
 
                     if worst_case_eval < min_eval {
@@ -756,12 +801,29 @@ impl MediumAiBackend {
                     }
                     beta = beta.min(worst_case_eval);
                     if beta <= alpha {
+                        *nodes_pruned += 1;
                         break;
                     }
                 }
             }
             (min_eval, best_move)
         }
+    }
+}
+
+fn log_score_histogram(scores: &[f64]) {
+    let mut histogram = HashMap::new();
+    for &score in scores {
+        let rounded_score = (score * 10.0).round() as i64;
+        *histogram.entry(rounded_score).or_insert(0) += 1;
+    }
+
+    let mut sorted_scores: Vec<_> = histogram.into_iter().collect();
+    sorted_scores.sort_by_key(|(score, _)| *score);
+
+    println!("AI Score Histogram:");
+    for (score, count) in sorted_scores {
+        println!("  Score: {:.1} -> {}x", score as f64 / 10.0, count);
     }
 }
 

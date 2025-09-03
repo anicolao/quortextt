@@ -84,10 +84,10 @@ A key challenge is the random tile draw that occurs at the beginning of a player
 
 This means we will model the tile draw as a chance node in the game tree. The search must handle two scenarios:
 
-1.  **The current player has a tile in hand:** This is the case for the root of the search tree (the AI's current move) and for any node that immediately follows a chance node. The search proceeds as a standard alpha-beta node, iterating through all legal placements of the known tile.
+1.  **The current player has a tile in hand:** This is the case for the root of the search tree (the AI's current move). For subsequent moves within the search tree, the tile is *not* known.
 
-2.  **The current player needs to draw a tile:** This occurs after a tile has been placed. The search must consider all possible tile draws and assume the worst-case scenario for the current player.
-    -   **If it is the AI's turn (maximizing player):** We will iterate through all 4 possible `TileType`s the AI could draw. For each tile, we will run the search for that complete sub-tree. Since we must assume the worst outcome for the AI, we will take the `min` of the scores returned from these sub-trees.
+2.  **The current player needs to draw a tile:** This occurs after a tile has been placed. The search must consider all possible tile draws and select the score based on whose turn it is.
+    -   **If it is the AI's turn (maximizing player):** We will iterate through all 4 possible `TileType`s the AI could draw. For each tile, we will run the search for that complete sub-tree. To model the "worst outcome for the AI," we will take the `min` of the scores returned from these sub-trees.
     -   **If it is the opponent's turn (minimizing player):** We will do the same, iterating through all 4 possible `TileType`s. To model the "best outcome for the opponent," we will also take the `min` of the scores from the sub-trees (a lower score is better for the opponent).
 
 This approach is a simplification of Expectiminimax, where instead of calculating an expected value over all random outcomes, we assume a pessimistic, worst-case draw for both players.
