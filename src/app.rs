@@ -29,7 +29,9 @@ impl InMemoryMode {
         Self {
             admin_view,
             player_views,
-            player_uis: (0..num_players).map(|_| GameUi::new_with_slowdown(animation_slowdown)).collect(),
+            player_uis: (0..num_players)
+                .map(|_| GameUi::new_with_slowdown(animation_slowdown))
+                .collect(),
             current_displayed_player: 0,
             displayed_action_count: 0,
             scores: vec![0; num_players],
@@ -143,7 +145,7 @@ impl Default for FlowsApp {
         };
         Self {
             state: State::Menu { server_ip },
-            ai_debugging: false, // Default disabled
+            ai_debugging: false,     // Default disabled
             animation_slowdown: 1.0, // Default no slowdown
         }
     }
@@ -156,7 +158,11 @@ impl FlowsApp {
     }
 
     /// Called once before the first frame with AI debugging setting.
-    pub fn new_with_debugging(_cc: &eframe::CreationContext<'_>, ai_debugging: bool, animation_slowdown: f32) -> Self {
+    pub fn new_with_debugging(
+        _cc: &eframe::CreationContext<'_>,
+        ai_debugging: bool,
+        animation_slowdown: f32,
+    ) -> Self {
         let server_ip = if cfg!(target_arch = "wasm32") {
             "ws://127.0.0.1:10213".into()
         } else {
@@ -182,10 +188,13 @@ impl eframe::App for FlowsApp {
             State::Menu { server_ip } => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     if ui.button("In-memory").clicked() {
-                        new_state = Some(State::InMemoryMode(InMemoryMode::new(GameSettings {
-                            num_players: 2,
-                            version: 0,
-                        }, self.animation_slowdown)));
+                        new_state = Some(State::InMemoryMode(InMemoryMode::new(
+                            GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            self.animation_slowdown,
+                        )));
                     }
 
                     if ui.button("Easy AI").clicked() {
@@ -201,7 +210,10 @@ impl eframe::App for FlowsApp {
 
                     ui.text_edit_singleline(server_ip);
                     if ui.button("Server").clicked() {
-                        new_state = Some(State::ServerMode(ServerMode::new(server_ip, self.animation_slowdown)));
+                        new_state = Some(State::ServerMode(ServerMode::new(
+                            server_ip,
+                            self.animation_slowdown,
+                        )));
                     }
                 });
             }
