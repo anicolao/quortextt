@@ -1396,7 +1396,8 @@ impl GameUi {
                                                                                 // Right edge of hexagon: vertex at 0° -> center.x + radius
                 let board_right = board_center.x + board_radius;
 
-                // Estimate dialog height (rough calculation)
+                // Estimate dialog width (rough calculation)
+                let estimated_dialog_width = 200.0; // Approximate width for the dialog content
                 let estimated_dialog_height = 150.0; // Approximate height for title + scores + button + spacing
                 let dialog_margin = 20.0;
 
@@ -1410,7 +1411,7 @@ impl GameUi {
                 let dialog_pos = if use_bottom_position {
                     // Position centered horizontally below the board, relative to the game area
                     Pos2::new(
-                        board_center.x - hexagon_radius * 1.5, // Center the dialog horizontally on the board
+                        board_center.x - estimated_dialog_width / 2.0, // Center the dialog horizontally on the board center
                         board_bottom + dialog_margin,
                     )
                 } else {
