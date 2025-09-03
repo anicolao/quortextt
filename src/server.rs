@@ -1,6 +1,7 @@
 use flows::game::*;
 use flows::server_protocol::*;
 
+use rand::prelude::SliceRandom;
 use rand::{rngs::StdRng, SeedableRng};
 use std::collections::HashMap;
 use tokio::io::AsyncBufReadExt;
@@ -174,6 +175,12 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         version: 0,
     });
     let mut rng = StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
+    
+    // Randomize player order before drawing tiles
+    let mut player_order: Vec<Player> = (0..2).collect();
+    player_order.shuffle(&mut rng);
+    game.apply_action(Action::RandomizePlayerOrder { player_order }).unwrap();
+    
     game.do_automatic_actions(&mut rng);
     let server = Server::new(game);
 

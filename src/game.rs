@@ -329,9 +329,10 @@ pub enum Action {
 impl Action {
     pub fn visible(&self, game_viewer: GameViewer) -> bool {
         match self {
-            Action::InitializeGame(_) | Action::RandomizePlayerOrder { .. } | Action::RevealTile { .. } | Action::PlaceTile { .. } => {
-                true
-            }
+            Action::InitializeGame(_)
+            | Action::RandomizePlayerOrder { .. }
+            | Action::RevealTile { .. }
+            | Action::PlaceTile { .. } => true,
             Action::DrawTile { player, .. } => match game_viewer {
                 GameViewer::Player(viewing_player) => *player == viewing_player,
                 GameViewer::Spectator => false,
@@ -348,7 +349,9 @@ impl Action {
             GameViewer::Spectator => false,
             GameViewer::Admin => true,
             GameViewer::Player(viewing_player) => match self {
-                Action::InitializeGame(_) | Action::RandomizePlayerOrder { .. } | Action::DrawTile { .. } => false,
+                Action::InitializeGame(_)
+                | Action::RandomizePlayerOrder { .. }
+                | Action::DrawTile { .. } => false,
                 Action::PlaceTile { player, .. } | Action::RevealTile { player, .. } => {
                     *player == viewing_player
                 }
@@ -549,7 +552,9 @@ impl Game {
         let mut tile_is_revealed = false;
         for action in self.action_history.iter().rev() {
             match action {
-                Action::InitializeGame(_) | Action::RandomizePlayerOrder { .. } | Action::PlaceTile { .. } => (),
+                Action::InitializeGame(_)
+                | Action::RandomizePlayerOrder { .. }
+                | Action::PlaceTile { .. } => (),
                 Action::DrawTile { player, .. } => {
                     if *player == self.current_player {
                         // Found the current player drawing a tile before we found them revealing
@@ -620,7 +625,9 @@ impl Game {
     fn next_player(&self) -> Player {
         if let Some(ref player_order) = self.player_order {
             // Find current player's position in the randomized order
-            let current_index = player_order.iter().position(|&p| p == self.current_player)
+            let current_index = player_order
+                .iter()
+                .position(|&p| p == self.current_player)
                 .expect("Current player not found in player order");
             let next_index = (current_index + 1) % player_order.len();
             player_order[next_index]
@@ -633,7 +640,9 @@ impl Game {
     /// Get players in turn order starting from the current player
     fn players_in_turn_order(&self) -> Vec<Player> {
         if let Some(ref player_order) = self.player_order {
-            let current_index = player_order.iter().position(|&p| p == self.current_player)
+            let current_index = player_order
+                .iter()
+                .position(|&p| p == self.current_player)
                 .expect("Current player not found in player order");
             (current_index..player_order.len())
                 .chain(0..current_index)
