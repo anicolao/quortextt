@@ -213,12 +213,17 @@ impl eframe::App for FlowsApp {
                     }
                 } else {
                     egui::CentralPanel::default().show(ctx, |ui| {
-                        if ui.button("Create 2-person game").clicked() {
-                            server_mode.create_room(GameSettings {
-                                num_players: 2,
-                                version: 0,
-                            });
-                        }
+                        ui.horizontal(|ui| {
+                            ui.label("Create game: ");
+                            for i in vec![2, 3].into_iter() {
+                                if ui.button(format!("{}-player", i)).clicked() {
+                                    server_mode.create_room(GameSettings {
+                                        num_players: i,
+                                        version: 0,
+                                    });
+                                }
+                            }
+                        });
                         let mut room_to_view = None;
                         egui_extras::TableBuilder::new(ui)
                             .columns(egui_extras::Column::auto(), 3)
