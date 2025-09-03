@@ -145,6 +145,8 @@ pub struct GameUi {
     animation_state: AnimationState,
     moves_drawer_open: bool,
     user_has_toggled_drawer: bool,
+    /// Real dimensions of the game over dialog, measured from previous frame
+    dialog_size: Option<Vec2>,
 }
 
 #[derive(Debug, Default)]
@@ -222,6 +224,7 @@ impl GameUi {
             animation_state: AnimationState::new(),
             moves_drawer_open: false,
             user_has_toggled_drawer: false,
+            dialog_size: None,
         }
     }
 
@@ -1396,34 +1399,34 @@ impl GameUi {
                                                                                 // Right edge of hexagon: vertex at 0° -> center.x + radius
                 let board_right = board_center.x + board_radius;
 
-                // Estimate dialog width (rough calculation)
-                let estimated_dialog_width = 200.0; // Approximate width for the dialog content
-                let estimated_dialog_height = 150.0; // Approximate height for title + scores + button + spacing
+                // Use real dialog size if available, otherwise use fallback estimates
+                let (dialog_width, dialog_height) = match self.dialog_size {
+                    Some(size) => (size.x, size.y),
+                    None => (200.0, 150.0), // Fallback estimates for first frame
+                };
+
                 let dialog_margin = 20.0;
 
                 // Check if there's enough space below the board within the current game area
                 let space_below = window.bottom() - board_bottom;
-                let use_bottom_position = space_below >= (estimated_dialog_height + dialog_margin);
-
-                // Convert board coordinates to screen coordinates accounting for the current UI layout
-                // window.min gives us the top-left of the game area, window.center() gives the center
+                let use_bottom_position = space_below >= (dialog_height + dialog_margin);
 
                 let dialog_pos = if use_bottom_position {
                     // Position centered horizontally below the board, relative to the game area
                     Pos2::new(
-                        board_center.x - estimated_dialog_width / 2.0, // Center the dialog horizontally on the board center
+                        board_center.x - dialog_width / 2.0, // Center the dialog horizontally on the board center
                         board_bottom + dialog_margin,
                     )
                 } else {
                     // Position on the right side, centered vertically, near the rightmost point of the board
                     Pos2::new(
                         board_right + dialog_margin,
-                        board_center.y - estimated_dialog_height / 2.0,
+                        board_center.y - dialog_height / 2.0,
                     )
                 };
 
                 // Show victory window with scores and play again button
-                egui::Window::new("Game Over")
+                let dialog_response = egui::Window::new("Game Over")
                     .fixed_pos(dialog_pos)
                     .resizable(false)
                     .collapsible(false)
@@ -1459,6 +1462,12 @@ impl GameUi {
                             }
                         });
                     });
+
+                // Store the real dialog size for next frame positioning
+                if let Some(dialog_response) = dialog_response {
+                    let dialog_rect = dialog_response.response.rect;
+                    self.dialog_size = Some(dialog_rect.size());
+                }
             }
 
             response
