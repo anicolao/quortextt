@@ -79,38 +79,37 @@ impl PathLengthEvaluator {
 
         // Dijkstra's algorithm
         let mut costs = HashMap::new(); // pos -> cost
-        let mut predecessors = HashMap::new(); // pos -> prev_pos
-        let mut pq = VecDeque::new(); // (cost, pos, prev_pos)
+        let mut pq = VecDeque::new(); // (cost, pos, entry_direction)
 
         // Initialize queue with all hexes on the starting side
         for (pos, dir) in game.edges_on_board_edge(start_side) {
             if *game.tile(pos) == Tile::Empty {
-                pq.push_back((1, pos, pos)); // Cost 1, pos, dummy predecessor
-                costs.insert(pos, 1);
-                predecessors.insert(pos, pos);
+                // The cost is 1 to place a tile here. The entry direction is from the board edge.
+                if costs.get(&pos).map_or(true, |&c| c > 1) {
+                    pq.push_back((1, pos, dir));
+                    costs.insert(pos, 1);
+                }
             } else if let Tile::Placed(tile) = game.tile(pos) {
                 if tile.flow_cache(dir) == Some(player) {
-                    let (end_pos, _) = self.follow_flow(pos, dir, player, game);
+                    // Already has flow, cost is 0. Follow the flow to its end.
+                    let (end_pos, exit_dir) = self.follow_flow(pos, dir, player, game);
                     if costs.get(&end_pos).map_or(true, |&c| c > 0) {
-                        pq.push_back((0, end_pos, end_pos)); // Cost 0, pos, dummy predecessor
+                        pq.push_back((0, end_pos, exit_dir.reversed()));
                         costs.insert(end_pos, 0);
-                        predecessors.insert(end_pos, end_pos);
                     }
                 }
             }
         }
 
-        while let Some((cost, pos, prev_pos)) = pq.pop_front() {
+        while let Some((cost, pos, entry_dir)) = pq.pop_front() {
             if cost > *costs.get(&pos).unwrap_or(&usize::MAX) {
                 continue;
             }
-            predecessors.insert(pos, prev_pos);
 
             // Check for goal condition
             if game.is_on_board_edge(pos, goal_side) {
-                let entry_dir = game.get_direction_towards(pos, prev_pos).unwrap();
-                match *game.tile(pos) {
-                    Tile::Empty => {
+                 match *game.tile(pos) {
+                    Tile::Empty => { // We are on an empty hex on the goal line
                         for (_, goal_exit_dir) in goal_edges.iter().filter(|(p, _)| *p == pos) {
                             let mut new_demand = (entry_dir, *goal_exit_dir);
                             if new_demand.0 > new_demand.1 {
@@ -121,33 +120,25 @@ impl PathLengthEvaluator {
                             }
                         }
                     }
-                    Tile::Placed(tile) => {
+                    Tile::Placed(tile) => { // We are on a placed tile on the goal line
                         let exit_dir = tile.exit_from_entrance(entry_dir);
                         if goal_edges.contains(&(pos, exit_dir)) {
-                            return Some(cost);
+                            return Some(cost); // This path already reaches the goal
                         }
                     }
-                    Tile::NotOnBoard => {}
+                    _ => {}
                 }
             }
 
-            // Explore neighbors
-            for dir in Direction::all_directions() {
-                if let Some(next_pos) = game.get_neighbor_pos(pos, dir) {
-                    if *game.tile(next_pos) == Tile::Empty {
+            // Explore from an empty hex
+            if *game.tile(pos) == Tile::Empty {
+                for exit_dir in Direction::all_directions() {
+                    if let Some(next_pos) = game.get_neighbor_pos(pos, exit_dir) {
+                        // Cost to traverse to next_pos is cost + 1 (for placing tile at pos)
                         let new_cost = cost + 1;
                         if new_cost < *costs.get(&next_pos).unwrap_or(&usize::MAX) {
+                            pq.push_back((new_cost, next_pos, exit_dir.reversed()));
                             costs.insert(next_pos, new_cost);
-                            pq.push_back((new_cost, next_pos, pos));
-                        }
-                    } else if let Tile::Placed(tile) = game.tile(next_pos) {
-                        let entry_dir = dir.reversed();
-                        if tile.flow_cache(entry_dir) == Some(player) {
-                            let (end_pos, _) = self.follow_flow(next_pos, entry_dir, player, game);
-                            if cost < *costs.get(&end_pos).unwrap_or(&usize::MAX) {
-                                costs.insert(end_pos, cost);
-                                pq.push_back((cost, end_pos, pos));
-                            }
                         }
                     }
                 }
