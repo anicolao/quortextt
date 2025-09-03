@@ -9,7 +9,7 @@ use std::sync::{Arc, Weak};
 mod server_connection {
     use crate::server_protocol::*;
     use parking_lot::RwLock;
-    use wasm_sockets::{self, PollingClient};
+    use wasm_sockets::{self, ConnectionStatus, PollingClient};
 
     pub struct ServerConnection {
         polling_client: RwLock<PollingClient>,
@@ -38,10 +38,12 @@ mod server_connection {
         }
 
         pub fn send(&self, message: ClientToServerMessage) {
-            self.polling_client
-                .read()
-                .send_string(&serde_json::to_string(&message).unwrap())
-                .unwrap();
+            if self.polling_client.read().status() == ConnectionStatus::Connected {
+                self.polling_client
+                    .read()
+                    .send_string(&serde_json::to_string(&message).unwrap())
+                    .unwrap();
+            }
         }
     }
 }
@@ -115,6 +117,8 @@ pub struct ServerBackend {
     pub reconnect_token: Option<ReconnectToken>,
     pub rooms: Vec<RoomPreview>,
     pub room_datas: HashMap<RoomId, Arc<RwLock<RoomData>>>,
+    retry_frame_counter: u32,
+    credentials: ServerCredentials,
 }
 
 pub struct ServerBackendGame {
@@ -130,28 +134,44 @@ pub enum ServerCredentials {
 }
 
 impl ServerBackend {
-    pub fn new(addr: &str, credentials: ServerCredentials) -> std::io::Result<Self> {
-        let connection = ServerConnection::new(addr);
+    fn send_credentials(connection: &ServerConnection, credentials: &ServerCredentials) {
         match credentials {
             ServerCredentials::NewUser { username } => {
-                connection.send(ClientToServerMessage::LoginAsNewUser { username })
+                connection.send(ClientToServerMessage::LoginAsNewUser {
+                    username: username.clone(),
+                })
             }
             ServerCredentials::ExistingUser { reconnect_token } => {
-                connection.send(ClientToServerMessage::LoginAsExistingUser { reconnect_token })
+                connection.send(ClientToServerMessage::LoginAsExistingUser {
+                    reconnect_token: reconnect_token.clone(),
+                })
             }
         }
+    }
+
+    pub fn new(addr: &str, credentials: ServerCredentials) -> std::io::Result<Self> {
+        let connection = ServerConnection::new(addr);
+        Self::send_credentials(&connection, &credentials);
         Ok(Self {
             connection: Arc::new(connection),
             my_user: None,
             reconnect_token: None,
             rooms: Vec::new(),
             room_datas: HashMap::new(),
+            retry_frame_counter: 0,
+            credentials,
         })
     }
 
     pub fn update(&mut self) {
+        if self.my_user.is_none() {
+            self.retry_frame_counter = (self.retry_frame_counter + 1) % 10;
+            if self.retry_frame_counter == 0 {
+                Self::send_credentials(&self.connection, &self.credentials);
+            }
+        }
         for message in self.connection.receive().into_iter() {
-            println!("Receied message from server: {:?}", message);
+            println!("Received message from server: {:?}", message);
             match message {
                 ServerToClientMessage::InvalidRequest { .. } => (),
                 ServerToClientMessage::Connected {
