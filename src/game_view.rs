@@ -115,7 +115,11 @@ impl GameView {
     }
 
     pub fn can_history_forward(&self) -> bool {
-        self.history_cursor.is_some()
+        if let Some(cursor) = self.history_cursor {
+            self.find_next_move(cursor).is_some()
+        } else {
+            false
+        }
     }
 
     pub fn history_backward(&mut self) {
