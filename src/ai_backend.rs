@@ -549,7 +549,7 @@ pub struct MediumAiBackend {
 }
 
 /// Helper to get all legal moves for a player
-fn get_legal_moves(game: &Game, player: Player, tile: TileType) -> Vec<Action> {
+pub fn get_legal_moves(game: &Game, player: Player, tile: TileType) -> Vec<Action> {
     let mut moves = Vec::new();
     let unique_rotations = TileType::get_unique_rotations(tile);
     for row in 0..7 {
@@ -655,6 +655,101 @@ impl MediumAiBackend {
         }
     }
 
+    /// Sorts moves in place based on a heuristic to improve alpha-beta pruning.
+    /// The heuristic is as follows, in order of priority:
+    /// 1. Moves adjacent to the most recent tile placed.
+    /// 2. Moves adjacent to the second most recent tile placed.
+    /// 3. Moves adjacent to the AI's own flows.
+    /// 4. Moves adjacent to the opponent's flows.
+    /// 5. All other moves.
+    pub fn order_moves(&self, game: &Game, moves: &mut [Action]) {
+        // Find the positions of the last two tiles placed on the board
+        let mut last_move_pos = None;
+        let mut second_last_move_pos = None;
+        for action in game.action_history_vec().iter().rev() {
+            if let Action::PlaceTile { pos, .. } = action {
+                if last_move_pos.is_none() {
+                    last_move_pos = Some(pos.clone());
+                } else if second_last_move_pos.is_none() {
+                    second_last_move_pos = Some(pos.clone());
+                    break;
+                }
+            }
+        }
+
+        // Identify all hexes that are part of the AI's or the opponent's flows
+        let mut ai_flow_hexes = HashSet::new();
+        let mut human_flow_hexes = HashSet::new();
+        let human_player = 1 - self.ai_player; // Assumes a 2-player game
+
+        for r in 0..7 {
+            for c in 0..7 {
+                let pos = TilePos::new(r, c);
+                if let Tile::Placed(tile) = game.tile(pos) {
+                    let mut has_ai_flow = false;
+                    let mut has_human_flow = false;
+                    // Check all directions for flows
+                    for dir in Direction::all_directions() {
+                        if tile.flow_cache(dir) == Some(self.ai_player) {
+                            has_ai_flow = true;
+                        } else if tile.flow_cache(dir) == Some(human_player) {
+                            has_human_flow = true;
+                        }
+                    }
+                    if has_ai_flow {
+                        ai_flow_hexes.insert(pos);
+                    }
+                    if has_human_flow {
+                        human_flow_hexes.insert(pos);
+                    }
+                }
+            }
+        }
+
+        // Sort the moves list based on the calculated priority score
+        moves.sort_by_cached_key(|a| {
+            if let Action::PlaceTile { pos, .. } = a {
+                let p = *pos;
+                let mut adj_to_last = false;
+                let mut adj_to_second_last = false;
+                let mut adj_to_ai_flow = false;
+                let mut adj_to_human_flow = false;
+
+                for dir in Direction::all_directions() {
+                    if let Some(neighbor) = game.get_neighbor_pos(p, dir) {
+                        if Some(neighbor) == last_move_pos {
+                            adj_to_last = true;
+                        }
+                        if Some(neighbor) == second_last_move_pos {
+                            adj_to_second_last = true;
+                        }
+                        if ai_flow_hexes.contains(&neighbor) {
+                            adj_to_ai_flow = true;
+                        }
+                        if human_flow_hexes.contains(&neighbor) {
+                            adj_to_human_flow = true;
+                        }
+                    }
+                }
+
+                if adj_to_last {
+                    1
+                } else if adj_to_second_last {
+                    2
+                } else if adj_to_ai_flow {
+                    3
+                } else if adj_to_human_flow {
+                    4
+                } else {
+                    5
+                }
+            } else {
+                // Should not happen for sorting place tile actions, but as a fallback
+                i32::MAX
+            }
+        });
+    }
+
     /// Find the best move for the AI using alpha-beta search
     fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
         self.inner.with_game(|game| {
@@ -668,14 +763,7 @@ impl MediumAiBackend {
             let mut max_eval = -f64::INFINITY;
             let mut alpha = -f64::INFINITY;
 
-            // Simple heuristic for move ordering: closer to center is better
-            possible_moves.sort_by_key(|a| {
-                if let Action::PlaceTile { pos, .. } = a {
-                    (pos.row - 3).abs() + (pos.col - 3).abs()
-                } else {
-                    i32::MAX
-                }
-            });
+            self.order_moves(game, &mut possible_moves);
 
             for action in possible_moves {
                 let mut temp_game = game.clone();
@@ -751,14 +839,7 @@ impl MediumAiBackend {
         let current_player = game.current_player();
         let mut possible_moves = get_legal_moves(game, current_player, tile_for_this_turn);
 
-        // Simple heuristic for move ordering: closer to center is better
-        possible_moves.sort_by_key(|a| {
-            if let Action::PlaceTile { pos, .. } = a {
-                (pos.row - 3).abs() + (pos.col - 3).abs()
-            } else {
-                i32::MAX
-            }
-        });
+        self.order_moves(game, &mut possible_moves);
 
         if possible_moves.is_empty() {
             return (
