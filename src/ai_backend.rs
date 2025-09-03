@@ -25,7 +25,7 @@ pub struct EasyAiBackend {
 
 /// Trait for different AI evaluation strategies
 pub trait EvaluationStrategy: Send + Sync {
-    fn evaluate(&self, game: &Game, player: Player) -> f64;
+    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool) -> f64;
     fn clone_box(&self) -> Box<dyn EvaluationStrategy>;
 }
 
@@ -140,7 +140,7 @@ impl EvaluationStrategy for PathLengthEvaluator {
         Box::new(self.clone())
     }
 
-    fn evaluate(&self, game: &Game, player: Player) -> f64 {
+    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool) -> f64 {
         if let Some(outcome) = game.outcome() {
             return match outcome {
                 GameOutcome::Victory(winners) if winners.contains(&player) => 1000.0,
@@ -155,11 +155,32 @@ impl EvaluationStrategy for PathLengthEvaluator {
 
         match (ai_tiles_needed, human_tiles_needed) {
             (Some(ai_needed), Some(human_needed)) => {
+                if ai_debugging {
+                    println!(
+                        "AI Eval: ai_needed: {}, human_needed: {}",
+                        ai_needed, human_needed
+                    );
+                }
                 -1.2 * (ai_needed as f64) - 30.0 / (human_needed as f64)
             }
-            (Some(ai_needed), None) => 100.0 / (ai_needed as f64),
-            (None, Some(human_needed)) => -100.0 / (human_needed as f64),
-            (None, None) => 0.0,
+            (Some(ai_needed), None) => {
+                if ai_debugging {
+                    println!("AI Eval: ai_needed: {}, human_needed: None", ai_needed);
+                }
+                100.0 / (ai_needed as f64)
+            }
+            (None, Some(human_needed)) => {
+                if ai_debugging {
+                    println!("AI Eval: ai_needed: None, human_needed: {}", human_needed);
+                }
+                -100.0 / (human_needed as f64)
+            }
+            (None, None) => {
+                if ai_debugging {
+                    println!("AI Eval: ai_needed: None, human_needed: None");
+                }
+                0.0
+            }
         }
     }
 }
@@ -329,45 +350,29 @@ impl EasyAiBackend {
         self.inner.with_game(|game| {
             ai_debug!(self, "AI: Finding best move for tile {:?}", ai_tile);
             // Generate all possible legal moves and check for immediate wins/losses
-            let mut possible_moves = Vec::new();
             let mut winning_moves = Vec::new();
             let mut losing_moves = Vec::new();
 
-            let unique_rotations = TileType::get_unique_rotations(ai_tile);
-            for row in 0..7 {
-                for col in 0..7 {
-                    let pos = TilePos::new(row, col);
-                    if *game.tile(pos) == Tile::Empty {
-                        for &rotation in &unique_rotations {
-                            let action = Action::PlaceTile {
-                                player: self.ai_player,
-                                tile: ai_tile,
-                                pos,
-                                rotation,
-                            };
+            let possible_moves = get_legal_moves(game, self.ai_player, ai_tile);
 
-                            // Check if this move is legal
-                            let mut temp_game = game.clone();
-                            if temp_game.apply_action(action.clone()).is_ok() {
-                                // Check if this move results in a win or loss
-                                temp_game.recompute_flows();
-                                if let Some(outcome) = temp_game.outcome() {
-                                    match outcome {
-                                        GameOutcome::Victory(winners)
-                                            if winners.contains(&self.ai_player) =>
-                                        {
-                                            winning_moves.push(action.clone());
-                                        }
-                                        GameOutcome::Victory(winners)
-                                            if !winners.contains(&self.ai_player) =>
-                                        {
-                                            losing_moves.push(action.clone());
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                                possible_moves.push(action);
+            for action in &possible_moves {
+                // Check if this move results in a win or loss
+                let mut temp_game = game.clone();
+                if temp_game.apply_action(action.clone()).is_ok() {
+                    temp_game.recompute_flows();
+                    if let Some(outcome) = temp_game.outcome() {
+                        match outcome {
+                            GameOutcome::Victory(winners)
+                                if winners.contains(&self.ai_player) =>
+                            {
+                                winning_moves.push(action.clone());
                             }
+                            GameOutcome::Victory(winners)
+                                if !winners.contains(&self.ai_player) =>
+                            {
+                                losing_moves.push(action.clone());
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -430,7 +435,9 @@ impl EasyAiBackend {
             } = move_action
             {
                 let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-                let score = self.evaluator.evaluate(&test_game, self.ai_player);
+                let score =
+                    self.evaluator
+                        .evaluate(&test_game, self.ai_player, self.ai_debugging);
                 if score > best_score {
                     best_score = score;
                     best_move = Some(move_action.clone());
@@ -480,6 +487,32 @@ pub struct MediumAiBackend {
     last_action_count: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     ai_thinking: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ai_debugging: bool,
+}
+
+/// Helper to get all legal moves for a player
+fn get_legal_moves(game: &Game, player: Player, tile: TileType) -> Vec<Action> {
+    let mut moves = Vec::new();
+    let unique_rotations = TileType::get_unique_rotations(tile);
+    for row in 0..7 {
+        for col in 0..7 {
+            let pos = TilePos::new(row, col);
+            if *game.tile(pos) == Tile::Empty {
+                for &rotation in &unique_rotations {
+                    let action = Action::PlaceTile {
+                        player,
+                        tile,
+                        pos,
+                        rotation,
+                    };
+                    let mut temp_game = game.clone();
+                    if temp_game.apply_action(action.clone()).is_ok() {
+                        moves.push(action);
+                    }
+                }
+            }
+        }
+    }
+    moves
 }
 
 impl MediumAiBackend {
@@ -566,30 +599,15 @@ impl MediumAiBackend {
     /// Find the best move for the AI using alpha-beta search
     fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
         self.inner.with_game(|game| {
-            let mut best_move = None;
-            let mut max_eval = -f64::INFINITY;
-            let mut alpha = -f64::INFINITY;
-            let beta = f64::INFINITY;
-
-            let possible_moves = self.get_legal_moves(game, self.ai_player, ai_tile);
-
-            for action in possible_moves {
-                let mut temp_game = game.clone();
-                if temp_game.apply_action(action.clone()).is_ok() {
-                    let (eval, _) = self.alpha_beta_search(
-                        &temp_game,
-                        self.search_depth - 1,
-                        alpha,
-                        beta,
-                        false, // Now it's opponent's turn
-                    );
-                    if eval > max_eval {
-                        max_eval = eval;
-                        best_move = Some(action);
-                    }
-                    alpha = alpha.max(eval);
-                }
-            }
+            let (_, best_move) = self.alpha_beta_search(
+                game,
+                self.search_depth,
+                -f64::INFINITY,
+                f64::INFINITY,
+                true,
+                ai_tile,
+            );
+            ai_debug!(self, "AI (Medium) chose move: {:?}", best_move);
             best_move
         })
     }
@@ -602,54 +620,18 @@ impl MediumAiBackend {
         mut alpha: f64,
         mut beta: f64,
         maximizing_player: bool,
+        tile_for_this_turn: TileType,
     ) -> (f64, Option<Action>) {
         if depth == 0 || game.outcome().is_some() {
-            let score = self.evaluator.evaluate(game, self.ai_player);
+            let score = self.evaluator.evaluate(game, self.ai_player, self.ai_debugging);
             return (score, None);
         }
 
         let current_player = game.current_player();
-
-        // This is a chance node if the current player has no tile
-        if game.tile_in_hand(current_player).is_none() {
-            let mut worst_case_eval = f64::INFINITY;
-            let possible_tiles = [
-                TileType::NoSharps,
-                TileType::OneSharp,
-                TileType::TwoSharps,
-                TileType::ThreeSharps,
-            ];
-
-            for tile_type in possible_tiles {
-                let mut temp_game = game.clone();
-                if temp_game
-                    .apply_action(Action::RevealTile {
-                        player: current_player,
-                        tile: tile_type,
-                    })
-                    .is_ok()
-                {
-                    let (eval, _) =
-                        self.alpha_beta_search(&temp_game, depth, alpha, beta, maximizing_player);
-                    worst_case_eval = worst_case_eval.min(eval);
-                }
-            }
-            return (
-                if worst_case_eval.is_infinite() {
-                    self.evaluator.evaluate(game, self.ai_player)
-                } else {
-                    worst_case_eval
-                },
-                None,
-            );
-        }
-
-        // This is a normal min/max node
-        let tile_in_hand = game.tile_in_hand(current_player).unwrap();
-        let possible_moves = self.get_legal_moves(game, current_player, tile_in_hand);
+        let possible_moves = get_legal_moves(game, current_player, tile_for_this_turn);
 
         if possible_moves.is_empty() {
-            return (self.evaluator.evaluate(game, self.ai_player), None);
+            return (self.evaluator.evaluate(game, self.ai_player, self.ai_debugging), None);
         }
 
         if maximizing_player {
@@ -658,13 +640,31 @@ impl MediumAiBackend {
             for action in possible_moves {
                 let mut temp_game = game.clone();
                 if temp_game.apply_action(action.clone()).is_ok() {
-                    let (eval, _) =
-                        self.alpha_beta_search(&temp_game, depth - 1, alpha, beta, false);
-                    if eval > max_eval {
-                        max_eval = eval;
+                    // Opponent's turn is a chance node
+                    let mut worst_case_eval = f64::INFINITY;
+                    let possible_tiles = [
+                        TileType::NoSharps,
+                        TileType::OneSharp,
+                        TileType::TwoSharps,
+                        TileType::ThreeSharps,
+                    ];
+                    for tile_type in possible_tiles {
+                        let (eval, _) = self.alpha_beta_search(
+                            &temp_game,
+                            depth - 1,
+                            alpha,
+                            beta,
+                            false,
+                            tile_type,
+                        );
+                        worst_case_eval = worst_case_eval.min(eval);
+                    }
+
+                    if worst_case_eval > max_eval {
+                        max_eval = worst_case_eval;
                         best_move = Some(action);
                     }
-                    alpha = alpha.max(eval);
+                    alpha = alpha.max(worst_case_eval);
                     if beta <= alpha {
                         break;
                     }
@@ -678,13 +678,31 @@ impl MediumAiBackend {
             for action in possible_moves {
                 let mut temp_game = game.clone();
                 if temp_game.apply_action(action.clone()).is_ok() {
-                    let (eval, _) =
-                        self.alpha_beta_search(&temp_game, depth - 1, alpha, beta, true);
-                    if eval < min_eval {
-                        min_eval = eval;
+                    // AI's next turn is a chance node
+                    let mut worst_case_eval = f64::INFINITY;
+                    let possible_tiles = [
+                        TileType::NoSharps,
+                        TileType::OneSharp,
+                        TileType::TwoSharps,
+                        TileType::ThreeSharps,
+                    ];
+                    for tile_type in possible_tiles {
+                        let (eval, _) = self.alpha_beta_search(
+                            &temp_game,
+                            depth - 1,
+                            alpha,
+                            beta,
+                            true,
+                            tile_type,
+                        );
+                        worst_case_eval = worst_case_eval.min(eval);
+                    }
+
+                    if worst_case_eval < min_eval {
+                        min_eval = worst_case_eval;
                         best_move = Some(action);
                     }
-                    beta = beta.min(eval);
+                    beta = beta.min(worst_case_eval);
                     if beta <= alpha {
                         break;
                     }
@@ -692,37 +710,6 @@ impl MediumAiBackend {
             }
             (min_eval, best_move)
         }
-    }
-
-    /// Helper to get all legal moves for a player
-    fn get_legal_moves(
-        &self,
-        game: &Game,
-        player: Player,
-        tile: TileType,
-    ) -> Vec<Action> {
-        let mut moves = Vec::new();
-        let unique_rotations = TileType::get_unique_rotations(tile);
-        for row in 0..7 {
-            for col in 0..7 {
-                let pos = TilePos::new(row, col);
-                if *game.tile(pos) == Tile::Empty {
-                    for &rotation in &unique_rotations {
-                        let action = Action::PlaceTile {
-                            player,
-                            tile,
-                            pos,
-                            rotation,
-                        };
-                        let mut temp_game = game.clone();
-                        if temp_game.apply_action(action.clone()).is_ok() {
-                            moves.push(action);
-                        }
-                    }
-                }
-            }
-        }
-        moves
     }
 }
 
