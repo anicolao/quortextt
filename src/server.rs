@@ -469,7 +469,28 @@ impl ServerInternal {
                     .submit_action(*user_id, room_id.clone(), action)
                 {
                     Ok(()) => {
-                        self.update_room_listeners(room_id).await;
+                        self.update_room_listeners(room_id.clone()).await;
+                        // Hacky temporary game saving mechanism
+                        match std::env::var("GAME_SAVE_DIR") {
+                            Err(_) => (),
+                            Ok(game_save_dir) => {
+                                let path = std::path::Path::new(&game_save_dir).join(&room_id);
+                                tokio::fs::write(
+                                    &path,
+                                    format!(
+                                        "{:?}",
+                                        self.server_data
+                                            .room_data
+                                            .get(&room_id)
+                                            .unwrap()
+                                            .game
+                                            .action_history_vec()
+                                    )
+                                    .as_bytes(),
+                                )
+                                .await;
+                            }
+                        }
                     }
                     Err(err) => {
                         println!("Error joining game in room {}: {}", room_id, err);
