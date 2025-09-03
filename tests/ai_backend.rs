@@ -115,7 +115,7 @@ fn test_ai_debugging_flag() {
     assert_eq!(actions_debug.len(), actions_no_debug.len());
     assert!(!actions_debug.is_empty());
     assert!(
-        !actions.is_empty(),
+        !actions_no_debug.is_empty(),
         "Should have at least the initialization action"
     );
 }
