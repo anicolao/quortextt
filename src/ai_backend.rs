@@ -109,14 +109,25 @@ impl PathLengthEvaluator {
             // Check for goal condition
             if game.is_on_board_edge(pos, goal_side) {
                 let entry_dir = game.get_direction_towards(pos, prev_pos).unwrap();
-                for (_, goal_exit_dir) in goal_edges.iter().filter(|(p, _)| *p == pos) {
-                    let mut new_demand = (entry_dir, *goal_exit_dir);
-                    if new_demand.0 > new_demand.1 {
-                        std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                match *game.tile(pos) {
+                    Tile::Empty => {
+                        for (_, goal_exit_dir) in goal_edges.iter().filter(|(p, _)| *p == pos) {
+                            let mut new_demand = (entry_dir, *goal_exit_dir);
+                            if new_demand.0 > new_demand.1 {
+                                std::mem::swap(&mut new_demand.0, &mut new_demand.1);
+                            }
+                            if is_satisfiable(&HashSet::from([new_demand])) {
+                                return Some(cost);
+                            }
+                        }
                     }
-                    if is_satisfiable(&HashSet::from([new_demand])) {
-                        return Some(cost);
+                    Tile::Placed(tile) => {
+                        let exit_dir = tile.exit_from_entrance(entry_dir);
+                        if goal_edges.contains(&(pos, exit_dir)) {
+                            return Some(cost);
+                        }
                     }
+                    Tile::NotOnBoard => {}
                 }
             }
 
@@ -659,25 +670,68 @@ impl MediumAiBackend {
             let mut nodes_traversed = 0;
             let mut nodes_pruned = 0;
             let mut eval_count = 0;
-            let (_, best_move) = self.alpha_beta_search(
-                game,
-                self.search_depth,
-                -f64::INFINITY,
-                f64::INFINITY,
-                true,
-                ai_tile,
-                &mut nodes_traversed,
-                &mut nodes_pruned,
-                &mut eval_count,
-            );
-            ai_debug!(
-                self,
-                "AI (Medium) Search Complete. Evals: {}, Nodes: {}, Pruned: {}. Chose: {:?}",
-                eval_count,
-                nodes_traversed,
-                nodes_pruned,
-                best_move
-            );
+            let mut move_scores = Vec::new();
+
+            let mut possible_moves = get_legal_moves(game, self.ai_player, ai_tile);
+            let mut best_move = possible_moves.get(0).cloned();
+            let mut max_eval = -f64::INFINITY;
+            let mut alpha = -f64::INFINITY;
+
+            // Simple heuristic for move ordering: closer to center is better
+            possible_moves.sort_by_key(|a| {
+                if let Action::PlaceTile { pos, .. } = a {
+                    (pos.row - 3).abs() + (pos.col - 3).abs()
+                } else {
+                    i32::MAX
+                }
+            });
+
+            for action in possible_moves {
+                let mut temp_game = game.clone();
+                if temp_game.apply_action(action.clone()).is_ok() {
+                    // This is the opponent's turn, so it's a chance node
+                    let mut worst_case_eval = f64::INFINITY;
+                    let possible_tiles = [
+                        TileType::NoSharps,
+                        TileType::OneSharp,
+                        TileType::TwoSharps,
+                        TileType::ThreeSharps,
+                    ];
+                    for tile_type in possible_tiles {
+                        let (eval, _) = self.alpha_beta_search(
+                            &temp_game,
+                            self.search_depth - 1,
+                            alpha,
+                            f64::INFINITY,
+                            false,
+                            tile_type,
+                            &mut nodes_traversed,
+                            &mut nodes_pruned,
+                            &mut eval_count,
+                        );
+                        worst_case_eval = worst_case_eval.min(eval);
+                    }
+
+                    move_scores.push(worst_case_eval);
+                    if worst_case_eval > max_eval {
+                        max_eval = worst_case_eval;
+                        best_move = Some(action);
+                    }
+                    alpha = alpha.max(worst_case_eval);
+                }
+            }
+
+            if self.ai_debugging {
+                log_score_histogram(&move_scores);
+                ai_debug!(
+                    self,
+                    "AI (Medium) Search Complete. Evals: {}, Nodes: {}, Pruned: {}. Chose: {:?}",
+                    eval_count,
+                    nodes_traversed,
+                    nodes_pruned,
+                    best_move
+                );
+            }
             best_move
         })
     }
@@ -704,7 +758,16 @@ impl MediumAiBackend {
         }
 
         let current_player = game.current_player();
-        let possible_moves = get_legal_moves(game, current_player, tile_for_this_turn);
+        let mut possible_moves = get_legal_moves(game, current_player, tile_for_this_turn);
+
+        // Simple heuristic for move ordering: closer to center is better
+        possible_moves.sort_by_key(|a| {
+            if let Action::PlaceTile { pos, .. } = a {
+                (pos.row - 3).abs() + (pos.col - 3).abs()
+            } else {
+                i32::MAX
+            }
+        });
 
         if possible_moves.is_empty() {
             return (
@@ -744,9 +807,6 @@ impl MediumAiBackend {
                     }
 
                     let worst_case_eval = scores.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-                    if self.ai_debugging && depth == self.search_depth - 1 {
-                        log_score_histogram(&scores);
-                    }
 
                     if worst_case_eval > max_eval {
                         max_eval = worst_case_eval;
@@ -791,9 +851,6 @@ impl MediumAiBackend {
                     }
 
                     let worst_case_eval = scores.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-                    if self.ai_debugging && depth == self.search_depth - 1 {
-                        log_score_histogram(&scores);
-                    }
 
                     if worst_case_eval < min_eval {
                         min_eval = worst_case_eval;
