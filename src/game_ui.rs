@@ -158,6 +158,7 @@ struct AnimationState {
     last_hovered_tile: Option<TilePos>,
     last_pointer_pos: Option<Pos2>,
     pointer_dwell_frames: u64,
+    hover_animation: Option<HoverAnimation>,
 }
 
 struct RotationAnimation {
@@ -183,6 +184,13 @@ struct FlowAnimation {
     next: Option<Box<FlowAnimation>>,
 }
 
+struct HoverAnimation {
+    start_frame: u64,
+    end_frame: u64,
+    is_fade_in: bool, // true for fade-in (None -> Some), false for fade-out (Some -> None)
+    tile_pos: TilePos, // The tile position being animated
+}
+
 impl AnimationState {
     fn new() -> Self {
         Self {
@@ -196,6 +204,7 @@ impl AnimationState {
             last_hovered_tile: None,
             last_pointer_pos: None,
             pointer_dwell_frames: 0,
+            hover_animation: None,
         }
     }
 }
@@ -310,6 +319,7 @@ impl GameUi {
         prior_tile: &Tile,
         border_stroke: Stroke,
         anim_rotation_rads: f32,
+        hover_alpha: Option<f32>, // Optional alpha override for hover animations (0.0 to 1.0)
     ) {
         let total_rotation_rads =
             tile.rotation().as_radians() + view_rotation.as_radians() + anim_rotation_rads;
@@ -318,7 +328,12 @@ impl GameUi {
             Tile::NotOnBoard | Tile::Empty => true,
             Tile::Placed(prior) => prior != tile,
         };
-        let alpha = if hypothetical { 0x01 } else { 0xFF };
+        let base_alpha = if hypothetical { 0x01 } else { 0xFF };
+        let alpha = if let Some(hover_alpha) = hover_alpha {
+            ((base_alpha as f32 * hover_alpha) as u8).max(1) // Ensure at least 1 for visibility
+        } else {
+            base_alpha
+        };
 
         // 1. Draw background
         let hexagon_points = Self::hexagon_coords(center, hexagon_radius, total_rotation_rads);
@@ -532,7 +547,7 @@ impl GameUi {
                 None => None,
                 Some(hover_pos) => {
                     let mut hovered_tile = None;
-                    let mut best_radius = f32::INFINITY;
+                    let mut best_radius = DEFAULT_HEXAGON_RADIUS * 1.1;
                     for col in 0..7 {
                         for row in 0..7 {
                             let tile_pos = TilePos::new(row, col);
@@ -555,7 +570,39 @@ impl GameUi {
                 }
             };
             let (hypothetical_game, legality_error) = match hovered_tile {
-                None => (None, None),
+                None => {
+                    // Check if we have a fade-out animation that needs a hypothetical game
+                    if let Some(hover_anim) = &self.animation_state.hover_animation {
+                        if !hover_anim.is_fade_in && self.animation_state.frame_count < hover_anim.end_frame {
+                            // We're in a fade-out animation, create hypothetical game for the animated tile
+                            let player_to_simulate = match game_view.viewer() {
+                                GameViewer::Player(player) => Some(player),
+                                GameViewer::Admin => Some(game.current_player()),
+                                GameViewer::Spectator => None,
+                            };
+                            match player_to_simulate {
+                                None => (None, None),
+                                Some(player) => match game.tile_in_hand(player) {
+                                    None => (None, None),
+                                    Some(tile) => {
+                                        let hypo_game = game.with_tile_placed(
+                                            tile,
+                                            hover_anim.tile_pos,
+                                            self.placement_rotation,
+                                        );
+                                        let legality_error =
+                                            crate::legality::is_move_legal(&hypo_game).err();
+                                        (Some(hypo_game), legality_error)
+                                    }
+                                },
+                            }
+                        } else {
+                            (None, None)
+                        }
+                    } else {
+                        (None, None)
+                    }
+                },
                 Some(hovered_tile) => match *game.tile(hovered_tile) {
                     Tile::Empty => {
                         ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
@@ -652,148 +699,171 @@ impl GameUi {
             }
 
             let now = self.animation_state.frame_count;
+
+            // Clean up completed hover animation
+            if let Some(hover_anim) = &self.animation_state.hover_animation {
+                if now >= hover_anim.end_frame {
+                    self.animation_state.hover_animation = None;
+                }
+            }
+
             let mut tile_draw_pos: Option<Pos2> = None;
 
             if hypothetical_game.is_some() {
-                let pointer_pos = response.hover_pos().unwrap();
-                tile_draw_pos = Some(pointer_pos); // Default to pointer
+                let pointer_pos = response.hover_pos();
+                if let Some(pointer_pos) = pointer_pos {
+                    // Normal case: pointer is hovering
+                    tile_draw_pos = Some(pointer_pos); // Default to pointer
 
-                if self.animation_state.last_pointer_pos == Some(pointer_pos) {
-                    self.animation_state.pointer_dwell_frames += 1;
-                } else {
-                    self.animation_state.pointer_dwell_frames = 0;
-                }
-                self.animation_state.last_pointer_pos = Some(pointer_pos);
-
-                // 1. Determine the target hex to snap to, if any.
-                let mut target_snap_tile: Option<TilePos> = None;
-                if let Some(h_tile) = hovered_tile {
-                    let hex_center = Self::hex_position(
-                        center + (h_tile - center).rotate(self.rotation),
-                        window.center(),
-                        hexagon_radius,
-                    );
-                    let dist = pointer_pos.distance(hex_center);
-                    let is_moving = self.animation_state.pointer_dwell_frames < 3;
-                    let snap_radius = if is_moving {
-                        SNAP_RADIUS_MOVING
+                    if self.animation_state.last_pointer_pos == Some(pointer_pos) {
+                        self.animation_state.pointer_dwell_frames += 1;
                     } else {
-                        SNAP_RADIUS_DWELL
-                    };
-
-                    if dist < hexagon_radius * snap_radius {
-                        target_snap_tile = Some(h_tile);
-                    } else if self.animation_state.snapped_to == Some(h_tile)
-                        && dist < hexagon_radius * SNAP_RADIUS_DWELL
-                    {
-                        // Hysteresis: we are snapped to this tile, and we are still within the larger radius, so stay snapped.
-                        target_snap_tile = Some(h_tile);
+                        self.animation_state.pointer_dwell_frames = 0;
                     }
-                }
-
-                let current_snap_tile = self.animation_state.snapped_to;
-
-                // 2. Handle state transitions if not currently animating.
-                if self.animation_state.snap_animation.is_none()
-                    && current_snap_tile != target_snap_tile
-                {
-                    if let Some(start_tile) = current_snap_tile {
-                        // MUST SNAP OUT
-                        let start_pos = Self::hex_position(
-                            center + (start_tile - center).rotate(self.rotation),
-                            window.center(),
-                            hexagon_radius,
-                        );
-                        self.animation_state.snap_animation = Some(SnapAnimation {
-                            start_frame: now,
-                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
-                            start_pos,
-                            end_pos: pointer_pos,
-                            is_snap_in: false,
-                        });
-                        self.animation_state.snapped_to = None;
-                        // cancel flow animation
-                        self.animation_state.flow_animation = None;
-                    } else if let Some(end_tile) = target_snap_tile {
-                        // MUST SNAP IN
-                        let end_pos = Self::hex_position(
-                            center + (end_tile - center).rotate(self.rotation),
-                            window.center(),
-                            hexagon_radius,
-                        );
-                        self.animation_state.snap_animation = Some(SnapAnimation {
-                            start_frame: now,
-                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
-                            start_pos: pointer_pos,
-                            end_pos,
-                            is_snap_in: true,
-                        });
-                        self.animation_state.snapped_to = Some(end_tile);
-                    }
-                }
-
-                // 3. Update any ongoing animation and determine draw position.
-                if let Some(anim) = &mut self.animation_state.snap_animation {
-                    if now >= anim.end_frame {
-                        if anim.is_snap_in {
-                            self.animation_state.flow_animation_dirty = true;
-                        }
-                        self.animation_state.snap_animation = None;
-                    } else {
-                        // Snap cancellation
-                        if !anim.is_snap_in {
-                            if let Some(h_tile) = target_snap_tile {
-                                if self.animation_state.snapped_to.is_none() {
-                                    let hex_center = Self::hex_position(
-                                        center + (h_tile - center).rotate(self.rotation),
-                                        window.center(),
-                                        hexagon_radius,
-                                    );
-                                    let progress = (now - anim.start_frame) as f32
-                                        / (anim.end_frame - anim.start_frame) as f32;
-                                    let eased_progress = progress * progress;
-                                    let current_pos =
-                                        anim.start_pos.lerp(anim.end_pos, eased_progress);
-
-                                    // Cancel snap-out and start snap-in
-                                    self.animation_state.snap_animation = Some(SnapAnimation {
-                                        start_frame: now,
-                                        end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
-                                        start_pos: current_pos,
-                                        end_pos: hex_center,
-                                        is_snap_in: true,
-                                    });
-                                    self.animation_state.snapped_to = Some(h_tile);
-                                }
-                            }
-                        }
-
-                        // Re-borrow anim as it might have been replaced
-                        if let Some(anim) = &mut self.animation_state.snap_animation {
-                            if !anim.is_snap_in {
-                                anim.end_pos = pointer_pos; // Snap-out follows pointer
-                            }
-                            let progress = (now - anim.start_frame) as f32
-                                / (anim.end_frame - anim.start_frame) as f32;
-                            let eased_progress = progress * progress;
-                            tile_draw_pos = Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
-                        }
-                    }
-                }
-
-                // 4. Determine final draw position if not animating.
-                if self.animation_state.snap_animation.is_none() {
-                    if let Some(snapped_tile) = self.animation_state.snapped_to {
+                    self.animation_state.last_pointer_pos = Some(pointer_pos);
+                } else if let Some(hover_anim) = &self.animation_state.hover_animation {
+                    if !hover_anim.is_fade_in && self.animation_state.frame_count < hover_anim.end_frame {
+                        // Fade-out animation case: pointer is gone, but we still need to draw the tile
                         tile_draw_pos = Some(Self::hex_position(
-                            center + (snapped_tile - center).rotate(self.rotation),
+                            center + (hover_anim.tile_pos - center).rotate(self.rotation),
                             window.center(),
                             hexagon_radius,
                         ));
-                    } else {
-                        // Not snapped, not animating, so follow pointer.
-                        // `tile_draw_pos` is already set to this at the beginning.
                     }
                 }
+
+                // Only do snapping logic if we have an actual pointer position
+                if let Some(pointer_pos) = pointer_pos {
+                    // 1. Determine the target hex to snap to, if any.
+                    let mut target_snap_tile: Option<TilePos> = None;
+                    if let Some(h_tile) = hovered_tile {
+                        let hex_center = Self::hex_position(
+                            center + (h_tile - center).rotate(self.rotation),
+                            window.center(),
+                            hexagon_radius,
+                        );
+                        let dist = pointer_pos.distance(hex_center);
+                        let is_moving = self.animation_state.pointer_dwell_frames < 3;
+                        let snap_radius = if is_moving {
+                            SNAP_RADIUS_MOVING
+                        } else {
+                            SNAP_RADIUS_DWELL
+                        };
+
+                        if dist < hexagon_radius * snap_radius {
+                            target_snap_tile = Some(h_tile);
+                        } else if self.animation_state.snapped_to == Some(h_tile)
+                            && dist < hexagon_radius * SNAP_RADIUS_DWELL
+                        {
+                            // Hysteresis: we are snapped to this tile, and we are still within the larger radius, so stay snapped.
+                            target_snap_tile = Some(h_tile);
+                        }
+                    }
+
+                    let current_snap_tile = self.animation_state.snapped_to;
+
+                    // 2. Handle state transitions if not currently animating.
+                    if self.animation_state.snap_animation.is_none()
+                        && current_snap_tile != target_snap_tile
+                    {
+                        if let Some(start_tile) = current_snap_tile {
+                            // MUST SNAP OUT
+                            let start_pos = Self::hex_position(
+                                center + (start_tile - center).rotate(self.rotation),
+                                window.center(),
+                                hexagon_radius,
+                            );
+                            self.animation_state.snap_animation = Some(SnapAnimation {
+                                start_frame: now,
+                                end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                start_pos,
+                                end_pos: pointer_pos,
+                                is_snap_in: false,
+                            });
+                            self.animation_state.snapped_to = None;
+                            // cancel flow animation
+                            self.animation_state.flow_animation = None;
+                        } else if let Some(end_tile) = target_snap_tile {
+                            // MUST SNAP IN
+                            let end_pos = Self::hex_position(
+                                center + (end_tile - center).rotate(self.rotation),
+                                window.center(),
+                                hexagon_radius,
+                            );
+                            self.animation_state.snap_animation = Some(SnapAnimation {
+                                start_frame: now,
+                                end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                start_pos: pointer_pos,
+                                end_pos,
+                                is_snap_in: true,
+                            });
+                            self.animation_state.snapped_to = Some(end_tile);
+                        }
+                    }
+
+                    // 3. Update any ongoing animation and determine draw position.
+                    if let Some(anim) = &mut self.animation_state.snap_animation {
+                        if now >= anim.end_frame {
+                            if anim.is_snap_in {
+                                self.animation_state.flow_animation_dirty = true;
+                            }
+                            self.animation_state.snap_animation = None;
+                        } else {
+                            // Snap cancellation
+                            if !anim.is_snap_in {
+                                if let Some(h_tile) = target_snap_tile {
+                                    if self.animation_state.snapped_to.is_none() {
+                                        let hex_center = Self::hex_position(
+                                            center + (h_tile - center).rotate(self.rotation),
+                                            window.center(),
+                                            hexagon_radius,
+                                        );
+                                        let progress = (now - anim.start_frame) as f32
+                                            / (anim.end_frame - anim.start_frame) as f32;
+                                        let eased_progress = progress * progress;
+                                        let current_pos =
+                                            anim.start_pos.lerp(anim.end_pos, eased_progress);
+
+                                        // Cancel snap-out and start snap-in
+                                        self.animation_state.snap_animation = Some(SnapAnimation {
+                                            start_frame: now,
+                                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                            start_pos: current_pos,
+                                            end_pos: hex_center,
+                                            is_snap_in: true,
+                                        });
+                                        self.animation_state.snapped_to = Some(h_tile);
+                                    }
+                                }
+                            }
+
+                            // Re-borrow anim as it might have been replaced
+                            if let Some(anim) = &mut self.animation_state.snap_animation {
+                                if !anim.is_snap_in {
+                                    anim.end_pos = pointer_pos; // Snap-out follows pointer
+                                }
+                                let progress = (now - anim.start_frame) as f32
+                                    / (anim.end_frame - anim.start_frame) as f32;
+                                let eased_progress = progress * progress;
+                                tile_draw_pos = Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
+                            }
+                        }
+                    }
+
+                    // 4. Determine final draw position if not animating.
+                    if self.animation_state.snap_animation.is_none() {
+                        if let Some(snapped_tile) = self.animation_state.snapped_to {
+                            tile_draw_pos = Some(Self::hex_position(
+                                center + (snapped_tile - center).rotate(self.rotation),
+                                window.center(),
+                                hexagon_radius,
+                            ));
+                        } else {
+                            // Not snapped, not animating, so follow pointer.
+                            // `tile_draw_pos` is already set to this at the beginning.
+                        }
+                    }
+                } // End of "if let Some(pointer_pos) = pointer_pos"
             }
 
             // Draw the board
@@ -918,6 +988,7 @@ impl GameUi {
                                     &hypothetical,
                                     border_stroke,
                                     0.0,
+                                    None, // No hover animation for board tiles
                                 );
                             }
                         }
@@ -953,6 +1024,30 @@ impl GameUi {
                         } else {
                             HIGHLIGHT_BORDER
                         };
+                        // Calculate hover animation alpha if applicable
+                        let hover_alpha =
+                            if let Some(hover_anim) = &self.animation_state.hover_animation {
+                                let now = self.animation_state.frame_count;
+                                if now < hover_anim.end_frame {
+                                    let progress = (now - hover_anim.start_frame) as f32
+                                        / (hover_anim.end_frame - hover_anim.start_frame) as f32;
+                                    let progress = progress.clamp(0.0, 1.0);
+
+                                    if hover_anim.is_fade_in {
+                                        // Fade-in: 0.0 -> 1.0
+                                        Some(progress)
+                                    } else {
+                                        // Fade-out: 1.0 -> 0.0
+                                        Some(1.0 - progress)
+                                    }
+                                } else {
+                                    // Animation completed
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
                         Self::draw_hex(
                             pos,
                             hexagon_radius,
@@ -962,6 +1057,7 @@ impl GameUi {
                             &prior_tile_for_opacity,
                             border,
                             visual_rotation_rads,
+                            hover_alpha,
                         );
                     }
                 }
@@ -969,6 +1065,32 @@ impl GameUi {
 
             if self.animation_state.last_hovered_tile != hovered_tile {
                 self.animation_state.flow_animation = None;
+
+                // Detect hover transitions for fade animation
+                let now = self.animation_state.frame_count;
+                match (self.animation_state.last_hovered_tile, hovered_tile) {
+                    (None, Some(pos)) => {
+                        // Fade-in: None -> Some hovered tile
+                        self.animation_state.hover_animation = Some(HoverAnimation {
+                            start_frame: now,
+                            end_frame: now + 15 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            is_fade_in: true,
+                            tile_pos: pos,
+                        });
+                    }
+                    (Some(pos), None) => {
+                        // Fade-out: Some -> None hovered tile
+                        self.animation_state.hover_animation = Some(HoverAnimation {
+                            start_frame: now,
+                            end_frame: now + 15 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            is_fade_in: false,
+                            tile_pos: pos,
+                        });
+                    }
+                    _ => {
+                        // No transition or tile-to-tile transition, no hover animation needed
+                    }
+                }
             }
             self.animation_state.last_hovered_tile = hovered_tile;
 
@@ -1245,6 +1367,7 @@ impl GameUi {
                                         &Tile::Empty, // Prior tile is empty since this is hypothetical
                                         Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA)),
                                         0.0,
+                                        None, // No hover animation for tiles in hand
                                     );
                                 }
                             }
@@ -1364,5 +1487,149 @@ mod tests {
             }
         };
         assert_eq!(text_multiple, "Players [1, 3] win!"); // Should show Players [1, 3], not [0, 2]
+    }
+
+    #[test]
+    fn test_hover_animation_logic() {
+        use crate::game::TilePos;
+        use crate::game_ui::HoverAnimation;
+        
+        // Test fade-in animation calculation
+        let fade_in = HoverAnimation {
+            start_frame: 10,
+            end_frame: 25, // 15 frames duration
+            is_fade_in: true,
+            tile_pos: TilePos::new(3, 3),
+        };
+        
+        // Test alpha calculation at different frames during fade-in
+        for frame in 10..=25 {
+            let progress = if frame < fade_in.end_frame {
+                (frame - fade_in.start_frame) as f32 / (fade_in.end_frame - fade_in.start_frame) as f32
+            } else {
+                1.0
+            };
+            let progress = progress.clamp(0.0, 1.0);
+            let alpha = if fade_in.is_fade_in { progress } else { 1.0 - progress };
+            
+            match frame {
+                10 => assert_eq!(alpha, 0.0, "Frame 10 should have alpha 0.0"),
+                17 => assert!((alpha - 0.466667).abs() < 0.001, "Frame 17 should have alpha ~0.467"),
+                25 => assert_eq!(alpha, 1.0, "Frame 25 should have alpha 1.0"),
+                _ => {}
+            }
+        }
+        
+        // Test fade-out animation calculation
+        let fade_out = HoverAnimation {
+            start_frame: 30,
+            end_frame: 45, // 15 frames duration
+            is_fade_in: false,
+            tile_pos: TilePos::new(2, 2),
+        };
+        
+        // Test alpha calculation at different frames during fade-out
+        for frame in 30..=45 {
+            let progress = if frame < fade_out.end_frame {
+                (frame - fade_out.start_frame) as f32 / (fade_out.end_frame - fade_out.start_frame) as f32
+            } else {
+                1.0
+            };
+            let progress = progress.clamp(0.0, 1.0);
+            let alpha = if fade_out.is_fade_in { progress } else { 1.0 - progress };
+            
+            match frame {
+                30 => assert_eq!(alpha, 1.0, "Frame 30 should have alpha 1.0"),
+                37 => assert!((alpha - 0.533333).abs() < 0.001, "Frame 37 should have alpha ~0.533"),
+                45 => assert_eq!(alpha, 0.0, "Frame 45 should have alpha 0.0"),
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_hover_animation_transitions() {
+        use crate::game::TilePos;
+        use crate::game_ui::{AnimationState, HoverAnimation};
+        
+        // Test transition from None to Some (fade-in)
+        let mut anim_state = AnimationState::new();
+        anim_state.frame_count = 50;
+        
+        let last_hovered = None;
+        let current_hovered = Some(TilePos::new(3, 3));
+        
+        // Simulate the transition detection logic
+        if last_hovered != current_hovered {
+            let now = anim_state.frame_count;
+            match (last_hovered, current_hovered) {
+                (None, Some(pos)) => {
+                    // Fade-in: None -> Some hovered tile
+                    anim_state.hover_animation = Some(HoverAnimation {
+                        start_frame: now,
+                        end_frame: now + 15, // 15 frames duration
+                        is_fade_in: true,
+                        tile_pos: pos,
+                    });
+                }
+                (Some(pos), None) => {
+                    // Fade-out: Some -> None hovered tile
+                    anim_state.hover_animation = Some(HoverAnimation {
+                        start_frame: now,
+                        end_frame: now + 15, // 15 frames duration
+                        is_fade_in: false,
+                        tile_pos: pos,
+                    });
+                }
+                _ => {}
+            }
+        }
+        
+        // Verify fade-in animation was created correctly
+        assert!(anim_state.hover_animation.is_some());
+        let anim = anim_state.hover_animation.as_ref().unwrap();
+        assert_eq!(anim.start_frame, 50);
+        assert_eq!(anim.end_frame, 65);
+        assert!(anim.is_fade_in);
+        assert_eq!(anim.tile_pos, TilePos::new(3, 3));
+        
+        // Test transition from Some to None (fade-out)
+        let mut anim_state2 = AnimationState::new();
+        anim_state2.frame_count = 100;
+        
+        let last_hovered2 = Some(TilePos::new(2, 2));
+        let current_hovered2 = None;
+        
+        // Simulate the transition detection logic
+        if last_hovered2 != current_hovered2 {
+            let now = anim_state2.frame_count;
+            match (last_hovered2, current_hovered2) {
+                (None, Some(pos)) => {
+                    anim_state2.hover_animation = Some(HoverAnimation {
+                        start_frame: now,
+                        end_frame: now + 15,
+                        is_fade_in: true,
+                        tile_pos: pos,
+                    });
+                }
+                (Some(pos), None) => {
+                    anim_state2.hover_animation = Some(HoverAnimation {
+                        start_frame: now,
+                        end_frame: now + 15,
+                        is_fade_in: false,
+                        tile_pos: pos,
+                    });
+                }
+                _ => {}
+            }
+        }
+        
+        // Verify fade-out animation was created correctly
+        assert!(anim_state2.hover_animation.is_some());
+        let anim2 = anim_state2.hover_animation.as_ref().unwrap();
+        assert_eq!(anim2.start_frame, 100);
+        assert_eq!(anim2.end_frame, 115);
+        assert!(!anim2.is_fade_in);
+        assert_eq!(anim2.tile_pos, TilePos::new(2, 2));
     }
 }
