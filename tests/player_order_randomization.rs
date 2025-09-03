@@ -55,25 +55,29 @@ fn test_server_also_randomizes_player_order() {
         num_players: 2,
         version: 0,
     });
-    
+
     let mut rng = StdRng::seed_from_u64(12345);
     let mut player_order: Vec<usize> = (0..2).collect();
     player_order.shuffle(&mut rng);
-    
-    let result = game.apply_action(Action::RandomizePlayerOrder { player_order: player_order.clone() });
+
+    let result = game.apply_action(Action::RandomizePlayerOrder {
+        player_order: player_order.clone(),
+    });
     assert!(result.is_ok());
-    
+
     game.do_automatic_actions(&mut rng);
-    
+
     // Verify the current player is the first in the randomized order
     assert_eq!(game.current_player(), player_order[0]);
-    
+
     // Verify the action history contains the randomization
     let actions: Vec<_> = game.action_history().collect();
     assert!(actions.len() >= 2); // At least InitializeGame and RandomizePlayerOrder
-    
+
     match &actions[1] {
-        Action::RandomizePlayerOrder { player_order: recorded_order } => {
+        Action::RandomizePlayerOrder {
+            player_order: recorded_order,
+        } => {
             assert_eq!(recorded_order, &player_order);
         }
         _ => panic!("Second action should be RandomizePlayerOrder"),
