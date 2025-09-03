@@ -36,7 +36,12 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Flows",
         native_options,
-        Box::new(move |cc| Ok(Box::new(flows::FlowsApp::new_with_ai_debugging(cc, args.ai_debugging)))),
+        Box::new(move |cc| {
+            Ok(Box::new(flows::FlowsApp::new_with_ai_debugging(
+                cc,
+                args.ai_debugging,
+            )))
+        }),
     )
 }
 
