@@ -1,4 +1,4 @@
-use flows::ai_backend::{get_legal_moves, EasyAiBackend, MediumAiBackend};
+use flows::ai_backend::{get_legal_moves, ChoiceEvaluator, EasyAiBackend, MediumAiBackend};
 use flows::backend::Backend;
 use flows::game::{Action, Game, GameSettings, GameViewer, Rotation, TilePos, TileType};
 
@@ -250,6 +250,49 @@ fn test_medium_ai_can_make_a_move() {
     assert!(
         actions_after_ai_move > actions_before_ai_move,
         "AI should have made a move, increasing the action count."
+    );
+}
+
+#[test]
+fn test_choice_evaluator_logic() {
+    let settings = GameSettings {
+        num_players: 2,
+        version: 0,
+    };
+    let mut game = Game::new(settings.clone());
+    let evaluator = ChoiceEvaluator::new();
+
+    // Place a tile for the AI (player 1) that has a flow.
+    game.set_current_player_for_testing(1);
+    game.apply_action(Action::PlaceTile {
+        player: 1,
+        tile: TileType::NoSharps,
+        pos: TilePos::new(3, 0), // AI's starting edge
+        rotation: Rotation(0),
+    })
+    .unwrap();
+    game.recompute_flows();
+
+    let score1 = evaluator.get_choice_score(1, &game);
+    assert!(score1 > 0, "AI should have some choices");
+
+    // Now, block off one of the AI's paths.
+    game.set_current_player_for_testing(0);
+    game.apply_action(Action::PlaceTile {
+        player: 0,
+        tile: TileType::NoSharps,
+        pos: TilePos::new(2, 0),
+        rotation: Rotation(0),
+    })
+    .unwrap();
+    game.recompute_flows();
+
+    let score2 = evaluator.get_choice_score(1, &game);
+    assert!(
+        score2 < score1,
+        "Blocking a path should reduce choices. Score before: {}, score after: {}",
+        score1,
+        score2
     );
 }
 

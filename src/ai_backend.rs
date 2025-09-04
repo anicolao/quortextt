@@ -44,10 +44,17 @@ impl PathLengthEvaluator {
     pub fn new() -> Self {
         Self
     }
+}
 
+#[derive(Clone)]
+pub struct ChoiceEvaluator {
+    path_eval: PathLengthEvaluator,
+}
+
+impl PathLengthEvaluator {
     /// Follow a flow of a single player's color from a starting position and direction
     /// until it hits an empty hex, a different player's flow, or the edge of the board.
-    fn follow_flow(
+    pub fn follow_flow(
         &self,
         mut pos: TilePos,
         mut entry_dir: Direction,
@@ -72,7 +79,7 @@ impl PathLengthEvaluator {
 
     /// Find the shortest path for a player to win, measured in the number of tiles
     /// that need to be placed.
-    fn get_shortest_path_len(&self, player: Player, game: &Game) -> Option<usize> {
+    pub fn get_shortest_path_len(&self, player: Player, game: &Game) -> Option<usize> {
         let (start_side, goal_side) = get_player_sides(player);
         let goal_edges: HashSet<(TilePos, Direction)> =
             game.edges_on_board_edge(goal_side).into_iter().collect();
@@ -145,6 +152,93 @@ impl PathLengthEvaluator {
             }
         }
         None // No path found
+    }
+}
+impl ChoiceEvaluator {
+    pub fn new() -> Self {
+        Self {
+            path_eval: PathLengthEvaluator::new(),
+        }
+    }
+
+    /// Calculates a 'choice score' for a player, representing the number of
+    /// empty hexes they can immediately expand into from their existing flows.
+    pub fn get_choice_score(&self, player: Player, game: &Game) -> u32 {
+        let mut choice_hexes: HashSet<TilePos> = HashSet::new();
+
+        // Find all hexes with this player's flow
+        let mut flow_hexes = vec![];
+        for r in 0..7 {
+            for c in 0..7 {
+                let pos = TilePos::new(r, c);
+                if let Tile::Placed(tile) = game.tile(pos) {
+                    if (0..6).any(|d| {
+                        tile.flow_cache(Direction::from_rotation(Rotation(d))) == Some(player)
+                    }) {
+                        flow_hexes.push(pos);
+                        // This is a flow hex. Find its empty neighbors.
+                        for dir in Direction::all_directions() {
+                            if let Some(neighbor_pos) = game.get_neighbor_pos(pos, dir) {
+                                if *game.tile(neighbor_pos) == Tile::Empty {
+                                    choice_hexes.insert(neighbor_pos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        choice_hexes.len() as u32
+    }
+}
+
+impl EvaluationStrategy for ChoiceEvaluator {
+    fn clone_box(&self) -> Box<dyn EvaluationStrategy> {
+        Box::new(self.clone())
+    }
+
+    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool, eval_count: &mut u64) -> f64 {
+        *eval_count += 1;
+        if let Some(outcome) = game.outcome() {
+            return match outcome {
+                GameOutcome::Victory(winners) if winners.contains(&player) => {
+                    if winners.len() == 1 { 1000.0 } else { 500.0 }
+                }
+                GameOutcome::Victory(_) => -1000.0,
+            };
+        }
+
+        let opponent_player = 1 - player;
+
+        // --- Path Length Score Calculation ---
+        let ai_tiles_needed = self.path_eval.get_shortest_path_len(player, game);
+        let human_tiles_needed = self.path_eval.get_shortest_path_len(opponent_player, game);
+
+        let path_score = match (ai_tiles_needed, human_tiles_needed) {
+            (Some(ai_needed), Some(human_needed)) => {
+                -1.2 * (ai_needed as f64) - 30.0 / (human_needed as f64)
+            }
+            (Some(ai_needed), None) => 100.0 / (ai_needed as f64),
+            (None, Some(human_needed)) => -100.0 / (human_needed as f64),
+            (None, None) => 0.0,
+        };
+
+        // --- Choice Score Calculation ---
+        let ai_choice_score = self.get_choice_score(player, game);
+        let opponent_choice_score = self.get_choice_score(opponent_player, game);
+        let choice_score_diff = opponent_choice_score as f64 - ai_choice_score as f64;
+
+        const CHOICE_WEIGHT: f64 = 0.1;
+        let final_score = path_score + CHOICE_WEIGHT * choice_score_diff;
+
+        if ai_debugging {
+            println!(
+                "AI Eval: path_score: {:.2}, ai_choices: {}, opp_choices: {}, final_score: {:.2}",
+                path_score, ai_choice_score, opponent_choice_score, final_score
+            );
+        }
+
+        final_score
     }
 }
 
@@ -299,7 +393,7 @@ impl EasyAiBackend {
         Self {
             inner,
             ai_player: 1, // AI is always player 1
-            evaluator: Box::new(PathLengthEvaluator::new()),
+            evaluator: Box::new(ChoiceEvaluator::new()),
             last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             ai_debugging,
