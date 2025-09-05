@@ -195,7 +195,7 @@ impl EvaluationStrategy for ChoiceEvaluator {
         Box::new(self.clone())
     }
 
-    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool, eval_count: &mut u64) -> f64 {
+    fn evaluate(&self, game: &Game, player: Player, _ai_debugging: bool, eval_count: &mut u64) -> f64 {
         *eval_count += 1;
         if let Some(outcome) = game.outcome() {
             return match outcome {
@@ -228,13 +228,6 @@ impl EvaluationStrategy for ChoiceEvaluator {
 
         const CHOICE_WEIGHT: f64 = 0.1;
         let final_score = path_score + CHOICE_WEIGHT * choice_score_diff;
-
-        if ai_debugging {
-            println!(
-                "AI Eval: path_score: {:.2}, ai_choices: {}, opp_choices: {}, final_score: {:.2}",
-                path_score, ai_choice_score, opponent_choice_score, final_score
-            );
-        }
 
         final_score
     }
