@@ -1,6 +1,7 @@
 use crate::backend::{Backend, InMemoryBackend};
 use crate::game::*;
 use crate::legality::Connection;
+use ordered_float::OrderedFloat;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Macro for conditional AI debugging output
@@ -756,20 +757,34 @@ impl MediumAiBackend {
     /// 3. Moves adjacent to the AI's own flows.
     /// 4. Moves adjacent to the opponent's flows.
     /// 5. All other moves.
-    pub fn order_moves(&self, game: &Game, moves: &mut [Action]) {
-        // Create a vector of (move, score) tuples
-        let mut scored_moves: Vec<(Action, f64)> = moves
+    pub fn order_moves(&self, game: &Game, moves: &mut Vec<Action>) {
+        // Optimization: if there are few enough moves, just sort them and return.
+        // 60 is a heuristic for ~10 positions with up to 6 rotations each.
+        if moves.len() <= 60 {
+            moves.sort_by_cached_key(|m| {
+                if let Action::PlaceTile { pos, rotation, tile, .. } = m {
+                    let test_game = game.with_tile_placed(*tile, *pos, *rotation);
+                    let mut eval_count = 0;
+                    // Negate the score because sort_by is ascending.
+                    OrderedFloat(-self.evaluator.evaluate(
+                        &test_game,
+                        self.ai_player,
+                        self.ai_debugging,
+                        &mut eval_count,
+                    ))
+                } else {
+                    OrderedFloat(f64::INFINITY)
+                }
+            });
+            return;
+        }
+
+        // 1. Score all moves
+        let scored_moves: Vec<(Action, f64)> = moves
             .iter()
             .map(|m| {
-                if let Action::PlaceTile {
-                    pos,
-                    rotation,
-                    tile,
-                    ..
-                } = m
-                {
+                if let Action::PlaceTile { pos, rotation, tile, .. } = m {
                     let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-                    // We need a mutable eval_count for the evaluator trait, but it's not used here.
                     let mut eval_count = 0;
                     let score = self.evaluator.evaluate(
                         &test_game,
@@ -779,19 +794,52 @@ impl MediumAiBackend {
                     );
                     (m.clone(), score)
                 } else {
-                    // This should not happen for move ordering
                     (m.clone(), -f64::INFINITY)
                 }
             })
             .collect();
 
-        // Sort the moves by score in descending order
-        scored_moves.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Update the original moves slice with the sorted moves
-        for (i, (action, _)) in scored_moves.into_iter().enumerate() {
-            moves[i] = action;
+        // 2. Group by position and find the best score for each
+        let mut best_scores_by_pos: HashMap<TilePos, f64> = HashMap::new();
+        for (action, score) in &scored_moves {
+            if let Action::PlaceTile { pos, .. } = action {
+                let entry = best_scores_by_pos.entry(*pos).or_insert(-f64::INFINITY);
+                if *score > *entry {
+                    *entry = *score;
+                }
+            }
         }
+
+        // 3. Identify the top 10 positions
+        let mut sorted_positions: Vec<_> = best_scores_by_pos.into_iter().collect();
+        sorted_positions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let top_10_positions: HashSet<TilePos> = sorted_positions.into_iter().take(10).map(|(pos, _)| pos).collect();
+
+        // 4. Filter the original moves list to keep only the top positions
+        moves.retain(|m| {
+            if let Action::PlaceTile { pos, .. } = m {
+                top_10_positions.contains(pos)
+            } else {
+                false
+            }
+        });
+
+        // 5. Sort the remaining moves for better pruning
+        moves.sort_by_cached_key(|m| {
+            if let Action::PlaceTile { pos, rotation, tile, .. } = m {
+                let test_game = game.with_tile_placed(*tile, *pos, *rotation);
+                let mut eval_count = 0;
+                // Negate the score because sort_by is ascending.
+                OrderedFloat(-self.evaluator.evaluate(
+                    &test_game,
+                    self.ai_player,
+                    self.ai_debugging,
+                    &mut eval_count,
+                ))
+            } else {
+                OrderedFloat(f64::INFINITY)
+            }
+        });
     }
 
     /// Find the best move for the AI using alpha-beta search
