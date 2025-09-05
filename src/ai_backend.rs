@@ -45,14 +45,7 @@ impl PathLengthEvaluator {
     pub fn new() -> Self {
         Self
     }
-}
 
-#[derive(Clone)]
-pub struct ChoiceEvaluator {
-    path_eval: PathLengthEvaluator,
-}
-
-impl PathLengthEvaluator {
     /// Follow a flow of a single player's color from a starting position and direction
     /// until it hits an empty hex, a different player's flow, or the edge of the board.
     pub fn follow_flow(
@@ -155,6 +148,12 @@ impl PathLengthEvaluator {
         None // No path found
     }
 }
+
+#[derive(Clone)]
+pub struct ChoiceEvaluator {
+    path_eval: PathLengthEvaluator,
+}
+
 impl ChoiceEvaluator {
     pub fn new() -> Self {
         Self {
@@ -168,7 +167,6 @@ impl ChoiceEvaluator {
         let mut choice_hexes: HashSet<TilePos> = HashSet::new();
 
         // Find all hexes with this player's flow
-        let mut flow_hexes = vec![];
         for r in 0..7 {
             for c in 0..7 {
                 let pos = TilePos::new(r, c);
@@ -176,7 +174,6 @@ impl ChoiceEvaluator {
                     if (0..6).any(|d| {
                         tile.flow_cache(Direction::from_rotation(Rotation(d))) == Some(player)
                     }) {
-                        flow_hexes.push(pos);
                         // This is a flow hex. Find its empty neighbors.
                         for dir in Direction::all_directions() {
                             if let Some(neighbor_pos) = game.get_neighbor_pos(pos, dir) {
@@ -248,7 +245,7 @@ impl EvaluationStrategy for PathLengthEvaluator {
         Box::new(self.clone())
     }
 
-    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool, eval_count: &mut u64) -> f64 {
+    fn evaluate(&self, game: &Game, player: Player, _ai_debugging: bool, eval_count: &mut u64) -> f64 {
         *eval_count += 1;
         if let Some(outcome) = game.outcome() {
             return match outcome {
@@ -270,32 +267,11 @@ impl EvaluationStrategy for PathLengthEvaluator {
 
         match (ai_tiles_needed, human_tiles_needed) {
             (Some(ai_needed), Some(human_needed)) => {
-                if ai_debugging {
-                    println!(
-                        "AI Eval: ai_needed: {}, human_needed: {}",
-                        ai_needed, human_needed
-                    );
-                }
                 -1.2 * (ai_needed as f64) - 30.0 / (human_needed as f64)
             }
-            (Some(ai_needed), None) => {
-                if ai_debugging {
-                    println!("AI Eval: ai_needed: {}, human_needed: None", ai_needed);
-                }
-                100.0 / (ai_needed as f64)
-            }
-            (None, Some(human_needed)) => {
-                if ai_debugging {
-                    println!("AI Eval: ai_needed: None, human_needed: {}", human_needed);
-                }
-                -100.0 / (human_needed as f64)
-            }
-            (None, None) => {
-                if ai_debugging {
-                    println!("AI Eval: ai_needed: None, human_needed: None");
-                }
-                0.0
-            }
+            (Some(ai_needed), None) => 100.0 / (ai_needed as f64),
+            (None, Some(human_needed)) => -100.0 / (human_needed as f64),
+            (None, None) => 0.0,
         }
     }
 }
@@ -394,7 +370,7 @@ impl EasyAiBackend {
         Self {
             inner,
             ai_player: 1, // AI is always player 1
-            evaluator: Box::new(ChoiceEvaluator::new()),
+            evaluator: Box::new(PathLengthEvaluator::new()),
             last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             ai_debugging,
@@ -644,7 +620,7 @@ pub struct MediumAiBackend {
 }
 
 /// Helper to get all legal moves for a player
-pub fn get_legal_moves(game: &Game, player: Player, tile: TileType) -> Vec<Action> {
+fn get_legal_moves(game: &Game, player: Player, tile: TileType) -> Vec<Action> {
     let mut moves = Vec::new();
     let unique_rotations = TileType::get_unique_rotations(tile);
     for row in 0..7 {
@@ -675,7 +651,7 @@ impl MediumAiBackend {
         Self {
             inner,
             ai_player: 1, // AI is always player 1
-            evaluator: Box::new(PathLengthEvaluator::new()),
+            evaluator: Box::new(ChoiceEvaluator::new()),
             search_depth,
             last_action_count: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             ai_thinking: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
@@ -751,81 +727,19 @@ impl MediumAiBackend {
     }
 
     /// Sorts moves in place based on a heuristic to improve alpha-beta pruning.
-    /// The heuristic is as follows, in order of priority:
-    /// 1. Moves adjacent to the most recent tile placed.
-    /// 2. Moves adjacent to the second most recent tile placed.
-    /// 3. Moves adjacent to the AI's own flows.
-    /// 4. Moves adjacent to the opponent's flows.
-    /// 5. All other moves.
-    pub fn order_moves(&self, game: &Game, moves: &mut Vec<Action>) {
-        // Optimization: if there are few enough moves, just sort them and return.
-        // 60 is a heuristic for ~10 positions with up to 6 rotations each.
-        if moves.len() <= 60 {
-            moves.sort_by_cached_key(|m| {
-                if let Action::PlaceTile { pos, rotation, tile, .. } = m {
-                    let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-                    let mut eval_count = 0;
-                    // Negate the score because sort_by is ascending.
-                    OrderedFloat(-self.evaluator.evaluate(
-                        &test_game,
-                        self.ai_player,
-                        self.ai_debugging,
-                        &mut eval_count,
-                    ))
-                } else {
-                    OrderedFloat(f64::INFINITY)
-                }
-            });
-            return;
-        }
-
-        // 1. Score all moves
-        let scored_moves: Vec<(Action, f64)> = moves
-            .iter()
-            .map(|m| {
-                if let Action::PlaceTile { pos, rotation, tile, .. } = m {
-                    let test_game = game.with_tile_placed(*tile, *pos, *rotation);
-                    let mut eval_count = 0;
-                    let score = self.evaluator.evaluate(
-                        &test_game,
-                        self.ai_player,
-                        self.ai_debugging,
-                        &mut eval_count,
-                    );
-                    (m.clone(), score)
-                } else {
-                    (m.clone(), -f64::INFINITY)
-                }
-            })
-            .collect();
-
-        // 2. Group by position and find the best score for each
-        let mut best_scores_by_pos: HashMap<TilePos, f64> = HashMap::new();
-        for (action, score) in &scored_moves {
-            if let Action::PlaceTile { pos, .. } = action {
-                let entry = best_scores_by_pos.entry(*pos).or_insert(-f64::INFINITY);
-                if *score > *entry {
-                    *entry = *score;
-                }
-            }
-        }
-
-        // 3. Identify the top 10 positions
-        let mut sorted_positions: Vec<_> = best_scores_by_pos.into_iter().collect();
-        sorted_positions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        let top_10_positions: HashSet<TilePos> = sorted_positions.into_iter().take(10).map(|(pos, _)| pos).collect();
-
-        // 4. Filter the original moves list to keep only the top positions
-        moves.retain(|m| {
-            if let Action::PlaceTile { pos, .. } = m {
-                top_10_positions.contains(pos)
-            } else {
-                false
-            }
-        });
-
-        // 5. Sort the remaining moves for better pruning
+    fn order_moves(
+        &self,
+        game: &Game,
+        moves: &mut Vec<Action>,
+        best_move_last_iter: Option<&Action>,
+    ) {
         moves.sort_by_cached_key(|m| {
+            if let Some(best) = best_move_last_iter {
+                if actions_equal(m, best) {
+                    // Prioritize the best move from the last iteration.
+                    return OrderedFloat(-f64::INFINITY);
+                }
+            }
             if let Action::PlaceTile { pos, rotation, tile, .. } = m {
                 let test_game = game.with_tile_placed(*tile, *pos, *rotation);
                 let mut eval_count = 0;
@@ -842,58 +756,60 @@ impl MediumAiBackend {
         });
     }
 
-    /// Find the best move for the AI using alpha-beta search
+    /// Find the best move for the AI using alpha-beta search with iterative deepening.
     fn find_best_ai_move(&self, ai_tile: TileType) -> Option<Action> {
         self.inner.with_game(|game| {
             let mut nodes_traversed = 0;
             let mut nodes_pruned = 0;
             let mut eval_count = 0;
-            let mut move_scores = Vec::new();
 
             let mut possible_moves = get_legal_moves(game, self.ai_player, ai_tile);
             let mut best_move = possible_moves.get(0).cloned();
-            let mut max_eval = -f64::INFINITY;
-            let mut alpha = -f64::INFINITY;
 
-            self.order_moves(game, &mut possible_moves);
+            for depth in 1..=self.search_depth {
+                ai_debug!(self, "Iterative deepening: Searching depth {}...", depth);
+                let mut max_eval = -f64::INFINITY;
+                let mut alpha = -f64::INFINITY;
 
-            for action in possible_moves {
-                let mut temp_game = game.clone();
-                if temp_game.apply_action(action.clone()).is_ok() {
-                    // This is the opponent's turn, so it's a chance node
-                    let mut worst_case_eval = f64::INFINITY;
-                    let possible_tiles = [
-                        TileType::NoSharps,
-                        TileType::OneSharp,
-                        TileType::TwoSharps,
-                        TileType::ThreeSharps,
-                    ];
-                    for tile_type in possible_tiles {
-                        let (eval, _) = self.alpha_beta_search(
-                            &temp_game,
-                            self.search_depth - 1,
-                            alpha,
-                            f64::INFINITY,
-                            false,
-                            tile_type,
-                            &mut nodes_traversed,
-                            &mut nodes_pruned,
-                            &mut eval_count,
-                        );
-                        worst_case_eval = worst_case_eval.min(eval);
+                // Use the best move from the previous iteration to order moves for this iteration
+                self.order_moves(game, &mut possible_moves, best_move.as_ref());
+
+                for action in &possible_moves {
+                    let mut temp_game = game.clone();
+                    if temp_game.apply_action(action.clone()).is_ok() {
+                        // This is the opponent's turn, so it's a chance node
+                        let mut worst_case_eval = f64::INFINITY;
+                        let possible_tiles = [
+                            TileType::NoSharps,
+                            TileType::OneSharp,
+                            TileType::TwoSharps,
+                            TileType::ThreeSharps,
+                        ];
+                        for tile_type in possible_tiles {
+                            let (eval, _) = self.alpha_beta_search(
+                                &temp_game,
+                                depth - 1,
+                                alpha,
+                                f64::INFINITY,
+                                false,
+                                tile_type,
+                                &mut nodes_traversed,
+                                &mut nodes_pruned,
+                                &mut eval_count,
+                            );
+                            worst_case_eval = worst_case_eval.min(eval);
+                        }
+
+                        if worst_case_eval > max_eval {
+                            max_eval = worst_case_eval;
+                            best_move = Some(action.clone());
+                        }
+                        alpha = alpha.max(worst_case_eval);
                     }
-
-                    move_scores.push(worst_case_eval);
-                    if worst_case_eval > max_eval {
-                        max_eval = worst_case_eval;
-                        best_move = Some(action);
-                    }
-                    alpha = alpha.max(worst_case_eval);
                 }
             }
 
             if self.ai_debugging {
-                log_score_histogram(&move_scores);
                 ai_debug!(
                     self,
                     "AI (Medium) Search Complete. Evals: {}, Nodes: {}, Pruned: {}. Chose: {:?}",
@@ -931,7 +847,7 @@ impl MediumAiBackend {
         let current_player = game.current_player();
         let mut possible_moves = get_legal_moves(game, current_player, tile_for_this_turn);
 
-        self.order_moves(game, &mut possible_moves);
+        self.order_moves(game, &mut possible_moves, None);
 
         if possible_moves.is_empty() {
             return (
@@ -1029,22 +945,6 @@ impl MediumAiBackend {
             }
             (min_eval, best_move)
         }
-    }
-}
-
-fn log_score_histogram(scores: &[f64]) {
-    let mut histogram = HashMap::new();
-    for &score in scores {
-        let rounded_score = (score * 10.0).round() as i64;
-        *histogram.entry(rounded_score).or_insert(0) += 1;
-    }
-
-    let mut sorted_scores: Vec<_> = histogram.into_iter().collect();
-    sorted_scores.sort_by_key(|(score, _)| *score);
-
-    println!("AI Score Histogram:");
-    for (score, count) in sorted_scores {
-        println!("  Score: {:.1} -> {}x", score as f64 / 10.0, count);
     }
 }
 
