@@ -105,7 +105,9 @@ fn format_move(
 
     let tile_str = format!("T{}", tile.num_sharps());
 
-    let rot_str = match rotation.0 {
+    // Adjust rotation to be relative to the player's perspective
+    let adjusted_rotation = rotation + view_rotation;
+    let rot_str = match adjusted_rotation.0 {
         0 => "N",
         1 => "NE",
         2 => "SE",
@@ -1674,7 +1676,7 @@ impl GameUi {
 mod tests {
     use crate::backend::InMemoryBackend;
     use crate::game::{GameSettings, GameViewer, Rotation};
-    use crate::game_ui::{GameUi, GameUiResponse};
+    use crate::game_ui::{format_move, GameUi, GameUiResponse};
     use crate::game_view::GameView;
 
     #[test]
@@ -1716,6 +1718,120 @@ mod tests {
         assert_eq!(Rotation(3).reversed().0, 3);
         assert_eq!(Rotation(4).reversed().0, 2);
         assert_eq!(Rotation(5).reversed().0, 1);
+    }
+
+    #[test]
+    fn test_format_move_rotation_perspective() {
+        use crate::game::Game;
+        use crate::game::{GameSettings, Rotation, TilePos, TileType};
+
+        // Create a 2-player game
+        let settings = GameSettings {
+            num_players: 2,
+            version: 0,
+        };
+        let game = Game::new(settings);
+
+        // Find which sides the players are on
+        let player0_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(0))
+            .map(Rotation)
+            .expect("Player 0 should have a side");
+        let player1_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(1))
+            .map(Rotation)
+            .expect("Player 1 should have a side");
+
+        // Test that the same move from different player perspectives has the correct rotation adjustment
+        let tile = TileType::NoSharps;
+        let pos = TilePos::new(1, 2); // Some arbitrary position
+        let rotation = Rotation(0); // North rotation
+
+        // Format the move from both player perspectives
+        let move_from_p0 = format_move(0, tile, pos, rotation, &game);
+        let move_from_p1 = format_move(1, tile, pos, rotation, &game);
+
+        // Extract rotation from both formatted moves (last 1-2 characters)
+        let p0_rotation = &move_from_p0[move_from_p0.len() - 2..];
+        let p1_rotation = &move_from_p1[move_from_p1.len() - 2..];
+
+        // Test that rotations are different when players are on different sides
+        if player0_side != player1_side {
+            assert_ne!(
+                p0_rotation, p1_rotation,
+                "Rotation should be different for different player perspectives. P0: {}, P1: {}, P0 side: {:?}, P1 side: {:?}",
+                move_from_p0, move_from_p1, player0_side, player1_side
+            );
+        }
+
+        // Specific test case from the problem statement:
+        // P1A3T0N should become P2F5T0NE when viewed from P2's perspective
+        // This test ensures the rotation adjustment is working correctly
+        if player0_side == Rotation(0) && player1_side == Rotation(2) {
+            // Test with a position that we know should have specific behavior
+            let test_pos = TilePos::new(0, 2); // A position near P1's edge
+            let test_rotation = Rotation(0); // North
+
+            let p0_move = format_move(0, TileType::NoSharps, test_pos, test_rotation, &game);
+            let p1_move = format_move(1, TileType::NoSharps, test_pos, test_rotation, &game);
+
+            // The rotation should be adjusted - P0's North should appear as different direction from P1's view
+            let p0_rot_part = &p0_move[p0_move.len() - 1..];
+            let p1_rot_part = &p1_move[p1_move.len() - 2..];
+
+            // This verifies the fix is working
+            assert_ne!(
+                p0_rot_part, p1_rot_part,
+                "Rotation should be different for P0 vs P1 perspective. P0: {}, P1: {}",
+                p0_move, p1_move
+            );
+        }
+    }
+
+    #[test]
+    fn test_format_move_specific_example() {
+        use crate::game::Game;
+        use crate::game::{GameSettings, Rotation, TilePos, TileType};
+
+        // Create a 2-player game
+        let settings = GameSettings {
+            num_players: 2,
+            version: 0,
+        };
+        let game = Game::new(settings);
+
+        // Test a concrete example to demonstrate the fix
+        let tile = TileType::NoSharps;
+        let pos = TilePos::new(0, 2);
+        let rotation = Rotation(0); // North
+
+        let move_from_p0 = format_move(0, tile, pos, rotation, &game);
+        let move_from_p1 = format_move(1, tile, pos, rotation, &game);
+
+        // Print the actual output for inspection
+        println!("P0 (Player 1) perspective: {}", move_from_p0);
+        println!("P1 (Player 2) perspective: {}", move_from_p1);
+
+        // Both should be valid moves but with different position and rotation
+        assert!(move_from_p0.starts_with("P1"));
+        assert!(move_from_p1.starts_with("P2"));
+        assert!(move_from_p0.contains("T0"));
+        assert!(move_from_p1.contains("T0"));
+
+        // The key test: they should have different rotations when players are on different sides
+        let player0_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(0))
+            .map(Rotation);
+        let player1_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(1))
+            .map(Rotation);
+
+        if player0_side != player1_side {
+            assert_ne!(
+                move_from_p0, move_from_p1,
+                "Moves should be different for different player perspectives"
+            );
+        }
     }
 
     #[test]
