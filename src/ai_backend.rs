@@ -757,91 +757,41 @@ impl MediumAiBackend {
     /// 4. Moves adjacent to the opponent's flows.
     /// 5. All other moves.
     pub fn order_moves(&self, game: &Game, moves: &mut [Action]) {
-        // Find the positions of the last two tiles placed on the board
-        let mut last_move_pos = None;
-        let mut second_last_move_pos = None;
-        for action in game.action_history_vec().iter().rev() {
-            if let Action::PlaceTile { pos, .. } = action {
-                if last_move_pos.is_none() {
-                    last_move_pos = Some(pos.clone());
-                } else if second_last_move_pos.is_none() {
-                    second_last_move_pos = Some(pos.clone());
-                    break;
-                }
-            }
-        }
-
-        // Identify all hexes that are part of the AI's or the opponent's flows
-        let mut ai_flow_hexes = HashSet::new();
-        let mut human_flow_hexes = HashSet::new();
-        let human_player = 1 - self.ai_player; // Assumes a 2-player game
-
-        for r in 0..7 {
-            for c in 0..7 {
-                let pos = TilePos::new(r, c);
-                if let Tile::Placed(tile) = game.tile(pos) {
-                    let mut has_ai_flow = false;
-                    let mut has_human_flow = false;
-                    // Check all directions for flows
-                    for dir in Direction::all_directions() {
-                        if tile.flow_cache(dir) == Some(self.ai_player) {
-                            has_ai_flow = true;
-                        } else if tile.flow_cache(dir) == Some(human_player) {
-                            has_human_flow = true;
-                        }
-                    }
-                    if has_ai_flow {
-                        ai_flow_hexes.insert(pos);
-                    }
-                    if has_human_flow {
-                        human_flow_hexes.insert(pos);
-                    }
-                }
-            }
-        }
-
-        // Sort the moves list based on the calculated priority score
-        moves.sort_by_cached_key(|a| {
-            if let Action::PlaceTile { pos, .. } = a {
-                let p = *pos;
-                let mut adj_to_last = false;
-                let mut adj_to_second_last = false;
-                let mut adj_to_ai_flow = false;
-                let mut adj_to_human_flow = false;
-
-                for dir in Direction::all_directions() {
-                    if let Some(neighbor) = game.get_neighbor_pos(p, dir) {
-                        if Some(neighbor) == last_move_pos {
-                            adj_to_last = true;
-                        }
-                        if Some(neighbor) == second_last_move_pos {
-                            adj_to_second_last = true;
-                        }
-                        if ai_flow_hexes.contains(&neighbor) {
-                            adj_to_ai_flow = true;
-                        }
-                        if human_flow_hexes.contains(&neighbor) {
-                            adj_to_human_flow = true;
-                        }
-                    }
-                }
-
-                if adj_to_last {
-                    1
-                } else if adj_to_second_last {
-                    2
-                } else if adj_to_ai_flow {
-                    3
-                } else if adj_to_human_flow {
-                    4
+        // Create a vector of (move, score) tuples
+        let mut scored_moves: Vec<(Action, f64)> = moves
+            .iter()
+            .map(|m| {
+                if let Action::PlaceTile {
+                    pos,
+                    rotation,
+                    tile,
+                    ..
+                } = m
+                {
+                    let test_game = game.with_tile_placed(*tile, *pos, *rotation);
+                    // We need a mutable eval_count for the evaluator trait, but it's not used here.
+                    let mut eval_count = 0;
+                    let score = self.evaluator.evaluate(
+                        &test_game,
+                        self.ai_player,
+                        self.ai_debugging,
+                        &mut eval_count,
+                    );
+                    (m.clone(), score)
                 } else {
-                    5
+                    // This should not happen for move ordering
+                    (m.clone(), -f64::INFINITY)
                 }
-            } else {
-                // Should not happen for sorting place tile actions, but as a fallback
-                i32::MAX
-            }
-        });
+            })
+            .collect();
+
+        // Sort the moves by score in descending order
+        scored_moves.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Update the original moves slice with the sorted moves
+        for (i, (action, _)) in scored_moves.into_iter().enumerate() {
+            moves[i] = action;
+        }
     }
 
     /// Find the best move for the AI using alpha-beta search
