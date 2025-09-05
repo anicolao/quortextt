@@ -2,8 +2,7 @@ use crate::game::{Direction, *};
 use crate::game_view::GameView;
 use crate::legality::LegalityError;
 use egui::{
-    emath::Rot2, Color32, Context, CursorIcon, Key, Painter, Pos2, Rect, Sense, Shape, Stroke,
-    Vec2,
+    emath::Rot2, Color32, Context, CursorIcon, Key, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2,
 };
 
 // const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10; // Now replaced with configurable animation_slowdown
@@ -713,7 +712,8 @@ impl GameUi {
                             if is_future_move {
                                 label = label.color(Color32::DARK_GRAY);
                             }
-                            if self.animation_state.new_move_action_index == Some(*move_action_index)
+                            if self.animation_state.new_move_action_index
+                                == Some(*move_action_index)
                             {
                                 let glow = (time.sin() * 0.5 + 0.5) as f32;
                                 let r = 255;

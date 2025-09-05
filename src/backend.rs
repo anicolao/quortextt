@@ -1,5 +1,6 @@
 use crate::game::*;
 use parking_lot::RwLock;
+use rand::prelude::SliceRandom;
 use rand::{rngs::StdRng, SeedableRng};
 use std::sync::Arc;
 
@@ -30,9 +31,16 @@ pub struct InMemoryBackend {
 
 impl InMemoryBackend {
     pub fn new(settings: GameSettings) -> Self {
-        let mut game = Game::new(settings);
+        let mut game = Game::new(settings.clone());
         let mut rng =
             StdRng::seed_from_u64(chrono::Utc::now().timestamp_nanos_opt().unwrap() as u64);
+
+        // Randomize player order before drawing tiles
+        let mut player_order: Vec<Player> = (0..settings.num_players).collect();
+        player_order.shuffle(&mut rng);
+        game.apply_action(Action::RandomizePlayerOrder { player_order })
+            .unwrap();
+
         game.do_automatic_actions(&mut rng);
         Self {
             game: Arc::new(RwLock::new(game)),

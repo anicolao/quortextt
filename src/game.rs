@@ -307,6 +307,9 @@ pub struct GameSettings {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Action {
     InitializeGame(GameSettings),
+    RandomizePlayerOrder {
+        player_order: Vec<Player>,
+    },
     DrawTile {
         player: Player,
         tile: TileType,
@@ -326,9 +329,10 @@ pub enum Action {
 impl Action {
     pub fn visible(&self, game_viewer: GameViewer) -> bool {
         match self {
-            Action::InitializeGame(_) | Action::RevealTile { .. } | Action::PlaceTile { .. } => {
-                true
-            }
+            Action::InitializeGame(_)
+            | Action::RandomizePlayerOrder { .. }
+            | Action::RevealTile { .. }
+            | Action::PlaceTile { .. } => true,
             Action::DrawTile { player, .. } => match game_viewer {
                 GameViewer::Player(viewing_player) => *player == viewing_player,
                 GameViewer::Spectator => false,
@@ -345,7 +349,9 @@ impl Action {
             GameViewer::Spectator => false,
             GameViewer::Admin => true,
             GameViewer::Player(viewing_player) => match self {
-                Action::InitializeGame(_) | Action::DrawTile { .. } => false,
+                Action::InitializeGame(_)
+                | Action::RandomizePlayerOrder { .. }
+                | Action::DrawTile { .. } => false,
                 Action::PlaceTile { player, .. } | Action::RevealTile { player, .. } => {
                     *player == viewing_player
                 }
@@ -367,6 +373,8 @@ pub struct Game {
     /// to rotation 0 (top of the board), 1 is the next side clockwise,
     /// and so on around the board.
     sides: [Option<Player>; 6],
+    /// Order in which players take turns. If None, uses default order (0, 1, 2...).
+    player_order: Option<Vec<Player>>,
     remaining_tiles: [u8; 4],
     tiles_in_hand: Vec<Option<TileType>>,
     board: [[Tile; 7]; 7],
@@ -403,6 +411,7 @@ impl Game {
         Self {
             settings: settings.clone(),
             sides,
+            player_order: None,
             remaining_tiles: [16, 12, 8, 4],
             tiles_in_hand: vec![None; settings.num_players],
             board,
@@ -433,6 +442,23 @@ impl Game {
     pub fn apply_action(&mut self, action: Action) -> Result<(), String> {
         match action {
             Action::InitializeGame(_) => return Err("Game initialized twice".into()),
+            Action::RandomizePlayerOrder { ref player_order } => {
+                if self.player_order.is_some() {
+                    return Err("Player order already randomized".into());
+                }
+                if player_order.len() != self.settings.num_players {
+                    return Err("Player order length doesn't match number of players".into());
+                }
+                // Validate that all players 0..num_players are present exactly once
+                let mut sorted_order = player_order.clone();
+                sorted_order.sort();
+                let expected: Vec<Player> = (0..self.settings.num_players).collect();
+                if sorted_order != expected {
+                    return Err("Player order must contain each player exactly once".into());
+                }
+                self.player_order = Some(player_order.clone());
+                self.current_player = player_order[0];
+            }
             Action::DrawTile { player, tile } => {
                 if self.tiles_in_hand[player].is_some() {
                     return Err("Player already has a tile in hand".into());
@@ -484,7 +510,7 @@ impl Game {
                 self.tiles_in_hand[player] = None;
                 self.recompute_flows();
                 if self.outcome.is_none() {
-                    self.current_player = (self.current_player + 1) % self.settings.num_players;
+                    self.current_player = self.next_player();
                 }
             }
         }
@@ -511,8 +537,7 @@ impl Game {
     /// Perform automatic actions, such as drawing tiles for whichever players need them and revealing the tile of the current player if it hasn't been revealed,
     pub fn do_automatic_actions<R: Rng>(&mut self, rng: &mut R) {
         // Draw tiles for players with no tiles, in order from the current player.
-        for player in (self.current_player..self.settings.num_players).chain(0..self.current_player)
-        {
+        for player in self.players_in_turn_order() {
             if self.tiles_in_hand[player].is_none() && self.remaining_tiles.iter().sum::<u8>() > 0 {
                 let drawn_tile = self.draw_random_tile(rng);
                 self.apply_action(Action::DrawTile {
@@ -527,7 +552,9 @@ impl Game {
         let mut tile_is_revealed = false;
         for action in self.action_history.iter().rev() {
             match action {
-                Action::InitializeGame(_) | Action::PlaceTile { .. } => (),
+                Action::InitializeGame(_)
+                | Action::RandomizePlayerOrder { .. }
+                | Action::PlaceTile { .. } => (),
                 Action::DrawTile { player, .. } => {
                     if *player == self.current_player {
                         // Found the current player drawing a tile before we found them revealing
@@ -592,6 +619,41 @@ impl Game {
 
     pub fn current_player(&self) -> Player {
         self.current_player
+    }
+
+    /// Get the next player in the turn order
+    fn next_player(&self) -> Player {
+        if let Some(ref player_order) = self.player_order {
+            // Find current player's position in the randomized order
+            let current_index = player_order
+                .iter()
+                .position(|&p| p == self.current_player)
+                .expect("Current player not found in player order");
+            let next_index = (current_index + 1) % player_order.len();
+            player_order[next_index]
+        } else {
+            // Use default sequential order
+            (self.current_player + 1) % self.settings.num_players
+        }
+    }
+
+    /// Get players in turn order starting from the current player
+    fn players_in_turn_order(&self) -> Vec<Player> {
+        if let Some(ref player_order) = self.player_order {
+            let current_index = player_order
+                .iter()
+                .position(|&p| p == self.current_player)
+                .expect("Current player not found in player order");
+            (current_index..player_order.len())
+                .chain(0..current_index)
+                .map(|i| player_order[i])
+                .collect()
+        } else {
+            // Use default sequential order
+            (self.current_player..self.settings.num_players)
+                .chain(0..self.current_player)
+                .collect()
+        }
     }
 
     pub fn set_current_player_for_testing(&mut self, player: Player) {
