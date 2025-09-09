@@ -5,6 +5,8 @@ use egui::{
     emath::Rot2, Color32, Context, CursorIcon, Key, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2,
 };
 
+type FlowPath = Vec<(TilePos, Direction, Direction)>;
+
 // const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10; // Now replaced with configurable animation_slowdown
 const SNAP_RADIUS_DWELL: f32 = 0.8;
 const SNAP_RADIUS_MOVING: f32 = 0.3;
@@ -151,11 +153,235 @@ pub struct GameUi {
     dialog_size: Option<Vec2>,
     /// Animation slowdown factor (1.0 = normal speed, 10.0 = 10x slower)
     animation_slowdown: f32,
+    trackpad: UITrackpad,
+    last_action_count: usize,
 }
 
 #[derive(Debug, Default)]
 pub struct GameUiResponse {
     pub play_again_requested: bool,
+}
+
+#[derive(Debug, Default)]
+struct TrackpadResponse {
+    rotate: Option<Rotation>,
+    confirm_placement: bool,
+    simulated_hover_pos: Option<Pos2>,
+}
+
+struct UITrackpad {
+    drag_start_pos: Option<Pos2>,
+    drag_start_time: f64,
+    last_simulated_hover_pos: Option<Pos2>,
+}
+
+// A simplified version for the trackpad preview
+fn draw_hex_preview(
+    painter: &Painter,
+    center: Pos2,
+    radius: f32,
+    tile_type: TileType,
+    rotation: Rotation,
+) {
+    let total_rotation_rads = rotation.as_radians();
+
+    // 1. Draw background
+    let hexagon_points = GameUi::hexagon_coords(center, radius, total_rotation_rads);
+    painter.add(Shape::convex_polygon(
+        hexagon_points.clone(),
+        Color32::from_rgba_premultiplied(0, 0, 0, 255),
+        Stroke::NONE,
+    ));
+
+    // 2. Draw flows
+    let thickness = 8.0 / 35.0 * radius;
+    let base_flows = tile_type.all_flows(); // Un-rotated flows
+    let unrotated_hexagon = GameUi::hexagon_coords(center, radius, 0.0);
+
+    for (d1, d2) in base_flows {
+        let color = NEUTRAL_COLOUR;
+        let bezier_unrotated =
+            get_flow_bezier(center, &unrotated_hexagon, d1 as usize, d2 as usize);
+        let rot = Rot2::from_angle(total_rotation_rads);
+        let bezier_rotated_points = bezier_unrotated.map(|p| center + (rot * (p - center)));
+
+        painter.add(egui::epaint::CubicBezierShape {
+            points: bezier_rotated_points,
+            closed: false,
+            fill: Color32::TRANSPARENT,
+            stroke: Stroke::new(thickness, color).into(),
+        });
+    }
+
+    // 3. Draw border
+    painter.add(Shape::convex_polygon(
+        hexagon_points,
+        Color32::TRANSPARENT,
+        BORDER,
+    ));
+}
+
+impl UITrackpad {
+    fn new() -> Self {
+        Self {
+            drag_start_pos: None,
+            drag_start_time: 0.0,
+            last_simulated_hover_pos: None,
+        }
+    }
+
+    fn reset_sticky_hover(&mut self) {
+        self.last_simulated_hover_pos = None;
+    }
+
+    fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        game: &Game,
+        game_view: &GameView,
+        placement_rotation: Rotation,
+        board_center_on_screen: Pos2,
+        board_hexagon_radius: f32,
+    ) -> TrackpadResponse {
+        let mut response = TrackpadResponse::default();
+
+        let outer_rect = ui.available_rect_before_wrap();
+
+        // --- Sizing and Positioning ---
+        let confirm_button_size = Vec2::new(120.0, 40.0);
+        let confirm_button_rect = Rect::from_center_size(
+            Pos2::new(
+                outer_rect.center().x,
+                outer_rect.bottom() - confirm_button_size.y / 2.0 - 10.0,
+            ),
+            confirm_button_size,
+        );
+
+        let main_rect_bottom = confirm_button_rect.top() - 10.0;
+        let main_rect =
+            Rect::from_x_y_ranges(outer_rect.x_range(), outer_rect.top()..=main_rect_bottom);
+
+        let hex_radius = (main_rect.width() / 2.0).min(main_rect.height() / 3.0_f32.sqrt());
+        let hex_center = main_rect.center();
+        let hex_rect = Rect::from_center_size(
+            hex_center,
+            Vec2::new(hex_radius * 2.0, hex_radius * 3.0_f32.sqrt()),
+        );
+
+        // --- Hexagon Interaction ---
+        let hex_response = ui.interact(
+            hex_rect,
+            ui.id().with("hex_trackpad"),
+            Sense::click_and_drag(),
+        );
+
+        if hex_response.dragged() {
+            if let Some(pointer_pos) = hex_response.hover_pos() {
+                let relative_pos = pointer_pos - hex_center;
+                let board_radius = board_hexagon_radius * 7.0;
+                let trackpad_effective_radius = hex_radius;
+                let scale_factor = board_radius / trackpad_effective_radius;
+
+                let scaled_pos = relative_pos * scale_factor;
+                let simulated_pos = board_center_on_screen + scaled_pos;
+                response.simulated_hover_pos = Some(simulated_pos);
+                self.last_simulated_hover_pos = Some(simulated_pos);
+            }
+        } else {
+            response.simulated_hover_pos = self.last_simulated_hover_pos;
+        }
+
+        if hex_response.drag_started() {
+            self.drag_start_pos = hex_response.hover_pos();
+            self.drag_start_time = ui.input(|i| i.time);
+        }
+
+        // --- Confirm Button ---
+        if ui
+            .put(confirm_button_rect, egui::Button::new("Confirm"))
+            .clicked()
+        {
+            response.confirm_placement = true;
+            // State is now reset in GameUi::display after the action is submitted.
+        }
+
+        // --- Rotate Buttons ---
+        let button_size = Vec2::splat(35.0);
+        let hex_points = GameUi::hexagon_coords(hex_center, hex_radius, std::f32::consts::PI / 6.0);
+
+        let top_y = hex_points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
+        let top_points: Vec<Pos2> = hex_points
+            .iter()
+            .filter(|p| (p.y - top_y).abs() < 1.0)
+            .cloned()
+            .collect();
+        let top_left = top_points.iter().min_by_key(|p| p.x as i32).unwrap();
+        let top_right = top_points.iter().max_by_key(|p| p.x as i32).unwrap();
+
+        let left_button_center = *top_left;
+        let right_button_center = *top_right;
+
+        let left_button_rect = Rect::from_center_size(left_button_center, button_size);
+        let right_button_rect = Rect::from_center_size(right_button_center, button_size);
+
+        if ui.put(left_button_rect, egui::Button::new("⟲")).clicked() {
+            response.rotate = Some(Rotation(5));
+        }
+        if ui.put(right_button_rect, egui::Button::new("⟳")).clicked() {
+            response.rotate = Some(Rotation(1));
+        }
+
+        // --- Flick to Rotate ---
+        if hex_response.drag_stopped() {
+            if let Some(drag_start_pos) = self.drag_start_pos {
+                if let Some(drag_end_pos) = hex_response.hover_pos() {
+                    let drag_vec = drag_end_pos - drag_start_pos;
+                    let drag_dist = drag_vec.length();
+                    let drag_time = ui.input(|i| i.time) - self.drag_start_time;
+
+                    if drag_dist > 20.0 && drag_time < 0.5 {
+                        if drag_vec.x.abs() > drag_vec.y.abs() {
+                            if drag_vec.x > 0.0 {
+                                response.rotate = Some(Rotation(1));
+                            } else {
+                                response.rotate = Some(Rotation(5));
+                            }
+                        } else if drag_vec.y > 0.0 {
+                            response.rotate = Some(Rotation(1));
+                        } else {
+                            response.rotate = Some(Rotation(5));
+                        }
+                    }
+                }
+            }
+            self.drag_start_pos = None;
+        }
+
+        // --- Draw Hexagon and Preview ---
+        let hex_painter = ui.painter_at(hex_rect);
+        let viewing_player = match game_view.viewer() {
+            GameViewer::Player(player) => Some(player),
+            GameViewer::Admin => Some(game.current_player()),
+            GameViewer::Spectator => None,
+        };
+        if let Some(player) = viewing_player {
+            if let Some(tile_type) = game.tile_in_hand(player) {
+                draw_hex_preview(
+                    &hex_painter,
+                    hex_center,
+                    hex_radius * 0.9,
+                    tile_type,
+                    placement_rotation,
+                );
+            } else {
+                let hexagon_points =
+                    GameUi::hexagon_coords(hex_center, hex_radius, std::f32::consts::PI / 6.0);
+                hex_painter.add(Shape::convex_polygon(hexagon_points, FILL_COLOUR, BORDER));
+            }
+        }
+
+        response
+    }
 }
 
 struct AnimationState {
@@ -225,6 +451,12 @@ impl AnimationState {
     }
 }
 
+impl Default for GameUi {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GameUi {
     pub fn new() -> Self {
         Self::new_with_slowdown(1.0)
@@ -239,12 +471,32 @@ impl GameUi {
             user_has_toggled_drawer: false,
             dialog_size: None,
             animation_slowdown,
+            trackpad: UITrackpad::new(),
+            last_action_count: 0,
         }
     }
 
     /// Get the animation speed multiplier as a u64 for frame calculations
     fn animation_speed_multiplier(&self) -> u64 {
         (self.animation_slowdown.max(1.0) as u64).max(1)
+    }
+
+    /// Apply a rotation to the piece in hand, triggering an animation.
+    fn handle_rotation(&mut self, delta: Rotation, time: f64) {
+        if self.animation_state.rotation_state.is_none()
+            && (time - self.animation_state.last_rotate_time) > 0.1
+        {
+            let start_rotation = self.placement_rotation;
+            let end_rotation = self.placement_rotation + delta;
+            self.animation_state.rotation_state = Some(RotationAnimation {
+                start_frame: self.animation_state.frame_count,
+                end_frame: self.animation_state.frame_count + 6 * self.animation_speed_multiplier(),
+                start_rotation,
+                end_rotation,
+            });
+            self.placement_rotation = end_rotation; // Update logical rotation immediately
+            self.animation_state.last_rotate_time = time;
+        }
     }
 
     fn get_most_recent_tile_position(game: &Game) -> Option<TilePos> {
@@ -343,7 +595,7 @@ impl GameUi {
         placed_tile: &PlacedTile,
         is_opponent_move: bool,
     ) {
-        let mut candidate_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> = vec![];
+        let mut candidate_paths: Vec<(FlowPath, Player)> = vec![];
 
         for (d1, d2) in placed_tile.type_().all_flows() {
             let e1 = d1.rotate(placed_tile.rotation());
@@ -398,15 +650,15 @@ impl GameUi {
         }
 
         // Filter out subpaths
-        let mut final_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> = vec![];
+        let mut final_paths: Vec<(FlowPath, Player)> = vec![];
         for (path, player) in candidate_paths.iter() {
             let mut is_subpath = false;
             for (other_path, _) in candidate_paths.iter() {
-                if path.len() < other_path.len() {
-                    if other_path.windows(path.len()).any(|w| w == path) {
-                        is_subpath = true;
-                        break;
-                    }
+                if path.len() < other_path.len()
+                    && other_path.windows(path.len()).any(|w| w == path)
+                {
+                    is_subpath = true;
+                    break;
                 }
             }
             if !is_subpath {
@@ -771,25 +1023,87 @@ impl GameUi {
 
         let mut ui_response = GameUiResponse::default();
 
+        // Figure out what the user is interacting with. It's necessary to do this early so that we
+        // can floodfill hypthetical paths that might be drawn before we get to the actual tile the
+        // user is hovering.
+        if game_view.game().is_none() {
+            // TODO: Draw something to say that the backend is not connected yet
+            return ui_response;
+        }
+
+        let mut game = game_view.game().as_ref().unwrap().clone();
+
+        let current_action_count = game.action_history_vec().len();
+        if current_action_count > self.last_action_count {
+            self.trackpad.reset_sticky_hover();
+        }
+        self.last_action_count = current_action_count;
+
+        // --- Layout Calculation ---
+        let aspect_ratio = window_rect.width() / window_rect.height();
+        let is_portrait = aspect_ratio < 0.8;
+        let is_landscape = aspect_ratio > 1.2;
+
+        let trackpad_panel_width = if is_landscape {
+            window_rect.height()
+        } else {
+            0.0
+        };
+        let trackpad_panel_height = if is_portrait {
+            window_rect.width()
+        } else {
+            0.0
+        };
+
+        let main_board_rect = Rect::from_min_size(
+            window_rect.min,
+            Vec2::new(
+                window_rect.width() - trackpad_panel_width,
+                window_rect.height() - trackpad_panel_height,
+            ),
+        );
+
+        let hexagon_radius = DEFAULT_HEXAGON_RADIUS
+            .min(main_board_rect.width() / 17.0)
+            .min(main_board_rect.height() / 15.0);
+        let board_center_on_screen = main_board_rect.center();
+
+        // --- Trackpad UI ---
+        let mut trackpad_response = TrackpadResponse::default();
+        if is_portrait {
+            egui::TopBottomPanel::bottom("trackpad_panel")
+                .exact_height(trackpad_panel_height)
+                .show(ctx, |ui| {
+                    trackpad_response = self.trackpad.show(
+                        ui,
+                        &game,
+                        game_view,
+                        self.placement_rotation,
+                        board_center_on_screen,
+                        hexagon_radius,
+                    );
+                });
+        } else if is_landscape {
+            egui::SidePanel::right("trackpad_panel")
+                .exact_width(trackpad_panel_width)
+                .show(ctx, |ui| {
+                    trackpad_response = self.trackpad.show(
+                        ui,
+                        &game,
+                        game_view,
+                        self.placement_rotation,
+                        board_center_on_screen,
+                        hexagon_radius,
+                    );
+                });
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             self.animation_state.frame_count += 1;
-            let bounding_box = ui.available_size();
-            let (window, response) =
-                ui.allocate_exact_size(bounding_box, Sense::union(Sense::click(), Sense::hover()));
-
-            let hexagon_radius = DEFAULT_HEXAGON_RADIUS
-                .min(window.width() / 17.0)
-                .min(window.height() / 15.0);
-
-            // Figure out what the user is interacting with. It's necessary to do this early so that we
-            // can floodfill hypthetical paths that might be drawn before we get to the actual tile the
-            // user is hovering.
-            if game_view.game().is_none() {
-                // TODO: Draw something to say that the backend is not connected yet
-                return response;
-            }
-
-            let mut game = game_view.game().as_ref().unwrap().clone();
+            let (window, response) = ui.allocate_exact_size(
+                ui.available_size(),
+                Sense::union(Sense::click(), Sense::hover()),
+            );
 
             let is_history_mode = game_view.history_cursor().is_some();
             if is_history_mode
@@ -829,7 +1143,11 @@ impl GameUi {
                 }
             }
             let center = game.center_pos();
-            let hovered_tile = match response.hover_pos() {
+            let final_hover_pos = trackpad_response
+                .simulated_hover_pos
+                .or(response.hover_pos());
+
+            let hovered_tile = match final_hover_pos {
                 None => None,
                 Some(hover_pos) => {
                     let mut hovered_tile = None;
@@ -840,12 +1158,6 @@ impl GameUi {
                             let rotated_pos = center + (tile_pos - center).rotate(self.rotation);
                             let pos =
                                 Self::hex_position(rotated_pos, window.center(), hexagon_radius);
-                            // if we're within range of a tile, and the tile is empty, then we are
-                            // hovering it
-                            match game.tile(tile_pos) {
-                                Tile::NotOnBoard | Tile::Placed(_) => continue,
-                                Tile::Empty => {}
-                            }
                             if hover_pos.distance(pos) < best_radius {
                                 hovered_tile = Some(tile_pos);
                                 best_radius = hover_pos.distance(pos);
@@ -855,6 +1167,7 @@ impl GameUi {
                     hovered_tile
                 }
             };
+
             let (hypothetical_game, legality_error) = match hovered_tile {
                 None => {
                     // Check if we have a fade-out animation that needs a hypothetical game
@@ -868,21 +1181,21 @@ impl GameUi {
                                 GameViewer::Admin => Some(game.current_player()),
                                 GameViewer::Spectator => None,
                             };
-                            match player_to_simulate {
-                                None => (None, None),
-                                Some(player) => match game.tile_in_hand(player) {
-                                    None => (None, None),
-                                    Some(tile) => {
-                                        let hypo_game = game.with_tile_placed(
-                                            tile,
-                                            hover_anim.tile_pos,
-                                            self.placement_rotation,
-                                        );
-                                        let legality_error =
-                                            crate::legality::is_move_legal(&hypo_game).err();
-                                        (Some(hypo_game), legality_error)
-                                    }
-                                },
+                            if let Some(player) = player_to_simulate {
+                                if let Some(tile) = game.tile_in_hand(player) {
+                                    let hypo_game = game.with_tile_placed(
+                                        tile,
+                                        hover_anim.tile_pos,
+                                        self.placement_rotation,
+                                    );
+                                    let legality_error =
+                                        crate::legality::is_move_legal(&hypo_game).err();
+                                    (Some(hypo_game), legality_error)
+                                } else {
+                                    (None, None)
+                                }
+                            } else {
+                                (None, None)
                             }
                         } else {
                             (None, None)
@@ -891,72 +1204,62 @@ impl GameUi {
                         (None, None)
                     }
                 }
-                Some(hovered_tile) => match *game.tile(hovered_tile) {
-                    Tile::Empty => {
-                        ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
-                        let player_to_simulate = match game_view.viewer() {
-                            GameViewer::Player(player) => Some(player),
-                            GameViewer::Admin => Some(game.current_player()),
-                            GameViewer::Spectator => None,
-                        };
-                        match player_to_simulate {
-                            None => (None, None),
-                            Some(player) => match game.tile_in_hand(player) {
-                                None => (None, None),
-                                Some(tile) => {
-                                    if response.clicked() {
-                                        // TODO: Do something with the local legality check
-                                        let _ = game_view.submit_action(Action::PlaceTile {
-                                            player,
-                                            tile,
-                                            pos: hovered_tile,
-                                            rotation: self.placement_rotation,
-                                        });
-                                        (None, None)
-                                    } else {
-                                        let hypo_game = game.with_tile_placed(
-                                            tile,
-                                            hovered_tile,
-                                            self.placement_rotation,
-                                        );
-                                        let legality_error =
-                                            crate::legality::is_move_legal(&hypo_game).err();
-                                        (Some(hypo_game), legality_error)
-                                    }
-                                }
-                            },
+                Some(hovered_tile) => {
+                    ctx.output_mut(|o| o.cursor_icon = CursorIcon::PointingHand);
+                    let player_to_simulate = match game_view.viewer() {
+                        GameViewer::Player(player) => Some(player),
+                        GameViewer::Admin => Some(game.current_player()),
+                        GameViewer::Spectator => None,
+                    };
+                    if let Some(player) = player_to_simulate {
+                        if let Some(tile) = game.tile_in_hand(player) {
+                            if response.clicked() || trackpad_response.confirm_placement {
+                                let _ = game_view.submit_action(Action::PlaceTile {
+                                    player,
+                                    tile,
+                                    pos: hovered_tile,
+                                    rotation: self.placement_rotation,
+                                });
+                                // The sticky hover state will be reset on the next frame
+                                // if the action was successful, by checking action history count.
+                                (None, None)
+                            } else if *game.tile(hovered_tile) != Tile::Empty {
+                                // Manually create a game state that shows the hover, but with an error
+                                let hypo_game = game.with_tile_placed(
+                                    tile,
+                                    hovered_tile,
+                                    self.placement_rotation,
+                                );
+                                (Some(hypo_game), Some(LegalityError::TileOccupied))
+                            } else {
+                                let hypo_game = game.with_tile_placed(
+                                    tile,
+                                    hovered_tile,
+                                    self.placement_rotation,
+                                );
+                                let legality_error =
+                                    crate::legality::is_move_legal(&hypo_game).err();
+                                (Some(hypo_game), legality_error)
+                            }
+                        } else {
+                            (None, None)
                         }
+                    } else {
+                        (None, None)
                     }
-                    Tile::Placed(_) | Tile::NotOnBoard => (None, None),
-                },
-            };
-            let rotate_time = ctx.input(|i| i.time);
-            // Don't let the user rotate the tile too quickly
-            if self.animation_state.rotation_state.is_none()
-                && (rotate_time - self.animation_state.last_rotate_time) > 0.1
-            {
-                let scroll_delta = ui.input(|i| i.raw_scroll_delta);
-                let rotation_delta = if scroll_delta.y > 0.0 {
-                    Some(Rotation(1))
-                } else if scroll_delta.y < 0.0 {
-                    Some(Rotation(5)) // equivalent to -1
-                } else {
-                    None
-                };
-
-                if let Some(delta) = rotation_delta {
-                    let start_rotation = self.placement_rotation;
-                    let end_rotation = self.placement_rotation + delta;
-                    self.animation_state.rotation_state = Some(RotationAnimation {
-                        start_frame: self.animation_state.frame_count,
-                        end_frame: self.animation_state.frame_count
-                            + 6 * self.animation_speed_multiplier(),
-                        start_rotation,
-                        end_rotation,
-                    });
-                    self.placement_rotation = end_rotation; // Update logical rotation immediately
-                    self.animation_state.last_rotate_time = rotate_time;
                 }
+            };
+
+            let rotate_time = ctx.input(|i| i.time);
+            let scroll_delta = ui.input(|i| i.raw_scroll_delta);
+            if scroll_delta.y > 0.0 {
+                self.handle_rotation(Rotation(1), rotate_time);
+            } else if scroll_delta.y < 0.0 {
+                self.handle_rotation(Rotation(5), rotate_time);
+            }
+
+            if let Some(delta) = trackpad_response.rotate {
+                self.handle_rotation(delta, rotate_time);
             }
 
             if ui.input(|i| i.key_pressed(Key::ArrowLeft)) {
@@ -1005,9 +1308,9 @@ impl GameUi {
             }
 
             let mut tile_draw_pos: Option<Pos2> = None;
+            let pointer_pos = final_hover_pos.filter(|p| window.contains(*p));
 
             if hypothetical_game.is_some() {
-                let pointer_pos = response.hover_pos();
                 if let Some(pointer_pos) = pointer_pos {
                     // Normal case: pointer is hovering
                     tile_draw_pos = Some(pointer_pos); // Default to pointer
@@ -1163,7 +1466,7 @@ impl GameUi {
                             // `tile_draw_pos` is already set to this at the beginning.
                         }
                     }
-                } // End of "if let Some(pointer_pos) = pointer_pos"
+                }
             }
 
             // Draw the board
@@ -1176,6 +1479,7 @@ impl GameUi {
                 BORDER,
                 std::f32::consts::PI / 6.0,
             );
+
             for side in (0..6).map(Rotation) {
                 let real_side = side + self.rotation.reversed();
                 if let Some(player) = game.player_on_side(real_side) {
@@ -1192,8 +1496,8 @@ impl GameUi {
                                 let x_stroke = Stroke::new(5.0, Color32::BLACK);
                                 painter.line_segment(
                                     [
-                                        pos - Vec2::new(hexagon_radius / 2.0, hexagon_radius / 2.0),
-                                        pos + Vec2::new(hexagon_radius / 2.0, hexagon_radius / 2.0),
+                                        pos - Vec2::splat(hexagon_radius / 2.0),
+                                        pos + Vec2::splat(hexagon_radius / 2.0),
                                     ],
                                     x_stroke,
                                 );
@@ -1512,6 +1816,7 @@ impl GameUi {
             if animations_running || needs_repaint_for_dwell {
                 ctx.request_repaint();
             }
+
             Self::draw_empty_hex(
                 window.center(),
                 hexagon_radius * 7.5,
@@ -1647,7 +1952,6 @@ impl GameUi {
                                 }
                             };
                             ui.heading(text);
-
                             ui.add_space(10.0);
 
                             // Display current scores

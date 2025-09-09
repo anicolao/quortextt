@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LegalityError {
     BlockedPlayer(Player),
+    TileOccupied,
 }
 
 // A connection is a pair of directions (ports) on a hex that must be connected.
@@ -68,6 +69,7 @@ fn has_distinct_potential_paths(game: &Game) -> Result<(), LegalityError> {
             // Otherwise, it's legal.
             check_paths_for_ordering(&reordered_players, game)
         }
+        Err(e) => Err(e), // Propagate other errors
     }
 }
 
