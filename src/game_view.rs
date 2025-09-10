@@ -18,7 +18,7 @@ impl GameView {
             locally_applied_actions: false,
             game: None,
         };
-        s.poll_backend(true);
+        s.poll_backend(false);
         s
     }
 
