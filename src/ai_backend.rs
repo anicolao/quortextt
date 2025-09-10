@@ -27,7 +27,13 @@ pub struct EasyAiBackend {
 
 /// Trait for different AI evaluation strategies
 pub trait EvaluationStrategy: Send + Sync {
-    fn evaluate(&self, game: &Game, player: Player, ai_debugging: bool, eval_count: &mut u64) -> f64;
+    fn evaluate(
+        &self,
+        game: &Game,
+        player: Player,
+        ai_debugging: bool,
+        eval_count: &mut u64,
+    ) -> f64;
     fn clone_box(&self) -> Box<dyn EvaluationStrategy>;
 }
 
@@ -109,8 +115,9 @@ impl PathLengthEvaluator {
 
             // Check for goal condition
             if game.is_on_board_edge(pos, goal_side) {
-                 match *game.tile(pos) {
-                    Tile::Empty => { // We are on an empty hex on the goal line
+                match *game.tile(pos) {
+                    Tile::Empty => {
+                        // We are on an empty hex on the goal line
                         for (_, goal_exit_dir) in goal_edges.iter().filter(|(p, _)| *p == pos) {
                             let mut new_demand = (entry_dir, *goal_exit_dir);
                             if new_demand.0 > new_demand.1 {
@@ -121,7 +128,8 @@ impl PathLengthEvaluator {
                             }
                         }
                     }
-                    Tile::Placed(tile) => { // We are on a placed tile on the goal line
+                    Tile::Placed(tile) => {
+                        // We are on a placed tile on the goal line
                         let exit_dir = tile.exit_from_entrance(entry_dir);
                         if goal_edges.contains(&(pos, exit_dir)) {
                             return Some(cost); // This path already reaches the goal
@@ -195,12 +203,22 @@ impl EvaluationStrategy for ChoiceEvaluator {
         Box::new(self.clone())
     }
 
-    fn evaluate(&self, game: &Game, player: Player, _ai_debugging: bool, eval_count: &mut u64) -> f64 {
+    fn evaluate(
+        &self,
+        game: &Game,
+        player: Player,
+        _ai_debugging: bool,
+        eval_count: &mut u64,
+    ) -> f64 {
         *eval_count += 1;
         if let Some(outcome) = game.outcome() {
             return match outcome {
                 GameOutcome::Victory(winners) if winners.contains(&player) => {
-                    if winners.len() == 1 { 1000.0 } else { 500.0 }
+                    if winners.len() == 1 {
+                        1000.0
+                    } else {
+                        500.0
+                    }
                 }
                 GameOutcome::Victory(_) => -1000.0,
             };
@@ -238,7 +256,13 @@ impl EvaluationStrategy for PathLengthEvaluator {
         Box::new(self.clone())
     }
 
-    fn evaluate(&self, game: &Game, player: Player, _ai_debugging: bool, eval_count: &mut u64) -> f64 {
+    fn evaluate(
+        &self,
+        game: &Game,
+        player: Player,
+        _ai_debugging: bool,
+        eval_count: &mut u64,
+    ) -> f64 {
         *eval_count += 1;
         if let Some(outcome) = game.outcome() {
             return match outcome {
@@ -481,14 +505,10 @@ impl EasyAiBackend {
                     temp_game.recompute_flows();
                     if let Some(outcome) = temp_game.outcome() {
                         match outcome {
-                            GameOutcome::Victory(winners)
-                                if winners.contains(&self.ai_player) =>
-                            {
+                            GameOutcome::Victory(winners) if winners.contains(&self.ai_player) => {
                                 winning_moves.push(action.clone());
                             }
-                            GameOutcome::Victory(winners)
-                                if !winners.contains(&self.ai_player) =>
-                            {
+                            GameOutcome::Victory(winners) if !winners.contains(&self.ai_player) => {
                                 losing_moves.push(action.clone());
                             }
                             _ => {}
@@ -733,7 +753,13 @@ impl MediumAiBackend {
                     return OrderedFloat(-f64::INFINITY);
                 }
             }
-            if let Action::PlaceTile { pos, rotation, tile, .. } = m {
+            if let Action::PlaceTile {
+                pos,
+                rotation,
+                tile,
+                ..
+            } = m
+            {
                 let test_game = game.with_tile_placed(*tile, *pos, *rotation);
                 let mut eval_count = 0;
                 // Negate the score because sort_by is ascending.

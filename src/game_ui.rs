@@ -660,6 +660,7 @@ impl GameUi {
         &mut self,
         ctx: &Context,
         game_view: &mut GameView,
+        return_to_lobby: Option<&mut bool>,
         scores: &[usize],
     ) -> GameUiResponse {
         let window_rect = ctx.available_rect();
@@ -668,10 +669,17 @@ impl GameUi {
         }
 
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            if ui.button("☰").clicked() {
-                self.moves_drawer_open = !self.moves_drawer_open;
-                self.user_has_toggled_drawer = true;
-            }
+            ui.horizontal(|ui| {
+                if ui.button("☰").clicked() {
+                    self.moves_drawer_open = !self.moves_drawer_open;
+                    self.user_has_toggled_drawer = true;
+                }
+                if let Some(return_to_lobby) = return_to_lobby {
+                    if ui.button("Back to lobby").clicked() {
+                        *return_to_lobby = true;
+                    }
+                }
+            });
         });
 
         egui::SidePanel::left("moves_panel").show_animated(ctx, self.moves_drawer_open, |ui| {
