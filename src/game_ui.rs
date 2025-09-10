@@ -1045,12 +1045,20 @@ impl GameUi {
         let is_landscape = aspect_ratio > 1.2;
 
         let trackpad_panel_width = if is_landscape {
-            window_rect.height()
+            if window_rect.height() * 2.0 > window_rect.width() {
+                0.0
+            } else {
+                window_rect.height()
+            }
         } else {
             0.0
         };
         let trackpad_panel_height = if is_portrait {
-            window_rect.width()
+            if window_rect.width() * 2.0 > window_rect.height() {
+                0.0
+            } else {
+                window_rect.width()
+            }
         } else {
             0.0
         };
@@ -1070,7 +1078,7 @@ impl GameUi {
 
         // --- Trackpad UI ---
         let mut trackpad_response = TrackpadResponse::default();
-        if is_portrait {
+        if is_portrait && trackpad_panel_height > 0.0 {
             egui::TopBottomPanel::bottom("trackpad_panel")
                 .exact_height(trackpad_panel_height)
                 .show(ctx, |ui| {
@@ -1083,7 +1091,7 @@ impl GameUi {
                         hexagon_radius,
                     );
                 });
-        } else if is_landscape {
+        } else if is_landscape && trackpad_panel_width > 0.0 {
             egui::SidePanel::right("trackpad_panel")
                 .exact_width(trackpad_panel_width)
                 .show(ctx, |ui| {
@@ -1224,13 +1232,7 @@ impl GameUi {
                                 // if the action was successful, by checking action history count.
                                 (None, None)
                             } else if *game.tile(hovered_tile) != Tile::Empty {
-                                // Manually create a game state that shows the hover, but with an error
-                                let hypo_game = game.with_tile_placed(
-                                    tile,
-                                    hovered_tile,
-                                    self.placement_rotation,
-                                );
-                                (Some(hypo_game), Some(LegalityError::TileOccupied))
+                                (None, Some(LegalityError::TileOccupied))
                             } else {
                                 let hypo_game = game.with_tile_placed(
                                     tile,
@@ -1310,7 +1312,10 @@ impl GameUi {
             let mut tile_draw_pos: Option<Pos2> = None;
             let pointer_pos = final_hover_pos.filter(|p| window.contains(*p));
 
-            if hypothetical_game.is_some() {
+            if hypothetical_game.is_some()
+                || (legality_error.is_some()
+                    && LegalityError::TileOccupied == legality_error.expect("checked"))
+            {
                 if let Some(pointer_pos) = pointer_pos {
                     // Normal case: pointer is hovering
                     tile_draw_pos = Some(pointer_pos); // Default to pointer
@@ -1335,135 +1340,139 @@ impl GameUi {
                 }
 
                 // Only do snapping logic if we have an actual pointer position
-                if let Some(pointer_pos) = pointer_pos {
-                    // 1. Determine the target hex to snap to, if any.
-                    let mut target_snap_tile: Option<TilePos> = None;
-                    if let Some(h_tile) = hovered_tile {
-                        let hex_center = Self::hex_position(
-                            center + (h_tile - center).rotate(self.rotation),
-                            window.center(),
-                            hexagon_radius,
-                        );
-                        let dist = pointer_pos.distance(hex_center);
-                        let is_moving = self.animation_state.pointer_dwell_frames < 3;
-                        let snap_radius = if is_moving {
-                            SNAP_RADIUS_MOVING
-                        } else {
-                            SNAP_RADIUS_DWELL
-                        };
-
-                        if dist < hexagon_radius * snap_radius {
-                            target_snap_tile = Some(h_tile);
-                        } else if self.animation_state.snapped_to == Some(h_tile)
-                            && dist < hexagon_radius * SNAP_RADIUS_DWELL
-                        {
-                            // Hysteresis: we are snapped to this tile, and we are still within the larger radius, so stay snapped.
-                            target_snap_tile = Some(h_tile);
-                        }
-                    }
-
-                    let current_snap_tile = self.animation_state.snapped_to;
-
-                    // 2. Handle state transitions if not currently animating.
-                    if self.animation_state.snap_animation.is_none()
-                        && current_snap_tile != target_snap_tile
-                    {
-                        if let Some(start_tile) = current_snap_tile {
-                            // MUST SNAP OUT
-                            let start_pos = Self::hex_position(
-                                center + (start_tile - center).rotate(self.rotation),
+                if legality_error.is_none() {
+                    if let Some(pointer_pos) = pointer_pos {
+                        // 1. Determine the target hex to snap to, if any.
+                        let mut target_snap_tile: Option<TilePos> = None;
+                        if let Some(h_tile) = hovered_tile {
+                            let hex_center = Self::hex_position(
+                                center + (h_tile - center).rotate(self.rotation),
                                 window.center(),
                                 hexagon_radius,
                             );
-                            self.animation_state.snap_animation = Some(SnapAnimation {
-                                start_frame: now,
-                                end_frame: now + 10 * self.animation_speed_multiplier(),
-                                start_pos,
-                                end_pos: pointer_pos,
-                                is_snap_in: false,
-                            });
-                            self.animation_state.snapped_to = None;
-                            // cancel flow animation only for user animations, preserve opponent animations
-                            self.clear_user_animations();
-                        } else if let Some(end_tile) = target_snap_tile {
-                            // MUST SNAP IN
-                            let end_pos = Self::hex_position(
-                                center + (end_tile - center).rotate(self.rotation),
-                                window.center(),
-                                hexagon_radius,
-                            );
-                            self.animation_state.snap_animation = Some(SnapAnimation {
-                                start_frame: now,
-                                end_frame: now + 10 * self.animation_speed_multiplier(),
-                                start_pos: pointer_pos,
-                                end_pos,
-                                is_snap_in: true,
-                            });
-                            self.animation_state.snapped_to = Some(end_tile);
-                        }
-                    }
+                            let dist = pointer_pos.distance(hex_center);
+                            let is_moving = self.animation_state.pointer_dwell_frames < 3;
+                            let snap_radius = if is_moving {
+                                SNAP_RADIUS_MOVING
+                            } else {
+                                SNAP_RADIUS_DWELL
+                            };
 
-                    // 3. Update any ongoing animation and determine draw position.
-                    if let Some(anim) = &mut self.animation_state.snap_animation {
-                        if now >= anim.end_frame {
-                            if anim.is_snap_in {
-                                self.animation_state.flow_animation_dirty = true;
+                            if dist < hexagon_radius * snap_radius {
+                                target_snap_tile = Some(h_tile);
+                            } else if self.animation_state.snapped_to == Some(h_tile)
+                                && dist < hexagon_radius * SNAP_RADIUS_DWELL
+                            {
+                                // Hysteresis: we are snapped to this tile, and we are still within the larger radius, so stay snapped.
+                                target_snap_tile = Some(h_tile);
                             }
-                            self.animation_state.snap_animation = None;
-                        } else {
-                            // Snap cancellation
-                            if !anim.is_snap_in {
-                                if let Some(h_tile) = target_snap_tile {
-                                    if self.animation_state.snapped_to.is_none() {
-                                        let hex_center = Self::hex_position(
-                                            center + (h_tile - center).rotate(self.rotation),
-                                            window.center(),
-                                            hexagon_radius,
-                                        );
-                                        let progress = (now - anim.start_frame) as f32
-                                            / (anim.end_frame - anim.start_frame) as f32;
-                                        let eased_progress = progress * progress;
-                                        let current_pos =
-                                            anim.start_pos.lerp(anim.end_pos, eased_progress);
+                        }
 
-                                        // Cancel snap-out and start snap-in
-                                        self.animation_state.snap_animation = Some(SnapAnimation {
-                                            start_frame: now,
-                                            end_frame: now + 10 * self.animation_speed_multiplier(),
-                                            start_pos: current_pos,
-                                            end_pos: hex_center,
-                                            is_snap_in: true,
-                                        });
-                                        self.animation_state.snapped_to = Some(h_tile);
+                        let current_snap_tile = self.animation_state.snapped_to;
+
+                        // 2. Handle state transitions if not currently animating.
+                        if self.animation_state.snap_animation.is_none()
+                            && current_snap_tile != target_snap_tile
+                        {
+                            if let Some(start_tile) = current_snap_tile {
+                                // MUST SNAP OUT
+                                let start_pos = Self::hex_position(
+                                    center + (start_tile - center).rotate(self.rotation),
+                                    window.center(),
+                                    hexagon_radius,
+                                );
+                                self.animation_state.snap_animation = Some(SnapAnimation {
+                                    start_frame: now,
+                                    end_frame: now + 10 * self.animation_speed_multiplier(),
+                                    start_pos,
+                                    end_pos: pointer_pos,
+                                    is_snap_in: false,
+                                });
+                                self.animation_state.snapped_to = None;
+                                // cancel flow animation only for user animations, preserve opponent animations
+                                self.clear_user_animations();
+                            } else if let Some(end_tile) = target_snap_tile {
+                                // MUST SNAP IN
+                                let end_pos = Self::hex_position(
+                                    center + (end_tile - center).rotate(self.rotation),
+                                    window.center(),
+                                    hexagon_radius,
+                                );
+                                self.animation_state.snap_animation = Some(SnapAnimation {
+                                    start_frame: now,
+                                    end_frame: now + 10 * self.animation_speed_multiplier(),
+                                    start_pos: pointer_pos,
+                                    end_pos,
+                                    is_snap_in: true,
+                                });
+                                self.animation_state.snapped_to = Some(end_tile);
+                            }
+                        }
+
+                        // 3. Update any ongoing animation and determine draw position.
+                        if let Some(anim) = &mut self.animation_state.snap_animation {
+                            if now >= anim.end_frame {
+                                if anim.is_snap_in {
+                                    self.animation_state.flow_animation_dirty = true;
+                                }
+                                self.animation_state.snap_animation = None;
+                            } else {
+                                // Snap cancellation
+                                if !anim.is_snap_in {
+                                    if let Some(h_tile) = target_snap_tile {
+                                        if self.animation_state.snapped_to.is_none() {
+                                            let hex_center = Self::hex_position(
+                                                center + (h_tile - center).rotate(self.rotation),
+                                                window.center(),
+                                                hexagon_radius,
+                                            );
+                                            let progress = (now - anim.start_frame) as f32
+                                                / (anim.end_frame - anim.start_frame) as f32;
+                                            let eased_progress = progress * progress;
+                                            let current_pos =
+                                                anim.start_pos.lerp(anim.end_pos, eased_progress);
+
+                                            // Cancel snap-out and start snap-in
+                                            self.animation_state.snap_animation =
+                                                Some(SnapAnimation {
+                                                    start_frame: now,
+                                                    end_frame: now
+                                                        + 10 * self.animation_speed_multiplier(),
+                                                    start_pos: current_pos,
+                                                    end_pos: hex_center,
+                                                    is_snap_in: true,
+                                                });
+                                            self.animation_state.snapped_to = Some(h_tile);
+                                        }
                                     }
                                 }
-                            }
 
-                            // Re-borrow anim as it might have been replaced
-                            if let Some(anim) = &mut self.animation_state.snap_animation {
-                                if !anim.is_snap_in {
-                                    anim.end_pos = pointer_pos; // Snap-out follows pointer
+                                // Re-borrow anim as it might have been replaced
+                                if let Some(anim) = &mut self.animation_state.snap_animation {
+                                    if !anim.is_snap_in {
+                                        anim.end_pos = pointer_pos; // Snap-out follows pointer
+                                    }
+                                    let progress = (now - anim.start_frame) as f32
+                                        / (anim.end_frame - anim.start_frame) as f32;
+                                    let eased_progress = progress * progress;
+                                    tile_draw_pos =
+                                        Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
                                 }
-                                let progress = (now - anim.start_frame) as f32
-                                    / (anim.end_frame - anim.start_frame) as f32;
-                                let eased_progress = progress * progress;
-                                tile_draw_pos =
-                                    Some(anim.start_pos.lerp(anim.end_pos, eased_progress));
                             }
                         }
-                    }
 
-                    // 4. Determine final draw position if not animating.
-                    if self.animation_state.snap_animation.is_none() {
-                        if let Some(snapped_tile) = self.animation_state.snapped_to {
-                            tile_draw_pos = Some(Self::hex_position(
-                                center + (snapped_tile - center).rotate(self.rotation),
-                                window.center(),
-                                hexagon_radius,
-                            ));
-                        } else {
-                            // Not snapped, not animating, so follow pointer.
-                            // `tile_draw_pos` is already set to this at the beginning.
+                        // 4. Determine final draw position if not animating.
+                        if self.animation_state.snap_animation.is_none() {
+                            if let Some(snapped_tile) = self.animation_state.snapped_to {
+                                tile_draw_pos = Some(Self::hex_position(
+                                    center + (snapped_tile - center).rotate(self.rotation),
+                                    window.center(),
+                                    hexagon_radius,
+                                ));
+                            } else {
+                                // Not snapped, not animating, so follow pointer.
+                                // `tile_draw_pos` is already set to this at the beginning.
+                            }
                         }
                     }
                 }
@@ -1566,7 +1575,7 @@ impl GameUi {
                             );
                         }
                         Tile::Placed(tile) => {
-                            if Some(tile_pos) == hovered_tile {
+                            if Some(tile_pos) == hovered_tile && !legality_error.is_some() {
                                 // This is the hypothetical tile, which we will draw separately.
                                 // We still draw the empty hex underneath.
                                 Self::draw_empty_hex(
@@ -1600,7 +1609,6 @@ impl GameUi {
                     }
                 }
             }
-
             // Draw the hypothetical tile separately so it can be rendered on top of the board and at an arbitrary position.
             if let Some(pos) = tile_draw_pos {
                 let player = match game_view.viewer() {
@@ -1625,6 +1633,7 @@ impl GameUi {
                         // To make the tile opaque, we pass a clone of the tile as the "prior" tile.
                         let prior_tile_for_opacity = Tile::Placed(tile);
                         let border = if legality_error.is_some() {
+                            self.clear_user_animations();
                             ILLEGAL_BORDER
                         } else {
                             HIGHLIGHT_BORDER
