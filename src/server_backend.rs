@@ -9,16 +9,21 @@ use std::sync::{Arc, Weak};
 mod server_connection {
     use crate::server_protocol::*;
     use parking_lot::RwLock;
+    use std::collections::VecDeque;
     use wasm_sockets::{self, ConnectionStatus, PollingClient};
 
     pub struct ServerConnection {
+        pending_sends: RwLock<VecDeque<ClientToServerMessage>>,
         polling_client: RwLock<PollingClient>,
     }
 
     impl ServerConnection {
         pub fn new(addr: &str) -> Self {
             let polling_client = RwLock::new(PollingClient::new(addr).unwrap());
-            Self { polling_client }
+            Self {
+                pending_sends: RwLock::new(VecDeque::new()),
+                polling_client,
+            }
         }
 
         pub fn receive(&self) -> Vec<ServerToClientMessage> {
@@ -37,12 +42,29 @@ mod server_connection {
                 .collect()
         }
 
+        fn send_internal(&self, message: ClientToServerMessage) {
+            self.polling_client
+                .read()
+                .send_string(&serde_json::to_string(&message).unwrap())
+                .unwrap();
+        }
+
+        pub fn send_pending(&self) {
+            if self.polling_client.read().status() == ConnectionStatus::Connected
+                && !self.pending_sends.read().is_empty()
+            {
+                for message in self.pending_sends.write().drain(..) {
+                    self.send_internal(message);
+                }
+            }
+        }
+
         pub fn send(&self, message: ClientToServerMessage) {
             if self.polling_client.read().status() == ConnectionStatus::Connected {
-                self.polling_client
-                    .read()
-                    .send_string(&serde_json::to_string(&message).unwrap())
-                    .unwrap();
+                self.send_pending();
+                self.send_internal(message);
+            } else {
+                self.pending_sends.write().push_back(message);
             }
         }
     }
@@ -94,6 +116,8 @@ mod server_connection {
             self.message_buffer.write().drain(..).collect()
         }
 
+        pub fn send_pending(&self) {}
+
         pub fn send(&self, message: ClientToServerMessage) {
             self.stream
                 .write()
@@ -117,8 +141,6 @@ pub struct ServerBackend {
     pub reconnect_token: Option<ReconnectToken>,
     pub rooms: Vec<RoomPreview>,
     pub room_datas: HashMap<RoomId, Arc<RwLock<RoomData>>>,
-    retry_frame_counter: u32,
-    credentials: ServerCredentials,
 }
 
 pub struct ServerBackendGame {
@@ -134,7 +156,8 @@ pub enum ServerCredentials {
 }
 
 impl ServerBackend {
-    fn send_credentials(connection: &ServerConnection, credentials: &ServerCredentials) {
+    pub fn new(addr: &str, credentials: ServerCredentials) -> std::io::Result<Self> {
+        let connection = ServerConnection::new(addr);
         match credentials {
             ServerCredentials::NewUser { username } => {
                 connection.send(ClientToServerMessage::LoginAsNewUser {
@@ -147,29 +170,17 @@ impl ServerBackend {
                 })
             }
         }
-    }
-
-    pub fn new(addr: &str, credentials: ServerCredentials) -> std::io::Result<Self> {
-        let connection = ServerConnection::new(addr);
-        Self::send_credentials(&connection, &credentials);
         Ok(Self {
             connection: Arc::new(connection),
             my_user: None,
             reconnect_token: None,
             rooms: Vec::new(),
             room_datas: HashMap::new(),
-            retry_frame_counter: 0,
-            credentials,
         })
     }
 
     pub fn update(&mut self) {
-        if self.my_user.is_none() {
-            self.retry_frame_counter = (self.retry_frame_counter + 1) % 10;
-            if self.retry_frame_counter == 0 {
-                Self::send_credentials(&self.connection, &self.credentials);
-            }
-        }
+        self.connection.send_pending();
         for message in self.connection.receive().into_iter() {
             println!("Received message from server: {:?}", message);
             match message {
