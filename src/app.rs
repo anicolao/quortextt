@@ -4,10 +4,12 @@ use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
 use crate::game_view::GameView;
 use crate::server_backend::{ServerBackend, ServerCredentials};
-use crate::server_protocol::RoomId;
+use crate::server_protocol::{ReconnectToken, RoomId, Username};
 
 use rand::distr::{SampleString, Uniform};
 use rand::{rngs::StdRng, SeedableRng};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 struct InMemoryMode {
     #[allow(dead_code)]
@@ -48,9 +50,8 @@ struct ServerMode {
 }
 
 impl ServerMode {
-    pub fn new(server_ip: &str, username: String) -> Self {
-        let backend =
-            ServerBackend::new(server_ip, ServerCredentials::NewUser { username }).unwrap();
+    pub fn new(server_ip: &str, credentials: ServerCredentials) -> Self {
+        let backend = ServerBackend::new(server_ip, credentials).unwrap();
         Self {
             backend,
             current_room: None,
@@ -99,14 +100,35 @@ impl EasyAiMode {
 }
 
 enum State {
-    Menu { server_ip: String, username: String },
+    Menu {
+        server_ip: String,
+        username: Username,
+        reconnect_token: ReconnectToken,
+    },
     InMemoryMode(InMemoryMode),
     EasyAiMode(EasyAiMode),
-    ServerMode(ServerMode),
+    ServerMode {
+        server_ip: String,
+        server_mode: ServerMode,
+    },
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ReconnectUser {
+    username: Username,
+    reconnect_token: ReconnectToken,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+struct PersistentState {
+    saved_users: HashMap<String, HashMap<String, ReconnectUser>>,
+}
+
+const PERSISTENT_STORAGE_KEY: &str = "FLOWS_STATE";
 
 pub struct FlowsApp {
     state: State,
+    persistent_state: PersistentState,
     ai_debugging: bool,
 }
 
@@ -117,7 +139,18 @@ impl FlowsApp {
     }
 
     /// Called once before the first frame with AI debugging setting.
-    pub fn new_with_ai_debugging(_cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+    pub fn new_with_ai_debugging(cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+        let persistent_state = match cc.storage {
+            None => Default::default(),
+            Some(storage) => match storage.get_string(PERSISTENT_STORAGE_KEY) {
+                None => Default::default(),
+                Some(persistent_state_str) => match serde_json::from_str(&persistent_state_str) {
+                    Err(_) => Default::default(),
+                    Ok(state) => state,
+                },
+            },
+        };
+        println!("Loaded persistent state: {:?}", persistent_state);
         let server_ip = if cfg!(target_arch = "wasm32") {
             "ws://127.0.0.1:10213".into()
         } else {
@@ -127,13 +160,25 @@ impl FlowsApp {
             state: State::Menu {
                 server_ip,
                 username: "Test".into(),
+                reconnect_token: "".into(),
             },
+            persistent_state,
             ai_debugging,
         }
     }
 }
 
 impl eframe::App for FlowsApp {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        // TODO: Load from storage first to see if some other instance of the app has overwritten
+        // our current state and merge them or something.
+        storage.set_string(
+            PERSISTENT_STORAGE_KEY,
+            serde_json::to_string(&self.persistent_state).unwrap(),
+        );
+        storage.flush();
+    }
+
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let mut new_state = None;
@@ -141,8 +186,10 @@ impl eframe::App for FlowsApp {
             State::Menu {
                 server_ip,
                 username,
+                reconnect_token,
             } => {
                 egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.heading("Local");
                     if ui.button("In-memory").clicked() {
                         new_state = Some(State::InMemoryMode(InMemoryMode::new(GameSettings {
                             num_players: 2,
@@ -160,13 +207,62 @@ impl eframe::App for FlowsApp {
                         )));
                     }
 
-                    ui.text_edit_singleline(server_ip);
-                    ui.text_edit_singleline(username);
-                    if ui.button("Server").clicked() {
-                        new_state = Some(State::ServerMode(ServerMode::new(
-                            &server_ip.clone(),
-                            username.clone(),
-                        )));
+                    ui.separator();
+
+                    ui.heading("Server");
+
+                    egui::Grid::new("server-form")
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            ui.label("IP");
+                            ui.text_edit_singleline(server_ip);
+                            ui.end_row();
+                            ui.label("Username");
+                            ui.text_edit_singleline(username);
+                            ui.end_row();
+                        });
+                    if ui.button("Join server").clicked() {
+                        new_state = Some(State::ServerMode {
+                            server_ip: server_ip.clone(),
+                            server_mode: ServerMode::new(
+                                &server_ip.clone(),
+                                ServerCredentials::NewUser {
+                                    username: username.clone(),
+                                },
+                            ),
+                        });
+                    }
+                    for (server_ip, users) in self.persistent_state.saved_users.iter_mut() {
+                        if users.len() > 0 {
+                            ui.label(format!("Rejoin {} as:", server_ip));
+                            egui::Grid::new(format!("server-rejoin-{}", server_ip))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    let mut user_id_to_delete = None;
+                                    for (user_id, user) in users.iter() {
+                                        if ui.button(&user.username).clicked() {
+                                            new_state = Some(State::ServerMode {
+                                                server_ip: server_ip.clone(),
+                                                server_mode: ServerMode::new(
+                                                    &server_ip.clone(),
+                                                    ServerCredentials::ExistingUser {
+                                                        reconnect_token: user
+                                                            .reconnect_token
+                                                            .clone(),
+                                                    },
+                                                ),
+                                            });
+                                        }
+                                        if ui.button("X").clicked() {
+                                            user_id_to_delete = Some(user_id.clone());
+                                        }
+                                        ui.end_row();
+                                    }
+                                    if let Some(user_id) = user_id_to_delete {
+                                        users.remove(&user_id);
+                                    }
+                                });
+                        }
                     }
                 });
             }
@@ -196,9 +292,31 @@ impl eframe::App for FlowsApp {
                 easy_ai_mode.human_ui.display(ctx, human_view, None);
                 ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
-            State::ServerMode(server_mode) => {
+            State::ServerMode {
+                server_ip,
+                server_mode,
+            } => {
                 server_mode.backend.update();
-                let my_user_id = server_mode.backend.my_user.as_ref().map(|x| x.user_id);
+                let my_user = server_mode.backend.my_user.as_ref();
+                let my_user_id = my_user.map(|x| x.user_id);
+                let my_reconnect_token = server_mode.backend.reconnect_token.as_ref();
+
+                match (my_user, my_reconnect_token) {
+                    (Some(user), Some(reconnect_token)) => {
+                        self.persistent_state
+                            .saved_users
+                            .entry(server_ip.clone())
+                            .or_default()
+                            .insert(
+                                user.user_id.to_string(),
+                                ReconnectUser {
+                                    username: user.username.clone(),
+                                    reconnect_token: reconnect_token.clone(),
+                                },
+                            );
+                    }
+                    (_, _) => (),
+                }
 
                 if let Some(current_room) = &mut server_mode.current_room {
                     let mut go_back = false;
