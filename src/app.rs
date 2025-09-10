@@ -1,4 +1,4 @@
-use crate::ai_backend::EasyAiBackend;
+use crate::ai_backend::{EasyAiBackend, MediumAiBackend};
 use crate::backend::{Backend, InMemoryBackend};
 use crate::game::{GameSettings, GameViewer};
 use crate::game_ui::GameUi;
@@ -18,10 +18,14 @@ struct InMemoryMode {
     player_uis: Vec<GameUi>,
     current_displayed_player: usize,
     displayed_action_count: usize,
+    scores: Vec<usize>, // Win count for each player
+    num_players: usize,
+    last_game_action_count: usize, // To track when a new game starts
+    animation_slowdown: f32,
 }
 
 impl InMemoryMode {
-    pub fn new(settings: GameSettings) -> Self {
+    pub fn new(settings: GameSettings, animation_slowdown: f32) -> Self {
         let num_players = settings.num_players;
         let backend = InMemoryBackend::new(settings);
         let player_views = (0..num_players)
@@ -31,9 +35,75 @@ impl InMemoryMode {
         Self {
             admin_view,
             player_views,
-            player_uis: (0..num_players).map(|_| GameUi::new()).collect(),
+            player_uis: (0..num_players)
+                .map(|_| GameUi::new_with_slowdown(animation_slowdown))
+                .collect(),
             current_displayed_player: 0,
             displayed_action_count: 0,
+            scores: vec![0; num_players],
+            num_players,
+            last_game_action_count: 0,
+            animation_slowdown,
+        }
+    }
+
+    pub fn reset_game(&mut self, settings: GameSettings) {
+        let backend = InMemoryBackend::new(settings);
+        self.player_views = (0..self.num_players)
+            .map(|i| GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(i)))))
+            .collect::<Vec<_>>();
+        self.admin_view = GameView::new(Box::new(backend));
+        self.current_displayed_player = 0;
+        self.displayed_action_count = 0;
+        self.last_game_action_count = 0;
+        // Note: scores are preserved across game resets
+    }
+
+    pub fn update_scores(&mut self, winners: &[usize]) {
+        for &winner in winners {
+            if winner < self.scores.len() {
+                self.scores[winner] += 1;
+            }
+        }
+    }
+}
+
+struct MediumAiMode {
+    main_backend: MediumAiBackend,
+    human_view: GameView,
+    human_ui: GameUi,
+    scores: Vec<usize>, // Win count for each player (0 = human, 1 = AI)
+    last_game_action_count: usize,
+}
+
+impl MediumAiMode {
+    pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
+        let backend = MediumAiBackend::new(settings, 2, ai_debugging); // Default depth of 2
+        let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
+        let human_ui = GameUi::new();
+        Self {
+            main_backend: backend,
+            human_view,
+            human_ui,
+            scores: vec![0; 2], // Human and AI scores
+            last_game_action_count: 0,
+        }
+    }
+
+    pub fn reset_game(&mut self, settings: GameSettings) {
+        self.main_backend = MediumAiBackend::new(settings, 2, false);
+        self.human_view = GameView::new(Box::new(
+            self.main_backend.backend_for_viewer(GameViewer::Player(0)),
+        ));
+        self.last_game_action_count = 0;
+        // Note: scores are preserved across game resets
+    }
+
+    pub fn update_scores(&mut self, winners: &[usize]) {
+        for &winner in winners {
+            if winner < self.scores.len() {
+                self.scores[winner] += 1;
+            }
         }
     }
 }
@@ -47,13 +117,15 @@ struct ServerModeRoom {
 struct ServerMode {
     backend: ServerBackend,
     current_room: Option<ServerModeRoom>,
+    animation_slowdown: f32,
 }
 
 impl ServerMode {
-    pub fn new(server_ip: &str, credentials: ServerCredentials) -> Self {
+    pub fn new(server_ip: &str, animation_slowdown: f32, credentials: ServerCredentials) -> Self {
         let backend = ServerBackend::new(server_ip, credentials).unwrap();
         Self {
             backend,
+            animation_slowdown,
             current_room: None,
         }
     }
@@ -84,17 +156,40 @@ struct EasyAiMode {
     main_backend: EasyAiBackend,
     human_view: GameView,
     human_ui: GameUi,
+    scores: Vec<usize>, // Win count for each player (0 = human, 1 = AI)
+    last_game_action_count: usize,
+    animation_slowdown: f32,
 }
 
 impl EasyAiMode {
-    pub fn new(settings: GameSettings, ai_debugging: bool) -> Self {
+    pub fn new(settings: GameSettings, ai_debugging: bool, animation_slowdown: f32) -> Self {
         let backend = EasyAiBackend::new(settings, ai_debugging);
         let human_view = GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(0))));
-        let human_ui = GameUi::new();
+        let human_ui = GameUi::new_with_slowdown(animation_slowdown);
         Self {
             main_backend: backend,
             human_view,
             human_ui,
+            scores: vec![0; 2], // Human and AI scores
+            last_game_action_count: 0,
+            animation_slowdown,
+        }
+    }
+
+    pub fn reset_game(&mut self, settings: GameSettings) {
+        self.main_backend = EasyAiBackend::new(settings, false);
+        self.human_view = GameView::new(Box::new(
+            self.main_backend.backend_for_viewer(GameViewer::Player(0)),
+        ));
+        self.last_game_action_count = 0;
+        // Note: scores are preserved across game resets
+    }
+
+    pub fn update_scores(&mut self, winners: &[usize]) {
+        for &winner in winners {
+            if winner < self.scores.len() {
+                self.scores[winner] += 1;
+            }
         }
     }
 }
@@ -103,10 +198,10 @@ enum State {
     Menu {
         server_ip: String,
         username: Username,
-        reconnect_token: ReconnectToken,
     },
     InMemoryMode(InMemoryMode),
     EasyAiMode(EasyAiMode),
+    MediumAiMode(MediumAiMode),
     ServerMode {
         server_ip: String,
         server_mode: ServerMode,
@@ -130,16 +225,21 @@ pub struct FlowsApp {
     state: State,
     persistent_state: PersistentState,
     ai_debugging: bool,
+    animation_slowdown: f32,
 }
 
 impl FlowsApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        Self::new_with_ai_debugging(cc, false)
+        Self::new_with_debugging(cc, false, 1.0)
     }
 
     /// Called once before the first frame with AI debugging setting.
-    pub fn new_with_ai_debugging(cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+    pub fn new_with_debugging(
+        cc: &eframe::CreationContext<'_>,
+        ai_debugging: bool,
+        animation_slowdown: f32,
+    ) -> Self {
         let persistent_state = match cc.storage {
             None => Default::default(),
             Some(storage) => match storage.get_string(PERSISTENT_STORAGE_KEY) {
@@ -160,11 +260,15 @@ impl FlowsApp {
             state: State::Menu {
                 server_ip,
                 username: "Test".into(),
-                reconnect_token: "".into(),
             },
             persistent_state,
             ai_debugging,
+            animation_slowdown,
         }
+    }
+
+    pub fn new_with_ai_debugging(_cc: &eframe::CreationContext<'_>, ai_debugging: bool) -> Self {
+        Self::new_with_debugging(_cc, ai_debugging, 1.0)
     }
 }
 
@@ -186,19 +290,32 @@ impl eframe::App for FlowsApp {
             State::Menu {
                 server_ip,
                 username,
-                reconnect_token,
             } => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.heading("Local");
                     if ui.button("In-memory").clicked() {
-                        new_state = Some(State::InMemoryMode(InMemoryMode::new(GameSettings {
-                            num_players: 2,
-                            version: 0,
-                        })));
+                        new_state = Some(State::InMemoryMode(InMemoryMode::new(
+                            GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            self.animation_slowdown,
+                        )));
                     }
 
                     if ui.button("Easy AI").clicked() {
                         new_state = Some(State::EasyAiMode(EasyAiMode::new(
+                            GameSettings {
+                                num_players: 2,
+                                version: 0,
+                            },
+                            self.ai_debugging,
+                            self.animation_slowdown,
+                        )));
+                    }
+
+                    if ui.button("Medium AI").clicked() {
+                        new_state = Some(State::MediumAiMode(MediumAiMode::new(
                             GameSettings {
                                 num_players: 2,
                                 version: 0,
@@ -226,6 +343,7 @@ impl eframe::App for FlowsApp {
                             server_ip: server_ip.clone(),
                             server_mode: ServerMode::new(
                                 &server_ip.clone(),
+                                self.animation_slowdown,
                                 ServerCredentials::NewUser {
                                     username: username.clone(),
                                 },
@@ -245,6 +363,7 @@ impl eframe::App for FlowsApp {
                                                 server_ip: server_ip.clone(),
                                                 server_mode: ServerMode::new(
                                                     &server_ip.clone(),
+                                                    self.animation_slowdown,
                                                     ServerCredentials::ExistingUser {
                                                         reconnect_token: user
                                                             .reconnect_token
@@ -267,29 +386,149 @@ impl eframe::App for FlowsApp {
                 });
             }
             State::InMemoryMode(in_memory_mode) => {
+                // Check if game just ended and update scores
+                let mut winners_to_update: Option<Vec<usize>> = None;
+                let current_displayed_player = in_memory_mode.current_displayed_player;
+
+                {
+                    let player_view = &mut in_memory_mode.player_views[current_displayed_player];
+                    let num_actions = player_view.poll_backend(false);
+                    if num_actions > in_memory_mode.displayed_action_count
+                        && in_memory_mode.displayed_action_count > 0
+                    {
+                        in_memory_mode.current_displayed_player += 1;
+                        in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
+                    }
+                    in_memory_mode.displayed_action_count = num_actions;
+
+                    if let Some(game) = player_view.game() {
+                        let current_action_count = game.action_history_vec().len();
+                        if let Some(outcome) = game.outcome() {
+                            match outcome {
+                                crate::game::GameOutcome::Victory(winners) => {
+                                    // Only update scores once when game ends
+                                    if current_action_count > in_memory_mode.last_game_action_count
+                                    {
+                                        winners_to_update = Some(winners.clone());
+                                        in_memory_mode.last_game_action_count =
+                                            current_action_count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update scores after borrowing from player_view is done
+                if let Some(winners) = winners_to_update {
+                    in_memory_mode.update_scores(&winners);
+                }
+
                 let player_view =
                     &mut in_memory_mode.player_views[in_memory_mode.current_displayed_player];
-                let num_actions = player_view.poll_backend();
-                if num_actions > in_memory_mode.displayed_action_count
-                    && in_memory_mode.displayed_action_count > 0
-                {
-                    in_memory_mode.current_displayed_player += 1;
-                    in_memory_mode.current_displayed_player %= in_memory_mode.player_uis.len();
+                let ui_response = in_memory_mode.player_uis
+                    [in_memory_mode.current_displayed_player]
+                    .display(ctx, player_view, None, &in_memory_mode.scores);
+
+                if ui_response.play_again_requested {
+                    in_memory_mode.reset_game(GameSettings {
+                        num_players: in_memory_mode.num_players,
+                        version: 0,
+                    });
                 }
-                in_memory_mode.displayed_action_count = num_actions;
-                in_memory_mode.player_uis[in_memory_mode.current_displayed_player].display(
-                    ctx,
-                    player_view,
-                    None,
-                );
             }
             State::EasyAiMode(easy_ai_mode) => {
                 // Update the main backend for AI logic
                 easy_ai_mode.main_backend.update();
 
+                // Check if game just ended and update scores
+                let mut winners_to_update: Option<Vec<usize>> = None;
+                {
+                    let human_view = &mut easy_ai_mode.human_view;
+                    human_view.poll_backend(false);
+
+                    if let Some(game) = human_view.game() {
+                        let current_action_count = game.action_history_vec().len();
+                        if let Some(outcome) = game.outcome() {
+                            match outcome {
+                                crate::game::GameOutcome::Victory(winners) => {
+                                    // Only update scores once when game ends
+                                    if current_action_count > easy_ai_mode.last_game_action_count {
+                                        winners_to_update = Some(winners.clone());
+                                        easy_ai_mode.last_game_action_count = current_action_count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update scores after borrowing from human_view is done
+                if let Some(winners) = winners_to_update {
+                    easy_ai_mode.update_scores(&winners);
+                }
+
                 let human_view = &mut easy_ai_mode.human_view;
-                human_view.poll_backend();
-                easy_ai_mode.human_ui.display(ctx, human_view, None);
+                let ui_response =
+                    easy_ai_mode
+                        .human_ui
+                        .display(ctx, human_view, None, &easy_ai_mode.scores);
+
+                if ui_response.play_again_requested {
+                    easy_ai_mode.reset_game(GameSettings {
+                        num_players: 2,
+                        version: 0,
+                    });
+                }
+
+                ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
+            }
+            State::MediumAiMode(medium_ai_mode) => {
+                // Update the main backend for AI logic
+                medium_ai_mode.main_backend.update();
+
+                // Check if game just ended and update scores
+                let mut winners_to_update: Option<Vec<usize>> = None;
+                {
+                    let human_view = &mut medium_ai_mode.human_view;
+                    human_view.poll_backend(false);
+
+                    if let Some(game) = human_view.game() {
+                        let current_action_count = game.action_history_vec().len();
+                        if let Some(outcome) = game.outcome() {
+                            match outcome {
+                                crate::game::GameOutcome::Victory(winners) => {
+                                    // Only update scores once when game ends
+                                    if current_action_count > medium_ai_mode.last_game_action_count
+                                    {
+                                        winners_to_update = Some(winners.clone());
+                                        medium_ai_mode.last_game_action_count =
+                                            current_action_count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Update scores after borrowing from human_view is done
+                if let Some(winners) = winners_to_update {
+                    medium_ai_mode.update_scores(&winners);
+                }
+
+                let human_view = &mut medium_ai_mode.human_view;
+                let ui_response =
+                    medium_ai_mode
+                        .human_ui
+                        .display(ctx, human_view, None, &medium_ai_mode.scores);
+
+                if ui_response.play_again_requested {
+                    medium_ai_mode.reset_game(GameSettings {
+                        num_players: 2,
+                        version: 0,
+                    });
+                }
+
                 ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
             State::ServerMode {
@@ -320,11 +559,12 @@ impl eframe::App for FlowsApp {
 
                 if let Some(current_room) = &mut server_mode.current_room {
                     let mut go_back = false;
-                    current_room.player_view.poll_backend();
+                    current_room.player_view.poll_backend(false);
                     current_room.player_ui.display(
                         ctx,
                         &mut current_room.player_view,
                         Some(&mut go_back),
+                        &mut vec![0; 3],
                     );
                     if go_back {
                         server_mode.current_room = None;
@@ -417,7 +657,8 @@ impl eframe::App for FlowsApp {
                         }
                     });
                 }
-                ctx.request_repaint_after_secs(1.0 / 60.0);
+
+                ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
             }
         }
 

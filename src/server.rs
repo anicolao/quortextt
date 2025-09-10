@@ -2,6 +2,7 @@ use flows::game::*;
 use flows::server_protocol::*;
 
 use rand::distr::{Alphanumeric, SampleString};
+use rand::prelude::SliceRandom;
 use std::collections::{HashMap, HashSet};
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::{mpsc, oneshot};
@@ -113,6 +114,13 @@ impl ServerData {
         }
         let mut rng = rand::rng();
         let mut game = Game::new(game_settings.clone());
+
+        // Randomize player order before drawing tiles
+        let mut player_order: Vec<Player> = (0..game_settings.num_players).collect();
+        player_order.shuffle(&mut rng);
+        game.apply_action(Action::RandomizePlayerOrder { player_order })
+            .unwrap();
+
         game.do_automatic_actions(&mut rng);
         let actions_sent = game.action_history_vec().len();
         let room_data = RoomData {

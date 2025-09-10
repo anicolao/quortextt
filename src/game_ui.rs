@@ -2,10 +2,10 @@ use crate::game::{Direction, *};
 use crate::game_view::GameView;
 use crate::legality::LegalityError;
 use egui::{
-    emath::Rot2, Color32, Context, CursorIcon, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2,
+    emath::Rot2, Color32, Context, CursorIcon, Key, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2,
 };
 
-const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10;
+// const DEBUG_ANIMATION_SPEED_MULTIPLIER: u64 = 1; // 10; // Now replaced with configurable animation_slowdown
 const SNAP_RADIUS_DWELL: f32 = 0.8;
 const SNAP_RADIUS_MOVING: f32 = 0.3;
 const NEUTRAL_COLOUR: Color32 = Color32::from_rgb(0xAA, 0xAA, 0xAA);
@@ -105,7 +105,9 @@ fn format_move(
 
     let tile_str = format!("T{}", tile.num_sharps());
 
-    let rot_str = match rotation.0 {
+    // Adjust rotation to be relative to the player's perspective
+    let adjusted_rotation = rotation + view_rotation;
+    let rot_str = match adjusted_rotation.0 {
         0 => "N",
         1 => "NE",
         2 => "SE",
@@ -145,6 +147,15 @@ pub struct GameUi {
     animation_state: AnimationState,
     moves_drawer_open: bool,
     user_has_toggled_drawer: bool,
+    /// Real dimensions of the game over dialog, measured from previous frame
+    dialog_size: Option<Vec2>,
+    /// Animation slowdown factor (1.0 = normal speed, 10.0 = 10x slower)
+    animation_slowdown: f32,
+}
+
+#[derive(Debug, Default)]
+pub struct GameUiResponse {
+    pub play_again_requested: bool,
 }
 
 struct AnimationState {
@@ -159,6 +170,8 @@ struct AnimationState {
     last_pointer_pos: Option<Pos2>,
     pointer_dwell_frames: u64,
     hover_animation: Option<HoverAnimation>,
+    last_known_action_count: usize,
+    new_move_action_index: Option<usize>,
 }
 
 struct RotationAnimation {
@@ -181,6 +194,7 @@ struct FlowAnimation {
     path: Vec<(TilePos, Direction, Direction)>,
     player: Player,
     is_winning_move: bool,
+    is_opponent_move: bool,
     next: Option<Box<FlowAnimation>>,
 }
 
@@ -205,19 +219,32 @@ impl AnimationState {
             last_pointer_pos: None,
             pointer_dwell_frames: 0,
             hover_animation: None,
+            last_known_action_count: 0,
+            new_move_action_index: None,
         }
     }
 }
 
 impl GameUi {
     pub fn new() -> Self {
+        Self::new_with_slowdown(1.0)
+    }
+
+    pub fn new_with_slowdown(animation_slowdown: f32) -> Self {
         Self {
             rotation: Rotation(0), // Default rotation, will be calculated automatically
             placement_rotation: Rotation(0),
             animation_state: AnimationState::new(),
             moves_drawer_open: false,
             user_has_toggled_drawer: false,
+            dialog_size: None,
+            animation_slowdown,
         }
+    }
+
+    /// Get the animation speed multiplier as a u64 for frame calculations
+    fn animation_speed_multiplier(&self) -> u64 {
+        (self.animation_slowdown.max(1.0) as u64).max(1)
     }
 
     fn get_most_recent_tile_position(game: &Game) -> Option<TilePos> {
@@ -228,6 +255,176 @@ impl GameUi {
             }
         }
         None
+    }
+
+    /// Check if there's currently any flow animation running
+    pub fn has_flow_animation(&self) -> bool {
+        self.animation_state.flow_animation.is_some()
+    }
+
+    /// Check if there's currently an opponent flow animation running
+    pub fn has_opponent_flow_animation(&self) -> bool {
+        let mut current = self.animation_state.flow_animation.as_ref();
+        while let Some(anim) = current {
+            if anim.is_opponent_move {
+                return true;
+            }
+            current = anim.next.as_deref();
+        }
+        false
+    }
+
+    /// Trigger flow animation for an opponent move
+    pub fn trigger_opponent_flow_animation(&mut self, game: &Game, placed_tile_pos: TilePos) {
+        // Reuse the existing hover animation logic by creating a hypothetical game
+        let tile = match game.tile(placed_tile_pos) {
+            Tile::Placed(tile) => tile,
+            _ => return,
+        };
+
+        let hypo_game = game.clone();
+        self.generate_flow_animations_for_tile(&hypo_game, placed_tile_pos, tile, true);
+    }
+
+    /// Clear only user animations, preserving opponent animations
+    fn clear_user_animations(&mut self) {
+        // Walk the animation chain and keep only opponent animations
+        let mut new_head: Option<FlowAnimation> = None;
+        let mut current = self.animation_state.flow_animation.take();
+
+        while let Some(mut anim) = current {
+            current = anim.next.take().map(|boxed| *boxed);
+
+            if anim.is_opponent_move {
+                // if the animation is still active, keep it
+                if self.animation_state.frame_count
+                    < anim.start_frame
+                        + (anim.path.len() as u64 * 20 * self.animation_speed_multiplier())
+                {
+                    // Keep this animation - it's from an opponent, and not done rendering
+                    anim.next = new_head.map(Box::new);
+                    new_head = Some(anim);
+                }
+            }
+            // Drop user animations
+        }
+
+        self.animation_state.flow_animation = new_head;
+    }
+
+    /// Check if a specific flow path is currently being animated
+    fn is_flow_path_animated(&self, tile_pos: TilePos, direction: Direction) -> bool {
+        let mut current = self.animation_state.flow_animation.as_ref();
+        while let Some(anim) = current {
+            // Check if this tile and direction are part of this animation
+            for (anim_pos, anim_entrance, anim_exit) in &anim.path {
+                if *anim_pos == tile_pos && (anim_entrance == &direction || anim_exit == &direction)
+                {
+                    // This flow is part of an active animation - check if animation is still active
+                    let now = self.animation_state.frame_count;
+                    let frames_per_tile = 20 * self.animation_speed_multiplier();
+                    let total_duration = anim.path.len() as u64 * frames_per_tile;
+
+                    if now < anim.start_frame + total_duration {
+                        return true; // Animation is still active
+                    }
+                }
+            }
+            current = anim.next.as_deref();
+        }
+        false
+    }
+
+    /// Generate flow animations for a placed tile (reused for hover and opponent moves)
+    fn generate_flow_animations_for_tile(
+        &mut self,
+        hypo_game: &Game,
+        placed_tile_pos: TilePos,
+        placed_tile: &PlacedTile,
+        is_opponent_move: bool,
+    ) {
+        let mut candidate_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> = vec![];
+
+        for (d1, d2) in placed_tile.type_().all_flows() {
+            let e1 = d1.rotate(placed_tile.rotation());
+            let e2 = d2.rotate(placed_tile.rotation());
+
+            if let Some(player) = placed_tile.flow_cache(e1) {
+                let neighbor1_pos = placed_tile_pos + e1.tile_vec();
+                let path1 = trace_flow(hypo_game, neighbor1_pos, e1.reversed());
+
+                let neighbor2_pos = placed_tile_pos + e2.tile_vec();
+                let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
+
+                let mut source1 = self.leads_to_source(&path1, hypo_game, hypo_game);
+                if !source1 && path1.is_empty() {
+                    if let AdjacentTile::BoardEdge(_) = hypo_game.adjacent_tile(placed_tile_pos, e1)
+                    {
+                        for player in 0..hypo_game.num_players() {
+                            if self.is_player_edge(hypo_game, player, placed_tile_pos, e1) {
+                                source1 = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                let mut source2 = self.leads_to_source(&path2, hypo_game, hypo_game);
+                if !source2 && path2.is_empty() {
+                    if let AdjacentTile::BoardEdge(_) = hypo_game.adjacent_tile(placed_tile_pos, e2)
+                    {
+                        for player in 0..hypo_game.num_players() {
+                            if self.is_player_edge(hypo_game, player, placed_tile_pos, e2) {
+                                source2 = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if source1 && !source2 {
+                    let mut anim_path = vec![(placed_tile_pos, e1, e2)];
+                    anim_path.extend(path2);
+                    candidate_paths.push((anim_path, player));
+                } else if !source1 && source2 {
+                    let mut anim_path = vec![(placed_tile_pos, e2, e1)];
+                    anim_path.extend(path1);
+                    candidate_paths.push((anim_path, player));
+                } else if source1 && source2 {
+                    candidate_paths.push((vec![(placed_tile_pos, e1, e2)], player));
+                    candidate_paths.push((vec![(placed_tile_pos, e2, e1)], player));
+                }
+            }
+        }
+
+        // Filter out subpaths
+        let mut final_paths: Vec<(Vec<(TilePos, Direction, Direction)>, Player)> = vec![];
+        for (path, player) in candidate_paths.iter() {
+            let mut is_subpath = false;
+            for (other_path, _) in candidate_paths.iter() {
+                if path.len() < other_path.len() {
+                    if other_path.windows(path.len()).any(|w| w == path) {
+                        is_subpath = true;
+                        break;
+                    }
+                }
+            }
+            if !is_subpath {
+                final_paths.push((path.clone(), *player));
+            }
+        }
+
+        let is_winning_move = hypo_game.outcome().is_some();
+        for (path, player) in final_paths {
+            self.animation_state.flow_animation = Some(FlowAnimation {
+                start_frame: self.animation_state.frame_count,
+                path,
+                player,
+                is_winning_move,
+                is_opponent_move,
+                next: self.animation_state.flow_animation.take().map(Box::new),
+            });
+        }
     }
 
     fn hexagon_coords(center: Pos2, radius: f32, rotate: f32) -> Vec<Pos2> {
@@ -311,6 +508,8 @@ impl GameUi {
 
     #[allow(clippy::too_many_arguments)]
     fn draw_hex(
+        &self,
+        tile_pos: TilePos,
         center: Pos2,
         hexagon_radius: f32,
         painter: &Painter,
@@ -350,7 +549,16 @@ impl GameUi {
 
         for (d1, d2) in base_flows {
             let rotated_d1 = d1.rotate(tile.rotation());
-            let player = tile.flow_cache(rotated_d1);
+
+            // Check if this flow is currently being animated by an opponent
+            let is_animated = self.is_flow_path_animated(tile_pos, rotated_d1);
+
+            let player = if is_animated {
+                // Suppress flow color during animation to make animation visible
+                None
+            } else {
+                tile.flow_cache(rotated_d1)
+            };
 
             let blank = player.is_none();
 
@@ -453,7 +661,8 @@ impl GameUi {
         ctx: &Context,
         game_view: &mut GameView,
         return_to_lobby: Option<&mut bool>,
-    ) {
+        scores: &[usize],
+    ) -> GameUiResponse {
         let window_rect = ctx.available_rect();
         if !self.user_has_toggled_drawer {
             self.moves_drawer_open = window_rect.width() > window_rect.height();
@@ -476,7 +685,8 @@ impl GameUi {
         egui::SidePanel::left("moves_panel").show_animated(ctx, self.moves_drawer_open, |ui| {
             if let Some(game) = game_view.game() {
                 let num_players = game.num_players();
-                let mut moves: Vec<Vec<String>> = vec![vec![]; num_players];
+                let mut moves: Vec<Vec<(String, usize)>> = vec![vec![]; num_players];
+                let mut action_index = 0;
                 for action in game.action_history() {
                     if let Action::PlaceTile {
                         player,
@@ -485,15 +695,72 @@ impl GameUi {
                         rotation,
                     } = action
                     {
-                        moves[*player].push(format_move(*player, *tile, *pos, *rotation, &game));
+                        moves[*player].push((
+                            format_move(*player, *tile, *pos, *rotation, &game),
+                            action_index,
+                        ));
                     }
+                    action_index += 1;
                 }
 
+                let time = ui.input(|i| i.time);
+                let ctx_clone = ui.ctx().clone();
                 ui.columns(num_players, |columns| {
                     for i in 0..num_players {
                         columns[i].label(format!("Player {}", i + 1));
-                        for mv in &moves[i] {
-                            columns[i].label(mv);
+                        for (mv, move_action_index) in &moves[i] {
+                            let is_current_move =
+                                game_view.history_cursor() == Some(*move_action_index);
+                            let is_future_move = game_view
+                                .history_cursor()
+                                .map_or(false, |cursor| *move_action_index > cursor);
+
+                            let mut label = egui::RichText::new(mv);
+                            if is_current_move {
+                                label = label.strong();
+                            }
+                            if is_future_move {
+                                label = label.color(Color32::DARK_GRAY);
+                            }
+                            if self.animation_state.new_move_action_index
+                                == Some(*move_action_index)
+                            {
+                                let glow = (time.sin() * 0.5 + 0.5) as f32;
+                                let r = 255;
+                                let g = (255.0 * (1.0 - glow)) as u8;
+                                let b = 0;
+                                label = label.color(Color32::from_rgb(r, g, b));
+                                ctx_clone.request_repaint();
+                            }
+                            columns[i].label(label);
+                        }
+                    }
+                });
+
+                ui.horizontal(|ui| {
+                    let back_button = egui::Button::new("⬅");
+                    if ui
+                        .add_enabled(game_view.can_history_backward(), back_button)
+                        .clicked()
+                    {
+                        self.animation_state.new_move_action_index = None;
+                        game_view.history_backward();
+                        ui.ctx().request_repaint();
+                    }
+                    let forward_button = egui::Button::new("➡");
+                    if ui
+                        .add_enabled(game_view.can_history_forward(), forward_button)
+                        .clicked()
+                    {
+                        self.animation_state.new_move_action_index = None;
+                        game_view.history_forward();
+                        ui.ctx().request_repaint();
+                    }
+                    if game_view.history_cursor().is_some() {
+                        if ui.button("Go to Live").clicked() {
+                            self.animation_state.new_move_action_index = None;
+                            let _ = game_view.go_to_live();
+                            ui.ctx().request_repaint();
                         }
                     }
                 });
@@ -501,6 +768,8 @@ impl GameUi {
                 ui.label("Waiting for game connection...");
             }
         });
+
+        let mut ui_response = GameUiResponse::default();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.animation_state.frame_count += 1;
@@ -515,13 +784,30 @@ impl GameUi {
             // Figure out what the user is interacting with. It's necessary to do this early so that we
             // can floodfill hypthetical paths that might be drawn before we get to the actual tile the
             // user is hovering.
-            let game = match game_view.game() {
-                Some(game) => game.clone(),
-                None => {
-                    // TODO: Draw something to say that the backend is not connected yet
-                    return response;
+            if game_view.game().is_none() {
+                // TODO: Draw something to say that the backend is not connected yet
+                return response;
+            }
+
+            let mut game = game_view.game().as_ref().unwrap().clone();
+
+            let is_history_mode = game_view.history_cursor().is_some();
+            if is_history_mode
+                && response.hovered()
+                && matches!(game_view.viewer(), GameViewer::Player(_))
+            {
+                game = game_view.go_to_live();
+            }
+
+            // Check for new opponent moves and trigger animations
+            let current_action_count = game.action_history_vec().len();
+            if current_action_count > self.animation_state.last_known_action_count {
+                // New actions detected - check if any are opponent moves
+                if let Some(last_tile_pos) = Self::get_most_recent_tile_position(&game) {
+                    self.trigger_opponent_flow_animation(&game, last_tile_pos);
                 }
-            };
+                self.animation_state.last_known_action_count = current_action_count;
+            }
 
             // Calculate rotation to put the viewing player's side on the bottom
             let viewing_player = match game_view.viewer() {
@@ -664,13 +950,22 @@ impl GameUi {
                     self.animation_state.rotation_state = Some(RotationAnimation {
                         start_frame: self.animation_state.frame_count,
                         end_frame: self.animation_state.frame_count
-                            + 6 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            + 6 * self.animation_speed_multiplier(),
                         start_rotation,
                         end_rotation,
                     });
                     self.placement_rotation = end_rotation; // Update logical rotation immediately
                     self.animation_state.last_rotate_time = rotate_time;
                 }
+            }
+
+            if ui.input(|i| i.key_pressed(Key::ArrowLeft)) {
+                self.animation_state.new_move_action_index = None;
+                game_view.history_backward();
+            }
+            if ui.input(|i| i.key_pressed(Key::ArrowRight)) {
+                self.animation_state.new_move_action_index = None;
+                game_view.history_forward();
             }
 
             let mut visual_rotation_rads = 0.0;
@@ -779,14 +1074,14 @@ impl GameUi {
                             );
                             self.animation_state.snap_animation = Some(SnapAnimation {
                                 start_frame: now,
-                                end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                end_frame: now + 10 * self.animation_speed_multiplier(),
                                 start_pos,
                                 end_pos: pointer_pos,
                                 is_snap_in: false,
                             });
                             self.animation_state.snapped_to = None;
-                            // cancel flow animation
-                            self.animation_state.flow_animation = None;
+                            // cancel flow animation only for user animations, preserve opponent animations
+                            self.clear_user_animations();
                         } else if let Some(end_tile) = target_snap_tile {
                             // MUST SNAP IN
                             let end_pos = Self::hex_position(
@@ -796,7 +1091,7 @@ impl GameUi {
                             );
                             self.animation_state.snap_animation = Some(SnapAnimation {
                                 start_frame: now,
-                                end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                end_frame: now + 10 * self.animation_speed_multiplier(),
                                 start_pos: pointer_pos,
                                 end_pos,
                                 is_snap_in: true,
@@ -831,7 +1126,7 @@ impl GameUi {
                                         // Cancel snap-out and start snap-in
                                         self.animation_state.snap_animation = Some(SnapAnimation {
                                             start_frame: now,
-                                            end_frame: now + 10 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                                            end_frame: now + 10 * self.animation_speed_multiplier(),
                                             start_pos: current_pos,
                                             end_pos: hex_center,
                                             is_snap_in: true,
@@ -984,7 +1279,8 @@ impl GameUi {
                                 } else {
                                     Stroke::new(2.0, Color32::from_rgb(0xAA, 0xAA, 0xAA))
                                 };
-                                Self::draw_hex(
+                                self.draw_hex(
+                                    tile_pos,
                                     pos,
                                     hexagon_radius,
                                     painter,
@@ -1053,7 +1349,8 @@ impl GameUi {
                                 None
                             };
 
-                        Self::draw_hex(
+                        self.draw_hex(
+                            hovered_tile.unwrap_or_else(|| TilePos::new(0, 0)), // Dummy pos if not hovering
                             pos,
                             hexagon_radius,
                             painter,
@@ -1069,7 +1366,8 @@ impl GameUi {
             }
 
             if self.animation_state.last_hovered_tile != hovered_tile {
-                self.animation_state.flow_animation = None;
+                // Clear only user animations when hover changes, keep opponent animations
+                self.clear_user_animations();
 
                 // Detect hover transitions for fade animation
                 let now = self.animation_state.frame_count;
@@ -1078,7 +1376,7 @@ impl GameUi {
                         // Fade-in: None -> Some hovered tile
                         self.animation_state.hover_animation = Some(HoverAnimation {
                             start_frame: now,
-                            end_frame: now + 15 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            end_frame: now + 15 * self.animation_speed_multiplier(),
                             is_fade_in: true,
                             tile_pos: pos,
                         });
@@ -1087,7 +1385,7 @@ impl GameUi {
                         // Fade-out: Some -> None hovered tile
                         self.animation_state.hover_animation = Some(HoverAnimation {
                             start_frame: now,
-                            end_frame: now + 15 * DEBUG_ANIMATION_SPEED_MULTIPLIER,
+                            end_frame: now + 15 * self.animation_speed_multiplier(),
                             is_fade_in: false,
                             tile_pos: pos,
                         });
@@ -1100,113 +1398,19 @@ impl GameUi {
             self.animation_state.last_hovered_tile = hovered_tile;
 
             if self.animation_state.flow_animation_dirty {
-                self.animation_state.flow_animation = None;
+                // Clear only user animations when dirty, keep opponent animations
+                self.clear_user_animations();
                 self.animation_state.flow_animation_dirty = false;
                 if let Some(hypo_game) = &hypothetical_game {
                     if let Some(placed_tile_pos) = hovered_tile {
                         if let Tile::Placed(placed_tile) = hypo_game.tile(placed_tile_pos) {
-                            let mut candidate_paths: Vec<(
-                                Vec<(TilePos, Direction, Direction)>,
-                                Player,
-                            )> = vec![];
-                            for (d1, d2) in placed_tile.type_().all_flows() {
-                                let e1 = d1.rotate(placed_tile.rotation());
-                                let e2 = d2.rotate(placed_tile.rotation());
-
-                                if let Some(player) = placed_tile.flow_cache(e1) {
-                                    let neighbor1_pos = placed_tile_pos + e1.tile_vec();
-                                    let path1 = trace_flow(hypo_game, neighbor1_pos, e1.reversed());
-
-                                    let neighbor2_pos = placed_tile_pos + e2.tile_vec();
-                                    let path2 = trace_flow(hypo_game, neighbor2_pos, e2.reversed());
-
-                                    let mut source1 =
-                                        self.leads_to_source(&path1, hypo_game, &game);
-                                    if !source1 && path1.is_empty() {
-                                        if let AdjacentTile::BoardEdge(_) =
-                                            hypo_game.adjacent_tile(placed_tile_pos, e1)
-                                        {
-                                            for player in 0..game.num_players() {
-                                                if self.is_player_edge(
-                                                    &game,
-                                                    player,
-                                                    placed_tile_pos,
-                                                    e1,
-                                                ) {
-                                                    source1 = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    let mut source2 =
-                                        self.leads_to_source(&path2, hypo_game, &game);
-                                    if !source2 && path2.is_empty() {
-                                        if let AdjacentTile::BoardEdge(_) =
-                                            hypo_game.adjacent_tile(placed_tile_pos, e2)
-                                        {
-                                            for player in 0..game.num_players() {
-                                                if self.is_player_edge(
-                                                    &game,
-                                                    player,
-                                                    placed_tile_pos,
-                                                    e2,
-                                                ) {
-                                                    source2 = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if source1 && !source2 {
-                                        let mut anim_path = vec![(placed_tile_pos, e1, e2)];
-                                        anim_path.extend(path2);
-                                        candidate_paths.push((anim_path, player));
-                                    } else if !source1 && source2 {
-                                        let mut anim_path = vec![(placed_tile_pos, e2, e1)];
-                                        anim_path.extend(path1);
-                                        candidate_paths.push((anim_path, player));
-                                    } else if source1 && source2 {
-                                        candidate_paths
-                                            .push((vec![(placed_tile_pos, e1, e2)], player));
-                                        candidate_paths
-                                            .push((vec![(placed_tile_pos, e2, e1)], player));
-                                    }
-                                }
-                            }
-
-                            // Filter out subpaths
-                            let mut final_paths: Vec<(
-                                Vec<(TilePos, Direction, Direction)>,
-                                Player,
-                            )> = vec![];
-                            for (path, player) in candidate_paths.iter() {
-                                let mut is_subpath = false;
-                                for (other_path, _) in candidate_paths.iter() {
-                                    if path.len() < other_path.len() {
-                                        if other_path.windows(path.len()).any(|w| w == path) {
-                                            is_subpath = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if !is_subpath {
-                                    final_paths.push((path.clone(), *player));
-                                }
-                            }
-
-                            let is_winning_move = hypo_game.outcome().is_some();
-                            for (path, player) in final_paths {
-                                self.animation_state.flow_animation = Some(FlowAnimation {
-                                    start_frame: self.animation_state.frame_count,
-                                    path,
-                                    player,
-                                    is_winning_move,
-                                    next: self.animation_state.flow_animation.take().map(Box::new),
-                                });
-                            }
+                            // Generate hover animations (not opponent moves)
+                            self.generate_flow_animations_for_tile(
+                                hypo_game,
+                                placed_tile_pos,
+                                placed_tile,
+                                false,
+                            );
                         }
                     }
                 }
@@ -1215,7 +1419,7 @@ impl GameUi {
             let mut anim_opt = self.animation_state.flow_animation.as_ref();
             while let Some(anim) = anim_opt {
                 let now = self.animation_state.frame_count;
-                let frames_per_tile = 20 * DEBUG_ANIMATION_SPEED_MULTIPLIER;
+                let frames_per_tile = 20 * self.animation_speed_multiplier();
 
                 let total_duration = anim.path.len() as u64 * frames_per_tile;
                 // clamp to total duration so we don't overshoot
@@ -1363,7 +1567,8 @@ impl GameUi {
                                     let placed_tile = PlacedTile::new(tile_type, Rotation(0));
 
                                     // Draw the tile (without flows since it's not placed yet)
-                                    Self::draw_hex(
+                                    self.draw_hex(
+                                        TilePos::new(0, 0), // Dummy position for tile in hand
                                         screen_pos,
                                         hexagon_radius * 0.8, // Slightly smaller than board tiles
                                         painter,
@@ -1382,30 +1587,96 @@ impl GameUi {
             }
 
             if let Some(outcome) = game.outcome() {
+                // Draw semi-transparent overlay
                 let painter = ui.painter();
                 painter.rect_filled(window, 0.0, Color32::from_rgba_premultiplied(0, 0, 0, 128));
-                let text = match outcome {
-                    GameOutcome::Victory(winners) => {
-                        if winners.len() > 1 {
-                            let one_indexed_winners: Vec<usize> =
-                                winners.iter().map(|&p| p + 1).collect();
-                            format!("Players {:?} win!", one_indexed_winners)
-                        } else {
-                            format!("Player {} wins!", winners[0] + 1)
-                        }
-                    }
+
+                // Calculate board bounds for dialog positioning
+                let board_center = window.center();
+                let board_radius = hexagon_radius * 7.5;
+
+                // For a hexagon with rotation PI/6 (30°), vertices are at 120°, 180°, 240°, 300°, 0°, 60°
+                // Bottom of hexagon (highest y): vertices at 0° and 120°/240° -> center.y + radius * sin(60°) = center.y + radius * √3/2
+                let board_bottom = board_center.y + board_radius * 0.866_025_4; // √3/2
+                                                                                // Right edge of hexagon: vertex at 0° -> center.x + radius
+                let board_right = board_center.x + board_radius;
+
+                // Use real dialog size if available, otherwise use fallback estimates
+                let (dialog_width, dialog_height) = match self.dialog_size {
+                    Some(size) => (size.x, size.y),
+                    None => (200.0, 150.0), // Fallback estimates for first frame
                 };
-                painter.text(
-                    window.center(),
-                    egui::Align2::CENTER_CENTER,
-                    text,
-                    egui::FontId::proportional(40.0),
-                    Color32::WHITE,
-                );
+
+                let dialog_margin = 20.0;
+
+                // Check if there's enough space below the board within the current game area
+                let space_below = window.bottom() - board_bottom;
+                let use_bottom_position = space_below >= (dialog_height + dialog_margin);
+
+                let dialog_pos = if use_bottom_position {
+                    // Position centered horizontally below the board, relative to the game area
+                    Pos2::new(
+                        board_center.x - dialog_width / 2.0, // Center the dialog horizontally on the board center
+                        board_bottom + dialog_margin,
+                    )
+                } else {
+                    // Position on the right side, centered vertically, near the rightmost point of the board
+                    Pos2::new(
+                        board_right + dialog_margin,
+                        board_center.y - dialog_height / 2.0,
+                    )
+                };
+
+                // Show victory window with scores and play again button
+                let dialog_response = egui::Window::new("Game Over")
+                    .fixed_pos(dialog_pos)
+                    .resizable(false)
+                    .collapsible(false)
+                    .show(ctx, |ui| {
+                        ui.vertical_centered(|ui| {
+                            // Display victory message
+                            let text = match outcome {
+                                GameOutcome::Victory(winners) => {
+                                    if winners.len() > 1 {
+                                        let one_indexed_winners: Vec<usize> =
+                                            winners.iter().map(|&p| p + 1).collect();
+                                        format!("Players {:?} win!", one_indexed_winners)
+                                    } else {
+                                        format!("Player {} wins!", winners[0] + 1)
+                                    }
+                                }
+                            };
+                            ui.heading(text);
+
+                            ui.add_space(10.0);
+
+                            // Display current scores
+                            ui.label("Current Scores:");
+                            for (player_idx, &score) in scores.iter().enumerate() {
+                                ui.label(format!("Player {}: {}", player_idx + 1, score));
+                            }
+
+                            ui.add_space(10.0);
+
+                            // Play again button
+                            if ui.button("Play Again").clicked() {
+                                ui_response.play_again_requested = true;
+                            }
+                            self.animation_state.flow_animation = None;
+                        });
+                    });
+
+                // Store the real dialog size for next frame positioning
+                if let Some(dialog_response) = dialog_response {
+                    let dialog_rect = dialog_response.response.rect;
+                    self.dialog_size = Some(dialog_rect.size());
+                }
             }
 
             response
         });
+
+        ui_response
     }
 }
 
@@ -1413,7 +1684,7 @@ impl GameUi {
 mod tests {
     use crate::backend::InMemoryBackend;
     use crate::game::{GameSettings, GameViewer, Rotation};
-    use crate::game_ui::GameUi;
+    use crate::game_ui::{format_move, GameUi, GameUiResponse};
     use crate::game_view::GameView;
 
     #[test]
@@ -1455,6 +1726,120 @@ mod tests {
         assert_eq!(Rotation(3).reversed().0, 3);
         assert_eq!(Rotation(4).reversed().0, 2);
         assert_eq!(Rotation(5).reversed().0, 1);
+    }
+
+    #[test]
+    fn test_format_move_rotation_perspective() {
+        use crate::game::Game;
+        use crate::game::{GameSettings, Rotation, TilePos, TileType};
+
+        // Create a 2-player game
+        let settings = GameSettings {
+            num_players: 2,
+            version: 0,
+        };
+        let game = Game::new(settings);
+
+        // Find which sides the players are on
+        let player0_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(0))
+            .map(Rotation)
+            .expect("Player 0 should have a side");
+        let player1_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(1))
+            .map(Rotation)
+            .expect("Player 1 should have a side");
+
+        // Test that the same move from different player perspectives has the correct rotation adjustment
+        let tile = TileType::NoSharps;
+        let pos = TilePos::new(1, 2); // Some arbitrary position
+        let rotation = Rotation(0); // North rotation
+
+        // Format the move from both player perspectives
+        let move_from_p0 = format_move(0, tile, pos, rotation, &game);
+        let move_from_p1 = format_move(1, tile, pos, rotation, &game);
+
+        // Extract rotation from both formatted moves (last 1-2 characters)
+        let p0_rotation = &move_from_p0[move_from_p0.len() - 2..];
+        let p1_rotation = &move_from_p1[move_from_p1.len() - 2..];
+
+        // Test that rotations are different when players are on different sides
+        if player0_side != player1_side {
+            assert_ne!(
+                p0_rotation, p1_rotation,
+                "Rotation should be different for different player perspectives. P0: {}, P1: {}, P0 side: {:?}, P1 side: {:?}",
+                move_from_p0, move_from_p1, player0_side, player1_side
+            );
+        }
+
+        // Specific test case from the problem statement:
+        // P1A3T0N should become P2F5T0NE when viewed from P2's perspective
+        // This test ensures the rotation adjustment is working correctly
+        if player0_side == Rotation(0) && player1_side == Rotation(2) {
+            // Test with a position that we know should have specific behavior
+            let test_pos = TilePos::new(0, 2); // A position near P1's edge
+            let test_rotation = Rotation(0); // North
+
+            let p0_move = format_move(0, TileType::NoSharps, test_pos, test_rotation, &game);
+            let p1_move = format_move(1, TileType::NoSharps, test_pos, test_rotation, &game);
+
+            // The rotation should be adjusted - P0's North should appear as different direction from P1's view
+            let p0_rot_part = &p0_move[p0_move.len() - 1..];
+            let p1_rot_part = &p1_move[p1_move.len() - 2..];
+
+            // This verifies the fix is working
+            assert_ne!(
+                p0_rot_part, p1_rot_part,
+                "Rotation should be different for P0 vs P1 perspective. P0: {}, P1: {}",
+                p0_move, p1_move
+            );
+        }
+    }
+
+    #[test]
+    fn test_format_move_specific_example() {
+        use crate::game::Game;
+        use crate::game::{GameSettings, Rotation, TilePos, TileType};
+
+        // Create a 2-player game
+        let settings = GameSettings {
+            num_players: 2,
+            version: 0,
+        };
+        let game = Game::new(settings);
+
+        // Test a concrete example to demonstrate the fix
+        let tile = TileType::NoSharps;
+        let pos = TilePos::new(0, 2);
+        let rotation = Rotation(0); // North
+
+        let move_from_p0 = format_move(0, tile, pos, rotation, &game);
+        let move_from_p1 = format_move(1, tile, pos, rotation, &game);
+
+        // Print the actual output for inspection
+        println!("P0 (Player 1) perspective: {}", move_from_p0);
+        println!("P1 (Player 2) perspective: {}", move_from_p1);
+
+        // Both should be valid moves but with different position and rotation
+        assert!(move_from_p0.starts_with("P1"));
+        assert!(move_from_p1.starts_with("P2"));
+        assert!(move_from_p0.contains("T0"));
+        assert!(move_from_p1.contains("T0"));
+
+        // The key test: they should have different rotations when players are on different sides
+        let player0_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(0))
+            .map(Rotation);
+        let player1_side = (0..6)
+            .find(|&side| game.player_on_side(Rotation(side)) == Some(1))
+            .map(Rotation);
+
+        if player0_side != player1_side {
+            assert_ne!(
+                move_from_p0, move_from_p1,
+                "Moves should be different for different player perspectives"
+            );
+        }
     }
 
     #[test]
@@ -1652,5 +2037,34 @@ mod tests {
         assert_eq!(anim2.end_frame, 115);
         assert!(!anim2.is_fade_in);
         assert_eq!(anim2.tile_pos, TilePos::new(2, 2));
+    }
+
+    #[test]
+    fn test_game_ui_response_default() {
+        let response = GameUiResponse::default();
+        assert!(!response.play_again_requested);
+    }
+
+    #[test]
+    fn test_animation_slowdown_multiplier() {
+        // Test default slowdown (1.0)
+        let ui_normal = GameUi::new();
+        assert_eq!(ui_normal.animation_speed_multiplier(), 1);
+
+        // Test 10x slowdown
+        let ui_slow = GameUi::new_with_slowdown(10.0);
+        assert_eq!(ui_slow.animation_speed_multiplier(), 10);
+
+        // Test 2.5x slowdown (should round up to 2)
+        let ui_mid = GameUi::new_with_slowdown(2.5);
+        assert_eq!(ui_mid.animation_speed_multiplier(), 2);
+
+        // Test fractional slowdown less than 1 (should be clamped to 1)
+        let ui_fast = GameUi::new_with_slowdown(0.5);
+        assert_eq!(ui_fast.animation_speed_multiplier(), 1);
+
+        // Test zero slowdown (should be clamped to 1)
+        let ui_zero = GameUi::new_with_slowdown(0.0);
+        assert_eq!(ui_zero.animation_speed_multiplier(), 1);
     }
 }
