@@ -298,10 +298,25 @@ pub enum GameViewer {
     Admin,
 }
 
+type TileDistribution = [u8; 4];
+pub const TILE_DISTRIBUTION_CLASSIC: TileDistribution = [10, 10, 10, 10];
+pub const TILE_DISTRIBUTION_SKEWED: TileDistribution = [24, 16, 8, 4];
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GameSettings {
     pub num_players: usize,
+    pub tiles: [u8; 4],
     pub version: usize,
+}
+
+impl Default for GameSettings {
+    fn default() -> Self {
+        Self {
+            num_players: 2,
+            tiles: TILE_DISTRIBUTION_CLASSIC,
+            version: 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -391,6 +406,12 @@ impl Game {
         if settings.num_players < 2 || settings.num_players > 3 {
             panic!("Invalid number of players: {}", settings.num_players);
         }
+        if settings.tiles.iter().map(|x| *x as u32).sum::<u32>() <= 37 {
+            panic!(
+                "Invalid initial tile distribution: {:?}. Must have at least 37 tiles in total.",
+                settings.tiles
+            );
+        }
 
         let mut board = [[Tile::Empty; 7]; 7];
         // Fill in Tile::NotOnBoard on top left and bottom right
@@ -412,13 +433,17 @@ impl Game {
             settings: settings.clone(),
             sides,
             player_order: None,
-            remaining_tiles: [16, 12, 8, 4],
+            remaining_tiles: settings.tiles,
             tiles_in_hand: vec![None; settings.num_players],
             board,
             action_history: vec![Action::InitializeGame(settings)],
             current_player: 0,
             outcome: None,
         }
+    }
+
+    pub fn settings(&self) -> &GameSettings {
+        &self.settings
     }
 
     pub fn from_actions(action_history: Vec<Action>) -> Result<Self, String> {
@@ -756,7 +781,7 @@ impl Game {
     pub fn random_board_for_testing<R: Rng>(rng: &mut R, p_filled: f32) -> Self {
         let mut g = Self::new(GameSettings {
             num_players: 3,
-            version: 0,
+            ..Default::default()
         });
 
         for i in 0..7 {

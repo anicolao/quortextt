@@ -251,10 +251,7 @@ impl ServerBackend {
                         room_info: RoomInfo {
                             // This is a bit of a hack, but we need to put something in the map
                             // so that once the game does load from the server, we can show it.
-                            game_settings: GameSettings {
-                                num_players: 2,
-                                version: 0,
-                            },
+                            game_settings: Default::default(),
                             players: Vec::new(),
                             user_to_game_viewer: HashMap::new(),
                         },

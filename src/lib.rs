@@ -19,3 +19,5 @@ mod server_backend;
 
 #[cfg(feature = "gui")]
 pub use app::FlowsApp;
+#[cfg(feature = "gui")]
+mod widgets;

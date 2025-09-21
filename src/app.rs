@@ -5,6 +5,7 @@ use crate::game_ui::GameUi;
 use crate::game_view::GameView;
 use crate::server_backend::{ServerBackend, ServerCredentials};
 use crate::server_protocol::{ReconnectToken, RoomId, Username};
+use crate::widgets;
 
 use rand::distr::{SampleString, Uniform};
 use rand::{rngs::StdRng, SeedableRng};
@@ -19,15 +20,15 @@ struct InMemoryMode {
     current_displayed_player: usize,
     displayed_action_count: usize,
     scores: Vec<usize>, // Win count for each player
-    num_players: usize,
+    game_settings: GameSettings,
     last_game_action_count: usize, // To track when a new game starts
     animation_slowdown: f32,
 }
 
 impl InMemoryMode {
-    pub fn new(settings: GameSettings, animation_slowdown: f32) -> Self {
-        let num_players = settings.num_players;
-        let backend = InMemoryBackend::new(settings);
+    pub fn new(game_settings: GameSettings, animation_slowdown: f32) -> Self {
+        let num_players = game_settings.num_players;
+        let backend = InMemoryBackend::new(game_settings.clone());
         let player_views = (0..num_players)
             .map(|i| GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(i)))))
             .collect::<Vec<_>>();
@@ -41,15 +42,15 @@ impl InMemoryMode {
             current_displayed_player: 0,
             displayed_action_count: 0,
             scores: vec![0; num_players],
-            num_players,
+            game_settings,
             last_game_action_count: 0,
             animation_slowdown,
         }
     }
 
-    pub fn reset_game(&mut self, settings: GameSettings) {
-        let backend = InMemoryBackend::new(settings);
-        self.player_views = (0..self.num_players)
+    pub fn reset_game(&mut self) {
+        let backend = InMemoryBackend::new(self.game_settings.clone());
+        self.player_views = (0..self.game_settings.num_players)
             .map(|i| GameView::new(Box::new(backend.backend_for_viewer(GameViewer::Player(i)))))
             .collect::<Vec<_>>();
         self.admin_view = GameView::new(Box::new(backend));
@@ -90,7 +91,8 @@ impl MediumAiMode {
         }
     }
 
-    pub fn reset_game(&mut self, settings: GameSettings) {
+    pub fn reset_game(&mut self) {
+        let settings = self.human_view.game().as_ref().unwrap().settings().clone();
         self.main_backend = MediumAiBackend::new(settings, 2, false);
         self.human_view = GameView::new(Box::new(
             self.main_backend.backend_for_viewer(GameViewer::Player(0)),
@@ -118,6 +120,7 @@ struct ServerMode {
     backend: ServerBackend,
     current_room: Option<ServerModeRoom>,
     animation_slowdown: f32,
+    create_game_settings: GameSettings,
 }
 
 impl ServerMode {
@@ -127,6 +130,7 @@ impl ServerMode {
             backend,
             animation_slowdown,
             current_room: None,
+            create_game_settings: Default::default(),
         }
     }
 
@@ -176,7 +180,8 @@ impl EasyAiMode {
         }
     }
 
-    pub fn reset_game(&mut self, settings: GameSettings) {
+    pub fn reset_game(&mut self) {
+        let settings = self.human_view.game().as_ref().unwrap().settings().clone();
         self.main_backend = EasyAiBackend::new(settings, false);
         self.human_view = GameView::new(Box::new(
             self.main_backend.backend_for_viewer(GameViewer::Player(0)),
@@ -198,6 +203,7 @@ enum State {
     Menu {
         server_ip: String,
         username: Username,
+        local_game_settings: GameSettings,
     },
     InMemoryMode(InMemoryMode),
     EasyAiMode(EasyAiMode),
@@ -260,6 +266,7 @@ impl FlowsApp {
             state: State::Menu {
                 server_ip,
                 username: "Test".into(),
+                local_game_settings: Default::default(),
             },
             persistent_state,
             ai_debugging,
@@ -290,25 +297,21 @@ impl eframe::App for FlowsApp {
             State::Menu {
                 server_ip,
                 username,
+                local_game_settings,
             } => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.heading("Local");
+                    widgets::game_settings(ui, local_game_settings, true);
                     if ui.button("In-memory").clicked() {
                         new_state = Some(State::InMemoryMode(InMemoryMode::new(
-                            GameSettings {
-                                num_players: 2,
-                                version: 0,
-                            },
+                            local_game_settings.clone(),
                             self.animation_slowdown,
                         )));
                     }
 
                     if ui.button("Easy AI").clicked() {
                         new_state = Some(State::EasyAiMode(EasyAiMode::new(
-                            GameSettings {
-                                num_players: 2,
-                                version: 0,
-                            },
+                            local_game_settings.clone(),
                             self.ai_debugging,
                             self.animation_slowdown,
                         )));
@@ -316,10 +319,7 @@ impl eframe::App for FlowsApp {
 
                     if ui.button("Medium AI").clicked() {
                         new_state = Some(State::MediumAiMode(MediumAiMode::new(
-                            GameSettings {
-                                num_players: 2,
-                                version: 0,
-                            },
+                            local_game_settings.clone(),
                             self.ai_debugging,
                         )));
                     }
@@ -431,10 +431,7 @@ impl eframe::App for FlowsApp {
                     .display(ctx, player_view, None, &in_memory_mode.scores);
 
                 if ui_response.play_again_requested {
-                    in_memory_mode.reset_game(GameSettings {
-                        num_players: in_memory_mode.num_players,
-                        version: 0,
-                    });
+                    in_memory_mode.reset_game();
                 }
             }
             State::EasyAiMode(easy_ai_mode) => {
@@ -475,10 +472,7 @@ impl eframe::App for FlowsApp {
                         .display(ctx, human_view, None, &easy_ai_mode.scores);
 
                 if ui_response.play_again_requested {
-                    easy_ai_mode.reset_game(GameSettings {
-                        num_players: 2,
-                        version: 0,
-                    });
+                    easy_ai_mode.reset_game();
                 }
 
                 ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
@@ -523,10 +517,7 @@ impl eframe::App for FlowsApp {
                         .display(ctx, human_view, None, &medium_ai_mode.scores);
 
                 if ui_response.play_again_requested {
-                    medium_ai_mode.reset_game(GameSettings {
-                        num_players: 2,
-                        version: 0,
-                    });
+                    medium_ai_mode.reset_game();
                 }
 
                 ctx.request_repaint_after_secs(1.0 / 60.0); // Keep updating for AI moves
@@ -571,17 +562,11 @@ impl eframe::App for FlowsApp {
                     }
                 } else {
                     egui::CentralPanel::default().show(ctx, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("Create game: ");
-                            for i in vec![2, 3].into_iter() {
-                                if ui.button(format!("{}-player", i)).clicked() {
-                                    server_mode.create_room(GameSettings {
-                                        num_players: i,
-                                        version: 0,
-                                    });
-                                }
-                            }
-                        });
+                        widgets::game_settings(ui, &mut server_mode.create_game_settings, true);
+                        if ui.button("Create game").clicked() {
+                            server_mode.create_room(server_mode.create_game_settings.clone());
+                        }
+                        ui.heading("Active rooms");
                         let mut room_to_view = None;
                         egui_extras::TableBuilder::new(ui)
                             .columns(egui_extras::Column::auto(), 3)
