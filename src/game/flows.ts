@@ -42,14 +42,14 @@ export function traceFlow(
       continue;
     }
     
-    // Add this position to the flow
-    flowPositions.add(posKey);
-    
     // Find where the flow exits this tile
     const exitDir = getFlowExit(tile, current.entryDir);
     if (exitDir === null) {
       continue;
     }
+    
+    // Add this position to the flow only if there's a valid flow connection
+    flowPositions.add(posKey);
     
     // Move to the next tile in the exit direction
     const nextPos = getNeighborInDirection(current.pos, exitDir);

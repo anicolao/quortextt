@@ -1,0 +1,254 @@
+// Unit tests for victory conditions
+
+import { describe, it, expect } from 'vitest';
+import {
+  checkPlayerFlowVictory,
+  checkTeamFlowVictory,
+  checkFlowVictory,
+  checkVictory,
+} from '../../src/game/victory';
+import { Player, Team, TileType, PlacedTile } from '../../src/game/types';
+import { positionToKey, getEdgePositions } from '../../src/game/board';
+
+describe('victory conditions', () => {
+  const createPlayer = (id: string, edge: number): Player => ({
+    id,
+    color: `color-${id}`,
+    edgePosition: edge,
+    isAI: false,
+  });
+
+  describe('checkPlayerFlowVictory', () => {
+    it('should return false when flow is empty', () => {
+      const player = createPlayer('p1', 0);
+      const flows = new Map<string, Set<string>>();
+      flows.set('p1', new Set());
+
+      expect(checkPlayerFlowVictory(flows, player)).toBe(false);
+    });
+
+    it('should return false when flow only touches start edge', () => {
+      const player = createPlayer('p1', 0);
+      const flows = new Map<string, Set<string>>();
+      
+      // Add only positions from start edge
+      const startEdge = getEdgePositions(0);
+      const flowSet = new Set(startEdge.slice(0, 2).map(positionToKey));
+      flows.set('p1', flowSet);
+
+      expect(checkPlayerFlowVictory(flows, player)).toBe(false);
+    });
+
+    it('should return false when flow only touches target edge', () => {
+      const player = createPlayer('p1', 0);
+      const flows = new Map<string, Set<string>>();
+      
+      // Add only positions from opposite edge (edge 3)
+      const targetEdge = getEdgePositions(3);
+      const flowSet = new Set(targetEdge.slice(0, 2).map(positionToKey));
+      flows.set('p1', flowSet);
+
+      expect(checkPlayerFlowVictory(flows, player)).toBe(false);
+    });
+
+    it('should return true when flow connects both edges', () => {
+      const player = createPlayer('p1', 0);
+      const flows = new Map<string, Set<string>>();
+      
+      // Add positions from both edges
+      const startEdge = getEdgePositions(0);
+      const targetEdge = getEdgePositions(3);
+      const flowSet = new Set([
+        positionToKey(startEdge[0]),
+        positionToKey(targetEdge[0]),
+      ]);
+      flows.set('p1', flowSet);
+
+      expect(checkPlayerFlowVictory(flows, player)).toBe(true);
+    });
+
+    it('should work for different edge pairs', () => {
+      const player = createPlayer('p1', 1);
+      const flows = new Map<string, Set<string>>();
+      
+      const startEdge = getEdgePositions(1);
+      const targetEdge = getEdgePositions(4); // Opposite of edge 1
+      const flowSet = new Set([
+        positionToKey(startEdge[0]),
+        positionToKey(targetEdge[0]),
+      ]);
+      flows.set('p1', flowSet);
+
+      expect(checkPlayerFlowVictory(flows, player)).toBe(true);
+    });
+  });
+
+  describe('checkTeamFlowVictory', () => {
+    it('should return false when no flows exist', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      const flows = new Map<string, Set<string>>();
+
+      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+    });
+
+    it('should return false when flows only touch one edge', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      const flows = new Map<string, Set<string>>();
+      
+      const edge0 = getEdgePositions(0);
+      flows.set('p1', new Set([positionToKey(edge0[0])]));
+
+      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+    });
+
+    it('should return true when player1 flow connects both edges', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      const flows = new Map<string, Set<string>>();
+      
+      const edge0 = getEdgePositions(0);
+      const edge3 = getEdgePositions(3);
+      flows.set('p1', new Set([
+        positionToKey(edge0[0]),
+        positionToKey(edge3[0]),
+      ]));
+
+      expect(checkTeamFlowVictory(flows, team, players)).toBe(true);
+    });
+
+    it('should return true when player2 flow connects both edges', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      const flows = new Map<string, Set<string>>();
+      
+      const edge0 = getEdgePositions(0);
+      const edge3 = getEdgePositions(3);
+      flows.set('p2', new Set([
+        positionToKey(edge0[0]),
+        positionToKey(edge3[0]),
+      ]));
+
+      expect(checkTeamFlowVictory(flows, team, players)).toBe(true);
+    });
+  });
+
+  describe('checkFlowVictory', () => {
+    it('should return no winner for empty flows', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const flows = new Map<string, Set<string>>();
+      const teams: Team[] = [];
+
+      const result = checkFlowVictory(flows, players, teams);
+
+      expect(result.winner).toBe(null);
+      expect(result.winType).toBe(null);
+    });
+
+    it('should detect individual player victory', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const flows = new Map<string, Set<string>>();
+      const teams: Team[] = [];
+      
+      const edge0 = getEdgePositions(0);
+      const edge3 = getEdgePositions(3);
+      flows.set('p1', new Set([
+        positionToKey(edge0[0]),
+        positionToKey(edge3[0]),
+      ]));
+      flows.set('p2', new Set());
+
+      const result = checkFlowVictory(flows, players, teams);
+
+      expect(result.winner).toBe('p1');
+      expect(result.winType).toBe('flow');
+    });
+
+    it('should detect team victory', () => {
+      const players = [
+        createPlayer('p1', 0),
+        createPlayer('p2', 1),
+        createPlayer('p3', 3),
+        createPlayer('p4', 4),
+      ];
+      const teams: Team[] = [
+        { player1Id: 'p1', player2Id: 'p3' },
+        { player1Id: 'p2', player2Id: 'p4' },
+      ];
+      const flows = new Map<string, Set<string>>();
+      
+      const edge0 = getEdgePositions(0);
+      const edge3 = getEdgePositions(3);
+      flows.set('p1', new Set([
+        positionToKey(edge0[0]),
+        positionToKey(edge3[0]),
+      ]));
+
+      const result = checkFlowVictory(flows, players, teams);
+
+      expect(result.winner).toBe('team-p1-p3');
+      expect(result.winType).toBe('flow');
+    });
+
+    it('should detect tie when multiple players win', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 1)];
+      const flows = new Map<string, Set<string>>();
+      const teams: Team[] = [];
+      
+      // Both players complete their connections
+      const edge0 = getEdgePositions(0);
+      const edge3 = getEdgePositions(3);
+      flows.set('p1', new Set([
+        positionToKey(edge0[0]),
+        positionToKey(edge3[0]),
+      ]));
+      
+      const edge1 = getEdgePositions(1);
+      const edge4 = getEdgePositions(4);
+      flows.set('p2', new Set([
+        positionToKey(edge1[0]),
+        positionToKey(edge4[0]),
+      ]));
+
+      const result = checkFlowVictory(flows, players, teams);
+
+      expect(result.winType).toBe('tie');
+      expect(result.winner).toContain('p1');
+      expect(result.winner).toContain('p2');
+    });
+  });
+
+  describe('checkVictory', () => {
+    it('should check flow victory first', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const board = new Map<string, PlacedTile>();
+      const flows = new Map<string, Set<string>>();
+      const teams: Team[] = [];
+      
+      const edge0 = getEdgePositions(0);
+      const edge3 = getEdgePositions(3);
+      flows.set('p1', new Set([
+        positionToKey(edge0[0]),
+        positionToKey(edge3[0]),
+      ]));
+
+      const result = checkVictory(board, flows, players, teams);
+
+      expect(result.winner).toBe('p1');
+      expect(result.winType).toBe('flow');
+    });
+
+    it('should return no winner when no victory conditions met', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const board = new Map<string, PlacedTile>();
+      const flows = new Map<string, Set<string>>();
+      const teams: Team[] = [];
+
+      const result = checkVictory(board, flows, players, teams);
+
+      expect(result.winner).toBe(null);
+      expect(result.winType).toBe(null);
+    });
+  });
+});
