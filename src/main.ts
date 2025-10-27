@@ -4,6 +4,14 @@ import { store } from './redux/store';
 import { Renderer } from './rendering/renderer';
 import { InputHandler } from './input/inputHandler';
 
+// Expose store to window for testing
+declare global {
+  interface Window {
+    __REDUX_STORE__: typeof store;
+  }
+}
+window.__REDUX_STORE__ = store;
+
 // Initialize the application
 function init() {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
