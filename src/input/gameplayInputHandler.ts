@@ -25,12 +25,41 @@ export class GameplayInputHandler {
 
     // Check if tile is already placed on board
     if (state.ui.selectedPosition) {
-      // Check for checkmark/X button clicks
-      // TODO: Implement action button hit detection
+      // Check for checkmark button click (to the right of tile)
+      const tileCenter = hexToPixel(state.ui.selectedPosition, layout);
+      const buttonSize = layout.size * 0.8;
+      const buttonSpacing = layout.size * 2;
+      
+      const checkPos = { x: tileCenter.x + buttonSpacing, y: tileCenter.y };
+      const xPos = { x: tileCenter.x - buttonSpacing, y: tileCenter.y };
+      
+      // Check checkmark button
+      const distToCheck = Math.sqrt(
+        Math.pow(canvasX - checkPos.x, 2) + Math.pow(canvasY - checkPos.y, 2)
+      );
+      if (distToCheck < buttonSize / 2) {
+        // Checkmark clicked - place the tile
+        // TODO: Check if placement is legal first
+        store.dispatch(require('../redux/actions').placeTile(
+          state.ui.selectedPosition,
+          state.ui.currentRotation
+        ));
+        store.dispatch(setSelectedPosition(null));
+        store.dispatch(setRotation(0));
+        return;
+      }
+      
+      // Check X button
+      const distToX = Math.sqrt(
+        Math.pow(canvasX - xPos.x, 2) + Math.pow(canvasY - xPos.y, 2)
+      );
+      if (distToX < buttonSize / 2) {
+        // X clicked - cancel placement
+        store.dispatch(setSelectedPosition(null));
+        return;
+      }
       
       // Check if clicking on the tile itself to rotate
-      const tileCenter = hexToPixel(state.ui.selectedPosition, layout);
-      
       if (isPointInHex({ x: canvasX, y: canvasY }, tileCenter, layout.size)) {
         this.handleTileRotation(canvasX, tileCenter.x);
         return;
