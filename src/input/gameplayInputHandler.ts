@@ -1,7 +1,7 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition } from '../redux/actions';
+import { setRotation, setSelectedPosition, placeTile } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
@@ -40,7 +40,7 @@ export class GameplayInputHandler {
       if (distToCheck < buttonSize / 2) {
         // Checkmark clicked - place the tile
         // TODO: Check if placement is legal first
-        store.dispatch(require('../redux/actions').placeTile(
+        store.dispatch(placeTile(
           state.ui.selectedPosition,
           state.ui.currentRotation
         ));

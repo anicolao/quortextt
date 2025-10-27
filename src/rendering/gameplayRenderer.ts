@@ -69,11 +69,12 @@ export class GameplayRenderer {
 
   private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
-    const boardRadius = this.layout.size * 4.5; // Approximate radius for 37-hex diamond
+    // Make board larger to extend beyond the grid pattern
+    const boardRadius = this.layout.size * 5.2; // Larger to go beyond grid edges
 
-    // Draw board as a large hexagon
+    // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
-    this.drawHexagon(center, boardRadius, true);
+    this.drawFlatTopHexagon(center, boardRadius, true);
 
     // Draw colored edges for each player
     // Each player owns one edge of the board hexagon
@@ -90,24 +91,24 @@ export class GameplayRenderer {
     edgePosition: number,
     color: string
   ): void {
-    // Get the two vertices that define this edge
-    const vertices = getHexVertices(center, radius);
+    // Get the two vertices that define this edge for flat-top hexagon
+    const vertices = this.getFlatTopHexVertices(center, radius);
     
-    // Edge position maps to the edge between vertices
-    // Edge 0 is between vertices 4 and 5 (SouthWest)
-    // Edge 1 is between vertices 5 and 0 (West)
-    // Edge 2 is between vertices 0 and 1 (NorthWest)
-    // Edge 3 is between vertices 1 and 2 (NorthEast)
-    // Edge 4 is between vertices 2 and 3 (East)
-    // Edge 5 is between vertices 3 and 4 (SouthEast)
+    // For flat-top hexagon, edges are rotated 30° from pointy-top
+    // Edge 0 is between vertices 5 and 0 (SouthWest edge, now at bottom-left)
+    // Edge 1 is between vertices 0 and 1 (West edge, now at left)
+    // Edge 2 is between vertices 1 and 2 (NorthWest edge, now at top-left)
+    // Edge 3 is between vertices 2 and 3 (NorthEast edge, now at top-right)
+    // Edge 4 is between vertices 3 and 4 (East edge, now at right)
+    // Edge 5 is between vertices 4 and 5 (SouthEast edge, now at bottom-right)
     
     const vertexMap = [
-      [4, 5], // Edge 0: SouthWest
-      [5, 0], // Edge 1: West
-      [0, 1], // Edge 2: NorthWest
-      [1, 2], // Edge 3: NorthEast
-      [2, 3], // Edge 4: East
-      [3, 4], // Edge 5: SouthEast
+      [5, 0], // Edge 0: SouthWest
+      [0, 1], // Edge 1: West
+      [1, 2], // Edge 2: NorthWest
+      [2, 3], // Edge 3: NorthEast
+      [3, 4], // Edge 4: East
+      [4, 5], // Edge 5: SouthEast
     ];
     
     const [v1Index, v2Index] = vertexMap[edgePosition];
@@ -393,6 +394,38 @@ export class GameplayRenderer {
     } else {
       this.ctx.stroke();
     }
+  }
+
+  // Draw a flat-top hexagon (rotated 30° from pointy-top)
+  private drawFlatTopHexagon(center: Point, size: number, fill: boolean): void {
+    const vertices = this.getFlatTopHexVertices(center, size);
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(vertices[0].x, vertices[0].y);
+    for (let i = 1; i < vertices.length; i++) {
+      this.ctx.lineTo(vertices[i].x, vertices[i].y);
+    }
+    this.ctx.closePath();
+
+    if (fill) {
+      this.ctx.fill();
+    } else {
+      this.ctx.stroke();
+    }
+  }
+
+  // Get vertices for a flat-top hexagon (rotated 30° from pointy-top)
+  private getFlatTopHexVertices(center: Point, size: number): Point[] {
+    const vertices: Point[] = [];
+    for (let i = 0; i < 6; i++) {
+      const angleDeg = 60 * i; // No offset for flat-top
+      const angleRad = (Math.PI / 180) * angleDeg;
+      vertices.push({
+        x: center.x + size * Math.cos(angleRad),
+        y: center.y + size * Math.sin(angleRad),
+      });
+    }
+    return vertices;
   }
 
   getLayout(): HexLayout {

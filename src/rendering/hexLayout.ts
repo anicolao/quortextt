@@ -126,27 +126,28 @@ export function getHexVertices(center: Point, size: number): Point[] {
 
 // Get the midpoint of a hex edge (for flow rendering)
 export function getEdgeMidpoint(center: Point, size: number, direction: Direction): Point {
-  // For pointy-top hexagons, edges are perpendicular to directions
-  // Direction.SouthWest = 0 corresponds to the edge between vertices 4 and 5
-  // We need to map directions to edges
-  const edgeAngles = [
-    210, // SouthWest edge
-    270, // West edge
-    330, // NorthWest edge
-    30,  // NorthEast edge
-    90,  // East edge
-    150, // SouthEast edge
+  // For pointy-top hexagons, get the actual edge midpoints by averaging vertices
+  // Direction maps to edges between vertices:
+  // SouthWest (0): vertices 4-5, West (1): vertices 5-0, NorthWest (2): vertices 0-1
+  // NorthEast (3): vertices 1-2, East (4): vertices 2-3, SouthEast (5): vertices 3-4
+  
+  const vertexPairs = [
+    [4, 5], // SouthWest
+    [5, 0], // West
+    [0, 1], // NorthWest
+    [1, 2], // NorthEast
+    [2, 3], // East
+    [3, 4], // SouthEast
   ];
   
-  const angleDeg = edgeAngles[direction];
-  const angleRad = (Math.PI / 180) * angleDeg;
+  const [v1Index, v2Index] = vertexPairs[direction];
+  const v1 = getHexVertex(center, size, v1Index);
+  const v2 = getHexVertex(center, size, v2Index);
   
-  // Edge midpoints are at distance sqrt(3)/2 * size from center
-  const distance = (Math.sqrt(3) / 2) * size;
-  
+  // Return the midpoint between the two vertices
   return {
-    x: center.x + distance * Math.cos(angleRad),
-    y: center.y + distance * Math.sin(angleRad),
+    x: (v1.x + v2.x) / 2,
+    y: (v1.y + v2.y) / 2,
   };
 }
 
