@@ -69,18 +69,25 @@ export class GameplayRenderer {
 
   private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
-    // Calculate board radius to just enclose the 37-hex diamond
-    // The grid extends 3 hexes from center in each direction
-    // For pointy-top hexes: horizontal spacing = sqrt(3) * size, vertical spacing = 1.5 * size
-    // Widest point is at row 0 with 7 hexes: width ≈ 6 * sqrt(3) * size
-    // For a flat-top hexagon to enclose this, we need radius slightly larger
-    // Flat-top hex width = 2 * radius, so radius = 3 * sqrt(3) * size ≈ 5.2 * size
-    // But that's too big. Let's use height instead:
-    // Height of grid: 6 * 1.5 * size = 9 * size (from row -3 to +3)
-    // For flat-top hex: height = sqrt(3) * radius, so radius = 9 * size / sqrt(3) ≈ 5.2 * size
-    // This is still too big! The issue is we're using hex size, not the layout calculation
-    // Let's just use a small multiplier: ~4.2× to just enclose the grid
-    const boardRadius = this.layout.size * 4.2;
+    // Calculate board radius so corners pass through centers of tiles just outside the board
+    // The 37-hex diamond extends from row -3 to +3 (7 rows total)
+    // For pointy-top hexes, the vertical spacing is 1.5 * size per row
+    // Distance from center to outermost hex center: 3 rows * 1.5 * size = 4.5 * size
+    // A tile just outside would be at 4 rows: 4 * 1.5 * size = 6 * size
+    // 
+    // For a flat-top hexagon, the distance from center to corner is the radius
+    // We want corners to pass through tile centers just outside, which are ~6 * size away
+    // So radius should be approximately 6 * size
+    // 
+    // But let's be more precise: for pointy-top hex, distance from center to vertex = size
+    // Grid extends to row ±3, column range depends on row
+    // Outermost positions like (3,0) have center at distance: sqrt((3*1.5*size)² + 0²) = 4.5*size
+    // Positions like (3,-3) have center at distance: sqrt((3*1.5*size)² + (3*sqrt(3)*size)²)
+    // = sqrt(20.25 + 27) * size = sqrt(47.25) * size ≈ 6.87 * size
+    // 
+    // For flat-top hex corners to pass through hypothetical tiles one row out,
+    // we want radius ≈ 7.5 * size (one more row = 1.5 * size further)
+    const boardRadius = this.layout.size * 7.5;
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;

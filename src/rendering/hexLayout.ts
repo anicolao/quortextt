@@ -154,7 +154,14 @@ export function getEdgeMidpoint(center: Point, size: number, direction: Directio
 // Get the perpendicular vector for a direction (for Bézier control points)
 export function getPerpendicularVector(direction: Direction, size: number): Point {
   // Control points should lie on the line from edge midpoint to hex center
-  // Get the edge midpoint first
+  // For sharp corners (adjacent edges), the curve should approximate a circle
+  // from one edge midpoint to the next
+  // 
+  // For a cubic Bézier to approximate a circular arc, the control points
+  // should be at distance = (4/3) * tan(θ/4) * radius from the endpoints
+  // For 60° arc (sharp corner): distance ≈ 0.55 * radius
+  // For smooth curves on same tile, use about 2/3 of the edge-to-center distance
+  
   const center = { x: 0, y: 0 }; // Relative to tile center
   const edgeMidpoint = getEdgeMidpoint(center, size, direction);
   
@@ -164,9 +171,12 @@ export function getPerpendicularVector(direction: Direction, size: number): Poin
     y: center.y - edgeMidpoint.y,
   };
   
-  // Normalize and scale to control point distance (30% of hex radius)
+  // Normalize
   const length = Math.sqrt(towardCenter.x * towardCenter.x + towardCenter.y * towardCenter.y);
-  const distance = size * 0.3;
+  
+  // Use 2/3 of the distance from edge to center for better circular approximation
+  // This gives more pronounced curves that look circular for sharp corners
+  const distance = length * 0.67;
   
   return {
     x: (towardCenter.x / length) * distance,
