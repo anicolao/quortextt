@@ -48,7 +48,7 @@ test.describe('Multi-Tile Flow Progression', () => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ 
         type: 'PLACE_TILE', 
-        payload: { position: { row: 3, col: -1 }, rotation: 0 } 
+        payload: { position: { row: 3, col: -1 }, rotation: 2 } 
       });
       store.dispatch({ type: 'NEXT_PLAYER' });
       store.dispatch({ type: 'DRAW_TILE' });
