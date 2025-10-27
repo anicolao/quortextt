@@ -1,6 +1,6 @@
 // Canvas rendering functions
 
-import { GameState, PLAYER_COLORS } from '../redux/types';
+import { RootState, PLAYER_COLORS } from '../redux/types';
 import { UILayout, Button, PlayerEntry, calculateLayout } from './layout';
 
 export class Renderer {
@@ -46,8 +46,8 @@ export class Renderer {
     return this.colorPickerPlayerId;
   }
 
-  render(state: GameState): UILayout {
-    const { screen } = state;
+  render(state: RootState): UILayout {
+    const { screen } = state.game;
 
     // Clear canvas
     this.ctx.fillStyle = '#1a1a2e';
@@ -62,11 +62,11 @@ export class Renderer {
     return this.createEmptyLayout();
   }
 
-  private renderConfigurationScreen(state: GameState): UILayout {
+  private renderConfigurationScreen(state: RootState): UILayout {
     const layout = calculateLayout(
       this.canvas.width,
       this.canvas.height,
-      state.players,
+      state.game.configPlayers,
       this.colorPickerPlayerId
     );
 
@@ -84,13 +84,13 @@ export class Renderer {
 
     // Render color picker if visible
     if (layout.colorPicker && layout.colorPicker.visible) {
-      this.renderColorPicker(layout.colorPicker, state.players);
+      this.renderColorPicker(layout.colorPicker, state.game.configPlayers);
     }
 
     return layout;
   }
 
-  private renderGameplayScreen(state: GameState): UILayout {
+  private renderGameplayScreen(state: RootState): UILayout {
     // Placeholder for gameplay screen
     this.ctx.fillStyle = '#ffffff';
     this.ctx.font = '48px sans-serif';
@@ -104,7 +104,7 @@ export class Renderer {
 
     // Show player list
     this.ctx.font = '24px sans-serif';
-    state.players.forEach((player, index) => {
+    state.game.configPlayers.forEach((player, index) => {
       this.ctx.fillStyle = player.color;
       this.ctx.fillText(
         `Player ${index + 1}`,

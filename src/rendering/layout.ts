@@ -1,6 +1,6 @@
 // UI element definitions and layout calculations
 
-import { Player } from '../redux/types';
+import { ConfigPlayer } from '../redux/types';
 
 export interface Button {
   x: number;
@@ -14,7 +14,7 @@ export interface Button {
 }
 
 export interface PlayerEntry {
-  player: Player;
+  player: ConfigPlayer;
   colorIconX: number;
   colorIconY: number;
   colorIconSize: number;
@@ -52,7 +52,7 @@ export interface UILayout {
 export function calculateLayout(
   canvasWidth: number,
   canvasHeight: number,
-  players: Player[],
+  players: ConfigPlayer[],
   colorPickerPlayerId: string | null
 ): UILayout {
   const padding = Math.min(canvasWidth, canvasHeight) * 0.05;
