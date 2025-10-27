@@ -190,6 +190,19 @@ interface UIState {
 - 37 playable positions in diamond shape
 - Store tiles in an immutable Map structure
 
+**Player Edges:**
+Each player controls one edge of the hexagonal board. A "player's edge" consists of:
+- The specific **hex positions** along that board edge (e.g., 4 hexagons for edge 0)
+- The specific **hex edge directions** of those hexagons that face outward toward the board edge
+
+For example, for edge 0 (NorthWest), the player's edge includes:
+- Hex at (-3, 0): only the NorthWest hex edge
+- Hex at (-3, 1): both West and NorthWest hex edges
+- Hex at (-3, 2): both West and NorthWest hex edges
+- Hex at (-3, 3): both West and NorthWest hex edges
+
+This is important for flow propagation: flows only enter the board through the **hex edges that belong to the player's board edge**, not through all 6 edges of the hexagons on that board edge.
+
 **Key Functions:**
 ```typescript
 // Get all valid hex positions on the board
@@ -206,6 +219,12 @@ function getDirection(from: HexPosition, to: HexPosition): Direction | null
 
 // Get edge positions for a player based on their edge number
 function getEdgePositions(edgeNumber: number): HexPosition[]
+
+// Get edge positions with their specific hex edge directions
+// Returns array of {pos, dir} pairs where dir indicates which hex edge
+// faces the board edge and can accept flow from the player's edge
+function getEdgePositionsWithDirections(edgeNumber: number): 
+  Array<{ pos: HexPosition; dir: Direction }>
 ```
 
 ### 4.2 Tile System
@@ -255,6 +274,14 @@ function getFlowExit(
 **Flow Calculation:**
 Flows spread from player edges through connected tiles.
 
+**Important:** Flows only enter the board through the specific hex edges that belong to a player's board edge. For example, a hex on edge 0 (NorthWest) may have up to 2 of its 6 hex edges as entry points (e.g., both West and NorthWest directions), not all 6 directions. This ensures that flows correctly represent paths that connect from the player's edge.
+
+The flow propagation algorithm:
+1. For each player, get their edge positions with specific hex edge directions using `getEdgePositionsWithDirections()`
+2. For each (position, direction) pair, trace the flow through connected tiles
+3. Flows propagate by following the tile's flow paths from entry direction to exit direction
+4. Flows continue into adjacent tiles until they reach a board edge or empty space
+
 ```typescript
 // Calculate all flows for all players from current board state
 function calculateFlows(
@@ -262,7 +289,7 @@ function calculateFlows(
   players: Player[]
 ): Map<string, Set<string>>
 
-// Trace a single flow from a starting position
+// Trace a single flow from a starting position and entry direction
 function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
