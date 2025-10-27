@@ -184,6 +184,84 @@ describe('flow propagation', () => {
       expect(flows.get('p1')?.size).toBe(0);
     });
 
+    it('should only flow from hex edges that belong to player edge', () => {
+      // This test verifies the fix: flows should only start from specific hex edges,
+      // not from all 6 edges of hexes on the player's board edge
+      const players: Player[] = [
+        { id: 'p1', color: 'blue', edgePosition: 0, isAI: false }, // NorthWest edge
+      ];
+      const board = new Map<string, PlacedTile>();
+      
+      // Place a tile at edge position (-3, 0) which is on player 0's edge
+      // This tile should only flow from NorthWest direction, not from all directions
+      const edgeTile: PlacedTile = {
+        type: TileType.NoSharps, // Has connections: SW-NW, NE-SE, W-E
+        rotation: 0,
+        position: { row: -3, col: 0 },
+      };
+      
+      // Place an adjacent tile to the south that should NOT be in p1's flow
+      // because p1's flow should only enter from NW/W directions at this edge hex
+      const southTile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -2, col: 0 }, // SW of edge tile
+      };
+      
+      board.set(positionToKey(edgeTile.position), edgeTile);
+      board.set(positionToKey(southTile.position), southTile);
+      
+      const flows = calculateFlows(board, players);
+      const playerFlow = flows.get('p1');
+      
+      expect(playerFlow).toBeDefined();
+      
+      // The edge tile should be in the flow only if it has a valid entry from NW or W
+      // NoSharps with rotation 0 has: SW-NW, NE-SE, W-E connections
+      // From NW direction, exits to SW - this goes to southTile
+      // From W direction, exits to E
+      // So the flow WILL include edge tile when entering from NW
+      
+      // However, the key test is that we shouldn't get flows from entering via
+      // directions that don't belong to the player's edge (like NE, E, SE)
+      
+      // Let's create a clearer test case
+      const board2 = new Map<string, PlacedTile>();
+      
+      // Place tile at (-3, 3) on edge 0 (NW edge)
+      // At this corner position, only NW direction should be used
+      const cornerTile: PlacedTile = {
+        type: TileType.TwoSharps, // Has connections: SW-SE, NW-NE, W-E
+        rotation: 0,
+        position: { row: -3, col: 3 },
+      };
+      
+      // Place tile to the east (not on player edge, outside board)
+      // and tile to NE (not on player edge, outside board)
+      // Place tile to SE which IS on the board
+      const seTile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -2, col: 3 }, // SE of corner
+      };
+      
+      board2.set(positionToKey(cornerTile.position), cornerTile);
+      board2.set(positionToKey(seTile.position), seTile);
+      
+      const flows2 = calculateFlows(board2, players);
+      const playerFlow2 = flows2.get('p1');
+      
+      // TwoSharps rotation 0: SW-SE, NW-NE, W-E
+      // If entering from NW (player's edge), exits to NE (off board)
+      // If entering from W (player's edge), exits to E (off board)
+      // The tile should be in the flow
+      expect(playerFlow2?.has(positionToKey(cornerTile.position))).toBe(true);
+      
+      // The SE tile should NOT be in flow because flow from NW doesn't go to SE
+      // (TwoSharps NW->NE, not NW->SE)
+      expect(playerFlow2?.has(positionToKey(seTile.position))).toBe(false);
+    });
+
     it('should calculate flows for player with edge tile', () => {
       const players: Player[] = [
         { id: 'p1', color: 'blue', edgePosition: 0, isAI: false },

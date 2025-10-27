@@ -149,3 +149,78 @@ export function getEdgePositions(edgeNumber: number): HexPosition[] {
 export function getOppositeEdge(edgeNumber: number): number {
   return (edgeNumber + 3) % 6;
 }
+
+// Get edge positions with their specific hex edge directions
+// Returns array of [position, direction] pairs where direction indicates
+// which hex edge faces the board edge and can accept flow from the player's edge
+export function getEdgePositionsWithDirections(
+  edgeNumber: number
+): Array<{ pos: HexPosition; dir: Direction }> {
+  const edge = edgeNumber % 6;
+  const result: Array<{ pos: HexPosition; dir: Direction }> = [];
+  
+  switch (edge) {
+    case 0: // NorthWest edge (top-left) - row = -3
+      // Only the hex edges that face outward (toward NW) are used
+      result.push({ pos: { row: -3, col: 0 }, dir: Direction.NorthWest });
+      result.push({ pos: { row: -3, col: 1 }, dir: Direction.West });
+      result.push({ pos: { row: -3, col: 1 }, dir: Direction.NorthWest });
+      result.push({ pos: { row: -3, col: 2 }, dir: Direction.West });
+      result.push({ pos: { row: -3, col: 2 }, dir: Direction.NorthWest });
+      result.push({ pos: { row: -3, col: 3 }, dir: Direction.West });
+      result.push({ pos: { row: -3, col: 3 }, dir: Direction.NorthWest });
+      break;
+    case 1: // NorthEast edge (top-right) - col = 3
+      // Only the hex edges that face outward (toward NE) are used
+      result.push({ pos: { row: -3, col: 3 }, dir: Direction.NorthEast });
+      result.push({ pos: { row: -2, col: 3 }, dir: Direction.NorthWest });
+      result.push({ pos: { row: -2, col: 3 }, dir: Direction.NorthEast });
+      result.push({ pos: { row: -1, col: 3 }, dir: Direction.NorthWest });
+      result.push({ pos: { row: -1, col: 3 }, dir: Direction.NorthEast });
+      result.push({ pos: { row: 0, col: 3 }, dir: Direction.NorthWest });
+      result.push({ pos: { row: 0, col: 3 }, dir: Direction.NorthEast });
+      break;
+    case 2: // East edge (right) - row + col = 3
+      // Only the hex edges that face outward (toward E) are used
+      result.push({ pos: { row: 0, col: 3 }, dir: Direction.East });
+      result.push({ pos: { row: 1, col: 2 }, dir: Direction.NorthEast });
+      result.push({ pos: { row: 1, col: 2 }, dir: Direction.East });
+      result.push({ pos: { row: 2, col: 1 }, dir: Direction.NorthEast });
+      result.push({ pos: { row: 2, col: 1 }, dir: Direction.East });
+      result.push({ pos: { row: 3, col: 0 }, dir: Direction.NorthEast });
+      result.push({ pos: { row: 3, col: 0 }, dir: Direction.East });
+      break;
+    case 3: // SouthEast edge (bottom-right) - row = 3
+      // Only the hex edges that face outward (toward SE) are used
+      result.push({ pos: { row: 3, col: 0 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: 3, col: -1 }, dir: Direction.East });
+      result.push({ pos: { row: 3, col: -1 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: 3, col: -2 }, dir: Direction.East });
+      result.push({ pos: { row: 3, col: -2 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: 3, col: -3 }, dir: Direction.East });
+      result.push({ pos: { row: 3, col: -3 }, dir: Direction.SouthEast });
+      break;
+    case 4: // SouthWest edge (bottom-left) - col = -3
+      // Only the hex edges that face outward (toward SW) are used
+      result.push({ pos: { row: 3, col: -3 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: 2, col: -3 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: 2, col: -3 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: 1, col: -3 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: 1, col: -3 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: 0, col: -3 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: 0, col: -3 }, dir: Direction.SouthWest });
+      break;
+    case 5: // West edge (left) - row + col = -3
+      // Only the hex edges that face outward (toward W) are used
+      result.push({ pos: { row: 0, col: -3 }, dir: Direction.West });
+      result.push({ pos: { row: -1, col: -2 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: -1, col: -2 }, dir: Direction.West });
+      result.push({ pos: { row: -2, col: -1 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: -2, col: -1 }, dir: Direction.West });
+      result.push({ pos: { row: -3, col: 0 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: -3, col: 0 }, dir: Direction.West });
+      break;
+  }
+  
+  return result;
+}
