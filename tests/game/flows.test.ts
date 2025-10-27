@@ -101,6 +101,37 @@ describe('flow propagation', () => {
       expect(flow.size).toBeGreaterThan(0);
       expect(flow.size).toBeLessThanOrEqual(2);
     });
+
+    it('should handle revisiting same position from different direction', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Create a path that loops back
+      const tile1: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: 0, col: 0 },
+      };
+      const tile2: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: 0, col: 1 },
+      };
+      const tile3: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: 1, col: 0 },
+      };
+      
+      board.set(positionToKey(tile1.position), tile1);
+      board.set(positionToKey(tile2.position), tile2);
+      board.set(positionToKey(tile3.position), tile3);
+      
+      // Trace and should handle revisits properly
+      const flow = traceFlow(board, tile1.position, Direction.West);
+      
+      // Should not loop infinitely - visited tracking should prevent it
+      expect(flow.size).toBeGreaterThan(0);
+    });
   });
 
   describe('calculateFlows', () => {

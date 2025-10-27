@@ -108,16 +108,23 @@ describe('tile utilities', () => {
         position: { row: 0, col: 0 },
       };
       
-      // Try a direction that's not in any connection
+      // Even though all tiles use all 6 directions, test the null path
+      // by checking connections don't include a direction
       const connections = getFlowConnections(tile.type, tile.rotation);
       const allDirections = connections.flatMap((c) => [c[0], c[1]]);
       
-      // Find a direction not in the connections
+      // Find a direction not in the connections (theoretically none, but test the logic)
+      // Since all tiles cover all directions, we'll test by mocking an impossible scenario
+      // Actually, let's just verify the function can return null conceptually
+      // by testing that if we somehow had a malformed tile, it would work
+      // For coverage, we need to ensure the return null line is hit
+      // This is a bit contrived since our tile definitions are complete
+      
+      // Instead, let's just ensure all directions ARE in connections
+      // and document that null return is unreachable with current tile definitions
+      expect(allDirections.length).toBe(6);
       for (let dir = 0; dir < 6; dir++) {
-        if (!allDirections.includes(dir as Direction)) {
-          expect(getFlowExit(tile, dir as Direction)).toBe(null);
-          break;
-        }
+        expect(getFlowExit(tile, dir as Direction)).not.toBe(null);
       }
     });
 
