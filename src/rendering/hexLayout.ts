@@ -153,28 +153,24 @@ export function getEdgeMidpoint(center: Point, size: number, direction: Directio
 
 // Get the perpendicular vector for a direction (for Bézier control points)
 export function getPerpendicularVector(direction: Direction, size: number): Point {
-  // Get the inward perpendicular vector for control points
-  const edgeAngles = [
-    210, // SouthWest
-    270, // West
-    330, // NorthWest
-    30,  // NorthEast
-    90,  // East
-    150, // SouthEast
-  ];
+  // Control points should lie on the line from edge midpoint to hex center
+  // Get the edge midpoint first
+  const center = { x: 0, y: 0 }; // Relative to tile center
+  const edgeMidpoint = getEdgeMidpoint(center, size, direction);
   
-  const angleDeg = edgeAngles[direction];
-  const angleRad = (Math.PI / 180) * angleDeg;
+  // Vector from edge midpoint toward center
+  const towardCenter = {
+    x: center.x - edgeMidpoint.x,
+    y: center.y - edgeMidpoint.y,
+  };
   
-  // Perpendicular inward is 180 degrees from edge normal
-  const perpAngle = angleRad + Math.PI;
-  
-  // Control point distance is about 30% of hex radius
+  // Normalize and scale to control point distance (30% of hex radius)
+  const length = Math.sqrt(towardCenter.x * towardCenter.x + towardCenter.y * towardCenter.y);
   const distance = size * 0.3;
   
   return {
-    x: distance * Math.cos(perpAngle),
-    y: distance * Math.sin(perpAngle),
+    x: (towardCenter.x / length) * distance,
+    y: (towardCenter.y / length) * distance,
   };
 }
 

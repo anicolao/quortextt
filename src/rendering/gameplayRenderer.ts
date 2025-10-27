@@ -69,8 +69,18 @@ export class GameplayRenderer {
 
   private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
-    // Make board larger to extend beyond the grid pattern
-    const boardRadius = this.layout.size * 5.2; // Larger to go beyond grid edges
+    // Calculate board radius to just enclose the 37-hex diamond
+    // The grid extends 3 hexes from center in each direction
+    // For pointy-top hexes: horizontal spacing = sqrt(3) * size, vertical spacing = 1.5 * size
+    // Widest point is at row 0 with 7 hexes: width ≈ 6 * sqrt(3) * size
+    // For a flat-top hexagon to enclose this, we need radius slightly larger
+    // Flat-top hex width = 2 * radius, so radius = 3 * sqrt(3) * size ≈ 5.2 * size
+    // But that's too big. Let's use height instead:
+    // Height of grid: 6 * 1.5 * size = 9 * size (from row -3 to +3)
+    // For flat-top hex: height = sqrt(3) * radius, so radius = 9 * size / sqrt(3) ≈ 5.2 * size
+    // This is still too big! The issue is we're using hex size, not the layout calculation
+    // Let's just use a small multiplier: ~4.2× to just enclose the grid
+    const boardRadius = this.layout.size * 4.2;
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
