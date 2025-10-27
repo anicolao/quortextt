@@ -149,6 +149,26 @@ describe('flow propagation', () => {
       expect(flow2.size).toBeGreaterThanOrEqual(0);
       expect(flow3.size).toBeGreaterThan(0);
     });
+
+    it('should handle tile with no matching entry direction', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Create a tile and trace with an invalid entry direction
+      // This is contrived but tests the exitDir === null path
+      const tile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: 0, col: 0 },
+      };
+      board.set(positionToKey(tile.position), tile);
+      
+      // Use an illegal direction to trigger null exit
+      const illegalDirection = 99 as Direction;
+      const flow = traceFlow(board, tile.position, illegalDirection);
+      
+      // Should return empty set since no valid connection
+      expect(flow.size).toBe(0);
+    });
   });
 
   describe('calculateFlows', () => {
