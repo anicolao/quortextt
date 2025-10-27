@@ -159,9 +159,66 @@ export function gameReducer(
         return state;
       }
 
+      // Create Player objects from ConfigPlayers
+      // Assign edge positions based on number of players
+      const players = state.configPlayers.map((cp, index) => {
+        // Distribute players evenly around the hexagon (6 edges)
+        // For 2 players: edges 0 and 3 (opposite sides)
+        // For 3 players: edges 0, 2, 4 (every other edge)
+        // For 4-6 players: consecutive edges
+        let edgePosition: number;
+        const numPlayers = state.configPlayers.length;
+        
+        if (numPlayers === 2) {
+          edgePosition = index * 3; // 0, 3
+        } else if (numPlayers === 3) {
+          edgePosition = index * 2; // 0, 2, 4
+        } else {
+          edgePosition = index; // 0, 1, 2, 3, 4, 5
+        }
+
+        return {
+          id: cp.id,
+          color: cp.color,
+          edgePosition,
+          isAI: false,
+        };
+      });
+
+      // Create teams for 4 or 6 players (opposite sides team up)
+      const teams = [];
+      if (players.length === 4) {
+        teams.push(
+          { player1Id: players[0].id, player2Id: players[2].id },
+          { player1Id: players[1].id, player2Id: players[3].id }
+        );
+      } else if (players.length === 6) {
+        teams.push(
+          { player1Id: players[0].id, player2Id: players[3].id },
+          { player1Id: players[1].id, player2Id: players[4].id },
+          { player1Id: players[2].id, player2Id: players[5].id }
+        );
+      }
+
+      // Initialize the game
+      const availableTiles = createShuffledDeck();
+      const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
+      const remainingTiles = availableTiles.slice(1);
+
       return {
         ...state,
         screen: 'gameplay',
+        players,
+        teams,
+        currentPlayerIndex: 0,
+        phase: 'playing',
+        board: new Map(),
+        availableTiles: remainingTiles,
+        currentTile,
+        flows: new Map(),
+        winner: null,
+        winType: null,
+        moveHistory: [],
       };
     }
 

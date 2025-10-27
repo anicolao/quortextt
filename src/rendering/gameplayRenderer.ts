@@ -11,6 +11,7 @@ import {
   getPerpendicularVector,
   getPlayerEdgePosition,
 } from './hexLayout';
+import { getAllBoardPositions } from '../game/board';
 import { TileType, PlacedTile } from '../game/types';
 import { getFlowConnections } from '../game/tiles';
 
@@ -45,6 +46,9 @@ export class GameplayRenderer {
     // Layer 2: Board hexagon with colored edges
     this.renderBoardHexagon(state);
 
+    // Layer 2.5: Render all 37 hex positions (for debugging/visibility)
+    this.renderHexPositions();
+
     // Layer 3: Placed tiles
     this.renderPlacedTiles(state);
 
@@ -75,6 +79,19 @@ export class GameplayRenderer {
 
     // TODO: Draw colored edges for each player
     // This will require determining which edges are owned by which players
+  }
+
+  private renderHexPositions(): void {
+    // Render all 37 hex positions with subtle outlines
+    const positions = getAllBoardPositions();
+    
+    this.ctx.strokeStyle = '#666666'; // Dark gray outline
+    this.ctx.lineWidth = 1;
+    
+    positions.forEach(pos => {
+      const center = hexToPixel(pos, this.layout);
+      this.drawHexagon(center, this.layout.size, false);
+    });
   }
 
   private renderPlacedTiles(state: RootState): void {
