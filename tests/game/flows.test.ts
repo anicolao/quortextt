@@ -105,32 +105,49 @@ describe('flow propagation', () => {
     it('should handle revisiting same position from different direction', () => {
       const board = new Map<string, PlacedTile>();
       
-      // Create a path that loops back
+      // Create a path that could theoretically loop back
+      // Tile 1: receives from West, outputs to East
       const tile1: PlacedTile = {
-        type: TileType.NoSharps,
+        type: TileType.NoSharps,  // Has W-E connection
         rotation: 0,
         position: { row: 0, col: 0 },
       };
+      
+      // Tile 2: receives from West (from tile1), outputs somewhere
       const tile2: PlacedTile = {
         type: TileType.NoSharps,
         rotation: 0,
         position: { row: 0, col: 1 },
       };
+      
+      // Tile 3: could create a loop back
       const tile3: PlacedTile = {
-        type: TileType.NoSharps,
+        type: TileType.OneSharp,
         rotation: 0,
         position: { row: 1, col: 0 },
+      };
+      
+      // Tile 4: another connection
+      const tile4: PlacedTile = {
+        type: TileType.TwoSharps,
+        rotation: 0,
+        position: { row: 1, col: 1 },
       };
       
       board.set(positionToKey(tile1.position), tile1);
       board.set(positionToKey(tile2.position), tile2);
       board.set(positionToKey(tile3.position), tile3);
+      board.set(positionToKey(tile4.position), tile4);
       
-      // Trace and should handle revisits properly
-      const flow = traceFlow(board, tile1.position, Direction.West);
+      // Trace from multiple starting points to exercise the visited logic
+      const flow1 = traceFlow(board, tile1.position, Direction.West);
+      const flow2 = traceFlow(board, tile1.position, Direction.SouthWest);
+      const flow3 = traceFlow(board, tile2.position, Direction.West);
       
-      // Should not loop infinitely - visited tracking should prevent it
-      expect(flow.size).toBeGreaterThan(0);
+      // Should handle all cases without infinite loops
+      expect(flow1.size).toBeGreaterThan(0);
+      expect(flow2.size).toBeGreaterThanOrEqual(0);
+      expect(flow3.size).toBeGreaterThan(0);
     });
   });
 

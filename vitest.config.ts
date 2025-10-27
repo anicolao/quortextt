@@ -8,9 +8,11 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
       include: ['src/game/**/*.ts'],
       exclude: ['src/game/index.ts'],
       all: true,
+      clean: true,
     },
   },
 });
