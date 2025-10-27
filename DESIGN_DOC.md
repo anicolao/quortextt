@@ -4,6 +4,10 @@
 
 This document outlines the implementation plan for a web-based version of Flows (Quortex) using TypeScript, Redux for state management, and either raw HTML5 Canvas or Threlte for rendering.
 
+**Related Documents:**
+- **[UI_DESIGN.md](UI_DESIGN.md)** - Detailed UI specifications for Phase 3 (Rendering) and Phase 4 (Input & Interaction), including touch and mouse interaction patterns, visual design, and E2E test specifications
+- **[RULES.md](RULES.md)** - Complete game rules and mechanics
+
 ### Technology Stack
 - **Language:** TypeScript
 - **State Management:** Redux
@@ -12,12 +16,14 @@ This document outlines the implementation plan for a web-based version of Flows 
   - Option B: Threlte (Svelte + Three.js wrapper for 3D)
 - **Build Tool:** Vite
 - **Testing:** Vitest (unit tests), Playwright (e2e tests)
+- **Target Platforms:** Touch screens (primary), desktop browsers (secondary)
 
 ### Design Philosophy
 - **Immutable state** managed through Redux
 - **Pure functions** for game logic
 - **Separation of concerns** between game logic, state management, and rendering
 - **Type safety** throughout the codebase
+- **Touch-first design** - all interactions achievable via tapping (no dragging required)
 
 ## 2. Architecture Overview
 
@@ -460,19 +466,28 @@ const selectFlowsForRendering = createSelector(
 
 ## 6. Rendering
 
+**For detailed rendering specifications, layouts, and visual design, see [UI_DESIGN.md](UI_DESIGN.md)**
+
 ### 6.1 Canvas Rendering (Current)
 
 **Hexagon Layout:**
 - Use pointy-top hexagons
 - Calculate pixel coordinates from axial coordinates
-- Support zoom and pan
+- Support zoom and pan (optional, primarily for accessibility)
+- Responsive sizing based on viewport
+
+**Screen Layout:**
+- Top bar: Player info, turn counter, tile counts (15% height)
+- Main board area: Hexagonal game board (70% height)
+- Bottom bar: Current tile preview and controls (15% height)
+- Responsive breakpoints for mobile, tablet, desktop
 
 **Rendering Layers:**
 1. **Background:** Board outline and grid
 2. **Tiles:** Placed tiles with flow paths
 3. **Flows:** Colored flow markers
 4. **Highlights:** Legal move indicators, hover effects
-5. **UI:** Current tile preview, player info
+5. **UI:** Current tile preview, player info, buttons
 
 **Key Components:**
 ```typescript
@@ -511,26 +526,47 @@ If using Threlte for 3D rendering:
 
 ## 7. Input Handling
 
-### 7.1 Mouse/Touch Input
+**For detailed interaction specifications and touch/mouse behaviors, see [UI_DESIGN.md](UI_DESIGN.md)**
+
+### 7.1 Touch Input (Primary Target)
+
+**Core Interactions (Tap Only):**
+- Tap on hex position to select placement location
+- Tap rotation buttons to rotate tile (clockwise/counter-clockwise)
+- Tap "Place Tile" button to confirm placement
+- All gameplay achievable without dragging
+
+**Optional Enhanced Gestures:**
+- Two-finger pinch: Zoom in/out
+- Two-finger pan: Pan view when zoomed
+- Long-press: Show tile information
 
 ```typescript
 interface InputHandler {
-  // Handle clicks on hex positions
+  // Handle taps/clicks on hex positions
   handleClick(pixel: { x: number; y: number }): void
   
-  // Handle hover for preview
+  // Handle hover for preview (mouse only)
   handleMove(pixel: { x: number; y: number }): void
   
-  // Handle rotation input (scroll wheel, gestures)
-  handleRotation(delta: number): void
+  // Handle rotation input (buttons, scroll wheel, keyboard)
+  handleRotation(direction: 'clockwise' | 'counter-clockwise'): void
   
-  // Handle pan/zoom
+  // Optional: Handle pan/zoom (two-finger gestures)
   handlePan(delta: { x: number; y: number }): void
   handleZoom(delta: number): void
 }
 ```
 
-### 7.2 Keyboard Input
+### 7.2 Mouse Input (Secondary Target)
+
+**Enhanced Desktop Features:**
+- Click same as tap, but with hover preview
+- Tile preview follows mouse pointer before placement
+- Shows legality indicator (green/red tint) on hover
+- Mouse wheel rotation support
+
+### 7.3 Keyboard Input
 
 ```typescript
 // Keyboard shortcuts
@@ -612,21 +648,34 @@ class MediumAI {
 - [x] Set up Redux DevTools integration
 
 ### Phase 3: Rendering System
+**For detailed specifications, see [UI_DESIGN.md](UI_DESIGN.md)**
+
 - [ ] Implement hexagon coordinate-to-pixel conversion
-- [ ] Render basic board grid
+- [ ] Render basic board grid with 37 hex positions
 - [ ] Render placed tiles with flow paths
 - [ ] Render flow markers for each player
-- [ ] Implement hover and legal move highlighting
-- [ ] Add current tile preview
+- [ ] Implement legal move highlighting
+- [ ] Add current tile preview in bottom bar
 - [ ] Add animations for tile placement
+- [ ] Implement responsive layout (mobile, tablet, desktop)
+- [ ] Add hover highlighting (desktop only)
 
-### Phase 4: Input & Interaction
-- [ ] Implement mouse click handling
-- [ ] Implement hover for position preview
-- [ ] Implement tile rotation input
-- [ ] Add keyboard shortcuts
-- [ ] Implement pan and zoom controls
-- [ ] Add touch/mobile support
+### Phase 4: Input & Interaction  
+**For detailed specifications, see [UI_DESIGN.md](UI_DESIGN.md)**
+
+**Primary (Touch Screen):**
+- [ ] Implement tap to select hex position
+- [ ] Implement rotation buttons (tap to rotate tile)
+- [ ] Implement "Place Tile" button (tap to confirm placement)
+- [ ] Add visual feedback for all touch interactions
+- [ ] Optional: Two-finger pinch zoom and pan
+
+**Secondary (Desktop/Mouse):**
+- [ ] Implement mouse click handling (same as tap)
+- [ ] Implement hover preview (tile follows mouse pointer)
+- [ ] Add mouse wheel rotation
+- [ ] Add keyboard shortcuts (R/E for rotate, Enter to place, etc.)
+- [ ] Optional: Right-click context menu
 
 ### Phase 5: Game Flow & Polish
 - [ ] Connect all pieces: input → actions → reducers → rendering
@@ -652,22 +701,36 @@ class MediumAI {
 
 ## 10. Testing Strategy
 
+**For detailed E2E test specifications, see [UI_DESIGN.md](UI_DESIGN.md#e2e-test-specifications)**
+
 ### 10.1 Unit Tests
 - Test all pure game logic functions
 - Test Redux reducers
 - Test selectors
 - Mock state for isolated testing
+- Target: 90%+ code coverage
 
 ### 10.2 Integration Tests
 - Test complete game flows
 - Test state transitions
 - Test flow propagation with complex boards
+- Test Redux action → reducer → selector pipeline
 
-### 10.3 E2E Tests
-- Test complete game playthrough
-- Test UI interactions
-- Test victory conditions
-- Test illegal move handling
+### 10.3 E2E Tests (Playwright)
+
+**Test Suites:**
+1. **Rendering Tests:** Verify all visual elements render correctly
+2. **Touch Interaction Tests:** Test tap-based interactions
+3. **Mouse Interaction Tests:** Test desktop enhancements
+4. **Game Flow Tests:** Test complete gameplay scenarios
+5. **UI State Tests:** Test toggles, settings, and state persistence
+6. **Error & Edge Cases:** Test error handling and edge conditions
+
+**Test Targets:**
+- Multiple browsers (Chrome, Firefox, Safari)
+- Multiple viewport sizes (mobile, tablet, desktop)
+- Visual regression testing (screenshot comparison)
+- Accessibility compliance (WCAG 2.1 AA)
 
 ## 11. Performance Considerations
 
@@ -697,14 +760,21 @@ class MediumAI {
 - Should the deck be truly random or seeded? **Seeded for reproducibility**
 - Display remaining tile counts? **Yes, helpful for strategy**
 
+### Input Method
+- **Primary target: Touch screen** - All gameplay via tapping (no drag required)
+- **Secondary target: Desktop/mouse** - Enhanced with hover previews
+- **Interaction model:** Tap to select, tap to rotate, tap to place
+- **Desktop enhancement:** Tile preview follows mouse pointer
+
 ### Move Validation
 - Validate on client only or server too? **Both for multiplayer**
 - Show all legal moves or let players figure it out? **Optional toggle**
 
 ### Animations
-- Animate tile placement? **Yes, smooth UX**
-- Animate flow propagation? **Yes, helps understand game state**
+- Animate tile placement? **Yes, smooth UX** (200-400ms)
+- Animate flow propagation? **Yes, helps understand game state** (200-300ms)
 - Speed controls? **Yes, user preference**
+- See [UI_DESIGN.md](UI_DESIGN.md) for animation specifications
 
 ## 13. Future Enhancements
 
