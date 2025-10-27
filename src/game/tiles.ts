@@ -2,30 +2,35 @@
 
 import { TileType, Direction, Rotation, FlowConnection, PlacedTile } from './types';
 
-// Define flow patterns for each tile type in default orientation (rotation 0)
+// Define flow patterns for each tile type in canonical orientation (rotation 0)
+// These match the Rust implementation's canonical orientations
 // Each tile has 3 flow connections (pairs of directions)
-// NOTE: These definitions are rotated by -2 (or +4) from the original
-// to match the correct visual orientation
+// Direction values: 0=SW, 1=W, 2=NW, 3=NE, 4=E, 5=SE
+//
+// CANONICAL ORIENTATIONS (matching Rust):
+// - NoSharps: horizontal flow goes W-E (no sharp turns)
+// - TwoSharps: two sharp turns (adjacent edges), with W-E in middle  
+// - ThreeSharps: three sharp turns, arranged symmetrically
 export const TILE_FLOWS: Record<TileType, readonly FlowConnection[]> = {
   [TileType.NoSharps]: [
-    [Direction.East, Direction.SouthWest],
-    [Direction.West, Direction.NorthEast],
-    [Direction.SouthEast, Direction.NorthWest],
+    [Direction.SouthWest, Direction.NorthWest],  // 0-2 (curved)
+    [Direction.West, Direction.East],             // 1-4 (straight)
+    [Direction.NorthEast, Direction.SouthEast],   // 3-5 (curved)
   ],
   [TileType.OneSharp]: [
-    [Direction.East, Direction.NorthEast],
-    [Direction.SouthWest, Direction.NorthWest],
-    [Direction.SouthEast, Direction.West],
+    [Direction.SouthWest, Direction.SouthEast],   // 0-5 (sharp)
+    [Direction.West, Direction.NorthEast],        // 1-3 (curved)
+    [Direction.NorthWest, Direction.East],        // 2-4 (curved)
   ],
   [TileType.TwoSharps]: [
-    [Direction.East, Direction.NorthEast],
-    [Direction.SouthWest, Direction.West],
-    [Direction.SouthEast, Direction.NorthWest],
+    [Direction.SouthWest, Direction.SouthEast],   // 0-5 (sharp)
+    [Direction.West, Direction.East],             // 1-4 (straight)
+    [Direction.NorthWest, Direction.NorthEast],   // 2-3 (sharp)
   ],
   [TileType.ThreeSharps]: [
-    [Direction.East, Direction.NorthEast],
-    [Direction.West, Direction.NorthWest],
-    [Direction.SouthEast, Direction.SouthWest],
+    [Direction.SouthWest, Direction.SouthEast],   // 0-5 (sharp)
+    [Direction.West, Direction.NorthWest],        // 1-2 (sharp)
+    [Direction.NorthEast, Direction.East],        // 3-4 (sharp)
   ],
 };
 
