@@ -4,26 +4,28 @@ import { TileType, Direction, Rotation, FlowConnection, PlacedTile } from './typ
 
 // Define flow patterns for each tile type in default orientation (rotation 0)
 // Each tile has 3 flow connections (pairs of directions)
+// NOTE: These definitions are rotated by -2 (or +4) from the original
+// to match the correct visual orientation
 export const TILE_FLOWS: Record<TileType, readonly FlowConnection[]> = {
   [TileType.NoSharps]: [
-    [Direction.SouthWest, Direction.NorthWest],
-    [Direction.NorthEast, Direction.SouthEast],
-    [Direction.West, Direction.East],
+    [Direction.East, Direction.SouthWest],
+    [Direction.West, Direction.NorthEast],
+    [Direction.SouthEast, Direction.NorthWest],
   ],
   [TileType.OneSharp]: [
-    [Direction.SouthWest, Direction.SouthEast],
-    [Direction.NorthWest, Direction.East],
-    [Direction.West, Direction.NorthEast],
+    [Direction.East, Direction.NorthEast],
+    [Direction.SouthWest, Direction.NorthWest],
+    [Direction.SouthEast, Direction.West],
   ],
   [TileType.TwoSharps]: [
-    [Direction.SouthWest, Direction.SouthEast],
-    [Direction.NorthWest, Direction.NorthEast],
-    [Direction.West, Direction.East],
+    [Direction.East, Direction.NorthEast],
+    [Direction.SouthWest, Direction.West],
+    [Direction.SouthEast, Direction.NorthWest],
   ],
   [TileType.ThreeSharps]: [
-    [Direction.SouthWest, Direction.SouthEast],
-    [Direction.NorthEast, Direction.East],
+    [Direction.East, Direction.NorthEast],
     [Direction.West, Direction.NorthWest],
+    [Direction.SouthEast, Direction.SouthWest],
   ],
 };
 
