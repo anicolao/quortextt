@@ -3,6 +3,7 @@
 import { store } from './redux/store';
 import { Renderer } from './rendering/renderer';
 import { InputHandler } from './input/inputHandler';
+import { GameplayInputHandler } from './input/gameplayInputHandler';
 
 // Expose store to window for testing
 declare global {
@@ -27,6 +28,17 @@ function init() {
     const state = store.getState();
     const layout = renderer.render(state);
     inputHandler.setCurrentLayout(layout);
+
+    // Set up gameplay input handler if in gameplay mode
+    if (state.game.screen === 'gameplay') {
+      const gameplayRenderer = renderer.getGameplayRenderer();
+      if (gameplayRenderer) {
+        const gameplayInput = new GameplayInputHandler(gameplayRenderer);
+        inputHandler.setGameplayInputHandler(gameplayInput);
+      }
+    } else {
+      inputHandler.setGameplayInputHandler(null);
+    }
   }
 
   // Set up render callback for color picker changes

@@ -113,6 +113,10 @@ export class Renderer {
     return this.createEmptyLayout();
   }
 
+  getGameplayRenderer(): GameplayRenderer | null {
+    return this.gameplayRenderer;
+  }
+
   private renderTitle(layout: UILayout): void {
     this.ctx.fillStyle = '#ffffff';
     this.ctx.font = `bold ${layout.titleSize}px sans-serif`;

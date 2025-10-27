@@ -24,6 +24,7 @@ export const RESET_GAME = 'RESET_GAME';
 
 // UI actions
 export const SET_HOVERED_POSITION = 'SET_HOVERED_POSITION';
+export const SET_SELECTED_POSITION = 'SET_SELECTED_POSITION';
 export const SET_ROTATION = 'SET_ROTATION';
 export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
 
@@ -107,6 +108,11 @@ export interface SetHoveredPositionAction {
   payload: HexPosition | null;
 }
 
+export interface SetSelectedPositionAction {
+  type: typeof SET_SELECTED_POSITION;
+  payload: HexPosition | null;
+}
+
 export interface SetRotationAction {
   type: typeof SET_ROTATION;
   payload: Rotation;
@@ -133,6 +139,7 @@ export type GameAction =
 
 export type UIAction =
   | SetHoveredPositionAction
+  | SetSelectedPositionAction
   | SetRotationAction
   | ToggleLegalMovesAction;
 
@@ -200,6 +207,11 @@ export const resetGame = (): ResetGameAction => ({
 // UI action creators
 export const setHoveredPosition = (position: HexPosition | null): SetHoveredPositionAction => ({
   type: SET_HOVERED_POSITION,
+  payload: position,
+});
+
+export const setSelectedPosition = (position: HexPosition | null): SetSelectedPositionAction => ({
+  type: SET_SELECTED_POSITION,
   payload: position,
 });
 

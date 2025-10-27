@@ -10,14 +10,20 @@ import {
   changePlayerColor,
   startGame,
 } from '../redux/actions';
+import { GameplayInputHandler } from './gameplayInputHandler';
 
 export class InputHandler {
   private renderer: Renderer;
   private currentLayout: UILayout | null = null;
+  private gameplayInputHandler: GameplayInputHandler | null = null;
 
   constructor(renderer: Renderer) {
     this.renderer = renderer;
     this.setupEventListeners();
+  }
+
+  setGameplayInputHandler(handler: GameplayInputHandler | null): void {
+    this.gameplayInputHandler = handler;
   }
 
   setCurrentLayout(layout: UILayout): void {
@@ -41,14 +47,22 @@ export class InputHandler {
   }
 
   private handleClick(clientX: number, clientY: number): void {
-    if (!this.currentLayout) return;
-
     const canvas = this.renderer.getCanvas();
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
+
+    // Check if in gameplay mode
+    const state = store.getState();
+    if (state.game.screen === 'gameplay' && this.gameplayInputHandler) {
+      this.gameplayInputHandler.handleClick(x, y);
+      return;
+    }
+
+    // Configuration screen handling
+    if (!this.currentLayout) return;
 
     // Check if color picker is visible
     if (this.currentLayout.colorPicker?.visible) {
