@@ -4,6 +4,7 @@ import { UIState } from './types';
 import {
   UIAction,
   SET_HOVERED_POSITION,
+  SET_SELECTED_POSITION,
   SET_ROTATION,
   TOGGLE_LEGAL_MOVES,
 } from './actions';
@@ -30,6 +31,13 @@ export function uiReducer(
       return {
         ...state,
         hoveredPosition: action.payload,
+      };
+    }
+
+    case SET_SELECTED_POSITION: {
+      return {
+        ...state,
+        selectedPosition: action.payload,
       };
     }
 
