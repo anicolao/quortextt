@@ -67,9 +67,7 @@ export class GameplayRenderer {
     this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
   }
 
-  private renderBoardHexagon(_state: RootState): void {
-    // TODO: Render the large board hexagon with colored player edges
-    // For now, just render a simple board outline
+  private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
     const boardRadius = this.layout.size * 4.5; // Approximate radius for 37-hex diamond
 
@@ -77,8 +75,54 @@ export class GameplayRenderer {
     this.ctx.fillStyle = BOARD_HEX_BG;
     this.drawHexagon(center, boardRadius, true);
 
-    // TODO: Draw colored edges for each player
-    // This will require determining which edges are owned by which players
+    // Draw colored edges for each player
+    // Each player owns one edge of the board hexagon
+    if (state.game.players.length > 0) {
+      state.game.players.forEach(player => {
+        this.renderPlayerEdge(center, boardRadius, player.edgePosition, player.color);
+      });
+    }
+  }
+
+  private renderPlayerEdge(
+    center: Point,
+    radius: number,
+    edgePosition: number,
+    color: string
+  ): void {
+    // Get the two vertices that define this edge
+    const vertices = getHexVertices(center, radius);
+    
+    // Edge position maps to the edge between vertices
+    // Edge 0 is between vertices 4 and 5 (SouthWest)
+    // Edge 1 is between vertices 5 and 0 (West)
+    // Edge 2 is between vertices 0 and 1 (NorthWest)
+    // Edge 3 is between vertices 1 and 2 (NorthEast)
+    // Edge 4 is between vertices 2 and 3 (East)
+    // Edge 5 is between vertices 3 and 4 (SouthEast)
+    
+    const vertexMap = [
+      [4, 5], // Edge 0: SouthWest
+      [5, 0], // Edge 1: West
+      [0, 1], // Edge 2: NorthWest
+      [1, 2], // Edge 3: NorthEast
+      [2, 3], // Edge 4: East
+      [3, 4], // Edge 5: SouthEast
+    ];
+    
+    const [v1Index, v2Index] = vertexMap[edgePosition];
+    const v1 = vertices[v1Index];
+    const v2 = vertices[v2Index];
+    
+    // Draw a thick colored line for this edge
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = this.layout.size * 0.3; // Thick edge
+    this.ctx.lineCap = 'round';
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(v1.x, v1.y);
+    this.ctx.lineTo(v2.x, v2.y);
+    this.ctx.stroke();
   }
 
   private renderHexPositions(): void {
