@@ -175,10 +175,23 @@ export class GameplayRenderer {
 
   private renderFlowPaths(
     tile: PlacedTile,
-    _state: RootState,
+    state: RootState,
     center: Point,
   ): void {
     const connections = getFlowConnections(tile.type, tile.rotation);
+
+    // Determine which player's flow (if any) passes through this tile
+    const tileKey = `${tile.position.row},${tile.position.col}`;
+    let flowColor = "#888888"; // Default neutral grey for tiles without flow
+
+    // Check each player's flows to see if this tile is part of any flow
+    for (const player of state.game.players) {
+      const playerFlows = state.game.flows.get(player.id);
+      if (playerFlows && playerFlows.has(tileKey)) {
+        flowColor = player.color;
+        break;
+      }
+    }
 
     // For each flow connection, draw a Bézier curve
     connections.forEach(([dir1, dir2]) => {
@@ -199,9 +212,8 @@ export class GameplayRenderer {
         y: end.y + control2Vec.y,
       };
 
-      // TODO: Determine which player's color to use for this flow
-      // For now, use white
-      this.ctx.strokeStyle = "#ffffff";
+      // Use player's color if flow exists, otherwise neutral grey
+      this.ctx.strokeStyle = flowColor;
       this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
       this.ctx.lineCap = "round";
 
