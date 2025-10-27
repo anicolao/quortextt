@@ -32,6 +32,9 @@ export interface PlacedTile {
   readonly type: TileType;
   readonly rotation: Rotation;
   readonly position: HexPosition;
+  // Flow cache: for each of the 6 hex edge directions, which player's flow (if any)
+  // enters/exits through that edge. This allows rendering to show only the connected flows.
+  readonly flowCache?: ReadonlyArray<string | null>; // 6 elements, indexed by Direction
 }
 
 // Flow connection on a tile (direction pairs)

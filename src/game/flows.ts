@@ -10,14 +10,23 @@ import {
 } from './board';
 import { getFlowExit } from './tiles';
 
+// Flow edge data: tracks which player's flow enters/exits each hex edge
+export interface FlowEdgeData {
+  position: string; // position key "row,col"
+  direction: Direction;
+  playerId: string;
+}
+
 // Trace a single flow from a starting position and direction
-// Returns set of position keys that are part of this flow
+// Returns set of position keys that are part of this flow AND edge data
 export function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
-  startDirection: Direction
-): Set<string> {
+  startDirection: Direction,
+  playerId: string
+): { positions: Set<string>; edges: FlowEdgeData[] } {
   const flowPositions = new Set<string>();
+  const flowEdges: FlowEdgeData[] = [];
   const visited = new Set<string>();
   
   // Queue of positions to explore: [position, direction entering the tile]
@@ -51,6 +60,18 @@ export function traceFlow(
     // Add this position to the flow only if there's a valid flow connection
     flowPositions.add(posKey);
     
+    // Record that this player's flow enters and exits through these edges
+    flowEdges.push({
+      position: posKey,
+      direction: current.entryDir,
+      playerId,
+    });
+    flowEdges.push({
+      position: posKey,
+      direction: exitDir,
+      playerId,
+    });
+    
     // Move to the next tile in the exit direction
     const nextPos = getNeighborInDirection(current.pos, exitDir);
     if (!isValidPosition(nextPos)) {
@@ -62,16 +83,21 @@ export function traceFlow(
     queue.push({ pos: nextPos, entryDir: nextEntryDir });
   }
   
-  return flowPositions;
+  return { positions: flowPositions, edges: flowEdges };
 }
 
 // Calculate all flows for all players from the current board state
 // Returns a map from player ID to set of position keys in their flow
+// Also returns flow edge data for rendering
 export function calculateFlows(
   board: Map<string, PlacedTile>,
   players: Player[]
-): Map<string, Set<string>> {
+): {
+  flows: Map<string, Set<string>>;
+  flowEdges: Map<string, Map<Direction, string>>; // position key -> direction -> player ID
+} {
   const flows = new Map<string, Set<string>>();
+  const flowEdges = new Map<string, Map<Direction, string>>();
   
   for (const player of players) {
     const playerFlow = new Set<string>();
@@ -89,18 +115,26 @@ export function calculateFlows(
       }
       
       // Trace flow starting from this specific hex edge direction
-      const flow = traceFlow(board, pos, dir);
+      const { positions, edges } = traceFlow(board, pos, dir, player.id);
       
       // Merge this flow into the player's total flow
-      for (const flowPos of flow) {
+      for (const flowPos of positions) {
         playerFlow.add(flowPos);
+      }
+      
+      // Record edge data
+      for (const edge of edges) {
+        if (!flowEdges.has(edge.position)) {
+          flowEdges.set(edge.position, new Map());
+        }
+        flowEdges.get(edge.position)!.set(edge.direction, edge.playerId);
       }
     }
     
     flows.set(player.id, playerFlow);
   }
   
-  return flows;
+  return { flows, flowEdges };
 }
 
 // Check if two positions are flow-connected for a specific player

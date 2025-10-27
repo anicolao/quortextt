@@ -14,8 +14,8 @@ describe('flow propagation', () => {
   describe('traceFlow', () => {
     it('should return empty set for empty board', () => {
       const board = new Map<string, PlacedTile>();
-      const flow = traceFlow(board, { row: 0, col: 0 }, Direction.East);
-      expect(flow.size).toBe(0);
+      const result = traceFlow(board, { row: 0, col: 0 }, Direction.East, 'test-player');
+      expect(result.positions.size).toBe(0);
     });
 
     it('should include single tile if it has matching entry direction', () => {
@@ -29,8 +29,8 @@ describe('flow propagation', () => {
       
       // NoSharps has connections: SW-NW, NE-SE, W-E
       // Entering from West should exit East
-      const flow = traceFlow(board, { row: 0, col: 0 }, Direction.West);
-      expect(flow.has(positionToKey({ row: 0, col: 0 }))).toBe(true);
+      const result = traceFlow(board, { row: 0, col: 0 }, Direction.West, 'test-player');
+      expect(result.positions.has(positionToKey({ row: 0, col: 0 }))).toBe(true);
     });
 
     it('should trace flow through connected tiles', () => {
@@ -52,11 +52,11 @@ describe('flow propagation', () => {
       board.set(positionToKey(tile2.position), tile2);
       
       // Trace from tile1 entering from West
-      const flow = traceFlow(board, tile1.position, Direction.West);
+      const result = traceFlow(board, tile1.position, Direction.West, 'test-player');
       
       // Should include both tiles
-      expect(flow.has(positionToKey(tile1.position))).toBe(true);
-      expect(flow.has(positionToKey(tile2.position))).toBe(true);
+      expect(result.positions.has(positionToKey(tile1.position))).toBe(true);
+      expect(result.positions.has(positionToKey(tile2.position))).toBe(true);
     });
 
     it('should stop flow at board edges', () => {
@@ -70,11 +70,11 @@ describe('flow propagation', () => {
       board.set(positionToKey(tile.position), tile);
       
       // Enter from West, exit East, but there's no tile to the East
-      const flow = traceFlow(board, tile.position, Direction.West);
+      const result = traceFlow(board, tile.position, Direction.West, 'test-player');
       
       // Should only include the single tile
-      expect(flow.size).toBe(1);
-      expect(flow.has(positionToKey(tile.position))).toBe(true);
+      expect(result.positions.size).toBe(1);
+      expect(result.positions.has(positionToKey(tile.position))).toBe(true);
     });
 
     it('should handle circular paths without infinite loop', () => {
@@ -95,11 +95,11 @@ describe('flow propagation', () => {
       board.set(positionToKey(tile1.position), tile1);
       board.set(positionToKey(tile2.position), tile2);
       
-      const flow = traceFlow(board, tile1.position, Direction.West);
+      const result = traceFlow(board, tile1.position, Direction.West, 'test-player');
       
       // Should terminate properly
-      expect(flow.size).toBeGreaterThan(0);
-      expect(flow.size).toBeLessThanOrEqual(2);
+      expect(result.positions.size).toBeGreaterThan(0);
+      expect(result.positions.size).toBeLessThanOrEqual(2);
     });
 
     it('should handle revisiting same position from different direction', () => {
@@ -140,14 +140,14 @@ describe('flow propagation', () => {
       board.set(positionToKey(tile4.position), tile4);
       
       // Trace from multiple starting points to exercise the visited logic
-      const flow1 = traceFlow(board, tile1.position, Direction.West);
-      const flow2 = traceFlow(board, tile1.position, Direction.SouthWest);
-      const flow3 = traceFlow(board, tile2.position, Direction.West);
+      const result1 = traceFlow(board, tile1.position, Direction.West, 'test-player');
+      const result2 = traceFlow(board, tile1.position, Direction.SouthWest, 'test-player');
+      const result3 = traceFlow(board, tile2.position, Direction.West, 'test-player');
       
       // Should handle all cases without infinite loops
-      expect(flow1.size).toBeGreaterThan(0);
-      expect(flow2.size).toBeGreaterThanOrEqual(0);
-      expect(flow3.size).toBeGreaterThan(0);
+      expect(result1.positions.size).toBeGreaterThan(0);
+      expect(result2.positions.size).toBeGreaterThanOrEqual(0);
+      expect(result3.positions.size).toBeGreaterThan(0);
     });
 
     it('should handle tile with no matching entry direction', () => {
@@ -164,10 +164,10 @@ describe('flow propagation', () => {
       
       // Use an illegal direction to trigger null exit
       const illegalDirection = 99 as Direction;
-      const flow = traceFlow(board, tile.position, illegalDirection);
+      const result = traceFlow(board, tile.position, illegalDirection, 'test-player');
       
       // Should return empty set since no valid connection
-      expect(flow.size).toBe(0);
+      expect(result.positions.size).toBe(0);
     });
   });
 
@@ -178,7 +178,7 @@ describe('flow propagation', () => {
       ];
       const board = new Map<string, PlacedTile>();
       
-      const flows = calculateFlows(board, players);
+      const { flows } = calculateFlows(board, players);
       
       expect(flows.has('p1')).toBe(true);
       expect(flows.get('p1')?.size).toBe(0);
@@ -211,7 +211,7 @@ describe('flow propagation', () => {
       board.set(positionToKey(edgeTile.position), edgeTile);
       board.set(positionToKey(southTile.position), southTile);
       
-      const flows = calculateFlows(board, players);
+      const { flows } = calculateFlows(board, players);
       const playerFlow = flows.get('p1');
       
       expect(playerFlow).toBeDefined();
@@ -248,7 +248,7 @@ describe('flow propagation', () => {
       board2.set(positionToKey(cornerTile.position), cornerTile);
       board2.set(positionToKey(seTile.position), seTile);
       
-      const flows2 = calculateFlows(board2, players);
+      const { flows: flows2 } = calculateFlows(board2, players);
       const playerFlow2 = flows2.get('p1');
       
       // TwoSharps rotation 0: SW-SE, NW-NE, W-E
@@ -276,7 +276,7 @@ describe('flow propagation', () => {
       };
       board.set(positionToKey(tile.position), tile);
       
-      const flows = calculateFlows(board, players);
+      const { flows } = calculateFlows(board, players);
       const playerFlow = flows.get('p1');
       
       expect(playerFlow).toBeDefined();
@@ -291,7 +291,7 @@ describe('flow propagation', () => {
       ];
       const board = new Map<string, PlacedTile>();
       
-      const flows = calculateFlows(board, players);
+      const { flows } = calculateFlows(board, players);
       
       expect(flows.has('p1')).toBe(true);
       expect(flows.has('p2')).toBe(true);
@@ -319,7 +319,7 @@ describe('flow propagation', () => {
       board.set(positionToKey(tile1.position), tile1);
       board.set(positionToKey(tile2.position), tile2);
       
-      const flows = calculateFlows(board, players);
+      const { flows } = calculateFlows(board, players);
       const flow1 = flows.get('p1');
       const flow2 = flows.get('p2');
       

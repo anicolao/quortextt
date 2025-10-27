@@ -22,7 +22,7 @@ function wouldCauseVictory(
   testBoard.set(positionToKey(tile.position), tile);
   
   // Calculate flows with the new tile
-  const flows = calculateFlows(testBoard, players);
+  const { flows } = calculateFlows(testBoard, players);
   
   // Check if this causes a victory
   const victory = checkFlowVictory(flows, players, teams);
@@ -49,7 +49,7 @@ function hasViablePath(
   
   // If there are no empty positions, check current state
   if (emptyPositions.length === 0) {
-    const flows = calculateFlows(board, [player]);
+    const { flows } = calculateFlows(board, [player]);
     const playerFlow = flows.get(player.id);
     if (!playerFlow) return false;
     
