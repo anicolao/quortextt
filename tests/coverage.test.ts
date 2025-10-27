@@ -1,6 +1,6 @@
 // Additional tests for 100% coverage
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { gameReducer, initialState } from '../src/redux/gameReducer';
 import { rootReducer } from '../src/redux/reducer';
 import {
@@ -13,6 +13,7 @@ import {
 import { TileType, Direction } from '../src/game/types';
 import { selectFlowsForRendering } from '../src/redux/selectors';
 import { initialUIState } from '../src/redux/uiReducer';
+import * as victory from '../src/game/victory';
 
 describe('Coverage Tests', () => {
   describe('gameReducer - uncovered lines', () => {
@@ -39,9 +40,13 @@ describe('Coverage Tests', () => {
       expect(player3After).toBeDefined(); // This verifies line 142 was hit
     });
 
-    it('should handle PLACE_TILE with victory condition (lines 265-272)', () => {
-      // To trigger victory in PLACE_TILE, we need checkVictory to return a winner.
-      // The simplest way is to create a board with tiles that form a complete path.
+    it('should handle PLACE_TILE with victory condition (lines 265-272)', async () => {
+      // Mock checkVictory to force it to return a winner
+      const checkVictorySpy = vi.spyOn(victory, 'checkVictory');
+      checkVictorySpy.mockReturnValue({
+        winner: 'p1',
+        winType: 'flow',
+      });
       
       const players = [
         { id: 'p1', color: '#0173B2', edgePosition: 0, isAI: false },
@@ -49,54 +54,20 @@ describe('Coverage Tests', () => {
       ];
       
       let state = gameReducer(initialState, setupGame(players, []));
-      
-      // We'll build a complete vertical path using NoSharps tiles (basketball)
-      // NoSharps has straight flows that can connect vertically
-      // Edge 0 is at row -3, edge 3 is at row 3
-      
-      const tilesToPlace = [
-        { row: -3, col: 0 }, // Edge 0
-        { row: -2, col: 0 },
-        { row: -1, col: 0 },
-        { row: 0, col: 0 },
-        { row: 1, col: 0 },
-        { row: 2, col: 0 },
-        // { row: 3, col: 0 }, // This will be the final tile that triggers victory
-      ];
-      
-      // Manually build the board
-      const board = new Map();
-      tilesToPlace.forEach(pos => {
-        board.set(`${pos.row},${pos.col}`, {
-          type: TileType.NoSharps,
-          rotation: 0, // Rotation 0 should have vertical connections
-          position: pos,
-        });
-      });
-      
-      state = {
-        ...state,
-        board,
-        availableTiles: [TileType.NoSharps],
-      };
-      
-      // Draw and place the final tile
+      state = gameReducer(state, shuffleTiles(123));
       state = gameReducer(state, drawTile());
-      state = gameReducer(state, placeTile({ row: 3, col: 0 }, 0));
       
-      // After placing the tile, flows are recalculated and victory is checked
-      // If the tiles form a valid path, victory should be detected
-      if (state.winner !== null) {
-        // Victory was triggered - verify the state transition
-        expect(state.phase).toBe('finished');
-        expect(state.screen).toBe('game-over');
-        expect(state.winType).toBe('flow');
-        expect(state.winner).not.toBeNull();
-      }
+      // Place a tile - checkVictory will return a winner
+      state = gameReducer(state, placeTile({ row: 0, col: 0 }, 0));
       
-      // Even if victory wasn't triggered (due to tile connections not working as expected),
-      // we want to verify the tile was placed
-      expect(state.currentTile).toBeNull();
+      // Lines 265-272 should have been executed
+      expect(state.winner).toBe('p1');
+      expect(state.phase).toBe('finished');
+      expect(state.screen).toBe('game-over');
+      expect(state.winType).toBe('flow');
+      
+      // Restore the original function
+      checkVictorySpy.mockRestore();
     });
 
     it('should handle unknown action type (line 304)', () => {
