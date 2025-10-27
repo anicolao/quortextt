@@ -5,7 +5,7 @@ import {
   positionToKey,
   getNeighborInDirection,
   getOppositeDirection,
-  getEdgePositions,
+  getEdgePositionsWithDirections,
   isValidPosition,
 } from './board';
 import { getFlowExit } from './tiles';
@@ -76,28 +76,24 @@ export function calculateFlows(
   for (const player of players) {
     const playerFlow = new Set<string>();
     
-    // Get all edge positions for this player
-    const edgePositions = getEdgePositions(player.edgePosition);
+    // Get all edge positions with their specific hex edge directions for this player
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition);
     
-    // For each edge position, try to trace flows in all directions
-    for (const edgePos of edgePositions) {
-      const posKey = positionToKey(edgePos);
+    // For each edge position and direction pair, trace the flow
+    for (const { pos, dir } of edgeData) {
+      const posKey = positionToKey(pos);
       const tile = board.get(posKey);
       
       if (!tile) {
         continue;
       }
       
-      // Try each direction that could start a flow from this edge
-      // Flows start from the edge direction pointing inward
-      for (let dir = 0; dir < 6; dir++) {
-        const direction = dir as Direction;
-        const flow = traceFlow(board, edgePos, direction);
-        
-        // Merge this flow into the player's total flow
-        for (const pos of flow) {
-          playerFlow.add(pos);
-        }
+      // Trace flow starting from this specific hex edge direction
+      const flow = traceFlow(board, pos, dir);
+      
+      // Merge this flow into the player's total flow
+      for (const flowPos of flow) {
+        playerFlow.add(flowPos);
       }
     }
     
