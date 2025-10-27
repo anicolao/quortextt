@@ -1,7 +1,7 @@
 // Unit tests for Redux reducer
 
 import { describe, it, expect } from 'vitest';
-import { gameReducer, initialState } from '../src/redux/reducer';
+import { gameReducer, initialState } from '../src/redux/gameReducer';
 import {
   addPlayer,
   removePlayer,
@@ -15,8 +15,8 @@ describe('gameReducer', () => {
   describe('ADD_PLAYER', () => {
     it('should add a player to empty list', () => {
       const state = gameReducer(initialState, addPlayer());
-      expect(state.players.length).toBe(1);
-      expect(state.players[0].color).toBe(PLAYER_COLORS[0]);
+      expect(state.configPlayers.length).toBe(1);
+      expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
     });
 
     it('should add multiple players with different colors', () => {
@@ -25,10 +25,10 @@ describe('gameReducer', () => {
       state = gameReducer(state, addPlayer());
       state = gameReducer(state, addPlayer());
 
-      expect(state.players.length).toBe(3);
-      expect(state.players[0].color).toBe(PLAYER_COLORS[0]);
-      expect(state.players[1].color).toBe(PLAYER_COLORS[1]);
-      expect(state.players[2].color).toBe(PLAYER_COLORS[2]);
+      expect(state.configPlayers.length).toBe(3);
+      expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
+      expect(state.configPlayers[1].color).toBe(PLAYER_COLORS[1]);
+      expect(state.configPlayers[2].color).toBe(PLAYER_COLORS[2]);
     });
 
     it('should not add more than MAX_PLAYERS', () => {
@@ -37,7 +37,7 @@ describe('gameReducer', () => {
         state = gameReducer(state, addPlayer());
       }
 
-      expect(state.players.length).toBe(MAX_PLAYERS);
+      expect(state.configPlayers.length).toBe(MAX_PLAYERS);
     });
   });
 
@@ -47,21 +47,21 @@ describe('gameReducer', () => {
       state = gameReducer(state, addPlayer());
       state = gameReducer(state, addPlayer());
 
-      const playerIdToRemove = state.players[0].id;
+      const playerIdToRemove = state.configPlayers[0].id;
       state = gameReducer(state, removePlayer(playerIdToRemove));
 
-      expect(state.players.length).toBe(1);
-      expect(state.players.find((p) => p.id === playerIdToRemove)).toBeUndefined();
+      expect(state.configPlayers.length).toBe(1);
+      expect(state.configPlayers.find((p) => p.id === playerIdToRemove)).toBeUndefined();
     });
 
     it('should handle removing non-existent player', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer());
 
-      const initialLength = state.players.length;
+      const initialLength = state.configPlayers.length;
       state = gameReducer(state, removePlayer('non-existent-id'));
 
-      expect(state.players.length).toBe(initialLength);
+      expect(state.configPlayers.length).toBe(initialLength);
     });
   });
 
@@ -70,11 +70,11 @@ describe('gameReducer', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer());
 
-      const playerId = state.players[0].id;
+      const playerId = state.configPlayers[0].id;
       const newColor = PLAYER_COLORS[3];
       state = gameReducer(state, changePlayerColor(playerId, newColor));
 
-      expect(state.players[0].color).toBe(newColor);
+      expect(state.configPlayers[0].color).toBe(newColor);
     });
 
     it('should swap colors when another player has the color', () => {
@@ -82,16 +82,16 @@ describe('gameReducer', () => {
       state = gameReducer(state, addPlayer());
       state = gameReducer(state, addPlayer());
 
-      const player1Id = state.players[0].id;
-      const player2Id = state.players[1].id;
-      const player1Color = state.players[0].color;
-      const player2Color = state.players[1].color;
+      const player1Id = state.configPlayers[0].id;
+      const player2Id = state.configPlayers[1].id;
+      const player1Color = state.configPlayers[0].color;
+      const player2Color = state.configPlayers[1].color;
 
       // Player 1 wants Player 2's color
       state = gameReducer(state, changePlayerColor(player1Id, player2Color));
 
-      const player1After = state.players.find((p) => p.id === player1Id);
-      const player2After = state.players.find((p) => p.id === player2Id);
+      const player1After = state.configPlayers.find((p) => p.id === player1Id);
+      const player2After = state.configPlayers.find((p) => p.id === player2Id);
 
       expect(player1After?.color).toBe(player2Color);
       expect(player2After?.color).toBe(player1Color);

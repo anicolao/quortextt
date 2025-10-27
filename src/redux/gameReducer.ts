@@ -1,0 +1,306 @@
+// Redux reducer for game state management
+
+import { GameState, ConfigPlayer, PLAYER_COLORS, MAX_PLAYERS } from './types';
+import {
+  GameAction,
+  ADD_PLAYER,
+  REMOVE_PLAYER,
+  CHANGE_PLAYER_COLOR,
+  START_GAME,
+  RETURN_TO_CONFIG,
+  SETUP_GAME,
+  SHUFFLE_TILES,
+  DRAW_TILE,
+  PLACE_TILE,
+  NEXT_PLAYER,
+  END_GAME,
+  RESET_GAME,
+} from './actions';
+import { TileType } from '../game/types';
+import { calculateFlows } from '../game/flows';
+import { checkVictory } from '../game/victory';
+import { positionToKey } from '../game/board';
+
+// Initial state
+export const initialState: GameState = {
+  screen: 'configuration',
+  configPlayers: [],
+  players: [],
+  teams: [],
+  currentPlayerIndex: 0,
+  board: new Map(),
+  availableTiles: [],
+  currentTile: null,
+  flows: new Map(),
+  phase: 'setup',
+  winner: null,
+  winType: null,
+  moveHistory: [],
+};
+
+// Helper function to get next available color
+function getNextAvailableColor(existingPlayers: ConfigPlayer[]): string {
+  const usedColors = new Set(existingPlayers.map((p) => p.color));
+  const availableColor = PLAYER_COLORS.find((color) => !usedColors.has(color));
+  return availableColor || PLAYER_COLORS[0];
+}
+
+// Helper function to generate unique player ID
+function generatePlayerId(): string {
+  return `player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Helper function to create a shuffled tile deck
+function createShuffledDeck(seed?: number): TileType[] {
+  // Total tiles: 37 positions - initial positions
+  // Distribution based on game rules:
+  // NoSharps: 12, OneSharp: 12, TwoSharps: 10, ThreeSharps: 8
+  const tiles: TileType[] = [
+    ...Array(12).fill(TileType.NoSharps),
+    ...Array(12).fill(TileType.OneSharp),
+    ...Array(10).fill(TileType.TwoSharps),
+    ...Array(8).fill(TileType.ThreeSharps),
+  ];
+
+  // Fisher-Yates shuffle
+  const shuffled = [...tiles];
+  const random = seed !== undefined ? seededRandom(seed) : Math.random;
+  
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
+// Seeded random number generator
+function seededRandom(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
+
+// Reducer function
+export function gameReducer(
+  state: GameState = initialState,
+  action: GameAction
+): GameState {
+  switch (action.type) {
+    case ADD_PLAYER: {
+      // Don't add more than MAX_PLAYERS
+      if (state.configPlayers.length >= MAX_PLAYERS) {
+        return state;
+      }
+
+      const newPlayer: ConfigPlayer = {
+        id: generatePlayerId(),
+        color: getNextAvailableColor(state.configPlayers),
+      };
+
+      return {
+        ...state,
+        configPlayers: [...state.configPlayers, newPlayer],
+      };
+    }
+
+    case REMOVE_PLAYER: {
+      return {
+        ...state,
+        configPlayers: state.configPlayers.filter((p) => p.id !== action.payload.playerId),
+      };
+    }
+
+    case CHANGE_PLAYER_COLOR: {
+      const { playerId, color } = action.payload;
+      
+      // Find if another player has this color
+      const otherPlayerWithColor = state.configPlayers.find(
+        (p) => p.id !== playerId && p.color === color
+      );
+
+      // Find the player requesting the color change
+      const requestingPlayer = state.configPlayers.find((p) => p.id === playerId);
+
+      if (!requestingPlayer) {
+        return state;
+      }
+
+      // If another player has this color, swap colors
+      if (otherPlayerWithColor) {
+        return {
+          ...state,
+          configPlayers: state.configPlayers.map((p) => {
+            if (p.id === playerId) {
+              return { ...p, color };
+            }
+            if (p.id === otherPlayerWithColor.id) {
+              return { ...p, color: requestingPlayer.color };
+            }
+            return p;
+          }),
+        };
+      }
+
+      // Otherwise, just change the color
+      return {
+        ...state,
+        configPlayers: state.configPlayers.map((p) =>
+          p.id === playerId ? { ...p, color } : p
+        ),
+      };
+    }
+
+    case START_GAME: {
+      // Only allow starting game if at least one player is configured
+      if (state.configPlayers.length === 0) {
+        return state;
+      }
+
+      return {
+        ...state,
+        screen: 'gameplay',
+      };
+    }
+
+    case RETURN_TO_CONFIG: {
+      return {
+        ...state,
+        screen: 'configuration',
+      };
+    }
+
+    case SETUP_GAME: {
+      const { players, teams } = action.payload;
+      
+      return {
+        ...state,
+        players,
+        teams,
+        currentPlayerIndex: 0,
+        phase: 'playing',
+        board: new Map(),
+        availableTiles: [],
+        currentTile: null,
+        flows: new Map(),
+        winner: null,
+        winType: null,
+        moveHistory: [],
+      };
+    }
+
+    case SHUFFLE_TILES: {
+      const { seed } = action.payload;
+      
+      return {
+        ...state,
+        availableTiles: createShuffledDeck(seed),
+      };
+    }
+
+    case DRAW_TILE: {
+      // Draw next tile from deck
+      if (state.availableTiles.length === 0) {
+        return state;
+      }
+
+      const [nextTile, ...remainingTiles] = state.availableTiles;
+
+      return {
+        ...state,
+        currentTile: nextTile,
+        availableTiles: remainingTiles,
+      };
+    }
+
+    case PLACE_TILE: {
+      if (state.currentTile === null) {
+        return state;
+      }
+
+      const { position, rotation } = action.payload;
+      const posKey = positionToKey(position);
+
+      // Check if position is already occupied
+      if (state.board.has(posKey)) {
+        return state;
+      }
+
+      // Create new placed tile
+      const placedTile = {
+        type: state.currentTile,
+        rotation,
+        position,
+      };
+
+      // Update board
+      const newBoard = new Map(state.board);
+      newBoard.set(posKey, placedTile);
+
+      // Calculate new flows
+      const newFlows = calculateFlows(newBoard, state.players);
+
+      // Check for victory
+      const victoryResult = checkVictory(newBoard, newFlows, state.players, state.teams);
+
+      // Add to move history
+      const move = {
+        playerId: state.players[state.currentPlayerIndex].id,
+        tile: placedTile,
+        timestamp: Date.now(),
+      };
+
+      const newState: GameState = {
+        ...state,
+        board: newBoard,
+        currentTile: null,
+        flows: newFlows,
+        moveHistory: [...state.moveHistory, move],
+      };
+
+      // If there's a winner, update game state
+      if (victoryResult.winner !== null) {
+        return {
+          ...newState,
+          phase: 'finished',
+          winner: victoryResult.winner,
+          winType: victoryResult.winType,
+          screen: 'game-over',
+        };
+      }
+
+      return newState;
+    }
+
+    case NEXT_PLAYER: {
+      return {
+        ...state,
+        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length,
+      };
+    }
+
+    case END_GAME: {
+      const { winner, winType } = action.payload;
+      
+      return {
+        ...state,
+        phase: 'finished',
+        winner,
+        winType,
+        screen: 'game-over',
+      };
+    }
+
+    case RESET_GAME: {
+      return {
+        ...initialState,
+        screen: 'configuration',
+      };
+    }
+
+    default:
+      return state;
+  }
+}
