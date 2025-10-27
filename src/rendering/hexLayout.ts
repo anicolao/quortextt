@@ -25,9 +25,8 @@ export function calculateHexLayout(
   canvasWidth: number,
   canvasHeight: number,
 ): HexLayout {
-  // Hex size should be min(width, height) / 11 for optimal board fill
   const minDimension = Math.min(canvasWidth, canvasHeight);
-  const size = minDimension / 11;
+  const size = minDimension / 17;
 
   // Center of the canvas
   const origin: Point = {
@@ -174,22 +173,21 @@ export function getPlayerEdgePosition(
   edgePosition: number,
   layout: HexLayout,
 ): Point {
-  // Players are positioned around the board at their edge
-  // We need to place the tile preview beyond the edge of the board
-  
   // Board extends to about 7.2 * hex size from center
-  // Place preview at about 9.5 * hex size to be clearly outside the board
-  const previewDistance = layout.size * 9.5;
+  // Place preview just beyond the board edge at about 8.0 * hex size
+  const boardRadius = layout.size * 7.2;
+  const previewDistance = boardRadius + layout.size * 1.5;
 
-  // Map edge positions to angles
-  // Edge 0 (SouthWest) should be at bottom, etc.
+  // Map edge positions to angles for flat-top hexagon
+  // Edge 0 should be at bottom (270°) parallel to screen bottom
+  // Going clockwise: bottom, bottom-right, top-right, top, top-left, bottom-left
   const angles = [
-    210, // Edge 0: SouthWest (bottom-left)
-    270, // Edge 1: West (left)
-    330, // Edge 2: NorthWest (top-left)
-    30,  // Edge 3: NorthEast (top-right)
-    90,  // Edge 4: East (right)
-    150, // Edge 5: SouthEast (bottom-right)
+    270, // Edge 0: Bottom (parallel to screen bottom)
+    330, // Edge 1: Bottom-right
+    30,  // Edge 2: Top-right
+    90,  // Edge 3: Top
+    150, // Edge 4: Top-left
+    210, // Edge 5: Bottom-left
   ];
 
   const angleDeg = angles[edgePosition];
