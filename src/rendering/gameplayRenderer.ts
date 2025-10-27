@@ -98,21 +98,21 @@ export class GameplayRenderer {
     // Get the two vertices that define this edge for flat-top hexagon
     const vertices = this.getFlatTopHexVertices(center, radius);
 
-    // For flat-top hexagon, edges are rotated 30° from pointy-top
-    // Edge 0 is between vertices 5 and 0 (SouthWest edge, now at bottom-left)
-    // Edge 1 is between vertices 0 and 1 (West edge, now at left)
-    // Edge 2 is between vertices 1 and 2 (NorthWest edge, now at top-left)
-    // Edge 3 is between vertices 2 and 3 (NorthEast edge, now at top-right)
-    // Edge 4 is between vertices 3 and 4 (East edge, now at right)
-    // Edge 5 is between vertices 4 and 5 (SouthEast edge, now at bottom-right)
+    // For flat-top hexagon with vertex 0 at right (0°):
+    // Edge 0: Bottom (270°) - between vertices 4 and 5
+    // Edge 1: Bottom-right (330°) - between vertices 5 and 0
+    // Edge 2: Top-right (30°) - between vertices 0 and 1
+    // Edge 3: Top (90°) - between vertices 1 and 2
+    // Edge 4: Top-left (150°) - between vertices 2 and 3
+    // Edge 5: Bottom-left (210°) - between vertices 3 and 4
 
     const vertexMap = [
-      [5, 0], // Edge 0: SouthWest
-      [0, 1], // Edge 1: West
-      [1, 2], // Edge 2: NorthWest
-      [2, 3], // Edge 3: NorthEast
-      [3, 4], // Edge 4: East
-      [4, 5], // Edge 5: SouthEast
+      [4, 5], // Edge 0: Bottom
+      [5, 0], // Edge 1: Bottom-right
+      [0, 1], // Edge 2: Top-right
+      [1, 2], // Edge 3: Top
+      [2, 3], // Edge 4: Top-left
+      [3, 4], // Edge 5: Bottom-left
     ];
 
     const [v1Index, v2Index] = vertexMap[edgePosition];
