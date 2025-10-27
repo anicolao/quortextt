@@ -2,12 +2,14 @@
 
 import { RootState, PLAYER_COLORS } from '../redux/types';
 import { UILayout, Button, PlayerEntry, calculateLayout } from './layout';
+import { GameplayRenderer } from './gameplayRenderer';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private colorPickerPlayerId: string | null = null;
   private onRenderNeeded: (() => void) | null = null;
+  private gameplayRenderer: GameplayRenderer | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -26,6 +28,11 @@ export class Renderer {
   resizeCanvas(): void {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
+    
+    // Update gameplay renderer layout if it exists
+    if (this.gameplayRenderer) {
+      this.gameplayRenderer.updateLayout(this.canvas.width, this.canvas.height);
+    }
   }
 
   showColorPicker(playerId: string): void {
@@ -91,27 +98,17 @@ export class Renderer {
   }
 
   private renderGameplayScreen(state: RootState): UILayout {
-    // Placeholder for gameplay screen
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = '48px sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(
-      'Gameplay Screen (Coming Soon)',
-      this.canvas.width / 2,
-      this.canvas.height / 2
-    );
-
-    // Show player list
-    this.ctx.font = '24px sans-serif';
-    state.game.configPlayers.forEach((player, index) => {
-      this.ctx.fillStyle = player.color;
-      this.ctx.fillText(
-        `Player ${index + 1}`,
-        this.canvas.width / 2,
-        this.canvas.height / 2 + 60 + index * 30
+    // Initialize gameplay renderer if needed
+    if (!this.gameplayRenderer) {
+      this.gameplayRenderer = new GameplayRenderer(
+        this.ctx,
+        this.canvas.width,
+        this.canvas.height
       );
-    });
+    }
+
+    // Render the gameplay screen
+    this.gameplayRenderer.render(state);
 
     return this.createEmptyLayout();
   }
