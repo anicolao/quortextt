@@ -4,45 +4,52 @@ This document provides detailed UI specifications for Phase 3 (Rendering System)
 
 ## Target Platforms
 
-### Primary Target: Touch Screen Devices
-- **Device Type:** Tablets, touch-enabled laptops, touch screens
-- **Primary Interaction:** Tapping on screen
-- **Secondary Interaction (Optional):** Dragging for pan/zoom (if needed)
-- **Design Goal:** All core gameplay interactions achievable through tapping only
+### Primary Target: Tabletop Touch Screen
+- **Device Type:** Large tabletop touch screen with players seated around all edges
+- **Viewing:** Players view from all angles (0°, 90°, 180°, 270°)
+- **Primary Interaction:** Tapping only - no dragging required
+- **Design Constraints:**
+  - No text (icons and visual indicators only)
+  - Large, legible icons viewable from any angle
+  - No UI bars that obscure the board
+  - Game elements rotated to face each player's edge
 
 ### Secondary Target: Desktop Browser
-- **Device Type:** Desktop/laptop with mouse and keyboard
-- **Primary Interaction:** Mouse clicks
+- **Device Type:** Desktop/laptop with mouse
+- **Primary Interaction:** Mouse clicks (same as taps)
 - **Enhanced Features:** 
-  - Hex preview follows mouse pointer before tile placement
-  - Keyboard shortcuts for rotation and other actions
-  - Mouse wheel for rotation (optional)
+  - Tile preview tracks mouse pointer
+  - Mouse wheel rotation (configurable scroll steps per 60° rotation)
+  - "Snap in" behavior: tile snaps to hex after 3s hover, snaps out if moved near edge
 
 ## Phase 3: Rendering System - Detailed Specifications
 
 ### 3.1 Canvas Layout and Coordinate System
 
-#### Screen Regions
-The canvas is divided into distinct regions:
+#### Screen Layout
+The canvas uses a simple, board-focused layout:
 
 ```
 ┌────────────────────────────────────────┐
-│  Top Bar (Info & Controls)            │  15% height
-├────────────────────────────────────────┤
+│ X                                    X │ ← Exit buttons in corners
 │                                        │
-│      Main Board Area                   │  70% height
-│      (Hexagonal Game Board)            │
 │                                        │
-├────────────────────────────────────────┤
-│  Bottom Bar (Current Tile & Actions)   │  15% height
+│         Hexagonal Game Board           │
+│         (fills most of screen)         │
+│    Player tiles appear by edges        │
+│                                        │
+│                                        │
+│ X                                    X │
 └────────────────────────────────────────┘
 ```
 
-**Responsive Behavior:**
-- On narrow screens (portrait mobile): Bars stack vertically, board scales to fit
-- On wide screens (landscape desktop): Bars are side panels, board is centered
-- Minimum board size: 300x300 pixels
-- Maximum board size: 90% of smallest viewport dimension
+**Key Features:**
+- No top or bottom bars
+- Board fills almost entire screen
+- Small margin around board edge for player tile previews
+- Exit buttons (X) in each corner to trigger exit game dialog
+- Light canvas background color
+- Board itself drawn as black hexagon with colored edges for player ownership
 
 #### Hexagon Layout Parameters
 
@@ -52,96 +59,82 @@ The canvas is divided into distinct regions:
 - Origin (0,0) at board center hex
 
 **Hex Sizing:**
-- Calculate hex radius based on available board area
-- Formula: `hexRadius = min(boardWidth, boardHeight) / (2 * maxBoardDimension + 2)`
+- Calculate hex radius based on available screen space
+- Formula: `hexRadius = min(width, height) / (2 * maxBoardDimension + padding)`
 - Where `maxBoardDimension = 5` (for the 37-hex diamond layout)
-- Minimum hex radius: 20 pixels
-- Maximum hex radius: 80 pixels
+- `padding = 3` to allow space for player tile previews outside board
+- Board should bleed almost to edge but leave space for tile previews
 
-**Spacing:**
-- No gap between hexes (they share edges)
-- Board padding: 10% of hex radius on all sides
+**Board Border:**
+- Draw larger hexagon around board representing board edges
+- Border is black by default
+- Each edge that is owned by a player is filled with that player's color
+- This creates a colored border on owned edges
 
 ### 3.2 Rendering Layers
 
 Render in this order (back to front):
 
 #### Layer 1: Background
-- Fill canvas with dark gray/black (#1a1a1a)
-- Draw subtle grid lines showing all 37 hex positions
-- Grid line color: #333333, width: 1px
+- Fill canvas with light background color (e.g., #e8e8e8 or similar)
+- This represents the "table" surface
 
-#### Layer 2: Board Outline
-- Draw hexagonal board outline
-- Outline color: #666666, width: 3px
-- Draw edge markers for each player's starting edge
-- Edge markers use player colors, width: 5px, 20% of edge length
+#### Layer 2: Board Hexagon and Edges
+- Draw the board as a larger black hexagon
+- For each of the 6 edges:
+  - If edge is owned by a player: fill that edge segment with player's color
+  - If edge is unowned: leave it black
+- This creates a colored border indicating player ownership
 
 #### Layer 3: Placed Tiles
-For each placed tile:
-- Fill hex with tile background color (#2a2a2a for empty, or based on flows)
-- Draw flow paths on the tile:
-  - Path width: 25% of hex radius
-  - Path color: Blend of all active flow colors on that tile
-  - If multiple flows, draw each path separately
-  - Use curves for flow paths (quadratic Bézier curves)
-  - Sharp corner tiles use angular paths
+For each placed tile on the board:
+- Fill hex with tile background color (dark gray/black #2a2a2a)
+- Draw flow paths using Bézier curves:
+  - **Path rendering:** Use stroke width to create channel effect
+  - **Path color:** Player's color who owns that flow
+  - **Bézier control points:** Perpendicular to hex edges for smooth tile-to-tile connections
+  - **Control point distance:** Place control points at hex edge midpoints, extending perpendicular into hex interior
+  - **Multiple flows:** Draw each flow path separately if multiple players' flows pass through tile
+  - **Path width:** Approximately 15-20% of hex radius
 - Add subtle tile border (#444444, 1px)
 
-**Tile Flow Path Rendering:**
-- Each tile type has specific flow patterns (see DESIGN_DOC.md section 4.2)
-- Paths connect from hex edge midpoints
-- Use control points for curves:
-  - Basketball (no sharps): smooth S-curves
-  - Kimono (one sharp): one angular corner, rest smooth
-  - Rink (two sharps): two angular corners, one straight
-  - Sharps (three sharps): all angular, meet at center
+**Bézier Curve Specification:**
+For a flow connecting two opposite hex edges (e.g., edge A to edge B):
+1. Start point: Midpoint of edge A
+2. End point: Midpoint of edge B
+3. Control point 1: Start point + (perpendicular to edge A × distance)
+4. Control point 2: End point + (perpendicular to edge B × distance)
+5. Distance: ~30% of hex radius
+6. This creates smooth curves that align perfectly when tiles are adjacent
 
-#### Layer 4: Flow Markers
-- Draw colored dots/circles on tiles that have active flows
-- Marker size: 15% of hex radius
-- Position: Near the center of the hex
-- Use player colors with 80% opacity
-- If multiple player flows on same tile, stack markers in a small cluster
+All tile types (including "sharps") use Bézier curves with this system.
 
-#### Layer 5: Legal Move Indicators
-When a tile is in hand and legal moves should be shown:
-- Highlight legal positions with green tint (#00ff0040)
-- Draw pulsing animation (subtle scale 0.95-1.05, 1s cycle)
-- Draw illegal positions (if hovering) with red tint (#ff000040)
+#### Layer 4: Current Tile Preview
+- Draw current player's tile by their board edge, outside the board area
+- Position: Adjacent to player's colored edge, on the "table" surface
+- If tile is placed on board (being previewed in a hex position):
+  - Show tile at that hex position with 70% opacity
+  - If legal placement: normal rendering
+  - If illegal placement: add red border (3px width)
+  - Checkmark button appears to right of placed tile
+  - X button appears to left of placed tile
+- Tile can be rotated by tapping (see interaction section)
+- Optional: Light grey arrow hints on left/right of tile to indicate tap targets for rotation
 
-#### Layer 6: Hover Highlight
-On mouse-based systems only:
-- Draw hex outline where mouse is hovering
-- Outline color: #ffff00 (yellow), width: 2px
-- Show preview of tile at hovered position with 50% opacity
-- Update in real-time as mouse moves
+#### Layer 5: Action Buttons (when tile is placed)
+When a tile is placed on the board:
+- **Checkmark button (✓):** Overlaid on board area to right of previewed tile
+  - Large, clear checkmark icon
+  - Enabled when placement is legal (normal color)
+  - Disabled when placement is illegal (greyed out)
+- **X button (✗):** Overlaid on board area to left of previewed tile
+  - Large, clear X icon
+  - Always enabled (allows picking up tile to move it)
 
-#### Layer 7: Selected/Current Tile Preview
-- Draw current tile preview in bottom bar
-- Show rotation indicator (small arrow or numbered orientation)
-- Highlight with player color border
-- Display tile type name
-
-#### Layer 8: UI Elements (Text, Buttons, Info)
-**Top Bar Contents:**
-- Current player indicator (name + color circle)
-- Turn counter (e.g., "Turn 5/37")
-- Remaining tiles count by type
-- Settings icon (top-right corner)
-
-**Bottom Bar Contents:**
-- Current tile preview (larger hex, 2x normal size)
-- Rotation buttons (left and right arrows) **for touch**
-- "Place Tile" button (if position selected)
-- "Undo Rotation" button (optional)
-
-**Text Rendering:**
-- Font: Sans-serif, clean and readable
-- Player name: 24px, bold
-- Tile counts: 18px, regular
-- Button labels: 20px, medium weight
-- All text has 1px dark outline for contrast
+#### Layer 6: Exit Buttons
+- Small X buttons in each corner of screen
+- Rotated to face respective edges (0°, 90°, 180°, 270°)
+- Tapping triggers exit game confirmation dialog
 
 ### 3.3 Visual Feedback & Animations
 
@@ -149,35 +142,44 @@ On mouse-based systems only:
 1. Fade in: Tile appears with opacity 0→1 (100ms)
 2. Scale: Tile scales from 0.8→1.0 (200ms, ease-out)
 3. Flow propagation: If flows extend, animate the flow paths
-   - Draw flow paths progressively from source (200ms)
+   - Highlight *existing* flow segments with pulse animation first (200ms)
+   - Then animate new flow paths progressively from source (200ms)
    - Use a "wave" effect moving along the path
 
 #### Flow Update Animation
 When a new tile extends a flow:
-- Highlight the new flow segments in bright color (300ms pulse)
+- Pulse existing segments before extending (200ms bright pulse)
+- Flow into new tiles progressively (200ms)
 - Fade to normal flow color (200ms)
 
-#### Rotation Animation
+#### Rotation Animation (450ms)
 When rotating current tile:
-- Smooth rotation over 150ms
+- Smooth rotation over 450ms
 - Use ease-in-out easing
-- Show rotation direction (clockwise/counter-clockwise indicator)
+- No rotation direction indicator needed
 
 #### Victory Animation
 - Highlight winning flow path with pulsing glow
-- Display victory modal overlay:
+- Display victory modal overlay in each corner:
+  - One modal per corner, rotated to face that edge
+  - 0° (bottom), 90° (right), 180° (top), 270° (left)
+  - Position to avoid overlapping board where possible
   - Semi-transparent background (#00000099)
-  - Centered card with winner info
-  - "New Game" and "View Board" buttons
+  - Victory icon/indicator (no text)
+  - "New Game" and "View Board" icon buttons
+
+#### Constraint Victory Display
+- Highlight unplaceable tile with red border by its board edge
+- Show victory modal (as above)
+- No text explanations needed
 
 #### Button Feedback
-- On hover (mouse): Lighten color by 20%
-- On press: Darken color by 10%, slight scale (0.95)
-- Add 100ms transition for all state changes
+- On press: Slight scale (0.95), 100ms
+- Use icons only, no text labels
 
 ### 3.4 Color Palette
 
-**Player Colors (Default):**
+**Player Colors (from configuration screen):**
 - Player 1: #ff4444 (Red)
 - Player 2: #4444ff (Blue)  
 - Player 3: #44ff44 (Green)
@@ -185,167 +187,149 @@ When rotating current tile:
 - Player 5: #ff44ff (Magenta)
 - Player 6: #44ffff (Cyan)
 
+These colors are already selected to be colorblind-friendly. No additional colorblind mode needed.
+
 **UI Colors:**
-- Background: #1a1a1a (Very dark gray)
-- Board outline: #666666 (Medium gray)
-- Grid lines: #333333 (Dark gray)
+- Canvas background: #e8e8e8 (Light gray - the "table")
+- Board hexagon: #000000 (Black)
+- Player edge borders: Player's color
 - Tile background: #2a2a2a (Dark gray)
 - Tile border: #444444 (Slightly lighter gray)
-- Text: #ffffff (White)
-- Button: #4a4a4a (Gray)
-- Button hover: #5a5a5a
-- Button active: #3a3a3a
-- Legal move: #00ff0040 (Transparent green)
-- Illegal move: #ff000040 (Transparent red)
-- Hover highlight: #ffff00 (Yellow)
+- Illegal placement border: #ff0000 (Red, 3px)
+- Button icons: #ffffff (White) on semi-transparent background
 
 **Accessibility:**
-- All player colors have sufficient contrast against dark background
-- Color-blind mode available (use patterns in addition to colors)
-- Minimum touch target size: 44x44 pixels
+- All player colors have sufficient contrast against dark tile backgrounds
+- Large, clear icons viewable from any angle
+- No reliance on text
 
-### 3.5 Responsive Design Breakpoints
+### 3.5 Responsive Design
 
-**Mobile Portrait (< 600px width):**
-- Stack layout vertically
-- Reduce hex size to maintain board visibility
-- Make bottom bar full-width
-- Larger rotation buttons (60x60px minimum)
+**Single Layout:**
+- Board-focused design works at all screen sizes
+- Minimum screen size: 800x600 pixels
+- Maximum: Full screen on large tabletop displays
+- Board scales proportionally to fill screen
+- Player tile previews scale with board
 
-**Mobile Landscape (600-900px width):**
-- Side-by-side layout with board taking 60% width
-- Controls in right sidebar
-- Normal hex sizing
-
-**Tablet (900-1200px):**
-- Optimal layout: board centered, info bars on top/bottom
-- Larger touch targets (50x50px)
-- Show more tile information
-
-**Desktop (> 1200px):**
-- Board centered with ample margin
-- Side panels for player info and controls
-- Mouse hover previews enabled
-- Keyboard shortcuts shown
+**Touch Targets:**
+- Minimum: 60x60 pixels for all interactive elements
+- Exit buttons: 50x50 pixels in corners
+- Checkmark/X buttons: 80x80 pixels when visible
+- Tile itself: Full hex size for rotation taps
 
 ## Phase 4: Input & Interaction - Detailed Specifications
 
 ### 4.1 Touch Screen Interaction (Primary)
 
-All gameplay can be completed with tapping only. No dragging required for core gameplay.
+All gameplay achieved with tapping only. No dragging required.
 
 #### Touch Gesture: Tap on Hex Position
-**Purpose:** Select position to place tile
+**Purpose:** Place tile at selected position
 
 **Behavior:**
 1. User taps on a hex position on the board
-2. System highlights the tapped position
-3. If tile can be placed there (legally):
-   - Show "Place Tile" button in bottom bar
-   - Preview tile at that position with current rotation
-4. If tile cannot be placed there:
-   - Show red outline briefly (500ms)
-   - Display message: "Illegal position" (toast notification)
-5. Tapping a different position changes selection
-6. Tapping same position again deselects it
+2. Tile moves from edge position to that hex (animated)
+3. Tile preview appears at that position with 70% opacity
+4. Checkmark (✓) button appears to right of tile
+5. X button appears to left of tile
+6. If placement is illegal:
+   - Tile shown with red border (3px)
+   - Checkmark button is disabled/greyed out
+   - User can still rotate tile or move to different position
+7. Tapping same hex again rotates the tile (see below)
 
 **Visual Feedback:**
-- Selected hex: Yellow outline, 3px width
 - Tile preview: 70% opacity at selected position
-- Pulsing animation on preview (subtle)
+- Red border if illegal
+- Action buttons appear immediately
 
-#### Touch Gesture: Tap Rotation Button
+#### Touch Gesture: Tap on Tile to Rotate
 **Purpose:** Rotate the current tile
 
-**UI Elements:**
-- Two arrow buttons in bottom bar
-- Left button (counter-clockwise): Rotate -60° (one step left)
-- Right button (clockwise): Rotate +60° (one step right)
-- Buttons are 60x60px minimum
-- Show current rotation number (0-5) between buttons
+**Interaction:**
+- Tap on left side of tile: Rotate counter-clockwise (60°)
+- Tap on right side of tile: Rotate clockwise (60°)
+- Works whether tile is in hand (by edge) or placed on board
+- Optional: Light grey arrow hints on left/right sides of tile
 
 **Behavior:**
-1. User taps rotation button
-2. Tile rotates immediately (animated 150ms)
-3. If position is selected, preview updates immediately
-4. No limit on rotations
+1. User taps left or right side of tile
+2. Tile rotates immediately (animated 350ms)
+3. If tile is on board, legality re-evaluated
+4. Checkmark button enabled/disabled based on new legality
+5. No limit on rotations
 
 **Visual Feedback:**
-- Button press animation (scale 0.95, 100ms)
-- Tile rotates smoothly
-- Rotation number updates (0→1→2→3→4→5→0...)
+- Smooth 350ms rotation animation
+- Tile rotates in place
+- Red border appears/disappears based on legality
 
-#### Touch Gesture: Tap "Place Tile" Button
+#### Touch Gesture: Tap Checkmark Button
 **Purpose:** Confirm tile placement
 
 **Conditions to Enable:**
-- A hex position must be selected
-- The placement must be legal
+- Tile must be placed on a hex
+- Placement must be legal
 - It's the current player's turn
 
 **Behavior:**
-1. User taps "Place Tile" button
-2. Tile is placed with animation
-3. Flows update automatically
-4. Selection is cleared
-5. Turn advances to next player (or game ends if victory/constraint)
-6. New tile is drawn for next player
+1. User taps checkmark (✓) button
+2. Tile is committed with animation
+3. Flows update automatically with animation
+4. Checkmark and X buttons disappear
+5. Turn advances to next player (or game ends)
+6. Next player's tile appears by their edge
 
 **Visual Feedback:**
-- Button is disabled (grayed out) unless conditions met
-- On successful placement: tile placement animation
+- Button press animation (scale 0.95, 100ms)
+- Tile placement animation
 - Flow update animations
-- Next player indicator updates
+- New tile appears by next player's edge
 
-#### Optional Touch Gestures (Enhanced Features)
+#### Touch Gesture: Tap X Button
+**Purpose:** Pick up tile and return to hand
 
-**Two-finger pinch zoom:**
-- Zoom in/out on board
-- Minimum zoom: entire board visible
-- Maximum zoom: 3x magnification
-- Zoom centered on pinch midpoint
+**Behavior:**
+1. User taps X button
+2. Tile moves back to player's edge position (animated)
+3. Checkmark and X buttons disappear
+4. User can now place tile elsewhere or rotate
 
-**Two-finger pan/drag:**
-- Pan the view when zoomed in
-- Constrain pan to keep board visible
-- Smooth deceleration when gesture ends
+#### Touch Gesture: Tap Exit Button (X in corner)
+**Purpose:** Exit game
 
-**Long-press on placed tile:**
-- Show tile information (type, rotation, placed by whom)
-- Show all flows passing through this tile
-- Dismiss by tapping outside
+**Behavior:**
+1. User taps X button in any corner
+2. Confirmation dialog appears (with icons, no text)
+3. User confirms or cancels
 
 ### 4.2 Mouse/Desktop Interaction (Secondary)
 
-Enhanced experience for desktop users while maintaining same tap-based core.
+Enhanced experience for desktop users while maintaining same core interactions.
 
-#### Mouse Action: Click on Hex Position
-**Same behavior as tap (see 4.1)**
-
-Additional desktop features:
-- Before placing tile, hex under cursor shows preview
-- Preview follows mouse as it moves between hexes
-- Preview updates with current rotation
-- No need to click to see preview
-
-#### Mouse Action: Hover over Hex
-**Purpose:** Show preview without selection
+#### Mouse Action: Tile Tracks Mouse Pointer
+**Purpose:** Show preview without manual placement
 
 **Behavior:**
-1. Mouse moves over a hex position
-2. If tile is in hand:
-   - Show tile preview at that position (50% opacity)
-   - Show legality indicator:
-     - Green tint if legal
-     - Red tint if illegal
-3. Preview disappears when mouse leaves hex
+1. Current player's tile follows mouse pointer
+2. Tile centers on mouse cursor location
+3. If mouse hovers over a hex for 3 seconds:
+   - Tile "snaps in" to that hex (slow 600ms animation)
+   - Checkmark and X buttons appear
+   - Legality evaluated
+4. If mouse moves to within 10% of hex edge after snap:
+   - Tile "snaps out" to follow cursor again (fast 200ms animation)
+   - Buttons disappear
+5. User can click to immediately snap tile to hex under cursor
 
 **Visual Feedback:**
-- Yellow outline on hovered hex
-- Semi-transparent tile preview
-- Color tint (green/red) for legality
+- Tile follows cursor smoothly
+- Snap-in: slow 600ms fade/move
+- Snap-out: fast 200ms
+- Normal tap behaviors apply once snapped
 
-#### Mouse Action: Click Rotation Buttons
+#### Mouse Action: Click on Tile to Rotate
 **Same as touch tap behavior**
 
 #### Mouse Action: Mouse Wheel Rotation
@@ -354,145 +338,66 @@ Additional desktop features:
 **Behavior:**
 - Scroll up: Rotate clockwise
 - Scroll down: Rotate counter-clockwise
-- Each scroll step = 60° rotation
-- Works anywhere on canvas (not just on tile preview)
+- N scroll steps = 1 rotation of 60° (N is configurable in code)
+- Works anywhere when player has active tile
 
 **Visual Feedback:**
-- Same rotation animation as buttons
-- Brief indicator showing rotation direction (100ms)
-
-#### Keyboard Shortcuts
-
-**R or Right Arrow:** Rotate clockwise
-**E or Left Arrow:** Rotate counter-clockwise  
-**Space:** Toggle legal move highlighting
-**Enter:** Place tile (if position selected and legal)
-**Escape:** Clear selection
-**1-6:** Quick select position (numbered positions, if helpful)
-**Z:** Undo last action (if undo feature implemented)
-
-**Visual Feedback:**
-- Show keyboard hint tooltips on hover
-- Brief flash on button when keyboard shortcut used
-- Show keyboard shortcuts legend in settings
-
-#### Right-Click Menu (Optional)
-- Right-click on board: Show options menu
-  - "Show Legal Moves"
-  - "Toggle Grid"
-  - "Reset View" (if zoomed/panned)
-  - "Settings"
+- Same 350ms rotation animation
 
 ### 4.3 Game Flow Interactions
 
-#### Starting the Game
-**Configuration Screen:**
-1. Add Player buttons (tap to add players 1-6)
-2. Color selection (tap color circle → color picker)
-3. Edge position selection (tap edge number or visual picker)
-4. Start Game button (enabled when 2+ players)
-
-**Interaction:**
-- All tap-based
-- Visual confirmation for each selection
-- Validation messages if invalid configuration
-
 #### During Gameplay
 
+**Turn Indication:**
+- Current player's tile appears by their board edge
+- That's the only indicator needed (no text notification)
+
 **Turn Sequence (from user perspective):**
-1. Player sees: "Your turn!" notification
-2. Current tile appears in preview area
-3. Player rotates tile (optional, using rotation buttons)
-4. Player taps hex position to select placement location
-5. "Place Tile" button appears/enables
-6. Player taps "Place Tile"
-7. Tile places with animation
-8. Flows update with animation
-9. Next player's turn begins (or game ends)
-
-**Always Visible:**
-- Current player indicator (name + color)
-- Current tile preview
-- Rotation controls
-- Remaining tile counts
-
-**Optional Toggle:**
-- Legal move indicators
-- Flow path highlighting
-- Grid lines
-- Tile type indicators
+1. Player's tile appears by their edge
+2. Player rotates tile (optional, by tapping on tile)
+3. Player taps hex position to place
+4. Checkmark and X buttons appear
+5. Player taps checkmark to confirm (or X to move, or rotates more)
+6. Tile places with animation
+7. Flows update with animation
+8. Next player's tile appears by their edge
 
 #### Game End Interaction
 
 **Victory Screen:**
 1. Winning flow animates (glowing path)
-2. Modal overlay appears with:
-   - Winner announcement
-   - Victory type (flow connection or constraint)
-   - Game statistics (turns, tiles placed)
-   - "New Game" button
-   - "View Final Board" button (dismisses modal)
+2. Modal overlay appears in each corner:
+   - Positioned in 4 corners
+   - Each rotated to face its edge (0°, 90°, 180°, 270°)
+   - Victory icon (no text)
+   - "New Game" icon button
+   - "View Board" icon button (dismisses modal)
+   - Positioned to minimize board overlap where possible
 
 **Constraint Victory:**
-- Shows the unplayable tile
-- Explains why it cannot be placed
-- Announces the winner
+- Unplaceable tile highlighted in red by its edge
+- Same victory modals appear
 
 ### 4.4 Error Handling & User Feedback
 
 #### Illegal Move Attempt
-**Trigger:** User tries to place tile illegally
+**Trigger:** User places tile illegally
 
 **Feedback:**
-1. Red flash on illegal position (200ms)
-2. Toast notification: "Illegal placement: [reason]"
-3. Tile remains in hand
-4. Selection clears
+1. Tile preview shows with red border
+2. Checkmark button disabled/greyed
+3. User can rotate to fix or move to new position
+4. Optional: Show X icon over blocked player's color on preview
 
-**Reasons displayed:**
-- "Would block Player X completely"
-- "Would force two teams to share a path"
-- "No viable path remains for Player X"
-
-#### Network/Technical Errors
-**For future multiplayer:**
-- Connection lost: "Reconnecting..." overlay
-- Sync error: "Reloading game state..."
-- Server error: "Error: [message]" with retry button
-
-#### Touch/Click Miss
-**Trigger:** User taps/clicks outside interactive elements
-
-**Feedback:**
-- No action (silent failure)
-- Maintains current state
-- No error message (too noisy)
+**No text messages or notifications**
 
 ### 4.5 Accessibility Features
 
-#### Touch Accessibility
-- All tap targets minimum 44x44px
-- Sufficient spacing between buttons (8px minimum)
-- High contrast mode option
-- Color-blind friendly mode (adds patterns/symbols)
-
-#### Screen Reader Support
-- Aria labels on all interactive elements
-- Announce current player turn
-- Announce tile placements
-- Announce game state changes
-
-#### Keyboard Accessibility
-- All actions available via keyboard
-- Visible focus indicators
-- Tab navigation order: top-to-bottom, left-to-right
-- Escape key always returns to safe state
-
-#### Visual Accessibility
-- Minimum font size: 16px
-- High contrast mode (optional)
-- Increase UI element size option (+25%, +50%)
-- Reduce animations option
+**Visual Accessibility:**
+- Colors already chosen with colorblind users in mind
+- Large icons viewable from all angles
+- High contrast between board elements
+- No text dependency
 
 ## E2E Test Specifications
 
@@ -501,24 +406,29 @@ Additional desktop features:
 #### Test 1.1: Board Initial Render
 **Verify:**
 - Canvas initializes with correct dimensions
-- 37 hex positions are drawn
-- Grid lines visible
-- Board outline drawn correctly
-- All UI elements present (top bar, bottom bar)
+- Light background color rendered
+- Board hexagon drawn in black
+- Player edge borders drawn in player colors
+- 37 hex positions calculated correctly
+- Exit buttons in each corner
+- All UI elements present and positioned correctly
 
 **Assertions:**
 - Canvas element exists and has non-zero dimensions
-- All expected UI regions rendered
+- All expected rendering layers present
 - Color palette matches specification
+- Exit buttons rotated to face edges
 
 #### Test 1.2: Tile Rendering
 **Setup:** Place a tile on the board via Redux action
 
 **Verify:**
 - Tile appears at correct position
-- Flow paths drawn correctly for tile type
+- Flow paths drawn using Bézier curves
+- Curves connect smoothly between tiles
 - Tile has correct rotation
 - Tile border visible
+- Player color used for flows
 
 **Test each tile type:**
 - NoSharps (Basketball)
@@ -532,171 +442,174 @@ Additional desktop features:
 **Setup:** Place multiple tiles creating a flow
 
 **Verify:**
-- Flow markers appear on correct tiles
-- Flow color matches player color
-- Flow path is continuous
+- Flow paths drawn in player color
+- Paths connect smoothly across tiles
+- Bézier curves align at tile boundaries
 - Multiple flows on same tile render correctly
+- Flow color matches owning player
 
 #### Test 1.4: Animation Rendering
 **Verify:**
-- Tile placement animation completes
-- Flow update animation completes
-- Rotation animation smooth
-- Victory animation displays
+- Tile placement animation completes (200-400ms)
+- Flow update animation: existing segments pulse first
+- Rotation animation (450ms) smooth
+- Victory animation displays in all corners
+- Button press animations (100ms scale)
 
 **Use:** Visual regression testing (screenshot comparison)
 
-#### Test 1.5: Responsive Layout
-**Test at breakpoints:**
-- 400px width (mobile portrait)
-- 700px width (mobile landscape)
-- 1000px width (tablet)
-- 1400px width (desktop)
-
-**Verify:**
-- Layout adjusts correctly
-- All elements remain visible
-- Touch targets maintain minimum size
-- Text remains readable
+#### Test 1.5: Tile Preview Positioning
+**Test scenarios:**
+- Tile appears by player's edge when turn starts
+- Tile moves to hex on tap
+- Checkmark and X buttons appear correctly
+- Red border on illegal placement
+- Buttons positioned relative to placed tile
 
 ### Test Suite 2: Touch Interaction Tests
 
-#### Test 2.1: Tap to Select Hex
+#### Test 2.1: Tap on Hex to Place
 **Actions:**
 1. Start game with 2 players
 2. Tap on a valid hex position
-3. Verify position highlighted
-4. Verify "Place Tile" button appears
+3. Verify tile moves to that position
+4. Verify checkmark and X buttons appear
 
 **Assertions:**
-- Selected position state updates in Redux
-- Visual highlight rendered
-- Button enabled/disabled correctly
+- Tile position updates
+- Visual preview at hex
+- Buttons rendered and positioned correctly
+- Legality evaluated
 
-#### Test 2.2: Tap Rotation Buttons
+#### Test 2.2: Tap on Tile to Rotate
 **Actions:**
 1. Start game
-2. Tap clockwise rotation button
-3. Verify rotation increases
-4. Tap counter-clockwise button
-5. Verify rotation decreases
+2. Tap right side of tile
+3. Verify clockwise rotation
+4. Tap left side of tile
+5. Verify counter-clockwise rotation
 
 **Assertions:**
-- Rotation state updates in Redux (0→1→2→3→4→5→0)
-- Preview tile rotates visually
-- Rotation number displays correctly
+- Rotation updates (0→1→2→3→4→5→0)
+- 350ms animation plays
+- Works both in hand and on board
+- Legality re-evaluated after rotation
 
-#### Test 2.3: Tap Place Tile Button
+#### Test 2.3: Tap Checkmark to Confirm
 **Actions:**
 1. Start game
-2. Select valid position
-3. Tap "Place Tile" button
-4. Verify tile placed
+2. Place tile at valid position
+3. Tap checkmark button
+4. Verify tile commits
 
 **Assertions:**
-- Tile added to board in Redux state
+- Tile committed to board
 - Turn advances to next player
-- New tile drawn
-- Selection cleared
+- New tile appears by next player's edge
+- Buttons disappear
 - Placement animation plays
 
-#### Test 2.4: Illegal Placement Attempt
+#### Test 2.4: Tap X to Pick Up Tile
 **Actions:**
-1. Set up board state where only some positions legal
+1. Place tile on board
+2. Tap X button
+3. Verify tile returns to edge
+
+**Assertions:**
+- Tile moves back to player's edge
+- Buttons disappear
+- Can place again elsewhere
+
+#### Test 2.5: Illegal Placement Handling
+**Actions:**
+1. Set up board state where position is illegal
 2. Tap illegal position
-3. Attempt to place
+3. Verify red border appears
+4. Verify checkmark disabled
 
 **Assertions:**
-- Red flash appears
-- Error message shown
-- Tile not placed
-- Turn does not advance
-
-#### Test 2.5: Complete Turn Sequence
-**Actions:**
-1. Start 2-player game
-2. Rotate tile 2 times
-3. Select position
-4. Place tile
-5. Verify turn advances
-6. Second player repeats
-
-**Assertions:**
-- Full turn completes correctly
-- State updates properly
-- Animations play
-- Next player's tile appears
+- Red border rendered (3px)
+- Checkmark button greyed out
+- X button still enabled
+- Can rotate or move to fix
 
 ### Test Suite 3: Mouse Interaction Tests
 
-#### Test 3.1: Hover Preview
+#### Test 3.1: Mouse Tracking
 **Actions:**
 1. Start game
-2. Move mouse over various hex positions
-3. Verify preview follows mouse
+2. Move mouse around board
+3. Verify tile follows cursor
 
 **Assertions:**
-- Hover state updates in Redux
-- Preview renders at hovered position
-- Preview disappears when mouse leaves
-- Legal/illegal indicator shows correctly
+- Tile centers on cursor
+- Moves smoothly
+- No lag or jitter
 
-#### Test 3.2: Click to Select
-**Same as Test 2.1 but with mouse click**
+#### Test 3.2: Snap In/Out Behavior
+**Actions:**
+1. Hover over hex for 3+ seconds
+2. Verify snap-in animation (600ms)
+3. Move cursor to edge
+4. Verify snap-out animation (200ms)
+
+**Assertions:**
+- Snap-in after 3s dwell
+- 600ms smooth animation
+- Buttons appear after snap
+- Snap-out at 10% edge proximity
+- 200ms fast animation
 
 #### Test 3.3: Mouse Wheel Rotation
 **Actions:**
 1. Start game
-2. Scroll mouse wheel up
-3. Verify clockwise rotation
-4. Scroll wheel down
-5. Verify counter-clockwise rotation
+2. Scroll mouse wheel up/down
+3. Verify rotation
 
 **Assertions:**
-- Rotation updates on wheel event
-- Visual rotation occurs
-- Works from any canvas position
+- N scroll steps = 60° rotation (N configurable)
+- Rotation animation plays
+- Works with tile in any state
 
-#### Test 3.4: Keyboard Shortcuts
-**Test each shortcut:**
-- R: Rotate clockwise
-- E: Rotate counter-clockwise
-- Space: Toggle legal moves
-- Enter: Place tile (when valid)
-- Escape: Clear selection
+#### Test 3.4: Click to Place
+**Actions:**
+1. Click on hex
+2. Verify immediate snap (no 3s wait)
 
 **Assertions:**
-- Each key triggers correct action
-- Visual feedback shows
-- State updates correctly
+- Tile snaps immediately
+- Buttons appear
+- Same as tap behavior
 
 ### Test Suite 4: Game Flow Tests
 
 #### Test 4.1: Full Game Playthrough
 **Actions:**
-1. Configure 2-player game
+1. Configure 2-player game  
 2. Start game
 3. Place tiles alternating turns
-4. Continue until victory condition met
+4. Continue until victory
 
 **Assertions:**
 - Game progresses correctly
+- Turn indication (tile by edge) works
 - No errors occur
 - Victory detected correctly
-- Victory screen displays
+- Victory modals in all corners
 
 #### Test 4.2: Victory by Flow
 **Setup:** Create board state near victory
 
 **Actions:**
-1. Place final tile to connect player's edges
+1. Place final tile to connect edges
 2. Verify victory detected
 
 **Assertions:**
 - Victory check runs
 - Correct winner identified
 - Flow connection highlighted
-- Victory modal appears
+- Victory modals appear in corners
+- Modals rotated to face edges
 
 #### Test 4.3: Victory by Constraint
 **Setup:** Create board state where next tile cannot be placed
@@ -707,9 +620,9 @@ Additional desktop features:
 
 **Assertions:**
 - Constraint check runs
-- Last player to move wins
-- Victory modal shows reason
-- Unplaceable tile displayed
+- Last player wins
+- Unplaceable tile shown in red by edge
+- Victory modals appear
 
 #### Test 4.4: Multi-Player Game
 **Test with:**
@@ -718,86 +631,73 @@ Additional desktop features:
 - 6 players (teams)
 
 **Assertions:**
-- Turn order correct
+- Turn order correct (tiles appear by correct edges)
 - Team formation correct
 - Victory conditions work for teams
-- All players' flows tracked
+- All players' flows tracked and colored correctly
 
 ### Test Suite 5: UI State Tests
 
-#### Test 5.1: Legal Move Indicators
+#### Test 5.1: Exit Dialog
 **Actions:**
-1. Start game
-2. Toggle "Show Legal Moves"
-3. Verify indicators appear
-4. Toggle off
-5. Verify indicators disappear
+1. Tap X in corner
+2. Verify confirmation dialog
+3. Test confirm and cancel
 
 **Assertions:**
-- Legal positions calculated correctly
-- Highlights render correctly
-- Toggle state persists
+- Dialog appears
+- Icon-based (no text)
+- Confirm exits game
+- Cancel returns to game
 
-#### Test 5.2: Settings Panel
+#### Test 5.2: Victory Modal Positioning
 **Actions:**
-1. Open settings
-2. Change animation speed
-3. Toggle color-blind mode
-4. Apply changes
+1. Trigger victory
+2. Check all 4 corner modals
 
 **Assertions:**
-- Settings panel renders
-- Changes apply immediately
-- Settings persist in state
-
-#### Test 5.3: Zoom and Pan (Optional)
-**Actions:**
-1. Pinch zoom in
-2. Verify board scales
-3. Pan view
-4. Verify board position changes
-5. Reset view
-
-**Assertions:**
-- Zoom level updates
-- Pan offset updates
-- Board remains usable
-- Reset returns to default
+- Modal in each corner
+- Rotations: 0°, 90°, 180°, 270°
+- Positioned to minimize board overlap
+- Icon buttons work
 
 ### Test Suite 6: Error & Edge Cases
 
-#### Test 6.1: Rapid Clicking
+#### Test 6.1: Rapid Tapping
 **Actions:**
-1. Rapidly click multiple positions
-2. Rapidly click rotation buttons
+1. Rapidly tap hex positions
+2. Rapidly tap rotation areas
 3. Verify state remains consistent
 
 **Assertions:**
 - No race conditions
 - No duplicate actions
 - State updates correctly
+- Animations don't break
 
-#### Test 6.2: Invalid State Recovery
-**Setup:** Force invalid state via Redux
-
+#### Test 6.2: Resize During Game
 **Actions:**
-1. Attempt to recover or show error
-
-**Assertions:**
-- Error detected
-- Graceful handling
-- User informed
-
-#### Test 6.3: Resize During Game
-**Actions:**
-1. Start game mid-game
+1. Start game mid-play
 2. Resize window multiple times
 3. Continue playing
 
 **Assertions:**
 - Layout adapts
+- Board scales correctly
+- Tile previews reposition
 - Game state preserved
 - No visual glitches
+
+#### Test 6.3: Mouse and Touch Mixed
+**Actions:**
+1. Use mouse for some actions
+2. Use touch for others
+3. Verify consistent behavior
+
+**Assertions:**
+- Both input methods work
+- No conflicts
+- State consistent
 
 ### Test Execution Strategy
 
@@ -805,6 +705,7 @@ Additional desktop features:
 - Run on every commit
 - Cover all game logic functions
 - Mock rendering and input
+- **Target: 100% line coverage**
 
 **Integration Tests:**
 - Run before merge
@@ -815,50 +716,51 @@ Additional desktop features:
 - Run on PR and before release
 - Use Playwright for automation
 - Test on multiple browsers (Chrome, Firefox, Safari)
-- Test on multiple devices (desktop, tablet, mobile viewports)
+- Test on multiple screen sizes
 - Visual regression with screenshot comparison
 
 **Manual Testing:**
-- Performed on actual touch devices
-- Accessibility audit
-- Performance testing on low-end devices
-- Usability testing with real users
+- Test on actual tabletop touch screens
+- Test viewing from all angles
+- Performance testing on target hardware
+- Usability testing with real players
 
 ### Test Coverage Goals
 
-- **Unit Tests:** 90%+ code coverage
+- **Unit Tests: 100% line coverage** (repository standard)
 - **Integration Tests:** All critical paths
 - **E2E Tests:** All user workflows
-- **Visual Tests:** Key screens at all breakpoints
-- **Accessibility Tests:** WCAG 2.1 AA compliance
+- **Visual Tests:** Key screens at multiple sizes
 
 ---
 
 ## Implementation Notes
 
 ### Phase 3 Priorities
-1. Basic hex rendering (positions and grid)
-2. Tile rendering with correct flow paths
-3. Flow marker rendering
-4. UI bars and text rendering
-5. Animations
-6. Responsive layout
+1. Canvas setup with light background
+2. Board hexagon with colored edges
+3. Hex position rendering
+4. Tile rendering with Bézier flow paths
+5. Tile preview by player edge
+6. Checkmark/X button overlays
+7. Animations
+8. Victory modals in corners
 
 ### Phase 4 Priorities
-1. Touch tap on hex (select position)
-2. Rotation buttons (tap to rotate)
-3. Place tile button (tap to place)
-4. Mouse hover preview (desktop enhancement)
-5. Keyboard shortcuts
-6. Optional: zoom/pan gestures
+1. Touch tap on hex (place tile)
+2. Touch tap on tile (rotate left/right)
+3. Checkmark button (confirm placement)
+4. X button (pick up tile)
+5. Mouse tracking with snap behavior
+6. Mouse wheel rotation (configurable)
+7. Exit buttons in corners
 
 ### Performance Considerations
 
 **Rendering:**
-- Use canvas layers to minimize redraws
-- Redraw only changed regions when possible
 - Use requestAnimationFrame for animations
-- Throttle hover events (16ms debounce)
+- Minimize canvas redraws (only changed regions)
+- Cache Bézier curve calculations
 
 **Touch Response:**
 - Touch events processed immediately (< 16ms)
@@ -866,10 +768,10 @@ Additional desktop features:
 - No blocking operations on UI thread
 
 **Memory:**
-- Clear animation timers when components unmount
+- Clear animation timers when not needed
 - Reuse canvas contexts
-- Limit history size (100 moves max)
+- Efficient flow path calculations
 
 ---
 
-**This specification ensures a consistent, accessible, and enjoyable user experience across both touch and mouse-based interactions while maintaining the core tap-based design philosophy.**
+**This specification ensures a tabletop-friendly, text-free, multi-angle viewing experience with intuitive tap-based interactions.**
