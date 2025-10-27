@@ -1,26 +1,26 @@
 // Gameplay screen renderer for Phase 3
 
-import { RootState } from '../redux/types';
-import { 
-  HexLayout, 
-  Point, 
-  calculateHexLayout, 
-  hexToPixel, 
+import { RootState } from "../redux/types";
+import {
+  HexLayout,
+  Point,
+  calculateHexLayout,
+  hexToPixel,
   getHexVertices,
   getEdgeMidpoint,
   getPerpendicularVector,
   getPlayerEdgePosition,
-} from './hexLayout';
-import { getAllBoardPositions } from '../game/board';
-import { TileType, PlacedTile } from '../game/types';
-import { getFlowConnections } from '../game/tiles';
+} from "./hexLayout";
+import { getAllBoardPositions } from "../game/board";
+import { TileType, PlacedTile } from "../game/types";
+import { getFlowConnections } from "../game/tiles";
 
 // UI Colors from design spec
-const CANVAS_BG = '#e8e8e8';  // Light gray "table"
-const BOARD_HEX_BG = '#000000';  // Black
-const TILE_BG = '#2a2a2a';  // Dark gray
-const TILE_BORDER = '#444444';  // Slightly lighter gray
-const BUTTON_ICON = '#ffffff';  // White
+const CANVAS_BG = "#e8e8e8"; // Light gray "table"
+const BOARD_HEX_BG = "#000000"; // Black
+const TILE_BG = "#2a2a2a"; // Dark gray
+const TILE_BORDER = "#444444"; // Slightly lighter gray
+const BUTTON_ICON = "#ffffff"; // White
 
 export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -29,7 +29,7 @@ export class GameplayRenderer {
   constructor(
     ctx: CanvasRenderingContext2D,
     canvasWidth: number,
-    canvasHeight: number
+    canvasHeight: number,
   ) {
     this.ctx = ctx;
     this.layout = calculateHexLayout(canvasWidth, canvasHeight);
@@ -69,25 +69,7 @@ export class GameplayRenderer {
 
   private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
-    // Calculate board radius so corners pass through centers of tiles just outside the board
-    // The 37-hex diamond extends from row -3 to +3 (7 rows total)
-    // For pointy-top hexes, the vertical spacing is 1.5 * size per row
-    // Distance from center to outermost hex center: 3 rows * 1.5 * size = 4.5 * size
-    // A tile just outside would be at 4 rows: 4 * 1.5 * size = 6 * size
-    // 
-    // For a flat-top hexagon, the distance from center to corner is the radius
-    // We want corners to pass through tile centers just outside, which are ~6 * size away
-    // So radius should be approximately 6 * size
-    // 
-    // But let's be more precise: for pointy-top hex, distance from center to vertex = size
-    // Grid extends to row ±3, column range depends on row
-    // Outermost positions like (3,0) have center at distance: sqrt((3*1.5*size)² + 0²) = 4.5*size
-    // Positions like (3,-3) have center at distance: sqrt((3*1.5*size)² + (3*sqrt(3)*size)²)
-    // = sqrt(20.25 + 27) * size = sqrt(47.25) * size ≈ 6.87 * size
-    // 
-    // For flat-top hex corners to pass through hypothetical tiles one row out,
-    // we want radius ≈ 7.5 * size (one more row = 1.5 * size further)
-    const boardRadius = this.layout.size * 7.5;
+    const boardRadius = this.layout.size * 7.2;
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
@@ -96,8 +78,13 @@ export class GameplayRenderer {
     // Draw colored edges for each player
     // Each player owns one edge of the board hexagon
     if (state.game.players.length > 0) {
-      state.game.players.forEach(player => {
-        this.renderPlayerEdge(center, boardRadius, player.edgePosition, player.color);
+      state.game.players.forEach((player) => {
+        this.renderPlayerEdge(
+          center,
+          boardRadius,
+          player.edgePosition,
+          player.color,
+        );
       });
     }
   }
@@ -106,11 +93,11 @@ export class GameplayRenderer {
     center: Point,
     radius: number,
     edgePosition: number,
-    color: string
+    color: string,
   ): void {
     // Get the two vertices that define this edge for flat-top hexagon
     const vertices = this.getFlatTopHexVertices(center, radius);
-    
+
     // For flat-top hexagon, edges are rotated 30° from pointy-top
     // Edge 0 is between vertices 5 and 0 (SouthWest edge, now at bottom-left)
     // Edge 1 is between vertices 0 and 1 (West edge, now at left)
@@ -118,7 +105,7 @@ export class GameplayRenderer {
     // Edge 3 is between vertices 2 and 3 (NorthEast edge, now at top-right)
     // Edge 4 is between vertices 3 and 4 (East edge, now at right)
     // Edge 5 is between vertices 4 and 5 (SouthEast edge, now at bottom-right)
-    
+
     const vertexMap = [
       [5, 0], // Edge 0: SouthWest
       [0, 1], // Edge 1: West
@@ -127,16 +114,16 @@ export class GameplayRenderer {
       [3, 4], // Edge 4: East
       [4, 5], // Edge 5: SouthEast
     ];
-    
+
     const [v1Index, v2Index] = vertexMap[edgePosition];
     const v1 = vertices[v1Index];
     const v2 = vertices[v2Index];
-    
+
     // Draw a thick colored line for this edge
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = this.layout.size * 0.3; // Thick edge
-    this.ctx.lineCap = 'round';
-    
+    this.ctx.lineCap = "round";
+
     this.ctx.beginPath();
     this.ctx.moveTo(v1.x, v1.y);
     this.ctx.lineTo(v2.x, v2.y);
@@ -146,11 +133,11 @@ export class GameplayRenderer {
   private renderHexPositions(): void {
     // Render all 37 hex positions with subtle outlines
     const positions = getAllBoardPositions();
-    
-    this.ctx.strokeStyle = '#666666'; // Dark gray outline
+
+    this.ctx.strokeStyle = "#666666"; // Dark gray outline
     this.ctx.lineWidth = 1;
-    
-    positions.forEach(pos => {
+
+    positions.forEach((pos) => {
       const center = hexToPixel(pos, this.layout);
       this.drawHexagon(center, this.layout.size, false);
     });
@@ -163,9 +150,13 @@ export class GameplayRenderer {
     });
   }
 
-  private renderTile(tile: PlacedTile, state: RootState, opacity: number): void {
+  private renderTile(
+    tile: PlacedTile,
+    state: RootState,
+    opacity: number,
+  ): void {
     const center = hexToPixel(tile.position, this.layout);
-    
+
     // Fill tile background
     this.ctx.globalAlpha = opacity;
     this.ctx.fillStyle = TILE_BG;
@@ -182,9 +173,13 @@ export class GameplayRenderer {
     this.ctx.globalAlpha = 1.0;
   }
 
-  private renderFlowPaths(tile: PlacedTile, _state: RootState, center: Point): void {
+  private renderFlowPaths(
+    tile: PlacedTile,
+    _state: RootState,
+    center: Point,
+  ): void {
     const connections = getFlowConnections(tile.type, tile.rotation);
-    
+
     // For each flow connection, draw a Bézier curve
     connections.forEach(([dir1, dir2]) => {
       // Get edge midpoints
@@ -206,17 +201,20 @@ export class GameplayRenderer {
 
       // TODO: Determine which player's color to use for this flow
       // For now, use white
-      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.strokeStyle = "#ffffff";
       this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
-      this.ctx.lineCap = 'round';
+      this.ctx.lineCap = "round";
 
       // Draw Bézier curve
       this.ctx.beginPath();
       this.ctx.moveTo(start.x, start.y);
       this.ctx.bezierCurveTo(
-        control1.x, control1.y,
-        control2.x, control2.y,
-        end.x, end.y
+        control1.x,
+        control1.y,
+        control2.x,
+        control2.y,
+        end.x,
+        end.y,
       );
       this.ctx.stroke();
     });
@@ -236,20 +234,23 @@ export class GameplayRenderer {
         rotation: state.ui.currentRotation,
         position: state.ui.selectedPosition,
       };
-      
+
       this.renderTile(tile, state, 0.7); // 70% opacity
 
       // TODO: Add red border if illegal placement
       // TODO: Show checkmark and X buttons
     } else {
       // Render tile by player's edge
-      const edgePos = getPlayerEdgePosition(currentPlayer.edgePosition, this.layout);
+      const edgePos = getPlayerEdgePosition(
+        currentPlayer.edgePosition,
+        this.layout,
+      );
       this.renderTileAtPosition(
         state.game.currentTile,
         state.ui.currentRotation,
         edgePos,
         currentPlayer.color,
-        1.0
+        1.0,
       );
     }
   }
@@ -259,7 +260,7 @@ export class GameplayRenderer {
     rotation: number,
     center: Point,
     playerColor: string,
-    opacity: number
+    opacity: number,
   ): void {
     // Render a tile at an arbitrary position (for edge preview)
     this.ctx.globalAlpha = opacity;
@@ -279,19 +280,25 @@ export class GameplayRenderer {
       const control1Vec = getPerpendicularVector(dir1, this.layout.size);
       const control2Vec = getPerpendicularVector(dir2, this.layout.size);
 
-      const control1 = { x: start.x + control1Vec.x, y: start.y + control1Vec.y };
+      const control1 = {
+        x: start.x + control1Vec.x,
+        y: start.y + control1Vec.y,
+      };
       const control2 = { x: end.x + control2Vec.x, y: end.y + control2Vec.y };
 
       this.ctx.strokeStyle = playerColor;
       this.ctx.lineWidth = this.layout.size * 0.15;
-      this.ctx.lineCap = 'round';
+      this.ctx.lineCap = "round";
 
       this.ctx.beginPath();
       this.ctx.moveTo(start.x, start.y);
       this.ctx.bezierCurveTo(
-        control1.x, control1.y,
-        control2.x, control2.y,
-        end.x, end.y
+        control1.x,
+        control1.y,
+        control2.x,
+        control2.y,
+        end.x,
+        end.y,
       );
       this.ctx.stroke();
     });
@@ -317,18 +324,24 @@ export class GameplayRenderer {
     this.renderXButton(xPos, buttonSize);
   }
 
-  private renderCheckmarkButton(center: Point, size: number, enabled: boolean): void {
+  private renderCheckmarkButton(
+    center: Point,
+    size: number,
+    enabled: boolean,
+  ): void {
     // Draw button background
-    this.ctx.fillStyle = enabled ? 'rgba(76, 175, 80, 0.8)' : 'rgba(85, 85, 85, 0.8)';
+    this.ctx.fillStyle = enabled
+      ? "rgba(76, 175, 80, 0.8)"
+      : "rgba(85, 85, 85, 0.8)";
     this.ctx.beginPath();
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
 
     // Draw checkmark icon
-    this.ctx.strokeStyle = enabled ? BUTTON_ICON : '#999999';
+    this.ctx.strokeStyle = enabled ? BUTTON_ICON : "#999999";
     this.ctx.lineWidth = size * 0.15;
-    this.ctx.lineCap = 'round';
-    this.ctx.lineJoin = 'round';
+    this.ctx.lineCap = "round";
+    this.ctx.lineJoin = "round";
 
     this.ctx.beginPath();
     this.ctx.moveTo(center.x - size * 0.25, center.y);
@@ -339,7 +352,7 @@ export class GameplayRenderer {
 
   private renderXButton(center: Point, size: number): void {
     // Draw button background
-    this.ctx.fillStyle = 'rgba(211, 47, 47, 0.8)';
+    this.ctx.fillStyle = "rgba(211, 47, 47, 0.8)";
     this.ctx.beginPath();
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
@@ -347,7 +360,7 @@ export class GameplayRenderer {
     // Draw X icon
     this.ctx.strokeStyle = BUTTON_ICON;
     this.ctx.lineWidth = size * 0.15;
-    this.ctx.lineCap = 'round';
+    this.ctx.lineCap = "round";
 
     const offset = size * 0.2;
     this.ctx.beginPath();
@@ -365,24 +378,41 @@ export class GameplayRenderer {
 
     const corners = [
       { x: margin + cornerSize / 2, y: margin + cornerSize / 2, rotation: 0 },
-      { x: this.layout.canvasWidth - margin - cornerSize / 2, y: margin + cornerSize / 2, rotation: 90 },
-      { x: this.layout.canvasWidth - margin - cornerSize / 2, y: this.layout.canvasHeight - margin - cornerSize / 2, rotation: 180 },
-      { x: margin + cornerSize / 2, y: this.layout.canvasHeight - margin - cornerSize / 2, rotation: 270 },
+      {
+        x: this.layout.canvasWidth - margin - cornerSize / 2,
+        y: margin + cornerSize / 2,
+        rotation: 90,
+      },
+      {
+        x: this.layout.canvasWidth - margin - cornerSize / 2,
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        rotation: 180,
+      },
+      {
+        x: margin + cornerSize / 2,
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        rotation: 270,
+      },
     ];
 
-    corners.forEach(corner => {
+    corners.forEach((corner) => {
       this.ctx.save();
       this.ctx.translate(corner.x, corner.y);
       this.ctx.rotate((corner.rotation * Math.PI) / 180);
 
       // Draw semi-transparent background
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      this.ctx.fillRect(-cornerSize / 2, -cornerSize / 2, cornerSize, cornerSize);
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      this.ctx.fillRect(
+        -cornerSize / 2,
+        -cornerSize / 2,
+        cornerSize,
+        cornerSize,
+      );
 
       // Draw X
       this.ctx.strokeStyle = BUTTON_ICON;
       this.ctx.lineWidth = 3;
-      this.ctx.lineCap = 'round';
+      this.ctx.lineCap = "round";
 
       const offset = cornerSize * 0.25;
       this.ctx.beginPath();
@@ -398,7 +428,7 @@ export class GameplayRenderer {
 
   private drawHexagon(center: Point, size: number, fill: boolean): void {
     const vertices = getHexVertices(center, size);
-    
+
     this.ctx.beginPath();
     this.ctx.moveTo(vertices[0].x, vertices[0].y);
     for (let i = 1; i < vertices.length; i++) {
@@ -416,7 +446,7 @@ export class GameplayRenderer {
   // Draw a flat-top hexagon (rotated 30° from pointy-top)
   private drawFlatTopHexagon(center: Point, size: number, fill: boolean): void {
     const vertices = this.getFlatTopHexVertices(center, size);
-    
+
     this.ctx.beginPath();
     this.ctx.moveTo(vertices[0].x, vertices[0].y);
     for (let i = 1; i < vertices.length; i++) {
