@@ -54,6 +54,18 @@ There are **four types of tiles**, each with **10 copies**, distinguished by the
 - Players **choose a side** of the hexagonal board for their border piece
 - **Fill unclaimed edges** with black border pieces
 
+#### Understanding Player Edges
+Each player's colored border piece controls one edge of the hexagonal board. A "player's edge" includes:
+- The **hexagonal tile spaces** along that board edge (typically 4 hexagons)
+- The **specific edges of those hexagons** that face outward toward the board edge
+
+For example, if a player controls the top-left edge of the board:
+- The corner hexagon has only 1 edge facing outward toward the player's border
+- The middle hexagons each have 2 edges facing outward toward the player's border
+- Flows can only enter the board through these specific outward-facing edges, not through all 6 edges of the hexagons on the player's board edge
+
+This means when a player places a tile adjacent to their edge, flows only come in from the hex edges that belong to the player's board edge, not from every direction.
+
 ### 3. Determine Player Order
 - **Choose first player randomly**
 - **Play proceeds clockwise** from the first player
@@ -107,6 +119,7 @@ The goal varies based on the number of players:
 - **Colors are preserved** - each player's flow markers maintain their unique color
 - **Multiple flows can coexist** on the same tile through different pathways
 - **Flows spread bidirectionally** from their source borders
+- **Flows only enter from player edges:** When a tile is placed adjacent to a player's board edge, flows only enter through the specific hex edges that face the player's colored border piece, not from all 6 directions of the hex. This means flows accurately represent paths connecting from the player's designated edge.
 
 ## Legal Moves
 
