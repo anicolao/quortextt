@@ -470,24 +470,30 @@ const selectFlowsForRendering = createSelector(
 
 ### 6.1 Canvas Rendering (Current)
 
+**Target Device:**
+- Tabletop touch screen with players viewing from all angles
+- No text (icons only)
+- Board-focused layout (no UI bars)
+
+**Screen Layout:**
+- Board fills almost entire screen
+- Light background represents "table" surface
+- Exit buttons (X) in corners
+- Player tiles appear by their board edges
+- Checkmark/X buttons overlay board when tile placed
+
 **Hexagon Layout:**
 - Use pointy-top hexagons
 - Calculate pixel coordinates from axial coordinates
-- Support zoom and pan (optional, primarily for accessibility)
 - Responsive sizing based on viewport
 
-**Screen Layout:**
-- Top bar: Player info, turn counter, tile counts (15% height)
-- Main board area: Hexagonal game board (70% height)
-- Bottom bar: Current tile preview and controls (15% height)
-- Responsive breakpoints for mobile, tablet, desktop
-
 **Rendering Layers:**
-1. **Background:** Board outline and grid
-2. **Tiles:** Placed tiles with flow paths
-3. **Flows:** Colored flow markers
-4. **Highlights:** Legal move indicators, hover effects
-5. **UI:** Current tile preview, player info, buttons
+1. **Background:** Light "table" color
+2. **Board:** Black hexagon with colored player edges
+3. **Tiles:** Placed tiles with Bézier curve flow paths
+4. **Tile Preview:** Current player's tile by their edge or on board
+5. **Action Buttons:** Checkmark/X overlays when tile placed
+6. **Exit Buttons:** X buttons in corners
 
 **Key Components:**
 ```typescript
@@ -495,8 +501,8 @@ class BoardRenderer {
   renderBoard(state: GameState, uiState: UIState): void
   renderTile(tile: PlacedTile, highlight?: boolean): void
   renderFlows(flows: Map<string, Set<string>>, players: Player[]): void
-  renderLegalMoves(positions: HexPosition[]): void
-  renderCurrentTilePreview(tile: TileType, rotation: Rotation): void
+  renderTilePreview(tile: TileType, rotation: Rotation, position: HexPosition | EdgePosition): void
+  renderActionButtons(position: HexPosition, isLegal: boolean): void
 }
 
 // Coordinate conversion
@@ -531,53 +537,40 @@ If using Threlte for 3D rendering:
 ### 7.1 Touch Input (Primary Target)
 
 **Core Interactions (Tap Only):**
-- Tap on hex position to select placement location
-- Tap rotation buttons to rotate tile (clockwise/counter-clockwise)
-- Tap "Place Tile" button to confirm placement
-- All gameplay achievable without dragging
-
-**Optional Enhanced Gestures:**
-- Two-finger pinch: Zoom in/out
-- Two-finger pan: Pan view when zoomed
-- Long-press: Show tile information
+- Tap on hex position to place tile there
+- Tap on tile itself to rotate:
+  - Tap left side: rotate counter-clockwise
+  - Tap right side: rotate clockwise
+- Tap checkmark (✓) button to confirm placement
+- Tap X button to pick up tile and return to hand
+- No dragging, zoom, or pan gestures needed
 
 ```typescript
 interface InputHandler {
   // Handle taps/clicks on hex positions
-  handleClick(pixel: { x: number; y: number }): void
+  handleTap(pixel: { x: number; y: number }): void
   
-  // Handle hover for preview (mouse only)
-  handleMove(pixel: { x: number; y: number }): void
+  // Handle taps on tile for rotation
+  handleTileRotation(pixel: { x: number; y: number }, tilePosition: Position): void
   
-  // Handle rotation input (buttons, scroll wheel, keyboard)
-  handleRotation(direction: 'clockwise' | 'counter-clockwise'): void
-  
-  // Optional: Handle pan/zoom (two-finger gestures)
-  handlePan(delta: { x: number; y: number }): void
-  handleZoom(delta: number): void
+  // Handle action buttons
+  handleConfirm(): void
+  handleCancel(): void
 }
 ```
 
 ### 7.2 Mouse Input (Secondary Target)
 
 **Enhanced Desktop Features:**
-- Click same as tap, but with hover preview
-- Tile preview follows mouse pointer before placement
-- Shows legality indicator (green/red tint) on hover
-- Mouse wheel rotation support
+- Tile tracks mouse pointer continuously
+- Snap-in behavior: after 3s hover on hex, tile snaps in (600ms animation)
+- Snap-out behavior: move near hex edge (10%) to snap out (200ms animation)
+- Click to immediately snap tile to hex
+- Mouse wheel rotation (configurable N scroll steps = 60° rotation)
 
-### 7.3 Keyboard Input
+### 7.3 No Keyboard Support
 
-```typescript
-// Keyboard shortcuts
-const KEY_BINDINGS = {
-  'r': 'ROTATE_TILE',          // Rotate clockwise
-  'e': 'ROTATE_TILE_CCW',      // Rotate counter-clockwise
-  'space': 'TOGGLE_LEGAL_MOVES',
-  'z': 'UNDO',                 // Future: undo move
-  'Escape': 'RETURN_TO_CONFIG',
-};
-```
+All interactions via touch/mouse only. No keyboard shortcuts.
 
 ## 8. AI Implementation (Future)
 
@@ -651,31 +644,35 @@ class MediumAI {
 **For detailed specifications, see [UI_DESIGN.md](UI_DESIGN.md)**
 
 - [ ] Implement hexagon coordinate-to-pixel conversion
-- [ ] Render basic board grid with 37 hex positions
-- [ ] Render placed tiles with flow paths
-- [ ] Render flow markers for each player
-- [ ] Implement legal move highlighting
-- [ ] Add current tile preview in bottom bar
-- [ ] Add animations for tile placement
-- [ ] Implement responsive layout (mobile, tablet, desktop)
-- [ ] Add hover highlighting (desktop only)
+- [ ] Render board hexagon with colored player edges on light background
+- [ ] Render 37 hex positions
+- [ ] Render placed tiles with Bézier curve flow paths
+- [ ] Render flow paths in player colors
+- [ ] Render current tile by player's edge
+- [ ] Implement tile placement on board with preview
+- [ ] Add checkmark and X button overlays
+- [ ] Add animations for tile placement (200-400ms)
+- [ ] Add rotation animation (450ms)
+- [ ] Add flow update animation with pulse
+- [ ] Responsive board sizing
 
 ### Phase 4: Input & Interaction  
 **For detailed specifications, see [UI_DESIGN.md](UI_DESIGN.md)**
 
 **Primary (Touch Screen):**
-- [ ] Implement tap to select hex position
-- [ ] Implement rotation buttons (tap to rotate tile)
-- [ ] Implement "Place Tile" button (tap to confirm placement)
+- [ ] Implement tap on hex to place tile
+- [ ] Implement tap on tile to rotate (left = CCW, right = CW)
+- [ ] Implement checkmark button (confirm placement)
+- [ ] Implement X button (pick up tile)
+- [ ] Add exit buttons in corners
 - [ ] Add visual feedback for all touch interactions
-- [ ] Optional: Two-finger pinch zoom and pan
 
 **Secondary (Desktop/Mouse):**
-- [ ] Implement mouse click handling (same as tap)
-- [ ] Implement hover preview (tile follows mouse pointer)
-- [ ] Add mouse wheel rotation
-- [ ] Add keyboard shortcuts (R/E for rotate, Enter to place, etc.)
-- [ ] Optional: Right-click context menu
+- [ ] Implement tile tracking mouse pointer
+- [ ] Implement snap-in behavior (3s hover → 600ms animation)
+- [ ] Implement snap-out behavior (near edge → 200ms animation)
+- [ ] Implement click to immediate snap
+- [ ] Add mouse wheel rotation (configurable scroll steps)
 
 ### Phase 5: Game Flow & Polish
 - [ ] Connect all pieces: input → actions → reducers → rendering
@@ -708,7 +705,7 @@ class MediumAI {
 - Test Redux reducers
 - Test selectors
 - Mock state for isolated testing
-- Target: 90%+ code coverage
+- **Target: 100% line coverage** (repository standard)
 
 ### 10.2 Integration Tests
 - Test complete game flows
@@ -719,18 +716,17 @@ class MediumAI {
 ### 10.3 E2E Tests (Playwright)
 
 **Test Suites:**
-1. **Rendering Tests:** Verify all visual elements render correctly
-2. **Touch Interaction Tests:** Test tap-based interactions
-3. **Mouse Interaction Tests:** Test desktop enhancements
-4. **Game Flow Tests:** Test complete gameplay scenarios
-5. **UI State Tests:** Test toggles, settings, and state persistence
-6. **Error & Edge Cases:** Test error handling and edge conditions
+1. **Rendering Tests:** Board, tiles, flows, animations, positioning
+2. **Touch Interaction Tests:** Tap to place, rotate, confirm, cancel
+3. **Mouse Interaction Tests:** Tracking, snap behavior, wheel rotation
+4. **Game Flow Tests:** Full games, flow victory, constraint victory
+5. **UI State Tests:** Exit dialogs, victory modals
+6. **Error & Edge Cases:** Rapid tapping, resize, mixed input
 
 **Test Targets:**
 - Multiple browsers (Chrome, Firefox, Safari)
-- Multiple viewport sizes (mobile, tablet, desktop)
+- Multiple screen sizes (800x600 minimum to large displays)
 - Visual regression testing (screenshot comparison)
-- Accessibility compliance (WCAG 2.1 AA)
 
 ## 11. Performance Considerations
 
@@ -761,19 +757,19 @@ class MediumAI {
 - Display remaining tile counts? **Yes, helpful for strategy**
 
 ### Input Method
-- **Primary target: Touch screen** - All gameplay via tapping (no drag required)
-- **Secondary target: Desktop/mouse** - Enhanced with hover previews
-- **Interaction model:** Tap to select, tap to rotate, tap to place
-- **Desktop enhancement:** Tile preview follows mouse pointer
+- **Primary target: Tabletop touch screen** - All gameplay via tapping tile and board (no UI buttons)
+- **Rotation:** Tap on tile itself (left = counter-clockwise, right = clockwise)
+- **Confirmation:** Checkmark/X buttons overlay board
+- **Secondary target: Desktop/mouse** - Enhanced with tile tracking and snap behavior
+- **No keyboard support** - Touch/mouse only
 
 ### Move Validation
 - Validate on client only or server too? **Both for multiplayer**
-- Show all legal moves or let players figure it out? **Optional toggle**
 
 ### Animations
 - Animate tile placement? **Yes, smooth UX** (200-400ms)
-- Animate flow propagation? **Yes, helps understand game state** (200-300ms)
-- Speed controls? **Yes, user preference**
+- Animate flow propagation? **Yes, helps understand game state** (pulse existing, then flow into new)
+- Animate rotation? **Yes** (450ms smooth rotation)
 - See [UI_DESIGN.md](UI_DESIGN.md) for animation specifications
 
 ## 13. Future Enhancements
