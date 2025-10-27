@@ -195,11 +195,11 @@ Each player controls one edge of the hexagonal board. A "player's edge" consists
 - The specific **hex positions** along that board edge (e.g., 4 hexagons for edge 0)
 - The specific **hex edge directions** of those hexagons that face outward toward the board edge
 
-For example, for edge 0 (NorthWest), the player's edge includes:
-- Hex at (-3, 0): only the NorthWest hex edge
-- Hex at (-3, 1): both West and NorthWest hex edges
-- Hex at (-3, 2): both West and NorthWest hex edges
-- Hex at (-3, 3): both West and NorthWest hex edges
+For example, for edge 0 (NorthWest), the player's edge includes 7 hex edges total:
+- Hex at (-3, 0): only the NorthWest hex edge (1 edge)
+- Hex at (-3, 1): both West and NorthWest hex edges (2 edges)
+- Hex at (-3, 2): both West and NorthWest hex edges (2 edges)
+- Hex at (-3, 3): both West and NorthWest hex edges (2 edges)
 
 This is important for flow propagation: flows only enter the board through the **hex edges that belong to the player's board edge**, not through all 6 edges of the hexagons on that board edge.
 
@@ -289,7 +289,8 @@ function calculateFlows(
   players: Player[]
 ): Map<string, Set<string>>
 
-// Trace a single flow from a starting position and entry direction
+// Trace a single flow from a starting position and starting direction
+// The startDirection indicates which hex edge the flow enters from
 function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
