@@ -21,6 +21,7 @@ test.describe('Multi-Tile Flow Progression with Assertions', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'START_GAME' });
       store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 167 } });
+      store.dispatch({ type: 'DRAW_TILE' }); // Draw first tile from shuffled deck
     });
     
     await page.waitForTimeout(500);
