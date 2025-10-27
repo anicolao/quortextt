@@ -252,16 +252,17 @@ export class GameplayRenderer {
       // TODO: Add red border if illegal placement
       // TODO: Show checkmark and X buttons
     } else {
-      // Render tile by player's edge
+      // Render tile by player's edge (beyond the board edge)
       const edgePos = getPlayerEdgePosition(
         currentPlayer.edgePosition,
         this.layout,
       );
+      // Use grey for preview flows (not yet placed on board)
       this.renderTileAtPosition(
         state.game.currentTile,
         state.ui.currentRotation,
         edgePos,
-        currentPlayer.color,
+        "#888888", // Neutral grey for unplaced tiles
         1.0,
       );
     }

@@ -25,23 +25,9 @@ export function calculateHexLayout(
   canvasWidth: number,
   canvasHeight: number,
 ): HexLayout {
-  // Board has 37 hexes in a diamond shape with radius 3
-  // maxBoardDimension = 5 (from -3 to +3 is 7 positions, but effective dimension is 5)
-  const maxBoardDimension = 5;
-  const padding = 3; // Extra space for player tile previews outside board
-
-  // Calculate hex size to fit the board
-  // For pointy-top hexagons, we need to consider both width and height
-  const availableWidth = canvasWidth / (2 * maxBoardDimension + padding);
-  const availableHeight = canvasHeight / (2 * maxBoardDimension + padding);
-
-  // For pointy-top hexagons:
-  // width = sqrt(3) * size
-  // height = 2 * size
-  const sizeFromWidth = availableWidth / Math.sqrt(3);
-  const sizeFromHeight = availableHeight / 2;
-
-  const size = Math.min(sizeFromWidth, sizeFromHeight) * 0.9; // 0.9 to ensure some margin
+  // Hex size should be min(width, height) / 11 for optimal board fill
+  const minDimension = Math.min(canvasWidth, canvasHeight);
+  const size = minDimension / 11;
 
   // Center of the canvas
   const origin: Point = {
@@ -189,11 +175,11 @@ export function getPlayerEdgePosition(
   layout: HexLayout,
 ): Point {
   // Players are positioned around the board at their edge
-  // Edge 0 is at bottom (SouthWest), going clockwise
-  // We need to place the tile preview outside the board
-
-  const boardRadius = layout.size * 4; // Approximate board radius
-  const previewDistance = boardRadius * 1.3; // Distance from center to preview position
+  // We need to place the tile preview beyond the edge of the board
+  
+  // Board extends to about 7.2 * hex size from center
+  // Place preview at about 9.5 * hex size to be clearly outside the board
+  const previewDistance = layout.size * 9.5;
 
   // Map edge positions to angles
   // Edge 0 (SouthWest) should be at bottom, etc.
@@ -201,8 +187,8 @@ export function getPlayerEdgePosition(
     210, // Edge 0: SouthWest (bottom-left)
     270, // Edge 1: West (left)
     330, // Edge 2: NorthWest (top-left)
-    30, // Edge 3: NorthEast (top-right)
-    90, // Edge 4: East (right)
+    30,  // Edge 3: NorthEast (top-right)
+    90,  // Edge 4: East (right)
     150, // Edge 5: SouthEast (bottom-right)
   ];
 
