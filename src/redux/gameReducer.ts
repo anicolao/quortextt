@@ -32,6 +32,7 @@ export const initialState: GameState = {
   availableTiles: [],
   currentTile: null,
   flows: new Map(),
+  flowEdges: new Map(),
   phase: 'setup',
   winner: null,
   winType: null,
@@ -216,6 +217,7 @@ export function gameReducer(
         availableTiles: remainingTiles,
         currentTile,
         flows: new Map(),
+        flowEdges: new Map(),
         winner: null,
         winType: null,
         moveHistory: [],
@@ -242,6 +244,7 @@ export function gameReducer(
         availableTiles: [],
         currentTile: null,
         flows: new Map(),
+        flowEdges: new Map(),
         winner: null,
         winType: null,
         moveHistory: [],
@@ -297,7 +300,7 @@ export function gameReducer(
       newBoard.set(posKey, placedTile);
 
       // Calculate new flows
-      const newFlows = calculateFlows(newBoard, state.players);
+      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players);
 
       // Check for victory
       const victoryResult = checkVictory(newBoard, newFlows, state.players, state.teams);
@@ -314,6 +317,7 @@ export function gameReducer(
         board: newBoard,
         currentTile: null,
         flows: newFlows,
+        flowEdges: newFlowEdges,
         moveHistory: [...state.moveHistory, move],
       };
 

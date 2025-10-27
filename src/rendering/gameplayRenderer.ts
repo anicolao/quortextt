@@ -179,22 +179,29 @@ export class GameplayRenderer {
     center: Point,
   ): void {
     const connections = getFlowConnections(tile.type, tile.rotation);
-
-    // Determine which player's flow (if any) passes through this tile
     const tileKey = `${tile.position.row},${tile.position.col}`;
-    let flowColor = "#888888"; // Default neutral grey for tiles without flow
-
-    // Check each player's flows to see if this tile is part of any flow
-    for (const player of state.game.players) {
-      const playerFlows = state.game.flows.get(player.id);
-      if (playerFlows && playerFlows.has(tileKey)) {
-        flowColor = player.color;
-        break;
-      }
-    }
+    const tileFlowEdges = state.game.flowEdges.get(tileKey);
 
     // For each flow connection, draw a Bézier curve
     connections.forEach(([dir1, dir2]) => {
+      // Determine the color for THIS specific path based on flow edges
+      let pathColor = "#888888"; // Default neutral grey
+      
+      // Check if both ends of this path have flow from the same player
+      if (tileFlowEdges) {
+        const player1 = tileFlowEdges.get(dir1);
+        const player2 = tileFlowEdges.get(dir2);
+        
+        // Only color the path if BOTH ends have the same player's flow
+        if (player1 && player1 === player2) {
+          // Find the player's color
+          const player = state.game.players.find(p => p.id === player1);
+          if (player) {
+            pathColor = player.color;
+          }
+        }
+      }
+
       // Get edge midpoints
       const start = getEdgeMidpoint(center, this.layout.size, dir1);
       const end = getEdgeMidpoint(center, this.layout.size, dir2);
@@ -212,8 +219,8 @@ export class GameplayRenderer {
         y: end.y + control2Vec.y,
       };
 
-      // Use player's color if flow exists, otherwise neutral grey
-      this.ctx.strokeStyle = flowColor;
+      // Use the determined color for this path
+      this.ctx.strokeStyle = pathColor;
       this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
       this.ctx.lineCap = "round";
 

@@ -46,6 +46,7 @@ export interface GameState {
   
   // Flow tracking
   flows: Map<string, Set<string>>; // Player ID -> set of hex positions
+  flowEdges: Map<string, Map<number, string>>; // position key -> direction -> player ID
   
   // Game status
   phase: GamePhase;
