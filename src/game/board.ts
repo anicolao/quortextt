@@ -176,11 +176,11 @@ export function getEdgePositionsWithDirections(
   // These pairs are ordered to match the clockwise enumeration of edges starting from edge 0 (NW).
   const directionPairs: Direction[][] = [
     [Direction.SouthWest, Direction.SouthEast], // Edge 0 (NW): Inward is South
-    [Direction.SouthWest, Direction.West],      // Edge 1 (NE): Inward is SW
-    [Direction.West, Direction.NorthWest],      // Edge 2 (E): Inward is West
+    [Direction.SouthEast, Direction.East], // Edge 5 (W): Inward is East
+    [Direction.East, Direction.NorthEast], // Edge 4 (SW): Inward is NE
     [Direction.NorthWest, Direction.NorthEast], // Edge 3 (SE): Inward is North
-    [Direction.NorthEast, Direction.East],      // Edge 4 (SW): Inward is NE
-    [Direction.East, Direction.SouthEast],      // Edge 5 (W): Inward is East
+    [Direction.West, Direction.NorthWest], // Edge 2 (E): Inward is West
+    [Direction.SouthWest, Direction.West], // Edge 1 (NE): Inward is SW
   ];
 
   const directions = directionPairs[edge];
@@ -191,5 +191,8 @@ export function getEdgePositionsWithDirections(
     result.push({ pos, dir: directions[1] });
   }
 
-  return result;
+  if (edgeNumber < 3) {
+    return result.slice(0, -1);
+  }
+  return result.slice(1);
 }
