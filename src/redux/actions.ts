@@ -16,7 +16,6 @@ export const SHUFFLE_TILES = 'SHUFFLE_TILES';
 // Gameplay actions
 export const DRAW_TILE = 'DRAW_TILE';
 export const PLACE_TILE = 'PLACE_TILE';
-export const SET_CURRENT_TILE_FOR_TESTING = 'SET_CURRENT_TILE_FOR_TESTING'; // Test-only action
 
 // Game flow actions
 export const NEXT_PLAYER = 'NEXT_PLAYER';
@@ -70,6 +69,9 @@ export interface ShuffleTilesAction {
   type: typeof SHUFFLE_TILES;
   payload: {
     seed?: number;
+    // Optional tile distribution: [NoSharps, OneSharp, TwoSharps, ThreeSharps]
+    // Defaults to [10, 10, 10, 10] if not specified
+    tileDistribution?: [number, number, number, number];
   };
 }
 
@@ -83,13 +85,6 @@ export interface PlaceTileAction {
   payload: {
     position: HexPosition;
     rotation: Rotation;
-  };
-}
-
-export interface SetCurrentTileForTestingAction {
-  type: typeof SET_CURRENT_TILE_FOR_TESTING;
-  payload: {
-    tileType: number; // TileType enum value
   };
 }
 
@@ -141,7 +136,6 @@ export type GameAction =
   | ShuffleTilesAction
   | DrawTileAction
   | PlaceTileAction
-  | SetCurrentTileForTestingAction
   | NextPlayerAction
   | EndGameAction
   | ResetGameAction;

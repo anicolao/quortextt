@@ -12,7 +12,6 @@ import {
   SHUFFLE_TILES,
   DRAW_TILE,
   PLACE_TILE,
-  SET_CURRENT_TILE_FOR_TESTING,
   NEXT_PLAYER,
   END_GAME,
   RESET_GAME,
@@ -53,15 +52,20 @@ function generatePlayerId(): string {
 }
 
 // Helper function to create a shuffled tile deck
-function createShuffledDeck(seed?: number): TileType[] {
-  // Total tiles: 37 positions - initial positions
-  // Distribution based on game rules:
-  // NoSharps: 12, OneSharp: 12, TwoSharps: 10, ThreeSharps: 8
+// tileDistribution: [NoSharps, OneSharp, TwoSharps, ThreeSharps]
+// Defaults to [10, 10, 10, 10] if not specified
+function createShuffledDeck(
+  seed?: number,
+  tileDistribution?: [number, number, number, number]
+): TileType[] {
+  // Use provided distribution or default to [10, 10, 10, 10]
+  const [noSharps, oneSharp, twoSharps, threeSharps] = tileDistribution || [10, 10, 10, 10];
+  
   const tiles: TileType[] = [
-    ...Array(12).fill(TileType.NoSharps),
-    ...Array(12).fill(TileType.OneSharp),
-    ...Array(10).fill(TileType.TwoSharps),
-    ...Array(8).fill(TileType.ThreeSharps),
+    ...Array(noSharps).fill(TileType.NoSharps),
+    ...Array(oneSharp).fill(TileType.OneSharp),
+    ...Array(twoSharps).fill(TileType.TwoSharps),
+    ...Array(threeSharps).fill(TileType.ThreeSharps),
   ];
 
   // Fisher-Yates shuffle
@@ -253,11 +257,11 @@ export function gameReducer(
     }
 
     case SHUFFLE_TILES: {
-      const { seed } = action.payload;
+      const { seed, tileDistribution } = action.payload;
       
       return {
         ...state,
-        availableTiles: createShuffledDeck(seed),
+        availableTiles: createShuffledDeck(seed, tileDistribution),
       };
     }
 
@@ -273,17 +277,6 @@ export function gameReducer(
         ...state,
         currentTile: nextTile,
         availableTiles: remainingTiles,
-      };
-    }
-
-    case SET_CURRENT_TILE_FOR_TESTING: {
-      // Test-only action to set the current tile directly
-      // WARNING: This bypasses normal game flow and should only be used in tests
-      const { tileType } = action.payload;
-      
-      return {
-        ...state,
-        currentTile: tileType as TileType,
       };
     }
 
