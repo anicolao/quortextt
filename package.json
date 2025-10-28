@@ -10,7 +10,8 @@
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "postinstall": "node scripts/patch-playwright.cjs"
   },
   "keywords": [],
   "author": "",
