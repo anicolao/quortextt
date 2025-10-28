@@ -13,21 +13,21 @@ test.describe('Tile Rendering Tests', () => {
   };
   
   const tileTypes = [
-    { name: 'NoSharps', value: TileType.NoSharps },
-    { name: 'OneSharp', value: TileType.OneSharp },
-    { name: 'TwoSharps', value: TileType.TwoSharps },
-    { name: 'ThreeSharps', value: TileType.ThreeSharps },
+    { name: 'NoSharps', value: TileType.NoSharps, distribution: [40, 0, 0, 0] as [number, number, number, number] },
+    { name: 'OneSharp', value: TileType.OneSharp, distribution: [0, 40, 0, 0] as [number, number, number, number] },
+    { name: 'TwoSharps', value: TileType.TwoSharps, distribution: [0, 0, 40, 0] as [number, number, number, number] },
+    { name: 'ThreeSharps', value: TileType.ThreeSharps, distribution: [0, 0, 0, 40] as [number, number, number, number] },
   ];
   
   // Direction names for labeling
   const directionNames = ['SW', 'W', 'NW', 'NE', 'E', 'SE'];
   
-  // Tile connections (base rotation 0)
+  // Tile connections (base rotation 0) - from TILE_FLOWS in tiles.ts
   const tileConnections = {
-    NoSharps: [[0, 3], [1, 4], [2, 5]], // All curved opposite connections
-    OneSharp: [[0, 5], [1, 3], [2, 4]], // One sharp corner (SW-SE), two curved
-    TwoSharps: [[0, 1], [2, 3], [4, 5]], // Two sharp corners
-    ThreeSharps: [[0, 1], [2, 3], [4, 5]], // Three sharp corners (same as TwoSharps physically)
+    NoSharps: [[0, 2], [1, 4], [3, 5]], // 0-2 curved, 1-4 straight, 3-5 curved
+    OneSharp: [[0, 5], [1, 3], [2, 4]], // 0-5 sharp (SW-SE), 1-3 curved, 2-4 curved
+    TwoSharps: [[0, 5], [1, 4], [2, 3]], // 0-5 sharp, 1-4 straight, 2-3 sharp
+    ThreeSharps: [[0, 5], [1, 2], [3, 4]], // 0-5 sharp, 1-2 sharp, 3-4 sharp
   };
   
   // Helper to rotate a direction
@@ -66,22 +66,21 @@ test.describe('Tile Rendering Tests', () => {
         
         await page.waitForTimeout(300);
         
-        // Start fresh game
-        await page.evaluate(() => {
+        // Start game with specific tile distribution (all tiles of one type)
+        await page.evaluate(({ distribution }) => {
           const store = (window as any).__REDUX_STORE__;
           store.dispatch({ type: 'START_GAME' });
-        });
-        
-        await page.waitForTimeout(300);
-        
-        // Use test action to set specific tile type
-        await page.evaluate(({ tileTypeValue }) => {
-          const store = (window as any).__REDUX_STORE__;
+          // Immediately shuffle with custom distribution
           store.dispatch({ 
-            type: 'SET_CURRENT_TILE_FOR_TESTING', 
-            payload: { tileType: tileTypeValue } 
+            type: 'SHUFFLE_TILES', 
+            payload: { 
+              seed: 42, // Use fixed seed for reproducibility
+              tileDistribution: distribution 
+            } 
           });
-        }, { tileTypeValue: tileType.value });
+          // Draw first tile
+          store.dispatch({ type: 'DRAW_TILE' });
+        }, { distribution: tileType.distribution });
         
         await page.waitForTimeout(300);
         
