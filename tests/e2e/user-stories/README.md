@@ -12,6 +12,7 @@ user-stories/
 ├── 002-gameplay-rendering/     # Initial gameplay screen display
 ├── 003-flow-propagation/       # Flow behavior from player edges
 ├── 004-multi-tile-flow/        # Multi-tile flow progression
+├── 005-complete-game/          # Complete 2-player game from start to finish
 └── README.md                   # This file
 ```
 
@@ -77,6 +78,27 @@ Screenshots document:
 3. Second tile placed with orange flow
 4. Third tile extending blue flow
 
+### 005-complete-game
+**As a user, I want to play a complete 2-player game from start to finish**
+
+Screenshots demonstrate:
+1. Initial configuration screen
+2. Two players added to the game
+3. Game started with board and player edges
+4-16. Progressive tile placements showing:
+   - Players alternating turns
+   - Tiles being placed on the board
+   - Flows extending from player edges
+   - Strategic positioning across the board
+   - Multiple moves leading toward potential victory
+
+This story shows the complete user experience of:
+- Setting up a 2-player game
+- Starting the game
+- Playing through multiple turns
+- Seeing flows propagate as tiles are placed
+- The natural progression of a competitive game
+
 ## Testing Strategy
 
 ### Creating New User Stories
@@ -117,6 +139,7 @@ Contributors can verify test expectations by:
 - `gameplay.spec.ts` → `002-gameplay-rendering/`
 - `flow-propagation.spec.ts` → `003-flow-propagation/`
 - `multi-tile-flow.spec.ts` → `004-multi-tile-flow/`
+- `complete-game.spec.ts` → `005-complete-game/`
 
 ## Running E2E Tests
 
