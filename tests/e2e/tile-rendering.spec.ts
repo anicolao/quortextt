@@ -58,24 +58,30 @@ test.describe('Tile Rendering Tests', () => {
       
       // For each rotation
       for (let rotation = 0; rotation < 6; rotation++) {
-        // Start game with a custom deck containing only the desired tile type
+        // Reset game state
+        await page.evaluate(() => {
+          const store = (window as any).__REDUX_STORE__;
+          store.dispatch({ type: 'RETURN_TO_CONFIG' });
+        });
+        
+        await page.waitForTimeout(300);
+        
+        // Start fresh game
+        await page.evaluate(() => {
+          const store = (window as any).__REDUX_STORE__;
+          store.dispatch({ type: 'START_GAME' });
+        });
+        
+        await page.waitForTimeout(300);
+        
+        // Use test action to set specific tile type
         await page.evaluate(({ tileTypeValue }) => {
           const store = (window as any).__REDUX_STORE__;
-          
-          // If we already started, reset
-          if (rotation > 0) {
-            store.dispatch({ type: 'RETURN_TO_CONFIG' });
-          }
-          
-          // Start game which will create a shuffled deck
-          store.dispatch({ type: 'START_GAME' });
-          
-          // Replace the entire deck and current tile with our desired tile
-          const state = store.getState();
-          const customDeck = Array(40).fill(tileTypeValue);
-          state.game.availableTiles = customDeck.slice(1);
-          state.game.currentTile = tileTypeValue;
-        }, { tileTypeValue: tileType.value, rotation });
+          store.dispatch({ 
+            type: 'SET_CURRENT_TILE_FOR_TESTING', 
+            payload: { tileType: tileTypeValue } 
+          });
+        }, { tileTypeValue: tileType.value });
         
         await page.waitForTimeout(300);
         
