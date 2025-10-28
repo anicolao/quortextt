@@ -3,13 +3,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   TILE_FLOWS,
-  rotateDirection,
   getFlowConnections,
   getFlowExit,
   areDirectionsConnected,
   createTileDeck,
   shuffleDeck,
 } from '../../src/game/tiles';
+import { rotateDirection } from '../../src/game/board';
 import { TileType, Direction, PlacedTile } from '../../src/game/types';
 
 describe('tile utilities', () => {
