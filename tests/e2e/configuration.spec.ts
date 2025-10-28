@@ -1,6 +1,7 @@
 // End-to-end tests for the game configuration screen
 
 import { test, expect } from '@playwright/test';
+import { getReduxState } from './helpers';
 
 // Helper to get button coordinates from the layout
 async function getButtonCoordinates(page: any, buttonType: 'add-player' | 'start-game') {
@@ -40,23 +41,6 @@ async function getButtonCoordinates(page: any, buttonType: 'add-player' | 'start
       return { x: addPlayerButtonCenterX, y: startGameButtonCenterY };
     }
   }, buttonType);
-}
-
-// Helper to get Redux state
-async function getReduxState(page: any) {
-  return await page.evaluate(() => {
-    const state = (window as any).__REDUX_STORE__.getState();
-    // Custom serialization for Maps and Sets
-    return JSON.parse(JSON.stringify(state, (key, value) => {
-      if (value instanceof Map) {
-        return Object.fromEntries(value);
-      }
-      if (value instanceof Set) {
-        return Array.from(value);
-      }
-      return value;
-    }));
-  });
 }
 
 test.describe('Configuration Screen', () => {

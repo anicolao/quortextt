@@ -1,23 +1,7 @@
 // End-to-end test for flow propagation from player edges
 // This test verifies that flows only enter from hex edges that belong to the player's board edge
 import { test, expect } from '@playwright/test';
-
-// Helper to get Redux state
-async function getReduxState(page: any) {
-  return await page.evaluate(() => {
-    const state = (window as any).__REDUX_STORE__.getState();
-    // Custom serialization for Maps and Sets
-    return JSON.parse(JSON.stringify(state, (key, value) => {
-      if (value instanceof Map) {
-        return Object.fromEntries(value);
-      }
-      if (value instanceof Set) {
-        return Array.from(value);
-      }
-      return value;
-    }));
-  });
-}
+import { getReduxState } from './helpers';
 
 test.describe('Flow Propagation from Player Edges', () => {
   test('should show correct flows only from player edge hex directions', async ({ page }) => {
@@ -89,6 +73,9 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Get the new player references after reload
     state = await getReduxState(page);
+    if (!state.game.players || state.game.players.length < 2) {
+      throw new Error('Expected at least 2 players after game start');
+    }
     const player1AfterReload = state.game.players[0];
     const player2AfterReload = state.game.players[1];
     
