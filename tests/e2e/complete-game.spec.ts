@@ -152,8 +152,11 @@ test.describe('Complete 2-Player Game', () => {
       }
       
       // Place the tile
+      console.log(`About to dispatch PLACE_TILE for move ${moveNumber + 1}: position (${position.row}, ${position.col}), rotation ${rotation}`);
+      
       await page.evaluate((moveData) => {
         const store = (window as any).__REDUX_STORE__;
+        console.log(`[Browser] Dispatching PLACE_TILE with rotation:`, moveData.rotation);
         store.dispatch({ 
           type: 'PLACE_TILE', 
           payload: { position: { row: moveData.row, col: moveData.col }, rotation: moveData.rotation } 
@@ -165,6 +168,11 @@ test.describe('Complete 2-Player Game', () => {
       state = await getReduxState(page);
       moveNumber++;
       
+      // Get tile from board to verify stored rotation
+      const tileKey = `${position.row},${position.col}`;
+      const placedTile = state.game.board?.[tileKey];
+      console.log(`After placement - Move ${moveNumber}: stored tile rotation in model: ${placedTile?.rotation}`);
+      
       // Take screenshot
       const stepNum = String(moveNumber + 3).padStart(3, '0');
       await page.screenshot({ 
@@ -173,7 +181,7 @@ test.describe('Complete 2-Player Game', () => {
       });
       
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
-      console.log(`Move ${moveNumber}: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}`);
+      console.log(`Move ${moveNumber}: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}, model says rotation ${placedTile?.rotation}`);
       
       // Get tile info early for debugging
       const tileKey = `${position.row},${position.col}`;
