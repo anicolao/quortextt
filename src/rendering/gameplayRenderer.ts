@@ -11,7 +11,7 @@ import {
   getPerpendicularVector,
   getPlayerEdgePosition,
 } from "./hexLayout";
-import { getAllBoardPositions } from "../game/board";
+import { getAllBoardPositions, getEdgePositionsWithDirections } from "../game/board";
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 
@@ -48,6 +48,9 @@ export class GameplayRenderer {
 
     // Layer 2.5: Render all 37 hex positions (for debugging/visibility)
     this.renderHexPositions();
+
+    // Layer 2.6: Color source hexagon edges with player colors
+    this.renderSourceHexagonEdges(state);
 
     // Layer 3: Placed tiles
     this.renderPlacedTiles(state);
@@ -140,6 +143,49 @@ export class GameplayRenderer {
     positions.forEach((pos) => {
       const center = hexToPixel(pos, this.layout);
       this.drawHexagon(center, this.layout.size, false);
+    });
+  }
+
+  private renderSourceHexagonEdges(state: RootState): void {
+    // For each player, color the edges of their source hexagons
+    if (state.game.players.length === 0) return;
+
+    state.game.players.forEach((player) => {
+      // Get all source edge positions and directions for this player
+      const sourceEdges = getEdgePositionsWithDirections(player.edgePosition);
+
+      // For each source edge, draw a colored line on the hexagon edge
+      sourceEdges.forEach(({ pos, dir }) => {
+        const center = hexToPixel(pos, this.layout);
+        
+        // Get the two vertices that define this edge
+        const vertices = getHexVertices(center, this.layout.size);
+        
+        // Map direction to vertex pairs for pointy-top hexagons
+        // Direction enum: SouthWest=0, West=1, NorthWest=2, NorthEast=3, East=4, SouthEast=5
+        const vertexPairs = [
+          [4, 5], // SouthWest (240°)
+          [3, 4], // West (180°)
+          [2, 3], // NorthWest (120°)
+          [1, 2], // NorthEast (60°)
+          [0, 1], // East (0°)
+          [5, 0], // SouthEast (300°)
+        ];
+
+        const [v1Index, v2Index] = vertexPairs[dir];
+        const v1 = vertices[v1Index];
+        const v2 = vertices[v2Index];
+
+        // Draw a thick colored line for this edge
+        this.ctx.strokeStyle = player.color;
+        this.ctx.lineWidth = this.layout.size * 0.2; // Thick edge
+        this.ctx.lineCap = "round";
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(v1.x, v1.y);
+        this.ctx.lineTo(v2.x, v2.y);
+        this.ctx.stroke();
+      });
     });
   }
 
