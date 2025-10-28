@@ -19,6 +19,7 @@ export interface FlowEdgeData {
 
 // Trace a single flow from a starting position and direction
 // Returns set of position keys that are part of this flow AND edge data
+// Flows are bidirectional - connections work both ways
 export function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
@@ -72,15 +73,21 @@ export function traceFlow(
       playerId,
     });
     
-    // Move to the next tile in the exit direction
+    // BIDIRECTIONAL: Continue flow in the exit direction
     const nextPos = getNeighborInDirection(current.pos, exitDir);
-    if (!isValidPosition(nextPos)) {
-      continue;
+    if (isValidPosition(nextPos)) {
+      const nextEntryDir = getOppositeDirection(exitDir);
+      queue.push({ pos: nextPos, entryDir: nextEntryDir });
     }
     
-    // The flow enters the next tile from the opposite direction
-    const nextEntryDir = getOppositeDirection(exitDir);
-    queue.push({ pos: nextPos, entryDir: nextEntryDir });
+    // BIDIRECTIONAL: Also explore the reverse path
+    // If flow can enter from entryDir and exit at exitDir,
+    // it can also enter from exitDir and exit at entryDir
+    const reverseNextPos = getNeighborInDirection(current.pos, current.entryDir);
+    if (isValidPosition(reverseNextPos)) {
+      const reverseNextEntryDir = getOppositeDirection(current.entryDir);
+      queue.push({ pos: reverseNextPos, entryDir: reverseNextEntryDir });
+    }
   }
   
   return { positions: flowPositions, edges: flowEdges };
