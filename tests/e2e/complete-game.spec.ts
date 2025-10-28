@@ -6,7 +6,7 @@ import { getReduxState } from './helpers';
 test.describe('Complete 2-Player Game', () => {
   // Test configuration constants
   const DETERMINISTIC_SEED = 999; // Seed for reproducible tile shuffle
-  const MAX_MOVES_LIMIT = 30; // Safety limit to prevent infinite loops
+  const MAX_MOVES_LIMIT = 50; // Safety limit to prevent infinite loops (covers full 40-tile deck)
   const VICTORY_SCREENSHOT_NAME = 'victory-final.png'; // Final victory screenshot
 
   test('should play through multiple turns and verify flow edge data matches rendered flows', async ({ page }) => {
@@ -67,32 +67,32 @@ test.describe('Complete 2-Player Game', () => {
     expect([player1.edgePosition, player2.edgePosition].sort()).toEqual([0, 3]);
     
     // === Play the game ===
-    // Strategy: Place tiles to build paths across the board
-    // This sequence uses fixed positions and rotations
+    // Strategy: Continue playing until the game ends naturally (victory or no more tiles)
+    // We'll generate positions systematically to fill the board
     
     let moveNumber = 0;
     let gameEnded = false;
     
-    // Define a strategic sequence of moves
-    // These positions and rotations are chosen to maximize flow extension
-    const plannedMoves = [
-      { row: -3, col: 2, rotation: 0 },   // Player 1 edge
-      { row: 3, col: -2, rotation: 0 },   // Player 2 edge  
-      { row: -2, col: 1, rotation: 1 },   // Extend
-      { row: 2, col: -1, rotation: 1 },   // Extend
-      { row: -1, col: 1, rotation: 0 },   // Toward center
-      { row: 1, col: -1, rotation: 0 },   // Toward center
-      { row: 0, col: 0, rotation: 2 },    // Center
-      { row: 1, col: 0, rotation: 1 },    // Continue
-      { row: -1, col: 0, rotation: 1 },   // Continue
-      { row: 2, col: -2, rotation: 0 },   // Extend
-      { row: -2, col: 2, rotation: 0 },   // Extend
-      { row: 3, col: -3, rotation: 1 },   // Near opposite
-      { row: -3, col: 3, rotation: 1 },   // Near opposite
-    ];
+    // Generate positions in a systematic pattern covering the board
+    // This ensures we place tiles across all valid positions
+    const generatePositions = () => {
+      const positions = [];
+      // Cover all valid hexagonal board positions
+      for (let row = -3; row <= 3; row++) {
+        for (let col = -3; col <= 3; col++) {
+          // Valid positions in hexagonal board
+          if (Math.abs(row + col) <= 3) {
+            positions.push({ row, col });
+          }
+        }
+      }
+      return positions;
+    };
     
-    for (const move of plannedMoves) {
-      if (gameEnded || moveNumber >= MAX_MOVES_LIMIT) break;
+    const allPositions = generatePositions();
+    let positionIndex = 0;
+    
+    while (!gameEnded && moveNumber < MAX_MOVES_LIMIT) {
       
       // Draw tile
       await page.evaluate(() => {
@@ -106,7 +106,48 @@ test.describe('Complete 2-Player Game', () => {
       const currentTile = state.game.currentTile;
       
       if (currentTile === null) {
-        console.log('No more tiles to draw');
+        console.log('No more tiles to draw - deck exhausted');
+        break;
+      }
+      
+      // Check if game already ended after drawing (e.g., constraint victory)
+      if (state.game.phase === 'finished') {
+        console.log('🎉 Game ended after drawing tile!');
+        console.log('  Winner:', state.game.winner);
+        console.log('  Win type:', state.game.winType);
+        
+        gameEnded = true;
+        moveNumber++;
+        
+        await page.screenshot({ 
+          path: `tests/e2e/user-stories/005-complete-game/${VICTORY_SCREENSHOT_NAME}`,
+          fullPage: false
+        });
+        
+        break;
+      }
+      
+      // Find next valid position (not already occupied)
+      let position = null;
+      let rotation = 0;
+      
+      while (positionIndex < allPositions.length) {
+        const testPos = allPositions[positionIndex];
+        const posKey = `${testPos.row},${testPos.col}`;
+        
+        if (!state.game.board?.[posKey]) {
+          position = testPos;
+          // Try different rotations to maximize flow connections
+          rotation = moveNumber % 6;
+          positionIndex++;
+          break;
+        }
+        positionIndex++;
+      }
+      
+      if (!position) {
+        console.log('No valid positions - board is full, stopping game');
+        // Board is completely filled, game ends
         break;
       }
       
@@ -117,7 +158,7 @@ test.describe('Complete 2-Player Game', () => {
           type: 'PLACE_TILE', 
           payload: { position: { row: moveData.row, col: moveData.col }, rotation: moveData.rotation } 
         });
-      }, move);
+      }, { row: position.row, col: position.col, rotation });
       
       await page.waitForTimeout(300);
       
@@ -132,7 +173,7 @@ test.describe('Complete 2-Player Game', () => {
       });
       
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
-      console.log(`Move ${moveNumber}: Player ${currentPlayer.id} placed tile at (${move.row}, ${move.col}) rotation ${move.rotation}`);
+      console.log(`Move ${moveNumber}: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}`);
       
       // Log flow counts
       if (state.game.flows) {
@@ -144,14 +185,14 @@ test.describe('Complete 2-Player Game', () => {
       
       // === VERIFY FLOW EDGES MATCH MODEL ===
       // This is the key verification requested by the user
-      const tileKey = `${move.row},${move.col}`;
+      const tileKey = `${position.row},${position.col}`;
       const flowEdgesForTile = state.game.flowEdges?.[tileKey];
       const placedTile = state.game.board?.[tileKey];
       
       if (placedTile) {
         // Verify tile exists in board
-        expect(placedTile.position.row).toBe(move.row);
-        expect(placedTile.position.col).toBe(move.col);
+        expect(placedTile.position.row).toBe(position.row);
+        expect(placedTile.position.col).toBe(position.col);
         
         if (flowEdgesForTile && Object.keys(flowEdgesForTile).length > 0) {
           console.log(`  ✓ Tile has flow edges in model:`, flowEdgesForTile);
