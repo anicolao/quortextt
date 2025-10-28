@@ -16,7 +16,7 @@ async function getButtonCoordinates(page: any, buttonType: 'add-player' | 'start
     
     // Get current players count from Redux store
     const state = (window as any).__REDUX_STORE__.getState();
-    const players = state.players;
+    const players = state.game.configPlayers;
     
     // Calculate player list area
     const playerListStartY = titleY + titleSize + padding * 2;
@@ -45,7 +45,17 @@ async function getButtonCoordinates(page: any, buttonType: 'add-player' | 'start
 // Helper to get Redux state
 async function getReduxState(page: any) {
   return await page.evaluate(() => {
-    return (window as any).__REDUX_STORE__.getState();
+    const state = (window as any).__REDUX_STORE__.getState();
+    // Custom serialization for Maps and Sets
+    return JSON.parse(JSON.stringify(state, (key, value) => {
+      if (value instanceof Map) {
+        return Object.fromEntries(value);
+      }
+      if (value instanceof Set) {
+        return Array.from(value);
+      }
+      return value;
+    }));
   });
 }
 
@@ -62,8 +72,8 @@ test.describe('Configuration Screen', () => {
     
     // Verify initial state
     const state = await getReduxState(page);
-    expect(state.screen).toBe('configuration');
-    expect(state.players.length).toBe(0);
+    expect(state.game.screen).toBe('configuration');
+    expect(state.game.configPlayers.length).toBe(0);
     
     // Take a screenshot of the initial state
     await page.screenshot({ path: 'tests/e2e/screenshots/01-initial-state.png' });
@@ -83,9 +93,9 @@ test.describe('Configuration Screen', () => {
     
     // Verify a player was added
     const state = await getReduxState(page);
-    expect(state.players.length).toBe(1);
-    expect(state.players[0].color).toBeDefined();
-    expect(state.players[0].id).toBeDefined();
+    expect(state.game.configPlayers.length).toBe(1);
+    expect(state.game.configPlayers[0].color).toBeDefined();
+    expect(state.game.configPlayers[0].id).toBeDefined();
 
     await page.screenshot({ path: 'tests/e2e/screenshots/02-one-player.png' });
   });
@@ -104,9 +114,9 @@ test.describe('Configuration Screen', () => {
     
     // Verify 3 players were added
     const state = await getReduxState(page);
-    expect(state.players.length).toBe(3);
+    expect(state.game.configPlayers.length).toBe(3);
     // Verify they have different colors
-    const colors = state.players.map((p: any) => p.color);
+    const colors = state.game.configPlayers.map((p: any) => p.color);
     expect(new Set(colors).size).toBe(3); // All different colors
 
     await page.screenshot({ path: 'tests/e2e/screenshots/03-multiple-players.png' });
@@ -126,7 +136,7 @@ test.describe('Configuration Screen', () => {
     
     // Verify only 6 players were added (MAX_PLAYERS)
     const state = await getReduxState(page);
-    expect(state.players.length).toBe(6);
+    expect(state.game.configPlayers.length).toBe(6);
 
     await page.screenshot({ path: 'tests/e2e/screenshots/04-max-players.png' });
   });
@@ -144,7 +154,7 @@ test.describe('Configuration Screen', () => {
     }
     
     let state = await getReduxState(page);
-    expect(state.players.length).toBe(2);
+    expect(state.game.configPlayers.length).toBe(2);
 
     // Click remove button for first player
     const removeButtonCoords = await page.evaluate(() => {
@@ -170,7 +180,7 @@ test.describe('Configuration Screen', () => {
     
     // Verify one player was removed
     state = await getReduxState(page);
-    expect(state.players.length).toBe(1);
+    expect(state.game.configPlayers.length).toBe(1);
 
     await page.screenshot({ path: 'tests/e2e/screenshots/05-remove-player.png' });
   });
@@ -221,7 +231,7 @@ test.describe('Configuration Screen', () => {
     await page.waitForTimeout(100);
     
     const initialState = await getReduxState(page);
-    const initialColor = initialState.players[0].color;
+    const initialColor = initialState.game.configPlayers[0].color;
 
     // Click on the color icon to open picker
     const colorIconCoords = await page.evaluate(() => {
@@ -269,7 +279,7 @@ test.describe('Configuration Screen', () => {
     
     // Verify color changed
     const newState = await getReduxState(page);
-    expect(newState.players[0].color).not.toBe(initialColor);
+    expect(newState.game.configPlayers[0].color).not.toBe(initialColor);
 
     await page.screenshot({ path: 'tests/e2e/screenshots/07-color-changed.png' });
   });
@@ -323,8 +333,8 @@ test.describe('Configuration Screen', () => {
     await page.waitForTimeout(100);
     
     let state = await getReduxState(page);
-    expect(state.screen).toBe('configuration');
-    expect(state.players.length).toBe(1);
+    expect(state.game.screen).toBe('configuration');
+    expect(state.game.configPlayers.length).toBe(1);
 
     // Click Start Game button
     const startCoords = await getButtonCoordinates(page, 'start-game');
@@ -333,7 +343,7 @@ test.describe('Configuration Screen', () => {
     
     // Verify screen changed to gameplay
     state = await getReduxState(page);
-    expect(state.screen).toBe('gameplay');
+    expect(state.game.screen).toBe('gameplay');
 
     await page.screenshot({ path: 'tests/e2e/screenshots/09-gameplay-screen.png' });
   });
@@ -351,8 +361,12 @@ test.describe('Configuration Screen', () => {
     }
     
     const beforeState = await getReduxState(page);
-    const player1ColorBefore = beforeState.players[0].color;
-    const player2ColorBefore = beforeState.players[1].color;
+    // Safety check - ensure we have the expected structure
+    if (!beforeState.game || !beforeState.game.configPlayers || beforeState.game.configPlayers.length < 2) {
+      throw new Error(`Invalid state structure or insufficient players. Got: ${JSON.stringify(beforeState, null, 2)}`);
+    }
+    const player1ColorBefore = beforeState.game.configPlayers[0].color;
+    const player2ColorBefore = beforeState.game.configPlayers[1].color;
     
     expect(player1ColorBefore).not.toBe(player2ColorBefore);
 
@@ -413,8 +427,8 @@ test.describe('Configuration Screen', () => {
     
     // Verify colors were swapped
     const afterState = await getReduxState(page);
-    expect(afterState.players[0].color).toBe(player2ColorBefore);
-    expect(afterState.players[1].color).toBe(player1ColorBefore);
+    expect(afterState.game.configPlayers[0].color).toBe(player2ColorBefore);
+    expect(afterState.game.configPlayers[1].color).toBe(player1ColorBefore);
 
     await page.screenshot({ path: 'tests/e2e/screenshots/11-colors-swapped.png' });
   });
