@@ -1,6 +1,7 @@
 // Tile types and flow pattern logic for Quortex/Flows
 
 import { TileType, Direction, Rotation, FlowConnection, PlacedTile } from './types';
+import { rotateDirection } from './board';
 
 // Define flow patterns for each tile type in canonical orientation (rotation 0)
 // These match the Rust implementation's canonical orientations
@@ -33,12 +34,6 @@ export const TILE_FLOWS: Record<TileType, readonly FlowConnection[]> = {
     [Direction.NorthEast, Direction.East],        // 3-4 (sharp)
   ],
 };
-
-// Apply rotation to a direction
-// Each rotation is 60 degrees clockwise
-function rotateDirection(direction: Direction, rotation: Rotation): Direction {
-  return ((direction + rotation) % 6) as Direction;
-}
 
 // Get flow connections for a tile with a specific rotation
 export function getFlowConnections(
