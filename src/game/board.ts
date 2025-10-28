@@ -170,173 +170,25 @@ export function getEdgePositionsWithDirections(
 ): Array<{ pos: HexPosition; dir: Direction }> {
   const edge = edgeNumber % 6;
   const result: Array<{ pos: HexPosition; dir: Direction }> = [];
+  const edgePositions = getEdgePositions(edge);
 
-  switch (edge) {
-    case 0: // North edge (top-left) - row = -3
-      // Only the hex edges that face outward (toward NW) are used
-      result.push({ pos: { row: -3, col: 0 }, dir: Direction.SouthWest });
-      result.push({ pos: { row: -3, col: 0 }, dir: Direction.SouthEast });
-      result.push({ pos: { row: -3, col: 1 }, dir: Direction.SouthWest });
-      result.push({ pos: { row: -3, col: 1 }, dir: Direction.SouthEast });
-      result.push({ pos: { row: -3, col: 2 }, dir: Direction.SouthWest });
-      result.push({ pos: { row: -3, col: 2 }, dir: Direction.SouthEast });
-      result.push({ pos: { row: -3, col: 3 }, dir: Direction.SouthWest });
-      break;
-    case 1: // NorthEast edge (top-right) - col = 3
-      // Only the hex edges that face outward (toward NE) are used
-      result.push({
-        pos: { row: -3, col: 3 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      result.push({
-        pos: { row: -2, col: 3 },
-        dir: rotateDirection(Direction.NorthWest, 2),
-      });
-      result.push({
-        pos: { row: -2, col: 3 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      result.push({
-        pos: { row: -1, col: 3 },
-        dir: rotateDirection(Direction.NorthWest, 2),
-      });
-      result.push({
-        pos: { row: -1, col: 3 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      result.push({
-        pos: { row: 0, col: 3 },
-        dir: rotateDirection(Direction.NorthWest, 2),
-      });
-      result.push({
-        pos: { row: 0, col: 3 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      break;
-    case 2: // East edge (right) - row + col = 3
-      // Only the hex edges that face outward (toward E) are used
-      result.push({
-        pos: { row: 0, col: 3 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      result.push({
-        pos: { row: 1, col: 2 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      result.push({
-        pos: { row: 1, col: 2 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      result.push({
-        pos: { row: 2, col: 1 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      result.push({
-        pos: { row: 2, col: 1 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      result.push({
-        pos: { row: 3, col: 0 },
-        dir: rotateDirection(Direction.NorthEast, 2),
-      });
-      result.push({
-        pos: { row: 3, col: 0 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      break;
-    case 3: // SouthEast edge (bottom-right) - row = 3
-      // Only the hex edges that face outward (toward SE) are used
-      result.push({
-        pos: { row: 3, col: 0 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      result.push({
-        pos: { row: 3, col: -1 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      result.push({
-        pos: { row: 3, col: -1 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      result.push({
-        pos: { row: 3, col: -2 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      result.push({
-        pos: { row: 3, col: -2 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      result.push({
-        pos: { row: 3, col: -3 },
-        dir: rotateDirection(Direction.East, 2),
-      });
-      result.push({
-        pos: { row: 3, col: -3 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      break;
-    case 4: // SouthWest edge (bottom-left) - col = -3
-      // Only the hex edges that face outward (toward SW) are used
-      result.push({
-        pos: { row: 3, col: -3 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      result.push({
-        pos: { row: 2, col: -3 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      result.push({
-        pos: { row: 2, col: -3 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      result.push({
-        pos: { row: 1, col: -3 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      result.push({
-        pos: { row: 1, col: -3 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      result.push({
-        pos: { row: 0, col: -3 },
-        dir: rotateDirection(Direction.SouthEast, 2),
-      });
-      result.push({
-        pos: { row: 0, col: -3 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      break;
-    case 5: // West edge (left) - row + col = -3
-      // Only the hex edges that face outward (toward W) are used
-      result.push({
-        pos: { row: 0, col: -3 },
-        dir: rotateDirection(Direction.West, 2),
-      });
-      result.push({
-        pos: { row: -1, col: -2 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      result.push({
-        pos: { row: -1, col: -2 },
-        dir: rotateDirection(Direction.West, 2),
-      });
-      result.push({
-        pos: { row: -2, col: -1 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      result.push({
-        pos: { row: -2, col: -1 },
-        dir: rotateDirection(Direction.West, 2),
-      });
-      result.push({
-        pos: { row: -3, col: 0 },
-        dir: rotateDirection(Direction.SouthWest, 2),
-      });
-      result.push({
-        pos: { row: -3, col: 0 },
-        dir: rotateDirection(Direction.West, 2),
-      });
-      break;
+  // For each edge, define the two inward-facing directions for all hexes on that edge.
+  // These pairs are ordered to match the clockwise enumeration of edges starting from edge 0 (NW).
+  const directionPairs: Direction[][] = [
+    [Direction.SouthWest, Direction.SouthEast], // Edge 0 (NW): Inward is South
+    [Direction.SouthWest, Direction.West],      // Edge 1 (NE): Inward is SW
+    [Direction.West, Direction.NorthWest],      // Edge 2 (E): Inward is West
+    [Direction.NorthWest, Direction.NorthEast], // Edge 3 (SE): Inward is North
+    [Direction.NorthEast, Direction.East],      // Edge 4 (SW): Inward is NE
+    [Direction.East, Direction.SouthEast],      // Edge 5 (W): Inward is East
+  ];
+
+  const directions = directionPairs[edge];
+
+  // Assign both inward-facing directions to every hex on the edge
+  for (const pos of edgePositions) {
+    result.push({ pos, dir: directions[0] });
+    result.push({ pos, dir: directions[1] });
   }
 
   return result;

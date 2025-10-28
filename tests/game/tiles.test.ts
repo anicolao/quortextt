@@ -94,11 +94,11 @@ describe('tile utilities', () => {
         position: { row: 0, col: 0 },
       };
       
-      // NoSharps (rotated -2) has: E-SW, W-NE, SE-NW
-      expect(getFlowExit(tile, Direction.East)).toBe(Direction.SouthWest);
-      expect(getFlowExit(tile, Direction.SouthWest)).toBe(Direction.East);
-      expect(getFlowExit(tile, Direction.West)).toBe(Direction.NorthEast);
-      expect(getFlowExit(tile, Direction.NorthEast)).toBe(Direction.West);
+      // NoSharps (rotation 0) has: SW-NW, W-E, NE-SE
+      expect(getFlowExit(tile, Direction.SouthWest)).toBe(Direction.NorthWest);
+      expect(getFlowExit(tile, Direction.NorthWest)).toBe(Direction.SouthWest);
+      expect(getFlowExit(tile, Direction.West)).toBe(Direction.East);
+      expect(getFlowExit(tile, Direction.East)).toBe(Direction.West);
     });
 
     it('should return null for invalid entry direction', () => {
@@ -138,9 +138,10 @@ describe('tile utilities', () => {
         position: { row: 0, col: 0 },
       };
       
-      expect(areDirectionsConnected(tile, Direction.East, Direction.SouthWest)).toBe(true);
-      expect(areDirectionsConnected(tile, Direction.SouthWest, Direction.East)).toBe(true);
-      expect(areDirectionsConnected(tile, Direction.West, Direction.NorthEast)).toBe(true);
+      // NoSharps (rotation 0) has: SW-NW, W-E, NE-SE
+      expect(areDirectionsConnected(tile, Direction.SouthWest, Direction.NorthWest)).toBe(true);
+      expect(areDirectionsConnected(tile, Direction.NorthWest, Direction.SouthWest)).toBe(true);
+      expect(areDirectionsConnected(tile, Direction.West, Direction.East)).toBe(true);
     });
 
     it('should return false for non-connected directions', () => {

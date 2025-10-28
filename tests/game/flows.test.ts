@@ -38,7 +38,7 @@ describe('flow propagation', () => {
       
       // Create a simple path: two tiles side by side
       const tile1: PlacedTile = {
-        type: TileType.NoSharps, // Now has SE-NW connection  
+        type: TileType.NoSharps, // Now has SE-NW connection
         rotation: 0,
         position: { row: 0, col: 0 },
       };
@@ -51,8 +51,8 @@ describe('flow propagation', () => {
       board.set(positionToKey(tile1.position), tile1);
       board.set(positionToKey(tile2.position), tile2);
       
-      // Trace from tile1 entering from SouthEast (exits to NorthWest)
-      const result = traceFlow(board, tile1.position, Direction.SouthEast, 'test-player');
+      // Trace from tile1 entering from SouthWest (exits to NorthWest)
+      const result = traceFlow(board, tile1.position, Direction.SouthWest, 'test-player');
       
       // Should include both tiles
       expect(result.positions.has(positionToKey(tile1.position))).toBe(true);
