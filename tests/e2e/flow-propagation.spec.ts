@@ -87,6 +87,11 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     await page.waitForTimeout(500);
     
+    // Get the new player references after reload
+    state = await getReduxState(page);
+    const player1AfterReload = state.game.players[0];
+    const player2AfterReload = state.game.players[1];
+    
     // Place tile ON player 1's edge (row=-3) at position (-3, 2)
     // At this position, player's edge directions are West and NorthWest
     await page.evaluate(() => {
@@ -107,16 +112,16 @@ test.describe('Flow Propagation from Player Edges', () => {
     });
     
     // Verify player 1 has flows
-    player1Flows = state.game.flows[player1.id];
+    player1Flows = state.game.flows[player1AfterReload.id];
     expect(player1Flows?.length || 0).toBeGreaterThan(0);
     expect(player1Flows?.includes('-3,2')).toBe(true);
     
     // Verify player 2 has no flows (tile is not near their edge)
-    const player2Flows = state.game.flows[player2.id];
+    const player2Flows = state.game.flows[player2AfterReload.id];
     expect(player2Flows?.length || 0).toBe(0);
     
     console.log('✓ Flow propagation test passed');
-    console.log('  - Player 1 edge:', player1.edgePosition, '(NorthWest, row=-3)');
+    console.log('  - Player 1 edge:', player1AfterReload.edgePosition, '(NorthWest, row=-3)');
     console.log('  - Tile placed at (-3, 2) with flow connections');
     console.log('  - Player 1 flows:', player1Flows?.length || 0, 'positions');
     console.log('  - Player 2 flows:', player2Flows?.length || 0, 'positions');
