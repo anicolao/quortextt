@@ -1,7 +1,7 @@
 // Hexagonal board utilities for Quortex/Flows
 // Uses axial coordinate system for hex positions
 
-import { HexPosition, Direction } from './types';
+import { HexPosition, Direction } from "./types";
 
 // Helper to create position key for Map storage
 export function positionToKey(pos: HexPosition): string {
@@ -10,7 +10,7 @@ export function positionToKey(pos: HexPosition): string {
 
 // Helper to parse position from key
 export function keyToPosition(key: string): HexPosition {
-  const [row, col] = key.split(',').map(Number);
+  const [row, col] = key.split(",").map(Number);
   return { row, col };
 }
 
@@ -18,19 +18,19 @@ export function keyToPosition(key: string): HexPosition {
 // The board is diamond-shaped with rows from -3 to +3
 export function getAllBoardPositions(): HexPosition[] {
   const positions: HexPosition[] = [];
-  
+
   // For each row from -3 to 3
   for (let row = -3; row <= 3; row++) {
     // Calculate column range for this row
     // The diamond shape means columns are constrained based on row
     const colStart = Math.max(-3, -3 - row);
     const colEnd = Math.min(3, 3 - row);
-    
+
     for (let col = colStart; col <= colEnd; col++) {
       positions.push({ row, col });
     }
   }
-  
+
   return positions;
 }
 
@@ -40,7 +40,7 @@ export function isValidPosition(pos: HexPosition): boolean {
   const absRow = Math.abs(pos.row);
   const absCol = Math.abs(pos.col);
   const absSum = Math.abs(pos.row + pos.col);
-  
+
   return absRow <= 3 && absCol <= 3 && absSum <= 3;
 }
 
@@ -58,7 +58,7 @@ const DIRECTION_VECTORS: Record<Direction, HexPosition> = {
 // Get neighboring position in a given direction
 export function getNeighborInDirection(
   pos: HexPosition,
-  direction: Direction
+  direction: Direction,
 ): HexPosition {
   const offset = DIRECTION_VECTORS[direction];
   return {
@@ -70,23 +70,26 @@ export function getNeighborInDirection(
 // Get all neighboring positions for a hex
 export function getNeighbors(pos: HexPosition): HexPosition[] {
   const neighbors: HexPosition[] = [];
-  
+
   for (let dir = 0; dir < 6; dir++) {
     const neighbor = getNeighborInDirection(pos, dir as Direction);
     if (isValidPosition(neighbor)) {
       neighbors.push(neighbor);
     }
   }
-  
+
   return neighbors;
 }
 
 // Get the direction from one position to a neighboring position
 // Returns null if positions are not adjacent
-export function getDirection(from: HexPosition, to: HexPosition): Direction | null {
+export function getDirection(
+  from: HexPosition,
+  to: HexPosition,
+): Direction | null {
   const deltaRow = to.row - from.row;
   const deltaCol = to.col - from.col;
-  
+
   // Check each direction
   for (let dir = 0; dir < 6; dir++) {
     const offset = DIRECTION_VECTORS[dir as Direction];
@@ -94,7 +97,7 @@ export function getDirection(from: HexPosition, to: HexPosition): Direction | nu
       return dir as Direction;
     }
   }
-  
+
   return null;
 }
 
@@ -117,7 +120,7 @@ export function rotateDirection(
 export function getEdgePositions(edgeNumber: number): HexPosition[] {
   const edge = edgeNumber % 6;
   const positions: HexPosition[] = [];
-  
+
   switch (edge) {
     case 0: // NorthWest edge (top-left) - row = -3
       for (let col = 0; col <= 3; col++) {
@@ -150,7 +153,7 @@ export function getEdgePositions(edgeNumber: number): HexPosition[] {
       }
       break;
   }
-  
+
   return positions;
 }
 
@@ -163,73 +166,178 @@ export function getOppositeEdge(edgeNumber: number): number {
 // Returns array of [position, direction] pairs where direction indicates
 // which hex edge faces the board edge and can accept flow from the player's edge
 export function getEdgePositionsWithDirections(
-  edgeNumber: number
+  edgeNumber: number,
 ): Array<{ pos: HexPosition; dir: Direction }> {
   const edge = edgeNumber % 6;
   const result: Array<{ pos: HexPosition; dir: Direction }> = [];
-  
+
   switch (edge) {
-    case 0: // NorthWest edge (top-left) - row = -3
+    case 0: // North edge (top-left) - row = -3
       // Only the hex edges that face outward (toward NW) are used
-      result.push({ pos: { row: -3, col: 0 }, dir: rotateDirection(Direction.NorthWest, 2) });
-      result.push({ pos: { row: -3, col: 1 }, dir: rotateDirection(Direction.West, 2) });
-      result.push({ pos: { row: -3, col: 1 }, dir: rotateDirection(Direction.NorthWest, 2) });
-      result.push({ pos: { row: -3, col: 2 }, dir: rotateDirection(Direction.West, 2) });
-      result.push({ pos: { row: -3, col: 2 }, dir: rotateDirection(Direction.NorthWest, 2) });
-      result.push({ pos: { row: -3, col: 3 }, dir: rotateDirection(Direction.West, 2) });
-      result.push({ pos: { row: -3, col: 3 }, dir: rotateDirection(Direction.NorthWest, 2) });
+      result.push({ pos: { row: -3, col: 0 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: -3, col: 0 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: -3, col: 1 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: -3, col: 1 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: -3, col: 2 }, dir: Direction.SouthWest });
+      result.push({ pos: { row: -3, col: 2 }, dir: Direction.SouthEast });
+      result.push({ pos: { row: -3, col: 3 }, dir: Direction.SouthWest });
       break;
     case 1: // NorthEast edge (top-right) - col = 3
       // Only the hex edges that face outward (toward NE) are used
-      result.push({ pos: { row: -3, col: 3 }, dir: rotateDirection(Direction.NorthEast, 2) });
-      result.push({ pos: { row: -2, col: 3 }, dir: rotateDirection(Direction.NorthWest, 2) });
-      result.push({ pos: { row: -2, col: 3 }, dir: rotateDirection(Direction.NorthEast, 2) });
-      result.push({ pos: { row: -1, col: 3 }, dir: rotateDirection(Direction.NorthWest, 2) });
-      result.push({ pos: { row: -1, col: 3 }, dir: rotateDirection(Direction.NorthEast, 2) });
-      result.push({ pos: { row: 0, col: 3 }, dir: rotateDirection(Direction.NorthWest, 2) });
-      result.push({ pos: { row: 0, col: 3 }, dir: rotateDirection(Direction.NorthEast, 2) });
+      result.push({
+        pos: { row: -3, col: 3 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
+      result.push({
+        pos: { row: -2, col: 3 },
+        dir: rotateDirection(Direction.NorthWest, 2),
+      });
+      result.push({
+        pos: { row: -2, col: 3 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
+      result.push({
+        pos: { row: -1, col: 3 },
+        dir: rotateDirection(Direction.NorthWest, 2),
+      });
+      result.push({
+        pos: { row: -1, col: 3 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
+      result.push({
+        pos: { row: 0, col: 3 },
+        dir: rotateDirection(Direction.NorthWest, 2),
+      });
+      result.push({
+        pos: { row: 0, col: 3 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
       break;
     case 2: // East edge (right) - row + col = 3
       // Only the hex edges that face outward (toward E) are used
-      result.push({ pos: { row: 0, col: 3 }, dir: rotateDirection(Direction.East, 2) });
-      result.push({ pos: { row: 1, col: 2 }, dir: rotateDirection(Direction.NorthEast, 2) });
-      result.push({ pos: { row: 1, col: 2 }, dir: rotateDirection(Direction.East, 2) });
-      result.push({ pos: { row: 2, col: 1 }, dir: rotateDirection(Direction.NorthEast, 2) });
-      result.push({ pos: { row: 2, col: 1 }, dir: rotateDirection(Direction.East, 2) });
-      result.push({ pos: { row: 3, col: 0 }, dir: rotateDirection(Direction.NorthEast, 2) });
-      result.push({ pos: { row: 3, col: 0 }, dir: rotateDirection(Direction.East, 2) });
+      result.push({
+        pos: { row: 0, col: 3 },
+        dir: rotateDirection(Direction.East, 2),
+      });
+      result.push({
+        pos: { row: 1, col: 2 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
+      result.push({
+        pos: { row: 1, col: 2 },
+        dir: rotateDirection(Direction.East, 2),
+      });
+      result.push({
+        pos: { row: 2, col: 1 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
+      result.push({
+        pos: { row: 2, col: 1 },
+        dir: rotateDirection(Direction.East, 2),
+      });
+      result.push({
+        pos: { row: 3, col: 0 },
+        dir: rotateDirection(Direction.NorthEast, 2),
+      });
+      result.push({
+        pos: { row: 3, col: 0 },
+        dir: rotateDirection(Direction.East, 2),
+      });
       break;
     case 3: // SouthEast edge (bottom-right) - row = 3
       // Only the hex edges that face outward (toward SE) are used
-      result.push({ pos: { row: 3, col: 0 }, dir: rotateDirection(Direction.SouthEast, 2) });
-      result.push({ pos: { row: 3, col: -1 }, dir: rotateDirection(Direction.East, 2) });
-      result.push({ pos: { row: 3, col: -1 }, dir: rotateDirection(Direction.SouthEast, 2) });
-      result.push({ pos: { row: 3, col: -2 }, dir: rotateDirection(Direction.East, 2) });
-      result.push({ pos: { row: 3, col: -2 }, dir: rotateDirection(Direction.SouthEast, 2) });
-      result.push({ pos: { row: 3, col: -3 }, dir: rotateDirection(Direction.East, 2) });
-      result.push({ pos: { row: 3, col: -3 }, dir: rotateDirection(Direction.SouthEast, 2) });
+      result.push({
+        pos: { row: 3, col: 0 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
+      result.push({
+        pos: { row: 3, col: -1 },
+        dir: rotateDirection(Direction.East, 2),
+      });
+      result.push({
+        pos: { row: 3, col: -1 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
+      result.push({
+        pos: { row: 3, col: -2 },
+        dir: rotateDirection(Direction.East, 2),
+      });
+      result.push({
+        pos: { row: 3, col: -2 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
+      result.push({
+        pos: { row: 3, col: -3 },
+        dir: rotateDirection(Direction.East, 2),
+      });
+      result.push({
+        pos: { row: 3, col: -3 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
       break;
     case 4: // SouthWest edge (bottom-left) - col = -3
       // Only the hex edges that face outward (toward SW) are used
-      result.push({ pos: { row: 3, col: -3 }, dir: rotateDirection(Direction.SouthWest, 2) });
-      result.push({ pos: { row: 2, col: -3 }, dir: rotateDirection(Direction.SouthEast, 2) });
-      result.push({ pos: { row: 2, col: -3 }, dir: rotateDirection(Direction.SouthWest, 2) });
-      result.push({ pos: { row: 1, col: -3 }, dir: rotateDirection(Direction.SouthEast, 2) });
-      result.push({ pos: { row: 1, col: -3 }, dir: rotateDirection(Direction.SouthWest, 2) });
-      result.push({ pos: { row: 0, col: -3 }, dir: rotateDirection(Direction.SouthEast, 2) });
-      result.push({ pos: { row: 0, col: -3 }, dir: rotateDirection(Direction.SouthWest, 2) });
+      result.push({
+        pos: { row: 3, col: -3 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
+      result.push({
+        pos: { row: 2, col: -3 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
+      result.push({
+        pos: { row: 2, col: -3 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
+      result.push({
+        pos: { row: 1, col: -3 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
+      result.push({
+        pos: { row: 1, col: -3 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
+      result.push({
+        pos: { row: 0, col: -3 },
+        dir: rotateDirection(Direction.SouthEast, 2),
+      });
+      result.push({
+        pos: { row: 0, col: -3 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
       break;
     case 5: // West edge (left) - row + col = -3
       // Only the hex edges that face outward (toward W) are used
-      result.push({ pos: { row: 0, col: -3 }, dir: rotateDirection(Direction.West, 2) });
-      result.push({ pos: { row: -1, col: -2 }, dir: rotateDirection(Direction.SouthWest, 2) });
-      result.push({ pos: { row: -1, col: -2 }, dir: rotateDirection(Direction.West, 2) });
-      result.push({ pos: { row: -2, col: -1 }, dir: rotateDirection(Direction.SouthWest, 2) });
-      result.push({ pos: { row: -2, col: -1 }, dir: rotateDirection(Direction.West, 2) });
-      result.push({ pos: { row: -3, col: 0 }, dir: rotateDirection(Direction.SouthWest, 2) });
-      result.push({ pos: { row: -3, col: 0 }, dir: rotateDirection(Direction.West, 2) });
+      result.push({
+        pos: { row: 0, col: -3 },
+        dir: rotateDirection(Direction.West, 2),
+      });
+      result.push({
+        pos: { row: -1, col: -2 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
+      result.push({
+        pos: { row: -1, col: -2 },
+        dir: rotateDirection(Direction.West, 2),
+      });
+      result.push({
+        pos: { row: -2, col: -1 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
+      result.push({
+        pos: { row: -2, col: -1 },
+        dir: rotateDirection(Direction.West, 2),
+      });
+      result.push({
+        pos: { row: -3, col: 0 },
+        dir: rotateDirection(Direction.SouthWest, 2),
+      });
+      result.push({
+        pos: { row: -3, col: 0 },
+        dir: rotateDirection(Direction.West, 2),
+      });
       break;
   }
-  
+
   return result;
 }
