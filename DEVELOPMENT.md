@@ -68,7 +68,23 @@ Opens an interactive test UI in your browser.
 npm run test:e2e
 ```
 
-Runs end-to-end tests using Playwright.
+Runs end-to-end tests using Playwright. These tests verify the application's behavior in a real browser environment.
+
+**E2E Testing Strategy**: All E2E tests generate screenshots organized as **user stories**. Each test suite corresponds to a user story with numbered screenshots that tell a coherent narrative.
+
+- Screenshots are saved in `tests/e2e/user-stories/NNN-story-name/`
+- Each screenshot is numbered sequentially: `001-description.png`, `002-description.png`
+- See `tests/e2e/user-stories/README.md` for complete documentation
+- Contributors can verify test expectations by walking through screenshots in order
+
+**User Stories**:
+- `001-player-configuration`: Setting up players before a game
+- `002-gameplay-rendering`: Initial gameplay screen display
+- `003-flow-propagation`: Flow behavior from player edges
+- `004-multi-tile-flow`: Multi-tile flow progression
+
+For detailed information on the E2E testing approach, see `tests/e2e/user-stories/README.md`.
+
 
 ### Development Server
 
