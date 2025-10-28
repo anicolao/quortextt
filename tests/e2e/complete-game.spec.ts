@@ -175,19 +175,47 @@ test.describe('Complete 2-Player Game', () => {
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       console.log(`Move ${moveNumber}: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}`);
       
+      // Get tile info early for debugging
+      const tileKey = `${position.row},${position.col}`;
+      const flowEdgesForTile = state.game.flowEdges?.[tileKey];
+      const placedTile = state.game.board?.[tileKey];
+      
       // Log flow counts
       if (state.game.flows) {
         const player1Flows = state.game.flows[player1.id];
         const player2Flows = state.game.flows[player2.id];
         console.log(`  Player 1 flows: ${player1Flows?.length || 0} positions`);
         console.log(`  Player 2 flows: ${player2Flows?.length || 0} positions`);
+        
+        // For debugging: log detailed info for moves 4-6
+        if (moveNumber >= 4 && moveNumber <= 6) {
+          console.log(`  DEBUG - Move ${moveNumber}:`);
+          console.log(`    Player 1 flow positions:`, player1Flows);
+          console.log(`    Placed tile type: ${placedTile?.type}, rotation: ${rotation}`);
+          console.log(`    Tile position: (${position.row}, ${position.col})`);
+          
+          // Check if this tile is adjacent to any flow positions
+          const tileIsAdjacentToFlow = player1Flows?.some((flowPos: string) => {
+            const [flowRow, flowCol] = flowPos.split(',').map(Number);
+            // Check if adjacent (simplified check)
+            const rowDiff = Math.abs(flowRow - position.row);
+            const colDiff = Math.abs(flowCol - position.col);
+            return (rowDiff + colDiff) === 1 || (rowDiff === 1 && colDiff === 1);
+          });
+          console.log(`    Tile adjacent to Player 1 flow: ${tileIsAdjacentToFlow}`);
+          
+          // Check specific tiles
+          if (moveNumber === 5) {
+            const tile_3_0 = state.game.board?.['-3,0'];
+            console.log(`    Tile at (-3,0): type=${tile_3_0?.type}, rotation=${tile_3_0?.rotation}`);
+            const flowEdges_3_0 = state.game.flowEdges?.['-3,0'];
+            console.log(`    FlowEdges at (-3,0):`, flowEdges_3_0);
+          }
+        }
       }
       
       // === VERIFY FLOW EDGES MATCH MODEL ===
       // This is the key verification requested by the user
-      const tileKey = `${position.row},${position.col}`;
-      const flowEdgesForTile = state.game.flowEdges?.[tileKey];
-      const placedTile = state.game.board?.[tileKey];
       
       if (placedTile) {
         // Verify tile exists in board
