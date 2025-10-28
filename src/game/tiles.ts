@@ -36,7 +36,7 @@ export const TILE_FLOWS: Record<TileType, readonly FlowConnection[]> = {
 
 // Apply rotation to a direction
 // Each rotation is 60 degrees clockwise
-export function rotateDirection(direction: Direction, rotation: Rotation): Direction {
+function rotateDirection(direction: Direction, rotation: Rotation): Direction {
   return ((direction + rotation) % 6) as Direction;
 }
 
