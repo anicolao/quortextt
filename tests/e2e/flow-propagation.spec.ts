@@ -5,7 +5,17 @@ import { test, expect } from '@playwright/test';
 // Helper to get Redux state
 async function getReduxState(page: any) {
   return await page.evaluate(() => {
-    return (window as any).__REDUX_STORE__.getState();
+    const state = (window as any).__REDUX_STORE__.getState();
+    // Custom serialization for Maps and Sets
+    return JSON.parse(JSON.stringify(state, (key, value) => {
+      if (value instanceof Map) {
+        return Object.fromEntries(value);
+      }
+      if (value instanceof Set) {
+        return Array.from(value);
+      }
+      return value;
+    }));
   });
 }
 
@@ -59,8 +69,8 @@ test.describe('Flow Propagation from Player Edges', () => {
     });
     
     // Verify no flows for this tile (it doesn't connect to edge)
-    let player1Flows = state.game.flows.get(player1.id);
-    expect(player1Flows?.size || 0).toBe(0);
+    let player1Flows = state.game.flows[player1.id];
+    expect(player1Flows?.length || 0).toBe(0);
     
     // Now restart and place a tile ON the player's edge
     // Reload page to reset
@@ -97,18 +107,18 @@ test.describe('Flow Propagation from Player Edges', () => {
     });
     
     // Verify player 1 has flows
-    player1Flows = state.game.flows.get(player1.id);
-    expect(player1Flows?.size || 0).toBeGreaterThan(0);
-    expect(player1Flows?.has('-3,2')).toBe(true);
+    player1Flows = state.game.flows[player1.id];
+    expect(player1Flows?.length || 0).toBeGreaterThan(0);
+    expect(player1Flows?.includes('-3,2')).toBe(true);
     
     // Verify player 2 has no flows (tile is not near their edge)
-    const player2Flows = state.game.flows.get(player2.id);
-    expect(player2Flows?.size || 0).toBe(0);
+    const player2Flows = state.game.flows[player2.id];
+    expect(player2Flows?.length || 0).toBe(0);
     
     console.log('✓ Flow propagation test passed');
     console.log('  - Player 1 edge:', player1.edgePosition, '(NorthWest, row=-3)');
     console.log('  - Tile placed at (-3, 2) with flow connections');
-    console.log('  - Player 1 flows:', player1Flows?.size || 0, 'positions');
-    console.log('  - Player 2 flows:', player2Flows?.size || 0, 'positions');
+    console.log('  - Player 1 flows:', player1Flows?.length || 0, 'positions');
+    console.log('  - Player 2 flows:', player2Flows?.length || 0, 'positions');
   });
 });
