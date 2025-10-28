@@ -60,7 +60,7 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers.length).toBe(0);
     
     // Take a screenshot of the initial state
-    await page.screenshot({ path: 'tests/e2e/screenshots/01-initial-state.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/001-initial-state.png' });
   });
 
   test('should add a player when Add Player button is clicked', async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers[0].color).toBeDefined();
     expect(state.game.configPlayers[0].id).toBeDefined();
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/02-one-player.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
   });
 
   test('should add multiple players', async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe('Configuration Screen', () => {
     const colors = state.game.configPlayers.map((p: any) => p.color);
     expect(new Set(colors).size).toBe(3); // All different colors
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/03-multiple-players.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/003-multiple-players.png' });
   });
 
   test('should not add more than 6 players', async ({ page }) => {
@@ -122,7 +122,7 @@ test.describe('Configuration Screen', () => {
     const state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(6);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/04-max-players.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/004-max-players.png' });
   });
 
   test('should remove a player when X button is clicked', async ({ page }) => {
@@ -166,7 +166,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/05-remove-player.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-player-removed.png' });
   });
 
   test('should show color picker when clicking on player color', async ({ page }) => {
@@ -201,7 +201,7 @@ test.describe('Configuration Screen', () => {
     await page.mouse.click(box.x + colorIconCoords.x, box.y + colorIconCoords.y);
     await page.waitForTimeout(100);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/06-color-picker.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/006-color-picker-open.png' });
   });
 
   test('should change player color when selecting from picker', async ({ page }) => {
@@ -265,7 +265,7 @@ test.describe('Configuration Screen', () => {
     const newState = await getReduxState(page);
     expect(newState.game.configPlayers[0].color).not.toBe(initialColor);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/07-color-changed.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/007-color-changed.png' });
   });
 
   test('should close color picker when clicking outside', async ({ page }) => {
@@ -303,7 +303,7 @@ test.describe('Configuration Screen', () => {
     await page.mouse.click(box.x + 50, box.y + 50);
     await page.waitForTimeout(100);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/08-picker-closed.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/008-picker-closed.png' });
   });
 
   test('should start game when Start Game button is clicked with players', async ({ page }) => {
@@ -329,7 +329,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/09-gameplay-screen.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/009-game-started.png' });
   });
 
   test('should swap colors when selecting a color already in use', async ({ page }) => {
@@ -350,7 +350,7 @@ test.describe('Configuration Screen', () => {
     
     expect(player1ColorBefore).not.toBe(player2ColorBefore);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/10-two-players-before-swap.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/010-two-players-before-swap.png' });
 
     // Click on first player's color icon
     const colorIconCoords = await page.evaluate(() => {
@@ -410,7 +410,7 @@ test.describe('Configuration Screen', () => {
     expect(afterState.game.configPlayers[0].color).toBe(player2ColorBefore);
     expect(afterState.game.configPlayers[1].color).toBe(player1ColorBefore);
 
-    await page.screenshot({ path: 'tests/e2e/screenshots/11-colors-swapped.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/011-colors-swapped.png' });
   });
 });
 

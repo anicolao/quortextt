@@ -21,7 +21,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     
     // === STEP 0: Initial state ===
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/correct-flow-step0-initial.png',
+      path: 'tests/e2e/user-stories/004-multi-tile-flow/001-initial.png',
       fullPage: false
     });
     
@@ -39,7 +39,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await page.waitForTimeout(1000);
     
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/correct-flow-step1-first-tile.png',
+      path: 'tests/e2e/user-stories/004-multi-tile-flow/002-first-tile.png',
       fullPage: false
     });
     
@@ -57,7 +57,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await page.waitForTimeout(1000);
     
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/correct-flow-step2-second-tile.png',
+      path: 'tests/e2e/user-stories/004-multi-tile-flow/003-second-tile.png',
       fullPage: false
     });
     
@@ -75,7 +75,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await page.waitForTimeout(1000);
     
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/correct-flow-step3-extended.png',
+      path: 'tests/e2e/user-stories/004-multi-tile-flow/004-extended-flow.png',
       fullPage: false
     });
   });

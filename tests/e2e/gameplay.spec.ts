@@ -59,7 +59,7 @@ test.describe('Gameplay Screen Rendering', () => {
     
     // Take a screenshot of the gameplay screen
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/gameplay-two-players.png',
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/001-two-players.png',
       fullPage: false
     });
     
@@ -117,7 +117,7 @@ test.describe('Gameplay Screen Rendering', () => {
     
     // Take screenshot
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/gameplay-board-edges.png',
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/002-board-edges.png',
       fullPage: false
     });
   });
@@ -143,7 +143,7 @@ test.describe('Gameplay Screen Rendering', () => {
     
     // Take screenshot showing preview tile
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/gameplay-preview-tile.png',
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/003-preview-tile.png',
       fullPage: false
     });
   });
@@ -181,7 +181,7 @@ test.describe('Gameplay Screen Rendering', () => {
     
     // Take screenshot for visual verification
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/gameplay-hex-sizing.png',
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/004-hex-sizing.png',
       fullPage: false
     });
   });

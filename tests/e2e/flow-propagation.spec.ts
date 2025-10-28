@@ -30,7 +30,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Take screenshot of initial state with colored player edges
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/flow-initial-state.png',
+      path: 'tests/e2e/user-stories/003-flow-propagation/001-initial-state.png',
       fullPage: false
     });
     
@@ -48,7 +48,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Screenshot showing tile without flows (grey, not colored)
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/flow-no-connection.png',
+      path: 'tests/e2e/user-stories/003-flow-propagation/002-no-connection.png',
       fullPage: false
     });
     
@@ -94,7 +94,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Screenshot showing tile WITH colored flows (blue for player 1)
     await page.screenshot({ 
-      path: 'tests/e2e/screenshots/flow-with-connection.png',
+      path: 'tests/e2e/user-stories/003-flow-propagation/003-with-connection.png',
       fullPage: false
     });
     
