@@ -12,6 +12,7 @@ import {
   SHUFFLE_TILES,
   DRAW_TILE,
   PLACE_TILE,
+  SET_CURRENT_TILE_FOR_TESTING,
   NEXT_PLAYER,
   END_GAME,
   RESET_GAME,
@@ -272,6 +273,17 @@ export function gameReducer(
         ...state,
         currentTile: nextTile,
         availableTiles: remainingTiles,
+      };
+    }
+
+    case SET_CURRENT_TILE_FOR_TESTING: {
+      // Test-only action to set the current tile directly
+      // WARNING: This bypasses normal game flow and should only be used in tests
+      const { tileType } = action.payload;
+      
+      return {
+        ...state,
+        currentTile: tileType as TileType,
       };
     }
 
