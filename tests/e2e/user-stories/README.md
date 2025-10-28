@@ -13,6 +13,7 @@ user-stories/
 ├── 003-flow-propagation/       # Flow behavior from player edges
 ├── 004-multi-tile-flow/        # Multi-tile flow progression
 ├── 005-complete-game/          # Complete 2-player game from start to finish
+├── 006-tile-rendering/         # Tile rendering verification (all types, all rotations)
 └── README.md                   # This file
 ```
 
@@ -99,6 +100,20 @@ This story shows the complete user experience of:
 - Seeing flows propagate as tiles are placed
 - The natural progression of a competitive game
 
+### 006-tile-rendering
+**As a developer, I want to verify that tiles are rendered correctly in all rotations**
+
+Screenshots demonstrate:
+- All 4 tile types (NoSharps, OneSharp, TwoSharps, ThreeSharps) in all 6 rotations
+- Edge labels showing direction numbers (0-5) and names (SW, W, NW, NE, E, SE)
+- Connection information listing which edges are connected for each rotation
+- Visual verification that rendered curves match the logical model
+
+This story helps diagnose rendering bugs by providing:
+- Clear labeling of each hex edge with number and direction name
+- Documentation of expected connections for each tile/rotation combination
+- Visual reference to verify curve paths align with edge positions
+
 ## Testing Strategy
 
 ### Creating New User Stories
@@ -140,6 +155,7 @@ Contributors can verify test expectations by:
 - `flow-propagation.spec.ts` → `003-flow-propagation/`
 - `multi-tile-flow.spec.ts` → `004-multi-tile-flow/`
 - `complete-game.spec.ts` → `005-complete-game/`
+- `tile-rendering.spec.ts` → `006-tile-rendering/`
 
 ## Running E2E Tests
 
