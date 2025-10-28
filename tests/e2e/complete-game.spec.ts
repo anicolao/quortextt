@@ -210,6 +210,18 @@ test.describe('Complete 2-Player Game', () => {
             console.log(`    Tile at (-3,0): type=${tile_3_0?.type}, rotation=${tile_3_0?.rotation}`);
             const flowEdges_3_0 = state.game.flowEdges?.['-3,0'];
             console.log(`    FlowEdges at (-3,0):`, flowEdges_3_0);
+            
+            // DETAILED ANALYSIS OF MOVE 5 TILE
+            console.log(`\n    === MOVE 5 DETAILED ANALYSIS ===`);
+            console.log(`    Tile at (-2,-1): type=${placedTile?.type}, rotation=${rotation}`);
+            console.log(`    FlowEdges at (-2,-1):`, flowEdgesForTile);
+            if (flowEdgesForTile) {
+              const dirNames = ['SW', 'W', 'NW', 'NE', 'E', 'SE'];
+              console.log(`    FlowEdge directions (human readable):`);
+              Object.entries(flowEdgesForTile).forEach(([dir, playerId]) => {
+                console.log(`      Direction ${dir} (${dirNames[Number(dir)]}): ${playerId}`);
+              });
+            }
           }
         }
       }
