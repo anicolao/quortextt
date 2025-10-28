@@ -138,7 +138,8 @@ test.describe('Complete 2-Player Game', () => {
         if (!state.game.board?.[posKey]) {
           position = testPos;
           // Try different rotations to maximize flow connections
-          rotation = moveNumber % 6;
+          // moveNumber is 0-indexed, so add 1 to align with move numbers (1-37)
+          rotation = (moveNumber + 1) % 6;
           positionIndex++;
           break;
         }
