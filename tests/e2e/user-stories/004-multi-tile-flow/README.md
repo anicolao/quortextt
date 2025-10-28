@@ -15,6 +15,9 @@ This story demonstrates flow propagation across multiple tiles, showing how flow
 ## Screenshots
 
 ### 001-initial.png
+
+![001-initial](./001-initial.png)
+
 - **Action**: Game started, no tiles placed
 - **State**: Empty board with player edges
 - **What to verify**:
@@ -23,6 +26,9 @@ This story demonstrates flow propagation across multiple tiles, showing how flow
   - Clean board ready for tile placement
 
 ### 002-first-tile.png
+
+![002-first-tile](./002-first-tile.png)
+
 - **Action**: Player 1 places TwoSharps tile at (-3, 2) with rotation 0
 - **State**: First tile showing blue flows
 - **What to verify**:
@@ -33,6 +39,9 @@ This story demonstrates flow propagation across multiple tiles, showing how flow
   - Only paths connected to player's edge are colored
 
 ### 003-second-tile.png
+
+![003-second-tile](./003-second-tile.png)
+
 - **Action**: Player 2 places NoSharps tile at (3, -1) with rotation 2
 - **State**: Second tile showing orange flows
 - **What to verify**:
@@ -43,6 +52,9 @@ This story demonstrates flow propagation across multiple tiles, showing how flow
   - No flow connection between players yet
 
 ### 004-extended-flow.png
+
+![004-extended-flow](./004-extended-flow.png)
+
 - **Action**: Player 1 places TwoSharps tile at (-3, 3) with rotation 0
 - **State**: Blue flow extended to third tile
 - **What to verify**:

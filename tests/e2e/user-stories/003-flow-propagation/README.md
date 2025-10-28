@@ -9,6 +9,9 @@ This story demonstrates the critical game mechanic of flow propagation. Flows on
 ## Screenshots
 
 ### 001-initial-state.png
+
+![001-initial-state](./001-initial-state.png)
+
 - **Action**: Game started with two players, before any tiles placed
 - **State**: Empty board with colored player edges visible
 - **What to verify**:
@@ -18,6 +21,9 @@ This story demonstrates the critical game mechanic of flow propagation. Flows on
   - Clear distinction between player edges
 
 ### 002-no-connection.png
+
+![002-no-connection](./002-no-connection.png)
+
 - **Action**: Tile placed NOT adjacent to any player edge
 - **State**: Tile visible with GREY flows (no player color)
 - **What to verify**:
@@ -27,6 +33,9 @@ This story demonstrates the critical game mechanic of flow propagation. Flows on
   - Tile is clearly visible but not "activated"
 
 ### 003-with-connection.png
+
+![003-with-connection](./003-with-connection.png)
+
 - **Action**: Tile placed ON a player's edge
 - **State**: Tile shows COLORED flows for connected player
 - **What to verify**:
