@@ -361,10 +361,6 @@ test.describe('Configuration Screen', () => {
     }
     
     const beforeState = await getReduxState(page);
-    // Safety check - ensure we have the expected structure
-    if (!beforeState.game || !beforeState.game.configPlayers || beforeState.game.configPlayers.length < 2) {
-      throw new Error(`Invalid state structure or insufficient players. Got: ${JSON.stringify(beforeState, null, 2)}`);
-    }
     const player1ColorBefore = beforeState.game.configPlayers[0].color;
     const player2ColorBefore = beforeState.game.configPlayers[1].color;
     
