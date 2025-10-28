@@ -1,10 +1,12 @@
 // Minimal two-tile test to reproduce flow propagation bug
 import { describe, it, expect } from 'vitest';
 import { calculateFlows } from '../src/game/flows';
-import { TileType, PlacedTile, Player } from '../src/game/types';
+import { TileType, PlacedTile, Player, Direction } from '../src/game/types';
+import { getFlowConnections } from '../src/game/tiles';
+import { getOppositeDirection } from '../src/game/board';
 
 describe('Flow Propagation Bug - Minimal Reproduction', () => {
-  it('should propagate flow from edge tile to adjacent tile', () => {
+  it('should propagate flow from edge tile to adjacent tile (original case)', () => {
     const board = new Map<string, PlacedTile>();
     
     // Tile 1: On player's edge (row -3, col 0)
@@ -64,7 +66,7 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     expect(hasTile2Flow).toBe(true);
   });
   
-  it('should work with different tile types', () => {
+  it('should work with different tile types (original passing case)', () => {
     const board = new Map<string, PlacedTile>();
     
     // Edge tile: TwoSharps at rotation 0
@@ -100,5 +102,94 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     
     expect(player1Flows!.has('-3,1')).toBe(true);
     expect(player1Flows!.has('-2,1')).toBe(true);
+  });
+  
+  describe('Comprehensive two-tile flow tests', () => {
+    const tileTypes = [
+      TileType.NoSharps,
+      TileType.OneSharp,
+      TileType.TwoSharps,
+      TileType.ThreeSharps
+    ];
+    
+    const tileTypeNames: Record<TileType, string> = {
+      [TileType.NoSharps]: 'NoSharps',
+      [TileType.OneSharp]: 'OneSharp',
+      [TileType.TwoSharps]: 'TwoSharps',
+      [TileType.ThreeSharps]: 'ThreeSharps'
+    };
+    
+    // Helper to check if a tile has a connection in a specific direction
+    function hasConnectionInDirection(tileType: TileType, rotation: number, direction: Direction): boolean {
+      const connections = getFlowConnections(tileType, rotation);
+      return connections.some(([dir1, dir2]) => dir1 === direction || dir2 === direction);
+    }
+    
+    // Test all combinations: 4 tile types × 4 tile types × 6 rotations = 96 tests
+    tileTypes.forEach(edgeTileType => {
+      tileTypes.forEach(adjacentTileType => {
+        for (let rotation = 0; rotation < 6; rotation++) {
+          it(`should handle flow correctly: ${tileTypeNames[edgeTileType]} rot=0 → ${tileTypeNames[adjacentTileType]} rot=${rotation}`, () => {
+            const board = new Map<string, PlacedTile>();
+            
+            // Edge tile at player's edge (row -3, col 0)
+            board.set('-3,0', { 
+              type: edgeTileType, 
+              rotation: 0, 
+              position: { row: -3, col: 0 } 
+            });
+            
+            // Adjacent tile at (-2, -1) - neighbor via direction 0 (SouthWest)
+            board.set('-2,-1', { 
+              type: adjacentTileType, 
+              rotation: rotation, 
+              position: { row: -2, col: -1 } 
+            });
+            
+            const player1: Player = {
+              id: 'p1',
+              color: '#0173B2',
+              edgePosition: 0,
+              isAI: false
+            };
+            
+            const { flows, flowEdges } = calculateFlows(board, [player1]);
+            const player1Flows = flows.get('p1');
+            
+            expect(player1Flows).toBeDefined();
+            
+            // Edge tile should always have flow (it's on the player's edge)
+            expect(player1Flows!.has('-3,0')).toBe(true);
+            
+            // Determine if flow SHOULD propagate to adjacent tile
+            // Flow propagates from edge tile in direction 0 (SouthWest)
+            const edgeTileHasFlowInDir0 = hasConnectionInDirection(edgeTileType, 0, Direction.SouthWest);
+            
+            if (edgeTileHasFlowInDir0) {
+              // Flow enters adjacent tile from opposite direction (NorthEast = 3)
+              const entryDirection = getOppositeDirection(Direction.SouthWest);
+              const adjacentTileAcceptsFlow = hasConnectionInDirection(adjacentTileType, rotation, entryDirection);
+              
+              if (adjacentTileAcceptsFlow) {
+                // Flow SHOULD propagate
+                const adjacentHasFlow = player1Flows!.has('-2,-1');
+                const adjacentFlowEdges = flowEdges.get('-2,-1');
+                
+                // THIS IS THE KEY ASSERTION: if both tiles have proper connections, flow must propagate
+                expect(adjacentHasFlow).toBe(true);
+                expect(adjacentFlowEdges).toBeDefined();
+                expect(adjacentFlowEdges!.size).toBeGreaterThan(0);
+              } else {
+                // Flow should NOT propagate (adjacent tile doesn't accept it)
+                expect(player1Flows!.has('-2,-1')).toBe(false);
+              }
+            } else {
+              // Edge tile doesn't have flow in direction 0, so flow cannot propagate
+              expect(player1Flows!.has('-2,-1')).toBe(false);
+            }
+          });
+        }
+      });
+    });
   });
 });
