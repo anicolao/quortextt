@@ -9,6 +9,9 @@ This story verifies that the gameplay screen renders correctly with all essentia
 ## Screenshots
 
 ### 001-two-players.png
+
+![001-two-players](./001-two-players.png)
+
 - **Action**: Game started with two players
 - **State**: Gameplay screen showing full board
 - **What to verify**: 
@@ -19,6 +22,9 @@ This story verifies that the gameplay screen renders correctly with all essentia
   - Canvas has content (not blank)
 
 ### 002-board-edges.png
+
+![002-board-edges](./002-board-edges.png)
+
 - **Action**: Focus on board edges
 - **State**: Hexagonal board with colored player edges
 - **What to verify**:
@@ -28,6 +34,9 @@ This story verifies that the gameplay screen renders correctly with all essentia
   - Edges positioned correctly on hexagon
 
 ### 003-preview-tile.png
+
+![003-preview-tile](./003-preview-tile.png)
+
 - **Action**: Focus on tile preview area
 - **State**: Current tile shown with grey flows (not colored)
 - **What to verify**:
@@ -36,6 +45,9 @@ This story verifies that the gameplay screen renders correctly with all essentia
   - Tile pattern clear and recognizable
 
 ### 004-hex-sizing.png
+
+![004-hex-sizing](./004-hex-sizing.png)
+
 - **Action**: Verify board dimensions
 - **State**: Full board with proper hexagon sizing
 - **What to verify**:
