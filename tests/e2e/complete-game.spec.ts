@@ -138,7 +138,6 @@ test.describe('Complete 2-Player Game', () => {
         if (!state.game.board?.[posKey]) {
           position = testPos;
           // Try different rotations to maximize flow connections
-          // moveNumber is 0-indexed, so add 1 to align with move numbers (1-37)
           rotation = (moveNumber + 1) % 6;
           positionIndex++;
           break;
@@ -184,10 +183,8 @@ test.describe('Complete 2-Player Game', () => {
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       console.log(`Move ${moveNumber}: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}, model says rotation ${placedTile?.rotation}`);
       
-      // Get tile info early for debugging
-      const tileKey = `${position.row},${position.col}`;
+      // Get flow edges for this tile
       const flowEdgesForTile = state.game.flowEdges?.[tileKey];
-      const placedTile = state.game.board?.[tileKey];
       
       // Log flow counts
       if (state.game.flows) {
