@@ -4,7 +4,20 @@ import { test, expect } from '@playwright/test';
 import { getReduxState } from './helpers';
 
 test.describe('Tile Rendering Tests', () => {
-  const tileTypes = ['NoSharps', 'OneSharp', 'TwoSharps', 'ThreeSharps'];
+  // TileType enum values (must match src/game/types.ts)
+  const TileType = {
+    NoSharps: 0,
+    OneSharp: 1,
+    TwoSharps: 2,
+    ThreeSharps: 3,
+  };
+  
+  const tileTypes = [
+    { name: 'NoSharps', value: TileType.NoSharps },
+    { name: 'OneSharp', value: TileType.OneSharp },
+    { name: 'TwoSharps', value: TileType.TwoSharps },
+    { name: 'ThreeSharps', value: TileType.ThreeSharps },
+  ];
   
   // Direction names for labeling
   const directionNames = ['SW', 'W', 'NW', 'NE', 'E', 'SE'];
@@ -23,8 +36,8 @@ test.describe('Tile Rendering Tests', () => {
   }
   
   // Helper to get rotated connections
-  function getRotatedConnections(tileType: string, rotation: number): [number, number][] {
-    const baseConnections = tileConnections[tileType as keyof typeof tileConnections];
+  function getRotatedConnections(tileTypeName: string, rotation: number): [number, number][] {
+    const baseConnections = tileConnections[tileTypeName as keyof typeof tileConnections];
     return baseConnections.map(([a, b]) => [
       rotateDirection(a, rotation),
       rotateDirection(b, rotation)
@@ -32,47 +45,37 @@ test.describe('Tile Rendering Tests', () => {
   }
 
   tileTypes.forEach((tileType) => {
-    test(`should render ${tileType} in all 6 rotations with edge labels`, async ({ page }) => {
+    test(`should render ${tileType.name} in all 6 rotations with edge labels`, async ({ page }) => {
       await page.goto('/');
       await page.waitForSelector('canvas#game-canvas');
       
-      // Set up game
+      // Set up game once
       await page.evaluate(() => {
         const store = (window as any).__REDUX_STORE__;
         store.dispatch({ type: 'ADD_PLAYER' });
         store.dispatch({ type: 'ADD_PLAYER' });
-        store.dispatch({ type: 'START_GAME' });
       });
-      
-      await page.waitForTimeout(500);
       
       // For each rotation
       for (let rotation = 0; rotation < 6; rotation++) {
-        // Create a new game for each rotation to get clean state
-        await page.evaluate(() => {
+        // Start game with a custom deck containing only the desired tile type
+        await page.evaluate(({ tileTypeValue }) => {
           const store = (window as any).__REDUX_STORE__;
-          store.dispatch({ type: 'RESET_GAME' });
-          store.dispatch({ type: 'ADD_PLAYER' });
-          store.dispatch({ type: 'ADD_PLAYER' });
+          
+          // If we already started, reset
+          if (rotation > 0) {
+            store.dispatch({ type: 'RETURN_TO_CONFIG' });
+          }
+          
+          // Start game which will create a shuffled deck
           store.dispatch({ type: 'START_GAME' });
-        });
-        
-        await page.waitForTimeout(500);
-        
-        // Force a specific tile type to be drawn
-        await page.evaluate(({ tileType, rotation }) => {
-          const store = (window as any).__REDUX_STORE__;
+          
+          // Replace the entire deck and current tile with our desired tile
           const state = store.getState();
-          
-          // Manually set the current tile
-          store.dispatch({
-            type: 'SET_CURRENT_TILE',
-            payload: { type: tileType, rotation: 0 }
-          });
-          
-          // Draw the tile (this should trigger a draw from deck)
-          store.dispatch({ type: 'DRAW_TILE' });
-        }, { tileType, rotation });
+          const customDeck = Array(40).fill(tileTypeValue);
+          state.game.availableTiles = customDeck.slice(1);
+          state.game.currentTile = tileTypeValue;
+        }, { tileTypeValue: tileType.value, rotation });
         
         await page.waitForTimeout(300);
         
@@ -88,7 +91,7 @@ test.describe('Tile Rendering Tests', () => {
         await page.waitForTimeout(500);
         
         // Add edge labels using canvas text overlay
-        await page.evaluate(({ directionNames, tileType, rotation, connections }) => {
+        await page.evaluate(({ directionNames, tileTypeName, rotation, connections }) => {
           const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
@@ -120,7 +123,7 @@ test.describe('Tile Rendering Tests', () => {
           
           // Draw title
           ctx.font = 'bold 20px Arial';
-          const title = `${tileType} - Rotation ${rotation}`;
+          const title = `${tileTypeName} - Rotation ${rotation}`;
           ctx.strokeText(title, centerX - 100, centerY - hexSize * 2);
           ctx.fillText(title, centerX - 100, centerY - hexSize * 2);
           
@@ -138,22 +141,22 @@ test.describe('Tile Rendering Tests', () => {
           });
         }, { 
           directionNames, 
-          tileType, 
+          tileTypeName: tileType.name, 
           rotation,
-          connections: getRotatedConnections(tileType, rotation)
+          connections: getRotatedConnections(tileType.name, rotation)
         });
         
         await page.waitForTimeout(300);
         
         // Take screenshot
-        const filename = `tests/e2e/user-stories/006-tile-rendering/${tileType.toLowerCase()}-rotation-${rotation}.png`;
+        const filename = `tests/e2e/user-stories/006-tile-rendering/${tileType.name.toLowerCase()}-rotation-${rotation}.png`;
         await page.screenshot({ 
           path: filename,
           fullPage: false
         });
         
         console.log(`Created ${filename}`);
-        console.log(`  ${tileType} Rotation ${rotation} connections: ${JSON.stringify(getRotatedConnections(tileType, rotation))}`);
+        console.log(`  ${tileType.name} Rotation ${rotation} connections: ${JSON.stringify(getRotatedConnections(tileType.name, rotation))}`);
       }
       
       // Verify we created all screenshots
