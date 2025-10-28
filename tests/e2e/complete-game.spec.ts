@@ -4,6 +4,11 @@ import { test, expect } from '@playwright/test';
 import { getReduxState } from './helpers';
 
 test.describe('Complete 2-Player Game', () => {
+  // Test configuration constants
+  const DETERMINISTIC_SEED = 999; // Seed for reproducible tile shuffle
+  const MAX_MOVES_LIMIT = 25; // Safety limit to prevent infinite loops
+  const VICTORY_SCREENSHOT_NAME = 'victory-final.png'; // Final victory screenshot
+
   test('should play a complete game from start to victory', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
@@ -33,12 +38,12 @@ test.describe('Complete 2-Player Game', () => {
     expect(state.game.configPlayers.length).toBe(2);
     
     // === STEP 3: Start the game ===
-    await page.evaluate(() => {
+    await page.evaluate((seed) => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'START_GAME' });
       // Use a deterministic seed for reproducible game
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 999 } });
-    });
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed } });
+    }, DETERMINISTIC_SEED);
     
     await page.waitForTimeout(500);
     
@@ -67,29 +72,30 @@ test.describe('Complete 2-Player Game', () => {
     
     let moveNumber = 0;
     let gameEnded = false;
-    const maxMoves = 25;
     
     // Define a strategic sequence of moves that creates a winning path
     // Each move specifies position and rotation
+    // Strategy: Build diagonal paths from each player's edge toward the center,
+    // creating opportunities for flows to extend across the board
     const plannedMoves = [
       // Build a simple diagonal path across the board
-      { row: -3, col: 2, rotation: 0 },   // Near player 1 edge
-      { row: 3, col: -2, rotation: 0 },   // Near player 2 edge  
-      { row: -2, col: 1, rotation: 1 },   // Player 1 extends
-      { row: 2, col: -1, rotation: 1 },   // Player 2 extends
-      { row: -1, col: 1, rotation: 0 },   // Player 1 toward center
-      { row: 1, col: -1, rotation: 0 },   // Player 2 toward center
-      { row: 0, col: 0, rotation: 2 },    // Center tile
-      { row: 1, col: 0, rotation: 1 },    // Continue path
-      { row: -1, col: 0, rotation: 1 },   // Continue path
-      { row: 2, col: -2, rotation: 0 },   // Extend
-      { row: -2, col: 2, rotation: 0 },   // Extend
-      { row: 3, col: -3, rotation: 1 },   // Near opposite edge
-      { row: -3, col: 3, rotation: 1 },   // Near opposite edge
+      { row: -3, col: 2, rotation: 0 },   // Near player 1 edge (edge 0)
+      { row: 3, col: -2, rotation: 0 },   // Near player 2 edge (edge 3)
+      { row: -2, col: 1, rotation: 1 },   // Player 1 extends toward center
+      { row: 2, col: -1, rotation: 1 },   // Player 2 extends toward center
+      { row: -1, col: 1, rotation: 0 },   // Player 1 moves toward center
+      { row: 1, col: -1, rotation: 0 },   // Player 2 moves toward center
+      { row: 0, col: 0, rotation: 2 },    // Center tile - critical connection point
+      { row: 1, col: 0, rotation: 1 },    // Continue building path
+      { row: -1, col: 0, rotation: 1 },   // Continue building path
+      { row: 2, col: -2, rotation: 0 },   // Extend toward target edge
+      { row: -2, col: 2, rotation: 0 },   // Extend toward target edge
+      { row: 3, col: -3, rotation: 1 },   // Near opposite edge for player 1
+      { row: -3, col: 3, rotation: 1 },   // Near opposite edge for player 2
     ];
     
     for (const move of plannedMoves) {
-      if (gameEnded || moveNumber >= maxMoves) break;
+      if (gameEnded || moveNumber >= MAX_MOVES_LIMIT) break;
       
       // Draw tile
       await page.evaluate(() => {
@@ -148,7 +154,7 @@ test.describe('Complete 2-Player Game', () => {
         gameEnded = true;
         
         await page.screenshot({ 
-          path: 'tests/e2e/user-stories/005-complete-game/999-victory.png',
+          path: `tests/e2e/user-stories/005-complete-game/${VICTORY_SCREENSHOT_NAME}`,
           fullPage: false
         });
         
