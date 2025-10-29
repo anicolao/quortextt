@@ -29,37 +29,34 @@ export function traceFlow(
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
   
-  const startPosKey = positionToKey(startPos);
-  console.log(`[traceFlow] Starting from ${startPosKey}, direction ${startDirection}, player ${playerId}`);
-  
   let currentPos = startPos;
   let currentEntryDir = startDirection;
   let step = 0;
   
+  const startKey = positionToKey(startPos);
+  console.log(`>>> TRACE START: ${startKey} dir=${startDirection} player=${playerId}`);
+  
   // Trace the flow forward until it terminates
   while (true) {
     const posKey = positionToKey(currentPos);
-    console.log(`  [Step ${step}] At position ${posKey}, entering from direction ${currentEntryDir}`);
     
     // Check if there's a tile at this position
     const tile = board.get(posKey);
     if (!tile) {
       // Flow terminates at an empty position
-      console.log(`    Terminating: no tile at ${posKey}`);
+      console.log(`  [${step}] ${posKey} - NO TILE, STOP`);
       break;
     }
-    
-    console.log(`    Tile found: type=${tile.type}, rotation=${tile.rotation}`);
     
     // Find where the flow exits this tile
     const exitDir = getFlowExit(tile, currentEntryDir);
     if (exitDir === null) {
       // Flow terminates - no connection for this entry direction
-      console.log(`    Terminating: no exit for entry direction ${currentEntryDir}`);
+      console.log(`  [${step}] ${posKey} entry=${currentEntryDir} - NO EXIT, STOP`);
       break;
     }
     
-    console.log(`    Exit direction: ${exitDir}`);
+    console.log(`  [${step}] ${posKey} type=${tile.type} rot=${tile.rotation} entry=${currentEntryDir} exit=${exitDir}`);
     
     // Add this position to the flow
     flowPositions.add(posKey);
@@ -80,11 +77,9 @@ export function traceFlow(
     const nextPos = getNeighborInDirection(currentPos, exitDir);
     if (!isValidPosition(nextPos)) {
       // Flow terminates at board boundary
-      console.log(`    Terminating: next position outside board bounds`);
+      console.log(`  [${step}] Next pos invalid, STOP`);
       break;
     }
-    
-    console.log(`    Moving to next position: ${positionToKey(nextPos)}`);
     
     // Continue tracing from the next position
     currentPos = nextPos;
@@ -92,7 +87,7 @@ export function traceFlow(
     step++;
   }
   
-  console.log(`[traceFlow] Finished: ${flowPositions.size} positions, ${flowEdges.length} edges`);
+  console.log(`<<< TRACE END: ${flowPositions.size} positions`);
   
   return { positions: flowPositions, edges: flowEdges };
 }
@@ -110,17 +105,11 @@ export function calculateFlows(
   const flows = new Map<string, Set<string>>();
   const flowEdges = new Map<string, Map<Direction, string>>();
   
-  console.log(`[calculateFlows] Starting flow calculation for ${players.length} players`);
-  console.log(`  Board has ${board.size} tiles`);
-  
   for (const player of players) {
     const playerFlow = new Set<string>();
     
-    console.log(`\n[calculateFlows] Processing player ${player.id}, edge ${player.edgePosition}`);
-    
     // Get all edge positions with their specific hex edge directions for this player
     const edgeData = getEdgePositionsWithDirections(player.edgePosition);
-    console.log(`  Edge has ${edgeData.length} starting positions`);
     
     // For each edge position and direction pair, trace the flow
     for (const { pos, dir } of edgeData) {
