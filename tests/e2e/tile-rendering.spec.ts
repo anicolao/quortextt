@@ -1,7 +1,7 @@
 // End-to-end test for tile rendering - visualize all tile types in all rotations
 // This test helps verify that tile rendering matches the logical model
 import { test, expect } from '@playwright/test';
-import { getReduxState } from './helpers';
+import { getReduxState, rotateDirection } from './helpers';
 
 test.describe('Tile Rendering Tests', () => {
   // TileType enum values (must match src/game/types.ts)
@@ -29,11 +29,6 @@ test.describe('Tile Rendering Tests', () => {
     TwoSharps: [[0, 5], [1, 4], [2, 3]], // 0-5 sharp, 1-4 straight, 2-3 sharp
     ThreeSharps: [[0, 5], [1, 2], [3, 4]], // 0-5 sharp, 1-2 sharp, 3-4 sharp
   };
-  
-  // Helper to rotate a direction
-  function rotateDirection(dir: number, rotation: number): number {
-    return (dir + rotation) % 6;
-  }
   
   // Helper to get rotated connections
   function getRotatedConnections(tileTypeName: string, rotation: number): [number, number][] {
@@ -95,7 +90,7 @@ test.describe('Tile Rendering Tests', () => {
         
         await page.waitForTimeout(500);
         
-        // Add edge labels using canvas text overlay
+        // Add edge labels and vertex numbers using canvas text overlay
         await page.evaluate(({ directionNames, tileTypeName, rotation, connections }) => {
           const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
           const ctx = canvas.getContext('2d');
@@ -106,35 +101,77 @@ test.describe('Tile Rendering Tests', () => {
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
           
-          // Draw edge labels
-          ctx.font = 'bold 16px Arial';
-          ctx.fillStyle = 'black';
+          // Vertex pairs for each direction (matches hexLayout.ts after fix)
+          const vertexPairs = [
+            [2, 3], // SouthWest (0)
+            [3, 4], // West (1)
+            [4, 5], // NorthWest (2)
+            [5, 0], // NorthEast (3)
+            [0, 1], // East (4)
+            [1, 2], // SouthEast (5)
+          ];
+          
+          // Draw vertex numbers at each vertex position
+          ctx.font = 'bold 18px Arial';
+          ctx.fillStyle = '#FF0000'; // Red for vertices
           ctx.strokeStyle = 'white';
+          ctx.lineWidth = 4;
+          
+          const vertexRadius = hexSize * 1.15;
+          for (let v = 0; v < 6; v++) {
+            // Vertex angle: -30° for vertex 0, then +60° for each subsequent vertex
+            const angle = ((60 * v - 30) * Math.PI) / 180;
+            const x = centerX + vertexRadius * Math.cos(angle);
+            const y = centerY + vertexRadius * Math.sin(angle);
+            
+            const label = `V${v}`;
+            ctx.strokeText(label, x - 10, y + 5);
+            ctx.fillText(label, x - 10, y + 5);
+          }
+          
+          // Draw edge labels with direction and vertex info
+          ctx.font = 'bold 14px Arial';
+          ctx.fillStyle = 'black';
           ctx.lineWidth = 3;
           
-          // Edge positions (midpoints of each edge)
-          const edgeAngles = [240, 180, 120, 60, 0, 300]; // Degrees for each direction
-          const labelRadius = hexSize * 1.3;
+          const edgeLabelRadius = hexSize * 1.5;
           
           for (let dir = 0; dir < 6; dir++) {
-            const angle = (edgeAngles[dir] * Math.PI) / 180;
-            const x = centerX + labelRadius * Math.cos(angle);
-            const y = centerY + labelRadius * Math.sin(angle);
+            // Calculate edge midpoint angle based on its vertices
+            const [v1, v2] = vertexPairs[dir];
+            const angle1 = ((60 * v1 - 30) * Math.PI) / 180;
+            const angle2 = ((60 * v2 - 30) * Math.PI) / 180;
             
-            const label = `${dir}:${directionNames[dir]}`;
-            ctx.strokeText(label, x - 20, y + 5);
-            ctx.fillText(label, x - 20, y + 5);
+            const vx1 = centerX + hexSize * Math.cos(angle1);
+            const vy1 = centerY + hexSize * Math.sin(angle1);
+            const vx2 = centerX + hexSize * Math.cos(angle2);
+            const vy2 = centerY + hexSize * Math.sin(angle2);
+            
+            // Edge midpoint
+            const edgeMidX = (vx1 + vx2) / 2;
+            const edgeMidY = (vy1 + vy2) / 2;
+            
+            // Push label outward from center
+            const dx = edgeMidX - centerX;
+            const dy = edgeMidY - centerY;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const x = centerX + (dx / len) * edgeLabelRadius;
+            const y = centerY + (dy / len) * edgeLabelRadius;
+            
+            const label = `${dir}:${directionNames[dir]} (V${v1}-V${v2})`;
+            ctx.strokeText(label, x - 30, y + 5);
+            ctx.fillText(label, x - 30, y + 5);
           }
           
           // Draw title
           ctx.font = 'bold 20px Arial';
           const title = `${tileTypeName} - Rotation ${rotation}`;
-          ctx.strokeText(title, centerX - 100, centerY - hexSize * 2);
-          ctx.fillText(title, centerX - 100, centerY - hexSize * 2);
+          ctx.strokeText(title, centerX - 100, centerY - hexSize * 2.5);
+          ctx.fillText(title, centerX - 100, centerY - hexSize * 2.5);
           
           // Draw connection info
           ctx.font = '14px Arial';
-          let yOffset = centerY + hexSize * 2 + 20;
+          let yOffset = centerY + hexSize * 2.5 + 20;
           ctx.strokeText('Connections:', centerX - 100, yOffset);
           ctx.fillText('Connections:', centerX - 100, yOffset);
           

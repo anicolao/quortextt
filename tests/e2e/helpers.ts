@@ -18,3 +18,12 @@ export async function getReduxState(page: any) {
     }));
   });
 }
+
+/**
+ * Rotate a direction by a number of steps
+ * This matches the logic in src/game/board.ts rotateDirection()
+ * The Direction enum is clockwise, so we subtract to rotate
+ */
+export function rotateDirection(direction: number, steps: number): number {
+  return ((direction - steps + 6) % 6);
+}
