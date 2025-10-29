@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { uiReducer, initialUIState } from '../src/redux/uiReducer';
 import {
   setHoveredPosition,
+  setSelectedPosition,
   setRotation,
   toggleLegalMoves,
 } from '../src/redux/actions';
@@ -22,6 +23,22 @@ describe('uiReducer', () => {
       state = uiReducer(state, setHoveredPosition(null));
 
       expect(state.hoveredPosition).toBeNull();
+    });
+  });
+
+  describe('SET_SELECTED_POSITION', () => {
+    it('should set selected position', () => {
+      const position = { row: 1, col: 2 };
+      const state = uiReducer(initialUIState, setSelectedPosition(position));
+
+      expect(state.selectedPosition).toEqual(position);
+    });
+
+    it('should clear selected position with null', () => {
+      let state = uiReducer(initialUIState, setSelectedPosition({ row: 1, col: 2 }));
+      state = uiReducer(state, setSelectedPosition(null));
+
+      expect(state.selectedPosition).toBeNull();
     });
   });
 

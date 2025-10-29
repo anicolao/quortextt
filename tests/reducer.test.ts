@@ -121,6 +121,73 @@ describe('gameReducer', () => {
       const state = gameReducer(initialState, startGame());
       expect(state.screen).toBe('configuration');
     });
+
+    it('should assign edge positions correctly for 2 players', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, startGame());
+
+      expect(state.players.length).toBe(2);
+      expect(state.players[0].edgePosition).toBe(0); // index * 3
+      expect(state.players[1].edgePosition).toBe(3);
+    });
+
+    it('should assign edge positions correctly for 3 players', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, startGame());
+
+      expect(state.players.length).toBe(3);
+      expect(state.players[0].edgePosition).toBe(0); // index * 2
+      expect(state.players[1].edgePosition).toBe(2);
+      expect(state.players[2].edgePosition).toBe(4);
+    });
+
+    it('should create teams for 4 players', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, addPlayer());
+      state = gameReducer(state, startGame());
+
+      expect(state.players.length).toBe(4);
+      expect(state.teams.length).toBe(2);
+      expect(state.teams[0]).toEqual({
+        player1Id: state.players[0].id,
+        player2Id: state.players[2].id,
+      });
+      expect(state.teams[1]).toEqual({
+        player1Id: state.players[1].id,
+        player2Id: state.players[3].id,
+      });
+    });
+
+    it('should create teams for 6 players', () => {
+      let state = initialState;
+      for (let i = 0; i < 6; i++) {
+        state = gameReducer(state, addPlayer());
+      }
+      state = gameReducer(state, startGame());
+
+      expect(state.players.length).toBe(6);
+      expect(state.teams.length).toBe(3);
+      expect(state.teams[0]).toEqual({
+        player1Id: state.players[0].id,
+        player2Id: state.players[3].id,
+      });
+      expect(state.teams[1]).toEqual({
+        player1Id: state.players[1].id,
+        player2Id: state.players[4].id,
+      });
+      expect(state.teams[2]).toEqual({
+        player1Id: state.players[2].id,
+        player2Id: state.players[5].id,
+      });
+    });
   });
 
   describe('RETURN_TO_CONFIG', () => {
