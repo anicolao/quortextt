@@ -12,8 +12,10 @@ describe('Flow Edge Debug', () => {
     const board = new Map<string, PlacedTile>();
     
     // Place ThreeSharps tile at (-3, 1) with rotation 0
-    // At (-3, 1), player's edge directions are SouthWest (0) and SouthEast (5)
+    // At (-3, 1), player's edge directions are NOW NorthWest (2) and NorthEast (3) (outward-facing)
     // ThreeSharps connections (no rotation): SW-SE (0-5), W-NW (1-2), NE-E (3-4)
+    // Flow enters from NW(2) -> exits to W(1)
+    // Flow enters from NE(3) -> exits to E(4)
     const tile: PlacedTile = {
       type: TileType.ThreeSharps,
       rotation: 0,
@@ -36,15 +38,15 @@ describe('Flow Edge Debug', () => {
     // Verify edge directions
     expect(tileEdges).toBeDefined();
     
-    // From SW (0) <-> SE (5) should both be p1
-    expect(tileEdges?.get(Direction.SouthWest)).toBe('p1');
-    expect(tileEdges?.get(Direction.SouthEast)).toBe('p1');
+    // Flow enters from NW(2) and NE(3), creates flow on edges 1, 2, 3, 4
+    expect(tileEdges?.get(Direction.West)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthWest)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthEast)).toBe('p1');
+    expect(tileEdges?.get(Direction.East)).toBe('p1');
 
-    // All other directions should NOT have p1's flow
-    expect(tileEdges?.get(Direction.West)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthWest)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthEast)).toBeUndefined();
-    expect(tileEdges?.get(Direction.East)).toBeUndefined();
+    // SW and SE should NOT have p1's flow (those face outward, away from board)
+    expect(tileEdges?.get(Direction.SouthWest)).toBeUndefined();
+    expect(tileEdges?.get(Direction.SouthEast)).toBeUndefined();
   });
   
   it('should correctly calculate flow edges for tile at (-3,1) with TwoSharps', () => {
@@ -54,8 +56,9 @@ describe('Flow Edge Debug', () => {
     const board = new Map<string, PlacedTile>();
     
     // Place TwoSharps tile at (-3, 1) with rotation 0
-    // At (-3, 1), player's edge directions are SouthWest (0) and SouthEast (5)
+    // At (-3, 1), player's edge directions are NOW NorthWest (2) and NorthEast (3) (outward-facing)
     // TwoSharps connections (no rotation): SW-SE (0-5), W-E (1-4), NW-NE (2-3)
+    // Flow enters from NW(2) -> exits to NE(3)
     const tile: PlacedTile = {
       type: TileType.TwoSharps,
       rotation: 0,
@@ -78,14 +81,14 @@ describe('Flow Edge Debug', () => {
     // Verify edge directions
     expect(tileEdges).toBeDefined();
     
-    // From SW (0) -> SE (5) should both be p1
-    expect(tileEdges?.get(Direction.SouthWest)).toBe('p1');
-    expect(tileEdges?.get(Direction.SouthEast)).toBe('p1');
+    // Flow enters from NW(2) -> exits to NE(3), creates flow on edges 2 and 3
+    expect(tileEdges?.get(Direction.NorthWest)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthEast)).toBe('p1');
 
     // All other directions should NOT have p1's flow
+    expect(tileEdges?.get(Direction.SouthWest)).toBeUndefined();
     expect(tileEdges?.get(Direction.West)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthWest)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthEast)).toBeUndefined();
     expect(tileEdges?.get(Direction.East)).toBeUndefined();
+    expect(tileEdges?.get(Direction.SouthEast)).toBeUndefined();
   });
 });
