@@ -71,7 +71,6 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     
     // Edge tile: NoSharps at rotation 0 at (-3,1)
     // Connections: 0↔2, 1↔4, 3↔5
-    // Flow enters from NW(2) → exits to SW(0) → reaches (-2,0)
     // Flow enters from NE(3) → exits to SE(5) → reaches (-2,1)
     board.set('-3,1', { 
       type: TileType.NoSharps, 
