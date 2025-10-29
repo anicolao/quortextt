@@ -79,27 +79,33 @@ test.describe('Tile Rendering Tests', () => {
         
         await page.waitForTimeout(300);
         
-        // Place the tile at center position for visibility
+        // Place the tile at position (-3,3) to show flow from one player edge
         await page.evaluate(({ rotation }) => {
           const store = (window as any).__REDUX_STORE__;
           store.dispatch({ 
             type: 'PLACE_TILE', 
-            payload: { position: { row: 0, col: 0 }, rotation } 
+            payload: { position: { row: -3, col: 3 }, rotation } 
           });
         }, { rotation });
         
         await page.waitForTimeout(500);
         
-        // Add edge labels and vertex numbers using canvas text overlay
+        // Add edge labels using canvas text overlay
         await page.evaluate(({ directionNames, tileTypeName, rotation, connections }) => {
           const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
           
-          // Get the center hex position
+          // Find the tile position on canvas
+          // Position (-3, 3) with standard hex layout
           const hexSize = 40; // From game constants
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
+          
+          // Calculate pixel position for hex at (-3, 3)
+          // Pointy-top hexagon: x = size * (sqrt(3) * col + sqrt(3)/2 * row), y = size * (3/2 * row)
+          const tileX = centerX + hexSize * (Math.sqrt(3) * 3 + (Math.sqrt(3) / 2) * (-3));
+          const tileY = centerY + hexSize * ((3 / 2) * (-3));
           
           // Vertex pairs for each direction (matches hexLayout.ts after fix)
           const vertexPairs = [
@@ -111,30 +117,13 @@ test.describe('Tile Rendering Tests', () => {
             [1, 2], // SouthEast (5)
           ];
           
-          // Draw vertex numbers at each vertex position
-          ctx.font = 'bold 18px Arial';
-          ctx.fillStyle = '#FF0000'; // Red for vertices
-          ctx.strokeStyle = 'white';
-          ctx.lineWidth = 4;
-          
-          const vertexRadius = hexSize * 1.15;
-          for (let v = 0; v < 6; v++) {
-            // Vertex angle: -30° for vertex 0, then +60° for each subsequent vertex
-            const angle = ((60 * v - 30) * Math.PI) / 180;
-            const x = centerX + vertexRadius * Math.cos(angle);
-            const y = centerY + vertexRadius * Math.sin(angle);
-            
-            const label = `V${v}`;
-            ctx.strokeText(label, x - 10, y + 5);
-            ctx.fillText(label, x - 10, y + 5);
-          }
-          
-          // Draw edge labels with direction and vertex info
-          ctx.font = 'bold 14px Arial';
+          // Draw edge labels with direction names only
+          ctx.font = 'bold 16px Arial';
           ctx.fillStyle = 'black';
+          ctx.strokeStyle = 'white';
           ctx.lineWidth = 3;
           
-          const edgeLabelRadius = hexSize * 1.5;
+          const edgeLabelRadius = hexSize * 1.8; // Further away from hex
           
           for (let dir = 0; dir < 6; dir++) {
             // Calculate edge midpoint angle based on its vertices
@@ -142,44 +131,44 @@ test.describe('Tile Rendering Tests', () => {
             const angle1 = ((60 * v1 - 30) * Math.PI) / 180;
             const angle2 = ((60 * v2 - 30) * Math.PI) / 180;
             
-            const vx1 = centerX + hexSize * Math.cos(angle1);
-            const vy1 = centerY + hexSize * Math.sin(angle1);
-            const vx2 = centerX + hexSize * Math.cos(angle2);
-            const vy2 = centerY + hexSize * Math.sin(angle2);
+            const vx1 = tileX + hexSize * Math.cos(angle1);
+            const vy1 = tileY + hexSize * Math.sin(angle1);
+            const vx2 = tileX + hexSize * Math.cos(angle2);
+            const vy2 = tileY + hexSize * Math.sin(angle2);
             
             // Edge midpoint
             const edgeMidX = (vx1 + vx2) / 2;
             const edgeMidY = (vy1 + vy2) / 2;
             
             // Push label outward from center
-            const dx = edgeMidX - centerX;
-            const dy = edgeMidY - centerY;
+            const dx = edgeMidX - tileX;
+            const dy = edgeMidY - tileY;
             const len = Math.sqrt(dx * dx + dy * dy);
-            const x = centerX + (dx / len) * edgeLabelRadius;
-            const y = centerY + (dy / len) * edgeLabelRadius;
+            const x = tileX + (dx / len) * edgeLabelRadius;
+            const y = tileY + (dy / len) * edgeLabelRadius;
             
-            const label = `${dir}:${directionNames[dir]} (V${v1}-V${v2})`;
-            ctx.strokeText(label, x - 30, y + 5);
-            ctx.fillText(label, x - 30, y + 5);
+            const label = `${dir}:${directionNames[dir]}`;
+            ctx.strokeText(label, x - 20, y + 5);
+            ctx.fillText(label, x - 20, y + 5);
           }
           
           // Draw title
           ctx.font = 'bold 20px Arial';
           const title = `${tileTypeName} - Rotation ${rotation}`;
-          ctx.strokeText(title, centerX - 100, centerY - hexSize * 2.5);
-          ctx.fillText(title, centerX - 100, centerY - hexSize * 2.5);
+          ctx.strokeText(title, tileX - 100, tileY - hexSize * 2.5);
+          ctx.fillText(title, tileX - 100, tileY - hexSize * 2.5);
           
           // Draw connection info
           ctx.font = '14px Arial';
-          let yOffset = centerY + hexSize * 2.5 + 20;
-          ctx.strokeText('Connections:', centerX - 100, yOffset);
-          ctx.fillText('Connections:', centerX - 100, yOffset);
+          let yOffset = tileY + hexSize * 2.5 + 20;
+          ctx.strokeText('Connections:', tileX - 100, yOffset);
+          ctx.fillText('Connections:', tileX - 100, yOffset);
           
           connections.forEach(([a, b]: [number, number]) => {
             yOffset += 18;
             const connText = `${a}:${directionNames[a]} ↔ ${b}:${directionNames[b]}`;
-            ctx.strokeText(connText, centerX - 100, yOffset);
-            ctx.fillText(connText, centerX - 100, yOffset);
+            ctx.strokeText(connText, tileX - 100, yOffset);
+            ctx.fillText(connText, tileX - 100, yOffset);
           });
         }, { 
           directionNames, 
