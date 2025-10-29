@@ -36,15 +36,14 @@ describe('Flow Edge Debug', () => {
     // Verify edge directions
     expect(tileEdges).toBeDefined();
     
-    // From SW (0) <-> SE (5) should both be p1
+    // ThreeSharps has 3 connections, so all 6 directions should have flow edges
+    // SW-SE (0-5), W-NW (1-2), NE-E (3-4)
     expect(tileEdges?.get(Direction.SouthWest)).toBe('p1');
     expect(tileEdges?.get(Direction.SouthEast)).toBe('p1');
-
-    // All other directions should NOT have p1's flow
-    expect(tileEdges?.get(Direction.West)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthWest)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthEast)).toBeUndefined();
-    expect(tileEdges?.get(Direction.East)).toBeUndefined();
+    expect(tileEdges?.get(Direction.West)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthWest)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthEast)).toBe('p1');
+    expect(tileEdges?.get(Direction.East)).toBe('p1');
   });
   
   it('should correctly calculate flow edges for tile at (-3,1) with TwoSharps', () => {
@@ -78,14 +77,13 @@ describe('Flow Edge Debug', () => {
     // Verify edge directions
     expect(tileEdges).toBeDefined();
     
-    // From SW (0) -> SE (5) should both be p1
+    // TwoSharps has 3 connections, so all 6 directions should have flow edges
+    // SW-SE (0-5), W-E (1-4), NW-NE (2-3)
     expect(tileEdges?.get(Direction.SouthWest)).toBe('p1');
     expect(tileEdges?.get(Direction.SouthEast)).toBe('p1');
-
-    // All other directions should NOT have p1's flow
-    expect(tileEdges?.get(Direction.West)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthWest)).toBeUndefined();
-    expect(tileEdges?.get(Direction.NorthEast)).toBeUndefined();
-    expect(tileEdges?.get(Direction.East)).toBeUndefined();
+    expect(tileEdges?.get(Direction.West)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthWest)).toBe('p1');
+    expect(tileEdges?.get(Direction.NorthEast)).toBe('p1');
+    expect(tileEdges?.get(Direction.East)).toBe('p1');
   });
 });

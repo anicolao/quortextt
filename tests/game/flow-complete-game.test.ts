@@ -147,8 +147,54 @@ describe('Flow computation bug - first 5 moves of complete game', () => {
       console.log(`Tile ${idx + 1} at (${pos.row}, ${pos.col}): type=${move.tile.type}, rot=${move.tile.rotation}, P1=${hasP1Flow}, P2=${hasP2Flow}`);
     });
     
+    // Check all flow positions
+    console.log('\n=== ALL FLOW POSITIONS ===');
+    const player1Flows = state.flows.get(player1.id);
+    console.log('Player 1 flow positions:', Array.from(player1Flows || []));
+    
+    // Check for flows on empty positions (this would be a bug)
+    const emptyPositions = [
+      { row: -1, col: -2 },
+      { row: -1, col: -1 },
+      { row: -3, col: -1 },
+      { row: -2, col: 0 },
+    ];
+    
+    console.log('\n=== CHECKING EMPTY POSITIONS FOR INCORRECT FLOWS ===');
+    emptyPositions.forEach(pos => {
+      const key = positionToKey(pos);
+      const hasFlow = player1Flows?.has(key);
+      const onBoard = state.board.has(key);
+      console.log(`Position (${pos.row}, ${pos.col}): onBoard=${onBoard}, hasFlow=${hasFlow}`);
+      // Empty positions should NOT have flows
+      if (hasFlow && !onBoard) {
+        console.log(`  ❌ BUG: Empty position has flow!`);
+      }
+    });
+    
     // The 5th tile SHOULD have flows because it's connected to edge tiles
     // This is the correct behavior after fixing the bidirectional flow logic
     expect(player1FlowsContain5thTile || player2FlowsContain5thTile).toBe(true);
+    
+    // CRITICAL: Empty positions should NOT have flows
+    // Only positions with actual tiles should be in the flow set
+    emptyPositions.forEach(pos => {
+      const key = positionToKey(pos);
+      const onBoard = state.board.has(key);
+      const hasFlow = player1Flows?.has(key) || state.flows.get(player2.id)?.has(key);
+      if (!onBoard) {
+        expect(hasFlow).toBe(false);
+      }
+    });
+    
+    // Verify the 5th tile has ALL 6 flow edges (3 connections × 2 directions each)
+    // ThreeSharps has 3 connections, so should have 6 flow edge entries
+    expect(flowEdgesFor5thTile).toBeDefined();
+    expect(flowEdgesFor5thTile!.size).toBe(6);
+    
+    // The connection from tile 1 at (-3,0) comes via SW direction from tile 1
+    // which means tile 5 receives from NE (opposite of SW)
+    // This should be one of the flow edges (NE ↔ NW connection)
+    expect(flowEdgesFor5thTile!.has(3)).toBe(true); // NE - the occupied connection
   });
 });
