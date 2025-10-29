@@ -8,7 +8,7 @@ import {
   getEdgePositionsWithDirections,
   isValidPosition,
 } from './board';
-import { getFlowExit, getFlowConnections } from './tiles';
+import { getFlowExit } from './tiles';
 
 // Flow edge data: tracks which player's flow enters/exits each hex edge
 export interface FlowEdgeData {
@@ -61,21 +61,18 @@ export function traceFlow(
     // Add this position to the flow only if there's a valid flow connection
     flowPositions.add(posKey);
     
-    // Record ALL flow edges for this tile (all connection directions)
-    // A tile with flow should show all its connections, not just the traversed path
-    const connections = getFlowConnections(tile.type, tile.rotation);
-    for (const [dir1, dir2] of connections) {
-      flowEdges.push({
-        position: posKey,
-        direction: dir1,
-        playerId,
-      });
-      flowEdges.push({
-        position: posKey,
-        direction: dir2,
-        playerId,
-      });
-    }
+    // Record that this player's flow enters and exits through these edges
+    // Only record the specific connection being used for this flow path
+    flowEdges.push({
+      position: posKey,
+      direction: current.entryDir,
+      playerId,
+    });
+    flowEdges.push({
+      position: posKey,
+      direction: exitDir,
+      playerId,
+    });
     
     // Continue flow in the exit direction
     const nextPos = getNeighborInDirection(current.pos, exitDir);

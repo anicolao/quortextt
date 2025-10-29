@@ -187,14 +187,12 @@ describe('Flow computation bug - first 5 moves of complete game', () => {
       }
     });
     
-    // Verify the 5th tile has ALL 6 flow edges (3 connections × 2 directions each)
-    // ThreeSharps has 3 connections, so should have 6 flow edge entries
-    expect(flowEdgesFor5thTile).toBeDefined();
-    expect(flowEdgesFor5thTile!.size).toBe(6);
-    
+    // Verify the 5th tile has flow edges for the traversed connection only
     // The connection from tile 1 at (-3,0) comes via SW direction from tile 1
     // which means tile 5 receives from NE (opposite of SW)
-    // This should be one of the flow edges (NE ↔ NW connection)
-    expect(flowEdgesFor5thTile!.has(3)).toBe(true); // NE - the occupied connection
+    // This should show edges for the NE ↔ NW connection (directions 3 and 2)
+    expect(flowEdgesFor5thTile).toBeDefined();
+    expect(flowEdgesFor5thTile!.has(3)).toBe(true); // NE - entry from tile 1
+    expect(flowEdgesFor5thTile!.has(2)).toBe(true); // NW - exit from this connection
   });
 });
