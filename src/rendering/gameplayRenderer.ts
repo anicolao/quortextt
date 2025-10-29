@@ -219,6 +219,47 @@ export class GameplayRenderer {
     this.ctx.globalAlpha = 1.0;
   }
 
+  private drawFlowBezier(
+    center: Point,
+    dir1: number,
+    dir2: number,
+    color: string,
+  ): void {
+    // Get edge midpoints
+    const start = getEdgeMidpoint(center, this.layout.size, dir1);
+    const end = getEdgeMidpoint(center, this.layout.size, dir2);
+
+    // Get control points (perpendicular to edges)
+    const control1Vec = getPerpendicularVector(dir1, this.layout.size);
+    const control2Vec = getPerpendicularVector(dir2, this.layout.size);
+
+    const control1 = {
+      x: start.x + control1Vec.x,
+      y: start.y + control1Vec.y,
+    };
+    const control2 = {
+      x: end.x + control2Vec.x,
+      y: end.y + control2Vec.y,
+    };
+
+    // Draw Bézier curve
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
+    this.ctx.lineCap = "round";
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(start.x, start.y);
+    this.ctx.bezierCurveTo(
+      control1.x,
+      control1.y,
+      control2.x,
+      control2.y,
+      end.x,
+      end.y,
+    );
+    this.ctx.stroke();
+  }
+
   private renderFlowPaths(
     tile: PlacedTile,
     state: RootState,
@@ -230,95 +271,34 @@ export class GameplayRenderer {
 
     // First pass: Draw ALL connections in grey
     connections.forEach(([dir1, dir2]) => {
-      // Get edge midpoints
-      const start = getEdgeMidpoint(center, this.layout.size, dir1);
-      const end = getEdgeMidpoint(center, this.layout.size, dir2);
-
-      // Get control points (perpendicular to edges)
-      const control1Vec = getPerpendicularVector(dir1, this.layout.size);
-      const control2Vec = getPerpendicularVector(dir2, this.layout.size);
-
-      const control1 = {
-        x: start.x + control1Vec.x,
-        y: start.y + control1Vec.y,
-      };
-      const control2 = {
-        x: end.x + control2Vec.x,
-        y: end.y + control2Vec.y,
-      };
-
-      // Always draw in grey
-      this.ctx.strokeStyle = "#888888";
-      this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
-      this.ctx.lineCap = "round";
-
-      // Draw Bézier curve
-      this.ctx.beginPath();
-      this.ctx.moveTo(start.x, start.y);
-      this.ctx.bezierCurveTo(
-        control1.x,
-        control1.y,
-        control2.x,
-        control2.y,
-        end.x,
-        end.y,
-      );
-      this.ctx.stroke();
+      this.drawFlowBezier(center, dir1, dir2, "#888888");
     });
 
-    // Second pass: Draw colored overlays for flow edges
-    // For each flow edge direction, find which connection it belongs to and draw that connection
+    // Second pass: Draw colored overlays directly from flowEdges
+    // Group flow edges by player and draw each complete connection
     if (tileFlowEdges) {
-      const drawnConnections = new Set<string>();
+      // Collect all directions for each player
+      const playerDirections = new Map<string, Set<number>>();
       
       tileFlowEdges.forEach((playerId, dir) => {
+        if (!playerDirections.has(playerId)) {
+          playerDirections.set(playerId, new Set());
+        }
+        playerDirections.get(playerId)!.add(dir);
+      });
+
+      // For each player, find pairs of directions and draw them
+      playerDirections.forEach((directions, playerId) => {
         const player = state.game.players.find(p => p.id === playerId);
         if (!player) return;
 
-        // Find which connection includes this direction
-        connections.forEach(([dir1, dir2]) => {
-          if (dir === dir1 || dir === dir2) {
-            // Create a key to avoid drawing the same connection twice
-            const connectionKey = `${Math.min(dir1, dir2)}-${Math.max(dir1, dir2)}`;
-            if (drawnConnections.has(connectionKey)) return;
-            drawnConnections.add(connectionKey);
-
-            // Get edge midpoints
-            const start = getEdgeMidpoint(center, this.layout.size, dir1);
-            const end = getEdgeMidpoint(center, this.layout.size, dir2);
-
-            // Get control points (perpendicular to edges)
-            const control1Vec = getPerpendicularVector(dir1, this.layout.size);
-            const control2Vec = getPerpendicularVector(dir2, this.layout.size);
-
-            const control1 = {
-              x: start.x + control1Vec.x,
-              y: start.y + control1Vec.y,
-            };
-            const control2 = {
-              x: end.x + control2Vec.x,
-              y: end.y + control2Vec.y,
-            };
-
-            // Draw in player color
-            this.ctx.strokeStyle = player.color;
-            this.ctx.lineWidth = this.layout.size * 0.15;
-            this.ctx.lineCap = "round";
-
-            // Draw Bézier curve
-            this.ctx.beginPath();
-            this.ctx.moveTo(start.x, start.y);
-            this.ctx.bezierCurveTo(
-              control1.x,
-              control1.y,
-              control2.x,
-              control2.y,
-              end.x,
-              end.y,
-            );
-            this.ctx.stroke();
-          }
-        });
+        // Convert to array for pairing
+        const dirArray = Array.from(directions);
+        
+        // Draw connection for each pair (should be exactly 2 directions per tile)
+        if (dirArray.length === 2) {
+          this.drawFlowBezier(center, dirArray[0], dirArray[1], player.color);
+        }
       });
     }
   }

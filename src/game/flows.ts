@@ -7,7 +7,6 @@ import {
   getOppositeDirection,
   getEdgePositionsWithDirections,
   isValidPosition,
-  rotateDirection,
 } from './board';
 import { getFlowExit } from './tiles';
 
