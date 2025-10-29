@@ -228,26 +228,8 @@ export class GameplayRenderer {
     const tileKey = `${tile.position.row},${tile.position.col}`;
     const tileFlowEdges = state.game.flowEdges.get(tileKey);
 
-    // For each flow connection, draw a Bézier curve
+    // First pass: Draw ALL connections in grey
     connections.forEach(([dir1, dir2]) => {
-      // Determine the color for THIS specific path based on flow edges
-      let pathColor = "#888888"; // Default neutral grey
-      
-      // Check if both ends of this path have flow from the same player
-      if (tileFlowEdges) {
-        const player1 = tileFlowEdges.get(dir1);
-        const player2 = tileFlowEdges.get(dir2);
-        
-        // Only color the path if BOTH ends have the same player's flow
-        if (player1 && player1 === player2) {
-          // Find the player's color
-          const player = state.game.players.find(p => p.id === player1);
-          if (player) {
-            pathColor = player.color;
-          }
-        }
-      }
-
       // Get edge midpoints
       const start = getEdgeMidpoint(center, this.layout.size, dir1);
       const end = getEdgeMidpoint(center, this.layout.size, dir2);
@@ -265,8 +247,8 @@ export class GameplayRenderer {
         y: end.y + control2Vec.y,
       };
 
-      // Use the determined color for this path
-      this.ctx.strokeStyle = pathColor;
+      // Always draw in grey
+      this.ctx.strokeStyle = "#888888";
       this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
       this.ctx.lineCap = "round";
 
@@ -283,6 +265,62 @@ export class GameplayRenderer {
       );
       this.ctx.stroke();
     });
+
+    // Second pass: Draw colored overlays for flow edges
+    // For each flow edge direction, find which connection it belongs to and draw that connection
+    if (tileFlowEdges) {
+      const drawnConnections = new Set<string>();
+      
+      tileFlowEdges.forEach((playerId, dir) => {
+        const player = state.game.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        // Find which connection includes this direction
+        connections.forEach(([dir1, dir2]) => {
+          if (dir === dir1 || dir === dir2) {
+            // Create a key to avoid drawing the same connection twice
+            const connectionKey = `${Math.min(dir1, dir2)}-${Math.max(dir1, dir2)}`;
+            if (drawnConnections.has(connectionKey)) return;
+            drawnConnections.add(connectionKey);
+
+            // Get edge midpoints
+            const start = getEdgeMidpoint(center, this.layout.size, dir1);
+            const end = getEdgeMidpoint(center, this.layout.size, dir2);
+
+            // Get control points (perpendicular to edges)
+            const control1Vec = getPerpendicularVector(dir1, this.layout.size);
+            const control2Vec = getPerpendicularVector(dir2, this.layout.size);
+
+            const control1 = {
+              x: start.x + control1Vec.x,
+              y: start.y + control1Vec.y,
+            };
+            const control2 = {
+              x: end.x + control2Vec.x,
+              y: end.y + control2Vec.y,
+            };
+
+            // Draw in player color
+            this.ctx.strokeStyle = player.color;
+            this.ctx.lineWidth = this.layout.size * 0.15;
+            this.ctx.lineCap = "round";
+
+            // Draw Bézier curve
+            this.ctx.beginPath();
+            this.ctx.moveTo(start.x, start.y);
+            this.ctx.bezierCurveTo(
+              control1.x,
+              control1.y,
+              control2.x,
+              control2.y,
+              end.x,
+              end.y,
+            );
+            this.ctx.stroke();
+          }
+        });
+      });
+    }
   }
 
   private renderCurrentTilePreview(state: RootState): void {

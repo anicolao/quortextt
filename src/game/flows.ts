@@ -93,21 +93,16 @@ export function traceFlow(
       }
       
       // Always record both entry and exit directions
-      // IMPORTANT: Store UNROTATED directions so the renderer can apply rotation
-      // The renderer calls getFlowConnections(tile.type, tile.rotation) which returns rotated directions,
-      // then checks if flowEdges has those directions. By storing unrotated directions,
-      // we let the renderer's rotation logic handle the visual placement.
-      const unrotatedEntryDir = rotateDirection(current.entryDir, -tile.rotation);
-      const unrotatedExitDir = rotateDirection(exitDir, -tile.rotation);
-      
+      // Store ROTATED directions (actual board directions)
+      // The renderer will draw all connections in grey, then overlay flowEdges in player colors
       flowEdges.push({
         position: posKey,
-        direction: unrotatedEntryDir,
+        direction: current.entryDir,
         playerId,
       });
       flowEdges.push({
         position: posKey,
-        direction: unrotatedExitDir,
+        direction: exitDir,
         playerId,
       });
     }
