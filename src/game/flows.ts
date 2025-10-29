@@ -32,9 +32,9 @@ export function traceFlow(
   const edgesRecorded = new Set<string>(); // Track which tiles have flow edges recorded
   const startPosKey = positionToKey(startPos); // For validation
   
-  // Queue of positions to explore: [position, direction entering the tile]
-  const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [
-    { pos: startPos, entryDir: startDirection },
+  // Queue of positions to explore: [position, direction entering the tile, is this from bidirectional?]
+  const queue: Array<{ pos: HexPosition; entryDir: Direction; isBidirectional: boolean }> = [
+    { pos: startPos, entryDir: startDirection, isBidirectional: false },
   ];
   
   while (queue.length > 0) {
@@ -64,32 +64,10 @@ export function traceFlow(
     flowPositions.add(posKey);
     
     // Record flow edges for this tile - exactly once per tile
-    // For each tile with flow, record exactly ONE connection (both directions)
-    if (!edgesRecorded.has(posKey)) {
+    // ONLY record edges for forward exploration, NOT bidirectional re-exploration
+    // This prevents recording edges for paths that don't lead anywhere useful
+    if (!edgesRecorded.has(posKey) && !current.isBidirectional) {
       edgesRecorded.add(posKey);
-      
-      // VALIDATION: At least one end of the flow edge must point to a tile or board edge
-      // Exception: if this is the start position, entry direction comes from board edge
-      const isStartPosition = posKey === startPosKey;
-      
-      const entryNeighbor = getNeighborInDirection(current.pos, current.entryDir);
-      const exitNeighbor = getNeighborInDirection(current.pos, exitDir);
-      const entryNeighborKey = isValidPosition(entryNeighbor) ? positionToKey(entryNeighbor) : null;
-      const exitNeighborKey = isValidPosition(exitNeighbor) ? positionToKey(exitNeighbor) : null;
-      
-      const entryPointsToTile = entryNeighborKey && board.has(entryNeighborKey);
-      const exitPointsToTile = exitNeighborKey && board.has(exitNeighborKey);
-      
-      // For start position, entry comes from board edge (valid)
-      // For other positions, at least one direction must point to a tile
-      if (!isStartPosition && !entryPointsToTile && !exitPointsToTile) {
-        throw new Error(
-          `Flow edge validation failed at ${posKey}! ` +
-          `Entry dir ${current.entryDir} points to ${entryNeighborKey || 'off-board'} (hasTile: ${entryPointsToTile}), ` +
-          `Exit dir ${exitDir} points to ${exitNeighborKey || 'off-board'} (hasTile: ${exitPointsToTile}). ` +
-          `At least one direction must point to a tile.`
-        );
-      }
       
       // Always record both entry and exit directions
       // Store ROTATED directions (actual board directions)
@@ -110,12 +88,13 @@ export function traceFlow(
     const nextPos = getNeighborInDirection(current.pos, exitDir);
     if (isValidPosition(nextPos)) {
       const nextEntryDir = getOppositeDirection(exitDir);
-      queue.push({ pos: nextPos, entryDir: nextEntryDir });
+      queue.push({ pos: nextPos, entryDir: nextEntryDir, isBidirectional: false });
     }
     
     // BIDIRECTIONAL: Tile connections work both ways
     // Re-explore this tile from the opposite direction
-    queue.push({ pos: current.pos, entryDir: exitDir });
+    // Mark as bidirectional so it doesn't record edges
+    queue.push({ pos: current.pos, entryDir: exitDir, isBidirectional: true });
   }
   
   return { positions: flowPositions, edges: flowEdges };
