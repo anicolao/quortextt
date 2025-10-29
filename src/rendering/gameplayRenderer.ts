@@ -294,8 +294,8 @@ export class GameplayRenderer {
 
         // Directions come in pairs (entry/exit for each flow connection)
         // A player can have 2, 4, or 6 directions (1, 2, or 3 flows)
-        // Sort to ensure consistent pairing
-        directions.sort((a, b) => a - b);
+        // Directions are already recorded in correct pairs by the flow engine
+        // DO NOT sort - that would scramble the pairs and connect adjacent edges
         
         // Draw each pair of directions as a connection
         for (let i = 0; i < directions.length; i += 2) {
