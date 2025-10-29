@@ -63,30 +63,20 @@ export function traceFlow(
     flowPositions.add(posKey);
     
     // Record flow edges for this tile - exactly once per tile
-    // Only record edges for directions that have tiles (not empty space)
+    // Always record both directions of the connection being traversed
     if (!edgesRecorded.has(posKey)) {
       edgesRecorded.add(posKey);
       
-      const entryNeighbor = getNeighborInDirection(current.pos, current.entryDir);
-      const exitNeighbor = getNeighborInDirection(current.pos, exitDir);
-      const entryHasTile = isValidPosition(entryNeighbor) && board.get(positionToKey(entryNeighbor));
-      const exitHasTile = isValidPosition(exitNeighbor) && board.get(positionToKey(exitNeighbor));
-      
-      // Only record edge directions that point to tiles
-      if (entryHasTile) {
-        flowEdges.push({
-          position: posKey,
-          direction: current.entryDir,
-          playerId,
-        });
-      }
-      if (exitHasTile) {
-        flowEdges.push({
-          position: posKey,
-          direction: exitDir,
-          playerId,
-        });
-      }
+      flowEdges.push({
+        position: posKey,
+        direction: current.entryDir,
+        playerId,
+      });
+      flowEdges.push({
+        position: posKey,
+        direction: exitDir,
+        playerId,
+      });
     }
     
     // Continue flow in the exit direction
