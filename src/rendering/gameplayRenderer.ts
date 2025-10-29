@@ -55,6 +55,9 @@ export class GameplayRenderer {
     // Layer 3: Placed tiles
     this.renderPlacedTiles(state);
 
+    // Layer 3.5: Debug - Show flow edges waiting to propagate (adjacent hex is empty)
+    this.renderWaitingFlowEdges(state);
+
     // Layer 4: Current tile preview
     this.renderCurrentTilePreview(state);
 
@@ -187,6 +190,93 @@ export class GameplayRenderer {
         this.ctx.stroke();
       });
     });
+  }
+
+  private renderWaitingFlowEdges(state: RootState): void {
+    // Debug feature: Highlight edges where flow is trying to exit but adjacent hex is empty
+    // This helps identify flow propagation bugs
+    
+    const { board, flowEdges, players } = state.game;
+    
+    // For each placed tile, check its flow edges
+    board.forEach((tile) => {
+      const tileKey = `${tile.position.row},${tile.position.col}`;
+      const tileFlowEdges = flowEdges.get(tileKey);
+      
+      if (!tileFlowEdges) return;
+      
+      const center = hexToPixel(tile.position, this.layout);
+      const vertices = getHexVertices(center, this.layout.size);
+      
+      // Map direction to vertex pairs (same as in renderSourceHexagonEdges)
+      const vertexPairs = [
+        [4, 5], // SouthWest (240°)
+        [3, 4], // West (180°)
+        [2, 3], // NorthWest (120°)
+        [1, 2], // NorthEast (60°)
+        [0, 1], // East (0°)
+        [5, 0], // SouthEast (300°)
+      ];
+      
+      // Check each direction that has flow
+      tileFlowEdges.forEach((playerId, direction) => {
+        // Get the neighbor in this direction
+        const neighbor = this.getNeighborInDirection(tile.position, direction);
+        
+        // If neighbor is empty (not on board), this is a "waiting" flow edge
+        if (neighbor && !board.has(`${neighbor.row},${neighbor.col}`)) {
+          // Find player color
+          const player = players.find(p => p.id === playerId);
+          if (!player) return;
+          
+          // Draw colored edge to show flow waiting to propagate
+          const [v1Index, v2Index] = vertexPairs[direction];
+          const v1 = vertices[v1Index];
+          const v2 = vertices[v2Index];
+          
+          this.ctx.strokeStyle = player.color;
+          this.ctx.lineWidth = this.layout.size * 0.25; // Even thicker than source edges
+          this.ctx.lineCap = "round";
+          this.ctx.setLineDash([this.layout.size * 0.1, this.layout.size * 0.1]); // Dashed line
+          
+          this.ctx.beginPath();
+          this.ctx.moveTo(v1.x, v1.y);
+          this.ctx.lineTo(v2.x, v2.y);
+          this.ctx.stroke();
+          
+          this.ctx.setLineDash([]); // Reset to solid lines
+        }
+      });
+    });
+  }
+  
+  // Helper to get neighbor position in a direction
+  private getNeighborInDirection(pos: { row: number; col: number }, direction: number): { row: number; col: number } | null {
+    const DIRECTION_VECTORS = [
+      { row: 1, col: -1 },   // SouthWest
+      { row: 0, col: -1 },   // West
+      { row: -1, col: 0 },   // NorthWest
+      { row: -1, col: 1 },   // NorthEast
+      { row: 0, col: 1 },    // East
+      { row: 1, col: 0 },    // SouthEast
+    ];
+    
+    const offset = DIRECTION_VECTORS[direction];
+    const neighbor = {
+      row: pos.row + offset.row,
+      col: pos.col + offset.col,
+    };
+    
+    // Check if valid position (within board bounds)
+    const absRow = Math.abs(neighbor.row);
+    const absCol = Math.abs(neighbor.col);
+    const absSum = Math.abs(neighbor.row + neighbor.col);
+    
+    if (absRow <= 3 && absCol <= 3 && absSum <= 3) {
+      return neighbor;
+    }
+    
+    return null;
   }
 
   private renderPlacedTiles(state: RootState): void {
