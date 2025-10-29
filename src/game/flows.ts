@@ -107,37 +107,66 @@ export function calculateFlows(
   
   for (const player of players) {
     const playerFlow = new Set<string>();
+    const playerEdges: FlowEdgeData[] = [];
+    const visited = new Set<string>(); // Track position:direction pairs to avoid re-processing
+    const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [];
     
     // Get all edge positions with their specific hex edge directions for this player
     const edgeData = getEdgePositionsWithDirections(player.edgePosition);
     
-    // For each edge position and direction pair, trace the flow
+    // Start BFS from all edge entry points
     for (const { pos, dir } of edgeData) {
+      queue.push({ pos, entryDir: dir });
+    }
+    
+    // BFS to explore all reachable tiles via all possible entry directions
+    while (queue.length > 0) {
+      const { pos, entryDir } = queue.shift()!;
       const posKey = positionToKey(pos);
-      const tile = board.get(posKey);
+      const visitKey = `${posKey}:${entryDir}`;
       
+      // Skip if already processed this position+direction
+      if (visited.has(visitKey)) {
+        continue;
+      }
+      visited.add(visitKey);
+      
+      // Check if there's a tile at this position
+      const tile = board.get(posKey);
       if (!tile) {
         continue;
       }
       
-      // Trace flow starting from this specific hex edge direction
-      const { positions, edges } = traceFlow(board, pos, dir, player.id);
-      
-      // Merge this flow into the player's total flow
-      for (const flowPos of positions) {
-        playerFlow.add(flowPos);
+      // Find where the flow exits
+      const exitDir = getFlowExit(tile, entryDir);
+      if (exitDir === null) {
+        continue;
       }
       
-      // Record edge data
-      for (const edge of edges) {
-        if (!flowEdges.has(edge.position)) {
-          flowEdges.set(edge.position, new Map());
-        }
-        flowEdges.get(edge.position)!.set(edge.direction, edge.playerId);
+      // Add this position to the flow
+      playerFlow.add(posKey);
+      
+      // Record edges
+      playerEdges.push({ position: posKey, direction: entryDir, playerId: player.id });
+      playerEdges.push({ position: posKey, direction: exitDir, playerId: player.id });
+      
+      // Queue the next position
+      const nextPos = getNeighborInDirection(pos, exitDir);
+      if (isValidPosition(nextPos)) {
+        const nextEntryDir = getOppositeDirection(exitDir);
+        queue.push({ pos: nextPos, entryDir: nextEntryDir });
       }
     }
     
     flows.set(player.id, playerFlow);
+    
+    // Record edge data
+    for (const edge of playerEdges) {
+      if (!flowEdges.has(edge.position)) {
+        flowEdges.set(edge.position, new Map());
+      }
+      flowEdges.get(edge.position)!.set(edge.direction, edge.playerId);
+    }
   }
   
   return { flows, flowEdges };
