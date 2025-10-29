@@ -20,11 +20,9 @@ describe('vertexPairs mapping to Direction', () => {
       [Direction.SouthEast]: getEdgeMidpoint(center, size, Direction.SouthEast),
     };
 
-    // In screen coordinates (Y increases downward):
-    // - North means smaller Y (negative, upward)
-    // - South means larger Y (positive, downward)
-    // - West means smaller X (negative, leftward)
-    // - East means larger X (positive, rightward)
+    // NOTE: Rendering appears to be vertically flipped from typical screen coordinates
+    // In the render: "North" appears at bottom (positive Y), "South" at top (negative Y)
+    // This matches how the game board is rendered
 
     // East should be to the right (positive X, Y near 0)
     expect(edges[Direction.East].x).toBeGreaterThan(80);
@@ -34,21 +32,21 @@ describe('vertexPairs mapping to Direction', () => {
     expect(edges[Direction.West].x).toBeLessThan(-80);
     expect(Math.abs(edges[Direction.West].y)).toBeLessThan(20);
 
-    // NorthEast should be up-right (positive X, negative Y)
+    // NorthEast should be down-right in render (positive X, positive Y)
     expect(edges[Direction.NorthEast].x).toBeGreaterThan(40);
-    expect(edges[Direction.NorthEast].y).toBeLessThan(-40);
+    expect(edges[Direction.NorthEast].y).toBeGreaterThan(40);
 
-    // NorthWest should be up-left (negative X, negative Y)
+    // NorthWest should be down-left in render (negative X, positive Y)
     expect(edges[Direction.NorthWest].x).toBeLessThan(-40);
-    expect(edges[Direction.NorthWest].y).toBeLessThan(-40);
+    expect(edges[Direction.NorthWest].y).toBeGreaterThan(40);
 
-    // SouthEast should be down-right (positive X, positive Y)
+    // SouthEast should be up-right in render (positive X, negative Y)
     expect(edges[Direction.SouthEast].x).toBeGreaterThan(40);
-    expect(edges[Direction.SouthEast].y).toBeGreaterThan(40);
+    expect(edges[Direction.SouthEast].y).toBeLessThan(-40);
 
-    // SouthWest should be down-left (negative X, positive Y)
+    // SouthWest should be up-left in render (negative X, negative Y)
     expect(edges[Direction.SouthWest].x).toBeLessThan(-40);
-    expect(edges[Direction.SouthWest].y).toBeGreaterThan(40);
+    expect(edges[Direction.SouthWest].y).toBeLessThan(-40);
   });
 
   it('should have vertices at expected angles for pointy-top hexagon', () => {

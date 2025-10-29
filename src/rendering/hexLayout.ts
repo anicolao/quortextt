@@ -124,21 +124,21 @@ export function getEdgeMidpoint(
   // For pointy-top hexagons, get the actual edge midpoints by averaging vertices
   // Direction maps to edges between vertices:
   // Vertices are at angles: -30°, 30°, 90°, 150°, 210°, 270° (indices 0-5)
-  // In screen coordinates (Y increases downward):
-  // SouthWest (0): 120° (down-left) = vertices 2-3
+  // Note: Rendering appears to be vertically flipped, so North/South are swapped from typical screen coordinates
+  // SouthWest (0): 240° (up-left in render) = vertices 4-5
   // West (1): 180° (left) = vertices 3-4
-  // NorthWest (2): 240° (up-left) = vertices 4-5
-  // NorthEast (3): 300° (up-right) = vertices 5-0
+  // NorthWest (2): 120° (down-left in render) = vertices 2-3
+  // NorthEast (3): 60° (down-right in render) = vertices 1-2
   // East (4): 0° (right) = vertices 0-1
-  // SouthEast (5): 60° (down-right) = vertices 1-2
+  // SouthEast (5): 300° (up-right in render) = vertices 5-0
 
   const vertexPairs = [
-    [2, 3], // SouthWest (120°)
+    [4, 5], // SouthWest (240°)
     [3, 4], // West (180°)
-    [4, 5], // NorthWest (240°)
-    [5, 0], // NorthEast (300°)
+    [2, 3], // NorthWest (120°)
+    [1, 2], // NorthEast (60°)
     [0, 1], // East (0°)
-    [1, 2], // SouthEast (60°)
+    [5, 0], // SouthEast (300°)
   ];
 
   const [v1Index, v2Index] = vertexPairs[direction];
