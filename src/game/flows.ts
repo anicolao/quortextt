@@ -20,7 +20,8 @@ export interface FlowEdgeData {
 // Trace a single flow from a starting position and direction
 // Returns set of position keys that are part of this flow AND edge data
 // Note: Bidirectionality is handled by calculateFlows calling this function
-// with all valid entry directions for each edge position
+// with all valid entry directions for each edge position. For example, edge 0
+// (NorthWest) allows flow to enter tiles from SW and SE hex edge directions.
 export function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
