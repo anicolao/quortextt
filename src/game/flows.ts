@@ -61,17 +61,23 @@ export function traceFlow(
     // Add this position to the flow only if there's a valid flow connection
     flowPositions.add(posKey);
     
-    // Record that this player's flow enters and exits through these edges
-    flowEdges.push({
-      position: posKey,
-      direction: current.entryDir,
-      playerId,
-    });
+    // Record that this player's flow exits through exitDir
     flowEdges.push({
       position: posKey,
       direction: exitDir,
       playerId,
     });
+    
+    // Only record entryDir as a flow edge if there's a neighboring tile there
+    // (otherwise it's a source edge from the player's board edge)
+    const entryNeighbor = getNeighborInDirection(current.pos, current.entryDir);
+    if (entryNeighbor && board.has(positionToKey(entryNeighbor))) {
+      flowEdges.push({
+        position: posKey,
+        direction: current.entryDir,
+        playerId,
+      });
+    }
     
     // BIDIRECTIONAL: Continue flow in the exit direction
     const nextPos = getNeighborInDirection(current.pos, exitDir);

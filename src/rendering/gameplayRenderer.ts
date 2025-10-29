@@ -218,7 +218,7 @@ export class GameplayRenderer {
         [5, 0], // SouthEast (300°)
       ];
       
-      // Check each direction that has flow
+      // Check ONLY the specific directions that have flow recorded
       tileFlowEdges.forEach((playerId, direction) => {
         // Get the neighbor in this direction
         const neighbor = this.getNeighborInDirection(tile.position, direction);
