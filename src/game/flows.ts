@@ -7,6 +7,7 @@ import {
   getOppositeDirection,
   getEdgePositionsWithDirections,
   isValidPosition,
+  rotateDirection,
 } from './board';
 import { getFlowExit } from './tiles';
 
@@ -80,14 +81,6 @@ export function traceFlow(
       const entryPointsToTile = entryNeighborKey && board.has(entryNeighborKey);
       const exitPointsToTile = exitNeighborKey && board.has(exitNeighborKey);
       
-      // DEBUG: Log for tile 5
-      if (posKey === '-2,-1') {
-        console.log(`[VALIDATION] Tile at ${posKey}:`);
-        console.log(`  Entry dir ${current.entryDir} → ${entryNeighborKey} (hasTile: ${entryPointsToTile})`);
-        console.log(`  Exit dir ${exitDir} → ${exitNeighborKey} (hasTile: ${exitPointsToTile})`);
-        console.log(`  Is start: ${isStartPosition}`);
-      }
-      
       // For start position, entry comes from board edge (valid)
       // For other positions, at least one direction must point to a tile
       if (!isStartPosition && !entryPointsToTile && !exitPointsToTile) {
@@ -100,15 +93,21 @@ export function traceFlow(
       }
       
       // Always record both entry and exit directions
-      // This represents the complete flow connection through this tile
+      // IMPORTANT: Store UNROTATED directions so the renderer can apply rotation
+      // The renderer calls getFlowConnections(tile.type, tile.rotation) which returns rotated directions,
+      // then checks if flowEdges has those directions. By storing unrotated directions,
+      // we let the renderer's rotation logic handle the visual placement.
+      const unrotatedEntryDir = rotateDirection(current.entryDir, -tile.rotation);
+      const unrotatedExitDir = rotateDirection(exitDir, -tile.rotation);
+      
       flowEdges.push({
         position: posKey,
-        direction: current.entryDir,
+        direction: unrotatedEntryDir,
         playerId,
       });
       flowEdges.push({
         position: posKey,
-        direction: exitDir,
+        direction: unrotatedExitDir,
         playerId,
       });
     }
