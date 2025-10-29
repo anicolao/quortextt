@@ -19,7 +19,7 @@ export interface FlowEdgeData {
 
 // Trace a single flow from a starting position and direction
 // Returns set of position keys that are part of this flow AND edge data
-// Flows are bidirectional - connections work both ways
+// Simplified: just trace the linear path from start edge to termination
 export function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
@@ -28,43 +28,35 @@ export function traceFlow(
 ): { positions: Set<string>; edges: FlowEdgeData[] } {
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
-  const visited = new Set<string>();
   
-  // Queue of positions to explore: [position, direction entering the tile]
-  const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [
-    { pos: startPos, entryDir: startDirection },
-  ];
+  let currentPos = startPos;
+  let currentEntryDir = startDirection;
   
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const posKey = positionToKey(current.pos);
-    
-    // Skip if already visited this position from this direction
-    const visitKey = `${posKey}:${current.entryDir}`;
-    if (visited.has(visitKey)) {
-      continue;
-    }
-    visited.add(visitKey);
+  // Trace the flow forward until it terminates
+  while (true) {
+    const posKey = positionToKey(currentPos);
     
     // Check if there's a tile at this position
     const tile = board.get(posKey);
     if (!tile) {
-      continue;
+      // Flow terminates at an empty position
+      break;
     }
     
     // Find where the flow exits this tile
-    const exitDir = getFlowExit(tile, current.entryDir);
+    const exitDir = getFlowExit(tile, currentEntryDir);
     if (exitDir === null) {
-      continue;
+      // Flow terminates - no connection for this entry direction
+      break;
     }
     
-    // Add this position to the flow only if there's a valid flow connection
+    // Add this position to the flow
     flowPositions.add(posKey);
     
     // Record that this player's flow enters and exits through these edges
     flowEdges.push({
       position: posKey,
-      direction: current.entryDir,
+      direction: currentEntryDir,
       playerId,
     });
     flowEdges.push({
@@ -73,17 +65,16 @@ export function traceFlow(
       playerId,
     });
     
-    // BIDIRECTIONAL: Continue flow in the exit direction
-    const nextPos = getNeighborInDirection(current.pos, exitDir);
-    if (isValidPosition(nextPos)) {
-      const nextEntryDir = getOppositeDirection(exitDir);
-      queue.push({ pos: nextPos, entryDir: nextEntryDir });
+    // Move to the next tile in the exit direction
+    const nextPos = getNeighborInDirection(currentPos, exitDir);
+    if (!isValidPosition(nextPos)) {
+      // Flow terminates at board boundary
+      break;
     }
     
-    // BIDIRECTIONAL: Also explore the current tile from the opposite direction
-    // If flow can enter from entryDir and exit at exitDir,
-    // it can also enter from exitDir and exit at entryDir
-    queue.push({ pos: current.pos, entryDir: exitDir });
+    // Continue tracing from the next position
+    currentPos = nextPos;
+    currentEntryDir = getOppositeDirection(exitDir);
   }
   
   return { positions: flowPositions, edges: flowEdges };
