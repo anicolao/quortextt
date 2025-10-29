@@ -11,7 +11,6 @@ export default defineConfig({
       reportsDirectory: './coverage',
       include: ['src/game/**/*.ts', 'src/redux/**/*.ts'],
       exclude: ['src/game/index.ts', 'src/redux/types.ts'],
-      all: true,
       clean: true,
     },
   },
