@@ -61,7 +61,7 @@ describe('gameReducer - Gameplay Actions', () => {
     it('should create a deck of tiles', () => {
       const state = gameReducer(initialState, shuffleTiles());
 
-      expect(state.availableTiles.length).toBe(42); // 12 + 12 + 10 + 8
+      expect(state.availableTiles.length).toBe(40); // 10 + 10 + 10 + 10
       expect(state.availableTiles.every((t) => t >= 0 && t <= 3)).toBe(true);
     });
 
@@ -91,10 +91,10 @@ describe('gameReducer - Gameplay Actions', () => {
         [0, 0, 0, 0]
       );
 
-      expect(counts[TileType.NoSharps]).toBe(12);
-      expect(counts[TileType.OneSharp]).toBe(12);
+      expect(counts[TileType.NoSharps]).toBe(10);
+      expect(counts[TileType.OneSharp]).toBe(10);
       expect(counts[TileType.TwoSharps]).toBe(10);
-      expect(counts[TileType.ThreeSharps]).toBe(8);
+      expect(counts[TileType.ThreeSharps]).toBe(10);
     });
   });
 

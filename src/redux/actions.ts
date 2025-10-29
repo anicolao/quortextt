@@ -193,11 +193,6 @@ export const placeTile = (position: HexPosition, rotation: Rotation): PlaceTileA
   payload: { position, rotation },
 });
 
-export const setCurrentTileForTesting = (tileType: number): SetCurrentTileForTestingAction => ({
-  type: SET_CURRENT_TILE_FOR_TESTING,
-  payload: { tileType },
-});
-
 // Game flow action creators
 export const nextPlayer = (): NextPlayerAction => ({
   type: NEXT_PLAYER,
