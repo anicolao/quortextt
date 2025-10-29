@@ -52,6 +52,9 @@ export class GameplayRenderer {
     // Layer 2.6: Color source hexagon edges with player colors
     this.renderSourceHexagonEdges(state);
 
+    // Layer 2.7: Debug - Draw edge direction labels (0-5) inside each hexagon
+    this.renderEdgeDirectionLabels();
+
     // Layer 3: Placed tiles
     this.renderPlacedTiles(state);
 
@@ -186,6 +189,33 @@ export class GameplayRenderer {
         this.ctx.lineTo(v2.x, v2.y);
         this.ctx.stroke();
       });
+    });
+  }
+
+  private renderEdgeDirectionLabels(): void {
+    // Debug rendering: Label each edge with its direction number (0-5) inside each hexagon
+    const positions = getAllBoardPositions();
+
+    this.ctx.fillStyle = "#ffffff"; // White for visibility
+    this.ctx.font = `${this.layout.size * 0.25}px sans-serif`;
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+
+    positions.forEach((pos) => {
+      const center = hexToPixel(pos, this.layout);
+
+      // Draw labels for each of the 6 directions (0-5)
+      for (let dir = 0; dir < 6; dir++) {
+        // Get the edge midpoint for this direction
+        const edgeMidpoint = getEdgeMidpoint(center, this.layout.size, dir);
+
+        // Position the label slightly inward from the edge (70% of the way from center to edge)
+        const labelX = center.x + (edgeMidpoint.x - center.x) * 0.7;
+        const labelY = center.y + (edgeMidpoint.y - center.y) * 0.7;
+
+        // Draw the direction number
+        this.ctx.fillText(dir.toString(), labelX, labelY);
+      }
     });
   }
 
