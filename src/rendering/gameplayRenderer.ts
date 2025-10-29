@@ -278,26 +278,30 @@ export class GameplayRenderer {
     // Group flow edges by player and draw each complete connection
     if (tileFlowEdges) {
       // Collect all directions for each player
-      const playerDirections = new Map<string, Set<number>>();
+      const playerDirections = new Map<string, number[]>();
       
       tileFlowEdges.forEach((playerId, dir) => {
         if (!playerDirections.has(playerId)) {
-          playerDirections.set(playerId, new Set());
+          playerDirections.set(playerId, []);
         }
-        playerDirections.get(playerId)!.add(dir);
+        playerDirections.get(playerId)!.push(dir);
       });
 
-      // For each player, find pairs of directions and draw them
+      // For each player, pair up directions and draw connections
       playerDirections.forEach((directions, playerId) => {
         const player = state.game.players.find(p => p.id === playerId);
         if (!player) return;
 
-        // Convert to array for pairing
-        const dirArray = Array.from(directions);
+        // Directions come in pairs (entry/exit for each flow connection)
+        // A player can have 2, 4, or 6 directions (1, 2, or 3 flows)
+        // Sort to ensure consistent pairing
+        directions.sort((a, b) => a - b);
         
-        // Draw connection for each pair (should be exactly 2 directions per tile)
-        if (dirArray.length === 2) {
-          this.drawFlowBezier(center, dirArray[0], dirArray[1], player.color);
+        // Draw each pair of directions as a connection
+        for (let i = 0; i < directions.length; i += 2) {
+          if (i + 1 < directions.length) {
+            this.drawFlowBezier(center, directions[i], directions[i + 1], player.color);
+          }
         }
       });
     }
