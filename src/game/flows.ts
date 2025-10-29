@@ -38,30 +38,26 @@ export function traceFlow(
   while (queue.length > 0) {
     const current = queue.shift()!;
     const posKey = positionToKey(current.pos);
-    
-    // Skip if already visited this position from this direction
+
     const visitKey = `${posKey}:${current.entryDir}`;
     if (visited.has(visitKey)) {
       continue;
     }
-    visited.add(visitKey);
-    
-    // Check if there's a tile at this position
+
     const tile = board.get(posKey);
     if (!tile) {
       continue;
     }
-    
-    // Find where the flow exits this tile
+
     const exitDir = getFlowExit(tile, current.entryDir);
     if (exitDir === null) {
       continue;
     }
-    
-    // Add this position to the flow only if there's a valid flow connection
+
+    visited.add(visitKey);
+
     flowPositions.add(posKey);
-    
-    // Record that this player's flow enters and exits through these edges
+
     flowEdges.push({
       position: posKey,
       direction: current.entryDir,
@@ -72,21 +68,18 @@ export function traceFlow(
       direction: exitDir,
       playerId,
     });
-    
-    // BIDIRECTIONAL: Continue flow in the exit direction
+
     const nextPos = getNeighborInDirection(current.pos, exitDir);
     if (isValidPosition(nextPos)) {
       const nextEntryDir = getOppositeDirection(exitDir);
       queue.push({ pos: nextPos, entryDir: nextEntryDir });
     }
     
-    // BIDIRECTIONAL: Also explore the reverse path
-    // If flow can enter from entryDir and exit at exitDir,
-    // it can also enter from exitDir and exit at entryDir
+    // Explore the reverse path as well
     const reverseNextPos = getNeighborInDirection(current.pos, current.entryDir);
     if (isValidPosition(reverseNextPos)) {
-      const reverseNextEntryDir = getOppositeDirection(current.entryDir);
-      queue.push({ pos: reverseNextPos, entryDir: reverseNextEntryDir });
+        const reverseNextEntryDir = getOppositeDirection(current.entryDir);
+        queue.push({ pos: reverseNextPos, entryDir: reverseNextEntryDir });
     }
   }
   
