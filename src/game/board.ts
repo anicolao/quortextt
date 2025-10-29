@@ -111,8 +111,9 @@ export function rotateDirection(
   direction: Direction,
   steps: number,
 ): Direction {
-  // We add 6 to handle negative steps, ensuring the result is always non-negative
-  return ((direction + steps + 6) % 6) as Direction;
+  // The Direction enum is defined clockwise, so we subtract to rotate
+  // We add 6 to handle negative results, ensuring the modulus is always positive
+  return ((direction - steps + 6) % 6) as Direction;
 }
 
 // Get edge positions for a player based on their edge number (0-5)

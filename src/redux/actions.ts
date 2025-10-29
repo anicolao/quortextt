@@ -16,6 +16,7 @@ export const SHUFFLE_TILES = 'SHUFFLE_TILES';
 // Gameplay actions
 export const DRAW_TILE = 'DRAW_TILE';
 export const PLACE_TILE = 'PLACE_TILE';
+export const SET_CURRENT_TILE_FOR_TESTING = 'SET_CURRENT_TILE_FOR_TESTING';
 
 // Game flow actions
 export const NEXT_PLAYER = 'NEXT_PLAYER';
@@ -88,6 +89,13 @@ export interface PlaceTileAction {
   };
 }
 
+export interface SetCurrentTileForTestingAction {
+  type: typeof SET_CURRENT_TILE_FOR_TESTING;
+  payload: {
+    tileType: number;
+  };
+}
+
 // Game flow action types
 export interface NextPlayerAction {
   type: typeof NEXT_PLAYER;
@@ -136,6 +144,7 @@ export type GameAction =
   | ShuffleTilesAction
   | DrawTileAction
   | PlaceTileAction
+  | SetCurrentTileForTestingAction
   | NextPlayerAction
   | EndGameAction
   | ResetGameAction;

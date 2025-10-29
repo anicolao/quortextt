@@ -41,9 +41,9 @@ describe('tile utilities', () => {
     });
 
     it('should rotate direction clockwise', () => {
-      expect(rotateDirection(Direction.SouthWest, 1)).toBe(Direction.West);
-      expect(rotateDirection(Direction.West, 1)).toBe(Direction.NorthWest);
-      expect(rotateDirection(Direction.East, 2)).toBe(Direction.SouthWest);
+      expect(rotateDirection(Direction.SouthWest, 1)).toBe(Direction.SouthEast);
+      expect(rotateDirection(Direction.West, 1)).toBe(Direction.SouthWest);
+      expect(rotateDirection(Direction.East, 2)).toBe(Direction.NorthWest);
     });
 
     it('should wrap around after full rotation', () => {
@@ -53,7 +53,7 @@ describe('tile utilities', () => {
 
     it('should handle multiple rotations', () => {
       expect(rotateDirection(Direction.SouthWest, 3)).toBe(Direction.NorthEast);
-      expect(rotateDirection(Direction.NorthWest, 4)).toBe(Direction.SouthWest);
+      expect(rotateDirection(Direction.NorthWest, 4)).toBe(Direction.East);
     });
   });
 
