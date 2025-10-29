@@ -29,6 +29,7 @@ export function traceFlow(
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
   const visited = new Set<string>();
+  const edgesRecorded = new Set<string>(); // Track which tiles have flow edges recorded
   
   // Queue of positions to explore: [position, direction entering the tile]
   const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [
@@ -61,18 +62,32 @@ export function traceFlow(
     // Add this position to the flow only if there's a valid flow connection
     flowPositions.add(posKey);
     
-    // Record that this player's flow enters and exits through these edges
-    // Only record the specific connection being used for this flow path
-    flowEdges.push({
-      position: posKey,
-      direction: current.entryDir,
-      playerId,
-    });
-    flowEdges.push({
-      position: posKey,
-      direction: exitDir,
-      playerId,
-    });
+    // Record flow edges for this tile - exactly once per tile
+    // Only record edges for directions that have tiles (not empty space)
+    if (!edgesRecorded.has(posKey)) {
+      edgesRecorded.add(posKey);
+      
+      const entryNeighbor = getNeighborInDirection(current.pos, current.entryDir);
+      const exitNeighbor = getNeighborInDirection(current.pos, exitDir);
+      const entryHasTile = isValidPosition(entryNeighbor) && board.get(positionToKey(entryNeighbor));
+      const exitHasTile = isValidPosition(exitNeighbor) && board.get(positionToKey(exitNeighbor));
+      
+      // Only record edge directions that point to tiles
+      if (entryHasTile) {
+        flowEdges.push({
+          position: posKey,
+          direction: current.entryDir,
+          playerId,
+        });
+      }
+      if (exitHasTile) {
+        flowEdges.push({
+          position: posKey,
+          direction: exitDir,
+          playerId,
+        });
+      }
+    }
     
     // Continue flow in the exit direction
     const nextPos = getNeighborInDirection(current.pos, exitDir);
@@ -82,9 +97,7 @@ export function traceFlow(
     }
     
     // BIDIRECTIONAL: Tile connections work both ways
-    // If flow can enter from entryDir and exit at exitDir (A→B),
-    // it can also enter from exitDir and exit at entryDir (B→A)
-    // Re-explore this same tile with exitDir as entry to find the reverse path
+    // Re-explore this tile from the opposite direction
     queue.push({ pos: current.pos, entryDir: exitDir });
   }
   

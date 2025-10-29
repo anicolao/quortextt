@@ -190,9 +190,37 @@ describe('Flow computation bug - first 5 moves of complete game', () => {
     // Verify the 5th tile has flow edges for the traversed connection only
     // The connection from tile 1 at (-3,0) comes via SW direction from tile 1
     // which means tile 5 receives from NE (opposite of SW)
-    // This should show edges for the NE ↔ NW connection (directions 3 and 2)
     expect(flowEdgesFor5thTile).toBeDefined();
     expect(flowEdgesFor5thTile!.has(3)).toBe(true); // NE - entry from tile 1
-    expect(flowEdgesFor5thTile!.has(2)).toBe(true); // NW - exit from this connection
+    
+    // CRITICAL: Check that flow edges only point to tiles that actually exist
+    // For each flow edge direction, verify the neighbor in that direction has a tile
+    const directions = ['SW', 'W', 'NW', 'NE', 'E', 'SE'];
+    if (flowEdgesFor5thTile) {
+      for (const [dir, playerId] of flowEdgesFor5thTile.entries()) {
+        // Calculate neighbor position
+        const dirVectors = [
+          { row: 1, col: -1 },  // 0: SW
+          { row: 0, col: -1 },  // 1: W
+          { row: -1, col: 0 },  // 2: NW
+          { row: -1, col: 1 },  // 3: NE
+          { row: 0, col: 1 },   // 4: E
+          { row: 1, col: 0 },   // 5: SE
+        ];
+        const offset = dirVectors[dir];
+        const neighbor = {
+          row: fifthTilePosition.row + offset.row,
+          col: fifthTilePosition.col + offset.col,
+        };
+        const neighborKey = positionToKey(neighbor);
+        const neighborHasTile = state.board.has(neighborKey);
+        
+        console.log(`  Flow edge direction ${dir} (${directions[dir]}) points to (${neighbor.row}, ${neighbor.col}): hasTile=${neighborHasTile}`);
+        
+        // Flow edges should ONLY point to positions that have tiles
+        // This is the key bug: flowEdges pointing to empty hexes
+        expect(neighborHasTile).toBe(true);
+      }
+    }
   });
 });
