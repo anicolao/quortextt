@@ -80,14 +80,10 @@ export function traceFlow(
       queue.push({ pos: nextPos, entryDir: nextEntryDir });
     }
     
-    // BIDIRECTIONAL: Also explore the reverse path
+    // BIDIRECTIONAL: Also explore the current tile from the opposite direction
     // If flow can enter from entryDir and exit at exitDir,
     // it can also enter from exitDir and exit at entryDir
-    const reverseNextPos = getNeighborInDirection(current.pos, current.entryDir);
-    if (isValidPosition(reverseNextPos)) {
-      const reverseNextEntryDir = getOppositeDirection(current.entryDir);
-      queue.push({ pos: reverseNextPos, entryDir: reverseNextEntryDir });
-    }
+    queue.push({ pos: current.pos, entryDir: exitDir });
   }
   
   return { positions: flowPositions, edges: flowEdges };
