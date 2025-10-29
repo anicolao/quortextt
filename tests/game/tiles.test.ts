@@ -67,11 +67,11 @@ describe('tile utilities', () => {
       const flows = getFlowConnections(TileType.OneSharp, 1);
       expect(flows.length).toBe(3);
       
-      // Each connection should be rotated
+      // Each connection should be rotated by ADDING rotation (tile rotates clockwise)
       const originalFlows = TILE_FLOWS[TileType.OneSharp];
       flows.forEach((flow, i) => {
-        expect(flow[0]).toBe(rotateDirection(originalFlows[i][0], 1));
-        expect(flow[1]).toBe(rotateDirection(originalFlows[i][1], 1));
+        expect(flow[0]).toBe((originalFlows[i][0] + 1) % 6);
+        expect(flow[1]).toBe((originalFlows[i][1] + 1) % 6);
       });
     });
 
