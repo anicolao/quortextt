@@ -30,6 +30,7 @@ export function traceFlow(
   const flowEdges: FlowEdgeData[] = [];
   const visited = new Set<string>();
   const edgesRecorded = new Set<string>(); // Track which tiles have flow edges recorded
+  const startPosKey = positionToKey(startPos); // For validation
   
   // Queue of positions to explore: [position, direction entering the tile]
   const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [
@@ -66,6 +67,37 @@ export function traceFlow(
     // For each tile with flow, record exactly ONE connection (both directions)
     if (!edgesRecorded.has(posKey)) {
       edgesRecorded.add(posKey);
+      
+      // VALIDATION: At least one end of the flow edge must point to a tile or board edge
+      // Exception: if this is the start position, entry direction comes from board edge
+      const isStartPosition = posKey === startPosKey;
+      
+      const entryNeighbor = getNeighborInDirection(current.pos, current.entryDir);
+      const exitNeighbor = getNeighborInDirection(current.pos, exitDir);
+      const entryNeighborKey = isValidPosition(entryNeighbor) ? positionToKey(entryNeighbor) : null;
+      const exitNeighborKey = isValidPosition(exitNeighbor) ? positionToKey(exitNeighbor) : null;
+      
+      const entryPointsToTile = entryNeighborKey && board.has(entryNeighborKey);
+      const exitPointsToTile = exitNeighborKey && board.has(exitNeighborKey);
+      
+      // DEBUG: Log for tile 5
+      if (posKey === '-2,-1') {
+        console.log(`[VALIDATION] Tile at ${posKey}:`);
+        console.log(`  Entry dir ${current.entryDir} → ${entryNeighborKey} (hasTile: ${entryPointsToTile})`);
+        console.log(`  Exit dir ${exitDir} → ${exitNeighborKey} (hasTile: ${exitPointsToTile})`);
+        console.log(`  Is start: ${isStartPosition}`);
+      }
+      
+      // For start position, entry comes from board edge (valid)
+      // For other positions, at least one direction must point to a tile
+      if (!isStartPosition && !entryPointsToTile && !exitPointsToTile) {
+        throw new Error(
+          `Flow edge validation failed at ${posKey}! ` +
+          `Entry dir ${current.entryDir} points to ${entryNeighborKey || 'off-board'} (hasTile: ${entryPointsToTile}), ` +
+          `Exit dir ${exitDir} points to ${exitNeighborKey || 'off-board'} (hasTile: ${exitPointsToTile}). ` +
+          `At least one direction must point to a tile.`
+        );
+      }
       
       // Always record both entry and exit directions
       // This represents the complete flow connection through this tile
