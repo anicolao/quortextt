@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateFlows } from '../src/game/flows';
 import { TileType, PlacedTile, Player, Direction } from '../src/game/types';
-import { getFlowConnections } from '../src/game/tiles';
+import { getFlowConnections, getFlowExit } from '../src/game/tiles';
 
 describe('Specific Flow Bug - 0 sharps at -3,0 and three sharps at -2,-1', () => {
   it('should show tile connections for debugging', () => {
@@ -26,6 +26,23 @@ describe('Specific Flow Bug - 0 sharps at -3,0 and three sharps at -2,-1', () =>
     
     const hasDir3 = threeSharpsConnections.some(([d1, d2]) => d1 === 3 || d2 === 3);
     console.log('ThreeSharps has connection with direction 3 (NorthEast)?', hasDir3);
+    
+    // Test getFlowExit
+    const tile1: PlacedTile = {
+      type: TileType.NoSharps,
+      rotation: 0,
+      position: { row: -3, col: 0 }
+    };
+    const tile2: PlacedTile = {
+      type: TileType.ThreeSharps,
+      rotation: 5,
+      position: { row: -2, col: -1 }
+    };
+    
+    console.log('\n=== Flow Exit Testing ===');
+    console.log('NoSharps: enter from SW(0), exit to:', getFlowExit(tile1, Direction.SouthWest));
+    console.log('NoSharps: enter from SE(5), exit to:', getFlowExit(tile1, Direction.SouthEast));
+    console.log('ThreeSharps: enter from NE(3), exit to:', getFlowExit(tile2, Direction.NorthEast));
   });
 
   it('should have flow in three sharps tile at rotation 5 in position -2,-1', () => {

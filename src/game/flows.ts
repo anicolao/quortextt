@@ -19,7 +19,8 @@ export interface FlowEdgeData {
 
 // Trace a single flow from a starting position and direction
 // Returns set of position keys that are part of this flow AND edge data
-// Flows are bidirectional - connections work both ways
+// This implements a unidirectional flood fill starting from board edges
+// matching the Rust implementation's floodfill_path function
 export function traceFlow(
   board: Map<string, PlacedTile>,
   startPos: HexPosition,
@@ -28,43 +29,40 @@ export function traceFlow(
 ): { positions: Set<string>; edges: FlowEdgeData[] } {
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
-  const visited = new Set<string>();
+  const visited = new Set<string>(); // Track visited positions to prevent infinite loops
   
-  // Queue of positions to explore: [position, direction entering the tile]
-  const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [
-    { pos: startPos, entryDir: startDirection },
-  ];
+  let pos = startPos;
+  let dir = startDirection;
   
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const posKey = positionToKey(current.pos);
+  // Simple loop following the flow path forward only
+  while (true) {
+    const posKey = positionToKey(pos);
     
-    // Skip if already visited this position from this direction
-    const visitKey = `${posKey}:${current.entryDir}`;
-    if (visited.has(visitKey)) {
-      continue;
+    // Prevent infinite loops by checking if we've visited this position
+    if (visited.has(posKey)) {
+      break;
     }
-    visited.add(visitKey);
+    visited.add(posKey);
     
     // Check if there's a tile at this position
     const tile = board.get(posKey);
     if (!tile) {
-      continue;
+      break;
     }
     
     // Find where the flow exits this tile
-    const exitDir = getFlowExit(tile, current.entryDir);
+    const exitDir = getFlowExit(tile, dir);
     if (exitDir === null) {
-      continue;
+      break;
     }
     
-    // Add this position to the flow only if there's a valid flow connection
+    // Add this position to the flow
     flowPositions.add(posKey);
     
     // Record that this player's flow enters and exits through these edges
     flowEdges.push({
       position: posKey,
-      direction: current.entryDir,
+      direction: dir,
       playerId,
     });
     flowEdges.push({
@@ -73,21 +71,15 @@ export function traceFlow(
       playerId,
     });
     
-    // BIDIRECTIONAL: Continue flow in the exit direction
-    const nextPos = getNeighborInDirection(current.pos, exitDir);
-    if (isValidPosition(nextPos)) {
-      const nextEntryDir = getOppositeDirection(exitDir);
-      queue.push({ pos: nextPos, entryDir: nextEntryDir });
+    // Continue flow in the exit direction (unidirectional)
+    const nextPos = getNeighborInDirection(pos, exitDir);
+    if (!isValidPosition(nextPos)) {
+      break;
     }
     
-    // BIDIRECTIONAL: Also explore the reverse path
-    // If flow can enter from entryDir and exit at exitDir,
-    // it can also enter from exitDir and exit at entryDir
-    const reverseNextPos = getNeighborInDirection(current.pos, current.entryDir);
-    if (isValidPosition(reverseNextPos)) {
-      const reverseNextEntryDir = getOppositeDirection(current.entryDir);
-      queue.push({ pos: reverseNextPos, entryDir: reverseNextEntryDir });
-    }
+    // Move to next position
+    pos = nextPos;
+    dir = getOppositeDirection(exitDir);
   }
   
   return { positions: flowPositions, edges: flowEdges };

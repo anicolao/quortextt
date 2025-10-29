@@ -172,15 +172,16 @@ export function getEdgePositionsWithDirections(
   const result: Array<{ pos: HexPosition; dir: Direction }> = [];
   const edgePositions = getEdgePositions(edge);
 
-  // For each edge, define the two inward-facing directions for all hexes on that edge.
-  // These pairs are ordered to match the clockwise enumeration of edges starting from edge 0 (NW).
+  // For each edge, define the two directions through which flow enters from outside the board.
+  // These represent the hex edges that face OUTWARD from the board (toward the player's edge).
+  // Flow enters the tile through these edges when coming from the player's board edge.
   const directionPairs: Direction[][] = [
-    [Direction.SouthWest, Direction.SouthEast], // Edge 0 (NW): Inward is South
-    [Direction.SouthEast, Direction.East], // Edge 5 (W): Inward is East
-    [Direction.East, Direction.NorthEast], // Edge 4 (SW): Inward is NE
-    [Direction.NorthWest, Direction.NorthEast], // Edge 3 (SE): Inward is North
-    [Direction.West, Direction.NorthWest], // Edge 2 (E): Inward is West
-    [Direction.SouthWest, Direction.West], // Edge 1 (NE): Inward is SW
+    [Direction.NorthWest, Direction.NorthEast], // Edge 0 (NW, row -3): Flow enters from North
+    [Direction.NorthEast, Direction.East], // Edge 1 (NE, col 3 top): Flow enters from NE
+    [Direction.East, Direction.SouthEast], // Edge 2 (E, row+col=3): Flow enters from East
+    [Direction.SouthWest, Direction.SouthEast], // Edge 3 (SE, row 3): Flow enters from South
+    [Direction.West, Direction.SouthWest], // Edge 4 (SW, col -3 bottom): Flow enters from SW
+    [Direction.NorthWest, Direction.West], // Edge 5 (W, row+col=-3): Flow enters from West
   ];
 
   const directions = directionPairs[edge];
