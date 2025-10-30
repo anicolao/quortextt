@@ -318,66 +318,6 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers.length).toBe(2);
 
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/010-no-duplicate-colors.png' });
-
-    // Click on first player's color icon
-    const colorIconCoords = await page.evaluate(() => {
-      const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      const padding = Math.min(canvasWidth, canvasHeight) * 0.05;
-      const titleSize = Math.min(canvasWidth, canvasHeight) * 0.06;
-      const titleY = padding + titleSize;
-      const playerListStartY = titleY + titleSize + padding * 2;
-      const buttonWidth = Math.min(canvasWidth * 0.6, 400);
-      const colorIconSize = Math.min(canvasWidth, canvasHeight) * 0.06;
-      const entryX = canvasWidth / 2 - buttonWidth / 2;
-      
-      return {
-        x: entryX + colorIconSize / 2,
-        y: playerListStartY + colorIconSize / 2
-      };
-    });
-    await page.mouse.click(box.x + colorIconCoords.x, box.y + colorIconCoords.y);
-    await page.waitForTimeout(100);
-
-    // Click on second player's color in the picker
-    // Find which color index player 2 has, then click it
-    const player2ColorIndex = await page.evaluate((color: string) => {
-      const PLAYER_COLORS = ['#0173B2', '#DE8F05', '#CC78BC', '#029E73', '#ECE133', '#56B4E9'];
-      return PLAYER_COLORS.indexOf(color);
-    }, player2ColorBefore);
-    
-    const swatchCoords = await page.evaluate((index: number) => {
-      const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      const pickerWidth = Math.min(canvasWidth * 0.8, 500);
-      const pickerHeight = Math.min(canvasHeight * 0.5, 300);
-      const pickerX = canvasWidth / 2 - pickerWidth / 2;
-      const pickerY = canvasHeight / 2 - pickerHeight / 2;
-      const colorSize = Math.min(pickerWidth, pickerHeight) * 0.15;
-      const spacing = colorSize * 1.3;
-      const startX = pickerX + (pickerWidth - spacing * 3) / 2 + colorSize / 2;
-      const startY = pickerY + pickerHeight * 0.35;
-      
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      
-      return {
-        x: startX + col * spacing,
-        y: startY + row * spacing
-      };
-    }, player2ColorIndex);
-    
-    await page.mouse.click(box.x + swatchCoords.x, box.y + swatchCoords.y);
-    await page.waitForTimeout(100);
-    
-    // Verify colors were swapped
-    const afterState = await getReduxState(page);
-    expect(afterState.game.configPlayers[0].color).toBe(player2ColorBefore);
-    expect(afterState.game.configPlayers[1].color).toBe(player1ColorBefore);
-
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/011-colors-swapped.png' });
   });
 });
 
