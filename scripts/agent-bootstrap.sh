@@ -52,11 +52,17 @@ ENV_PREVIEW="$(env | grep -E '^(NODE|PYTHON|GITHUB|PATH|HOME)=' | head -n 40 || 
 
 # Build JSON output
 if jq_exists; then
+  # Handle empty PKGS array safely
+  if [ ${#PKGS[@]} -eq 0 ]; then
+    PKGS_JSON="[]"
+  else
+    PKGS_JSON="$(printf '%s\n' "${PKGS[@]}" | jq -R . | jq -s .)"
+  fi
   jq -n \
     --arg branch "$GIT_BRANCH" \
     --arg commit "$GIT_COMMIT" \
     --arg status "$GIT_STATUS" \
-    --argjson pkgs "$(printf '%s\n' "${PKGS[@]}" | jq -R . | jq -s .)" \
+    --argjson pkgs "$PKGS_JSON" \
     --arg deps "$DEPS_SUMMARY" \
     --arg env "$ENV_PREVIEW" \
     '{branch: $branch, commit: $commit, git_status: $status, detected_package_managers: $pkgs, deps_summary: ($deps|fromjson? // $deps), env_preview: $env}' > "$TMP_FILE" 2>/dev/null || true
@@ -64,13 +70,18 @@ fi
 
 # If jq not available or above failed, fallback to basic JSON
 if [ ! -s "$TMP_FILE" ]; then
-  PKG_LIST="$(printf '%s ' "${PKGS[@]}" | sed 's/ $//')"
+  if [ ${#PKGS[@]} -eq 0 ]; then
+    PKG_LIST="[]"
+  else
+    PKG_LIST="$(printf '"%s",' "${PKGS[@]}" | sed 's/,$//')"
+    PKG_LIST="[$PKG_LIST]"
+  fi
   cat > "$TMP_FILE" <<EOF
 {
   "branch": "$(printf '%s' "$GIT_BRANCH" | sed 's/"/\\"/g')",
   "commit": "$(printf '%s' "$GIT_COMMIT" | sed 's/"/\\"/g')",
   "git_status": "$(printf '%s' "$GIT_STATUS" | sed 's/"/\\"/g')",
-  "detected_package_managers": "$(printf '%s' "$PKG_LIST" | sed 's/"/\\"/g')",
+  "detected_package_managers": $PKG_LIST,
   "deps_summary": "$(printf '%s' "$DEPS_SUMMARY" | sed 's/"/\\"/g')",
   "env_preview": "$(printf '%s' "$ENV_PREVIEW" | sed 's/"/\\"/g')"
 }

@@ -6,6 +6,7 @@ What the script does
 - Updates submodules (best-effort)
 - Attempts to fetch LFS objects (best-effort)
 - Detects common package managers
+- Collects minimal environment info (NODE*, PYTHON*, GITHUB* prefixes only)
 - Produces `.agent-context.json` (a small JSON summary) and prints it to stdout
 
 Using the script in the GitHub coding agent web UI
@@ -23,7 +24,4 @@ Notes & best practices
 - Keep `.agent-context.json` small and structured (JSON). The script tries to keep output compact.
 - Do NOT auto-run the bootstrap script on untrusted forks—validate commit SHAs or signatures where necessary.
 - If your agent runtime does not allow executing repo scripts, run the script locally or in a CI job, then provide the produced JSON to the agent (e.g., paste content into problem statement or upload as a session artifact).
-
-If you'd like, I can:
-- Produce a PR that adds these files to your repo, or
-- Generate the exact API payload / curl command to create a coding session with this problem statement (tell me the repo owner/name and whether you want me to open a PR that adds the files automatically).
+- The script collects only specific environment variables (NODE*, PYTHON*, GITHUB*, PATH, HOME prefixes). Review the script before running if you have security concerns.
