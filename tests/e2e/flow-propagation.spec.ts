@@ -16,6 +16,8 @@ test.describe('Flow Propagation from Player Edges', () => {
       store.dispatch({ type: 'START_GAME' });
       // Use deterministic seed for reproducibility
       store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 42 } });
+      // Draw a tile from the seeded deck to ensure deterministic currentTile
+      store.dispatch({ type: 'DRAW_TILE' });
     });
     
     await page.waitForTimeout(500);
@@ -67,6 +69,8 @@ test.describe('Flow Propagation from Player Edges', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'START_GAME' });
       store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 42 } });
+      // Draw a tile from the seeded deck to ensure deterministic currentTile
+      store.dispatch({ type: 'DRAW_TILE' });
     });
     
     await page.waitForTimeout(500);

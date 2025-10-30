@@ -325,6 +325,14 @@ test.describe('Configuration Screen', () => {
     await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
     await page.waitForTimeout(100);
     
+    // Shuffle with deterministic seed and draw a tile
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 54321 } });
+      store.dispatch({ type: 'DRAW_TILE' });
+    });
+    await page.waitForTimeout(100);
+    
     // Verify screen changed to gameplay
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
