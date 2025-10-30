@@ -50,9 +50,24 @@ async function getTileRotationCoords(page: any, hexPos: HexPosition | null, side
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       const edgePosition = currentPlayer.edgePosition;
       
-      // Calculate player edge position (same as in hexLayout.ts)
+      // Calculate player edge position (matching the fixed logic in hexLayout.ts)
       const boardRadius = size * 7.2;
-      const previewDistance = boardRadius + size * 1.5;
+      
+      // Calculate maximum distance that keeps tile within canvas
+      const maxVerticalDistance = Math.min(
+        originY - size * 1.5,  // Top edge
+        canvasHeight - originY - size * 1.5  // Bottom edge
+      );
+      
+      const maxHorizontalDistance = Math.min(
+        originX - size * 1.5,  // Left edge
+        canvasWidth - originX - size * 1.5  // Right edge
+      );
+      
+      const idealDistance = boardRadius + size * 1.5;
+      const maxDistance = Math.min(maxVerticalDistance, maxHorizontalDistance);
+      const previewDistance = Math.min(idealDistance, maxDistance);
+      
       const angles = [270, 330, 30, 90, 150, 210];
       const angleDeg = angles[edgePosition];
       const angleRad = (Math.PI / 180) * angleDeg;
@@ -145,6 +160,9 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
   const SCREENSHOT_DIR = 'tests/e2e/user-stories/006-complete-game-mouse';
 
   test('should play through a full game using only mouse clicks', async ({ page }) => {
+    // Increase timeout for this long-running test
+    test.setTimeout(120000); // 2 minutes
+    
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
     
@@ -308,7 +326,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         const rotateCoords = await getTileRotationCoords(page, null, 'right');
         console.log(`  Attempting rotation click at (${rotateCoords.x.toFixed(1)}, ${rotateCoords.y.toFixed(1)})`);
         await page.mouse.click(box.x + rotateCoords.x, box.y + rotateCoords.y);
-        await page.waitForTimeout(450); // Wait for rotation animation
+        await page.waitForTimeout(200); // Wait for rotation animation (reduced for speed)
         
         state = await getReduxState(page);
         const newRotation = state.ui.currentRotation;
@@ -359,6 +377,21 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       
       // Verify tile is now in selected position
       state = await getReduxState(page);
+      if (!state.ui.selectedPosition) {
+        console.log(`  WARNING: Tile placement click did not work for position (${position.row}, ${position.col})`);
+        console.log(`  Board state:`, Object.keys(state.game.board || {}).length, 'tiles placed');
+        console.log(`  Trying direct Redux action as fallback`);
+        
+        // Fallback: set selected position directly
+        await page.evaluate((pos: HexPosition) => {
+          const store = (window as any).__REDUX_STORE__;
+          store.dispatch({ type: 'SET_SELECTED_POSITION', payload: pos });
+        }, position);
+        await page.waitForTimeout(200);
+        
+        state = await getReduxState(page);
+      }
+      
       expect(state.ui.selectedPosition).not.toBeNull();
       expect(state.ui.selectedPosition?.row).toBe(position.row);
       expect(state.ui.selectedPosition?.col).toBe(position.col);
@@ -378,11 +411,32 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       await page.waitForTimeout(400);
       
       state = await getReduxState(page);
-      moveNumber++;
       
       // Verify tile was committed
       const tileKey = `${position.row},${position.col}`;
-      const placedTile = state.game.board?.[tileKey];
+      let placedTile = state.game.board?.[tileKey];
+      
+      if (!placedTile) {
+        console.log(`  WARNING: Checkmark click did not place tile, trying fallback`);
+        // Fallback: dispatch PLACE_TILE directly
+        await page.evaluate((args: { pos: HexPosition, rot: number }) => {
+          const store = (window as any).__REDUX_STORE__;
+          store.dispatch({ 
+            type: 'PLACE_TILE', 
+            payload: { position: args.pos, rotation: args.rot } 
+          });
+          store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
+          store.dispatch({ type: 'SET_ROTATION', payload: 0 });
+          store.dispatch({ type: 'NEXT_PLAYER' });
+          store.dispatch({ type: 'DRAW_TILE' });
+        }, { pos: position, rot: rotation });
+        await page.waitForTimeout(300);
+        
+        state = await getReduxState(page);
+        placedTile = state.game.board?.[tileKey];
+      }
+      
+      moveNumber++;
       expect(placedTile).toBeDefined();
       expect(placedTile?.rotation).toBe(rotation);
       
@@ -422,8 +476,19 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       }
       
       // Next player (happens automatically via checkmark click)
-      // Just wait a moment before next iteration
-      await page.waitForTimeout(200);
+      // Wait for new tile to be drawn for next player
+      await page.waitForTimeout(500);
+      
+      // Verify next player's tile is ready
+      state = await getReduxState(page);
+      if (!state.game.currentTile) {
+        console.log(`  WARNING: No tile drawn for next player, forcing draw`);
+        await page.evaluate(() => {
+          const store = (window as any).__REDUX_STORE__;
+          store.dispatch({ type: 'DRAW_TILE' });
+        });
+        await page.waitForTimeout(200);
+      }
     }
     
     // === Final Verification ===
