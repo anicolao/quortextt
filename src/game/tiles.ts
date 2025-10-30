@@ -14,24 +14,24 @@ import { rotateDirection } from './board';
 // - ThreeSharps: three sharp turns, arranged symmetrically
 export const TILE_FLOWS: Record<TileType, readonly FlowConnection[]> = {
   [TileType.NoSharps]: [
-    [Direction.SouthWest, Direction.NorthWest],  // Curved S
-    [Direction.NorthEast, Direction.SouthEast],  // Curved S
-    [Direction.West, Direction.East],            // Straight
+    [Direction.SouthWest, Direction.NorthWest],  // 0-2 (curved)
+    [Direction.West, Direction.East],             // 1-4 (straight)
+    [Direction.NorthEast, Direction.SouthEast],   // 3-5 (curved)
   ],
   [TileType.OneSharp]: [
-    [Direction.SouthWest, Direction.SouthEast],  // Sharp corner
-    [Direction.NorthWest, Direction.East],       // Curved
-    [Direction.West, Direction.NorthEast],       // Curved
+    [Direction.SouthWest, Direction.SouthEast],   // 0-5 (sharp)
+    [Direction.West, Direction.NorthEast],        // 1-3 (curved)
+    [Direction.NorthWest, Direction.East],        // 2-4 (curved)
   ],
   [TileType.TwoSharps]: [
-    [Direction.SouthWest, Direction.SouthEast],  // Sharp
-    [Direction.NorthWest, Direction.NorthEast],  // Sharp
-    [Direction.West, Direction.East],            // Straight
+    [Direction.SouthWest, Direction.SouthEast],   // 0-5 (sharp)
+    [Direction.West, Direction.East],             // 1-4 (straight)
+    [Direction.NorthWest, Direction.NorthEast],   // 2-3 (sharp)
   ],
   [TileType.ThreeSharps]: [
-    [Direction.SouthWest, Direction.SouthEast],  // Sharp
-    [Direction.NorthEast, Direction.East],       // Sharp
-    [Direction.West, Direction.NorthWest],       // Sharp
+    [Direction.SouthWest, Direction.SouthEast],   // 0-5 (sharp)
+    [Direction.West, Direction.NorthWest],        // 1-2 (sharp)
+    [Direction.NorthEast, Direction.East],        // 3-4 (sharp)
   ],
 };
 
