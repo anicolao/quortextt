@@ -169,38 +169,59 @@ export function calculateLobbyLayout(
 
   // Player lists (one per edge, showing all players)
   const playerLists: PlayerListEntry[][] = [[], [], [], []];
-  const entryWidth = minDim * 0.25;
+  const entryWidth = minDim * 0.18;  // Smaller to fit two columns
   const entryHeight = minDim * 0.08;
-  // const playerIconSize = entryHeight * 0.6; // Reserved for future use
   const removeButtonSize = entryHeight * 0.5;
+  const columnSpacing = 10;
 
   // Sort players by join order (timestamp implicit in array order)
   const sortedPlayers = [...players];
+
+  // Calculate available space for player lists at each edge
+  // Space between edge buttons and start button
+  const centerToEdge = Math.min(canvasWidth, canvasHeight) / 2 - startButtonSize / 2;
+  const availableSpace = centerToEdge - edgeMargin - buttonSize - edgeMargin * 2;
+  
+  // Determine if we need two columns
+  const singleColumnHeight = sortedPlayers.length * (entryHeight + 5);
+  const useDoubleColumn = singleColumnHeight > availableSpace;
 
   // For each edge, create player list entries
   for (let edge = 0; edge < 4; edge++) {
     sortedPlayers.forEach((player, index) => {
       let x: number, y: number, rotation: number;
+      
+      // Calculate column and row for this player
+      const column = useDoubleColumn ? index % 2 : 0;
+      const row = useDoubleColumn ? Math.floor(index / 2) : index;
 
       switch (edge) {
         case 0: // Bottom
-          x = canvasWidth / 2 - entryWidth / 2;
-          y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (index + 1) * (entryHeight + 5);
+          if (useDoubleColumn) {
+            x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
+          } else {
+            x = canvasWidth / 2 - entryWidth / 2;
+          }
+          y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
           rotation = 0;
           break;
         case 1: // Right
-          x = canvasWidth - edgeMargin - buttonSize - edgeMargin - entryWidth;
-          y = canvasHeight / 2 - entryHeight / 2 - index * (entryHeight + 5);
+          x = canvasWidth - edgeMargin - buttonSize - edgeMargin - entryWidth - column * (entryWidth + columnSpacing);
+          y = canvasHeight / 2 - entryHeight / 2 - row * (entryHeight + 5);
           rotation = 90;
           break;
         case 2: // Top
-          x = canvasWidth / 2 - entryWidth / 2;
-          y = edgeMargin + buttonSize + edgeMargin + index * (entryHeight + 5);
+          if (useDoubleColumn) {
+            x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
+          } else {
+            x = canvasWidth / 2 - entryWidth / 2;
+          }
+          y = edgeMargin + buttonSize + edgeMargin + row * (entryHeight + 5);
           rotation = 180;
           break;
         case 3: // Left
-          x = edgeMargin + buttonSize + edgeMargin;
-          y = canvasHeight / 2 - entryHeight / 2 + index * (entryHeight + 5);
+          x = edgeMargin + buttonSize + edgeMargin + column * (entryWidth + columnSpacing);
+          y = canvasHeight / 2 - entryHeight / 2 + row * (entryHeight + 5);
           rotation = 270;
           break;
         default:
