@@ -227,6 +227,7 @@ test.describe('Configuration Screen', () => {
       y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
       
       // Remove button position (from lobbyLayout line 242-244)
+      // The `5` is a right margin to keep the button inside the player entry box
       const btnX = x + entryWidth - removeButtonSize - 5;
       const btnY = y + (entryHeight - removeButtonSize) / 2;
       
