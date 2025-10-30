@@ -28,34 +28,24 @@ export function traceFlow(
 ): { positions: Set<string>; edges: FlowEdgeData[] } {
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
-  const visited = new Set<string>();
 
-  // Queue of positions to explore: [position, direction entering the tile]
-  const queue: Array<{ pos: HexPosition; entryDir: Direction }> = [
-    { pos: startPos, entryDir: startDirection },
-  ];
+  // Simply follow the linear flow path from start to finish
+  let currentPos = startPos;
+  let entryDir = startDirection;
 
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const posKey = positionToKey(current.pos);
-
-    // Skip if already visited this position from this direction
-    const visitKey = `${posKey}:${current.entryDir}`;
-    if (visited.has(visitKey)) {
-      continue;
-    }
-    visited.add(visitKey);
+  while (true) {
+    const posKey = positionToKey(currentPos);
 
     // Check if there's a tile at this position
     const tile = board.get(posKey);
     if (!tile) {
-      continue;
+      break;
     }
 
     // Find where the flow exits this tile
-    const exitDir = getFlowExit(tile, current.entryDir);
+    const exitDir = getFlowExit(tile, entryDir);
     if (exitDir === null) {
-      continue;
+      break;
     }
 
     // Add this position to the flow only if there's a valid flow connection
@@ -64,7 +54,7 @@ export function traceFlow(
     // Record that this player's flow enters and exits through these edges
     flowEdges.push({
       position: posKey,
-      direction: current.entryDir,
+      direction: entryDir,
       playerId,
     });
     flowEdges.push({
@@ -73,11 +63,14 @@ export function traceFlow(
       playerId,
     });
 
-    const nextPos = getNeighborInDirection(current.pos, exitDir);
-    if (isValidPosition(nextPos)) {
-      const nextEntryDir = getOppositeDirection(exitDir);
-      queue.push({ pos: nextPos, entryDir: nextEntryDir });
+    // Move to the next position
+    const nextPos = getNeighborInDirection(currentPos, exitDir);
+    if (!isValidPosition(nextPos)) {
+      break;
     }
+
+    currentPos = nextPos;
+    entryDir = getOppositeDirection(exitDir);
   }
 
   return { positions: flowPositions, edges: flowEdges };
