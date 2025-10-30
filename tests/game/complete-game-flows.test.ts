@@ -110,13 +110,20 @@ function runCompleteGameTest(seed: number) {
       state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#0173B2', edge: 0 } });
       state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#DE8F05', edge: 1 } });
 
-      // Start game
+      // Start game - now goes to seating phase
       state = gameReducer(state, { type: 'START_GAME' });
+      
+      // Get player IDs from seating order
+      const player1Id = state.seatingPhase.seatingOrder[0];
+      const player2Id = state.seatingPhase.seatingOrder[1];
+      
+      // Complete seating phase - players select edges
+      state = gameReducer(state, { type: 'SELECT_EDGE', payload: { playerId: player1Id, edgeNumber: 0 } });
+      state = gameReducer(state, { type: 'SELECT_EDGE', payload: { playerId: player2Id, edgeNumber: 3 } });
+      
+      // Now we should be in gameplay
       state = gameReducer(state, { type: 'SHUFFLE_TILES', payload: { seed } });
       state = gameReducer(state, { type: 'DRAW_TILE' });
-
-      const player1Id = state.players[0].id;
-      const player2Id = state.players[1].id;
 
       // Generate positions in the same order as e2e test
       const allPositions = [];

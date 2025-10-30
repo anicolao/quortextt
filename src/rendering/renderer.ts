@@ -5,6 +5,8 @@ import { UILayout } from './layout';
 import { GameplayRenderer } from './gameplayRenderer';
 import { LobbyRenderer } from './lobbyRenderer';
 import { LobbyLayout } from './lobbyLayout';
+import { SeatingRenderer } from './seatingRenderer';
+import { SeatingLayout } from './seatingRenderer';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -14,6 +16,8 @@ export class Renderer {
   private gameplayRenderer: GameplayRenderer | null = null;
   private lobbyRenderer: LobbyRenderer | null = null;
   private currentLobbyLayout: LobbyLayout | null = null;
+  private seatingRenderer: SeatingRenderer | null = null;
+  private currentSeatingLayout: SeatingLayout | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -66,6 +70,8 @@ export class Renderer {
 
     if (screen === 'configuration') {
       return this.renderConfigurationScreenNew(state);
+    } else if (screen === 'seating') {
+      return this.renderSeatingScreen(state);
     } else if (screen === 'gameplay') {
       return this.renderGameplayScreen(state);
     }
@@ -94,7 +100,26 @@ export class Renderer {
     return this.currentLobbyLayout;
   }
 
+  private renderSeatingScreen(state: RootState): UILayout {
+    // Initialize seating renderer if needed
+    if (!this.seatingRenderer) {
+      this.seatingRenderer = new SeatingRenderer(this.ctx);
+    }
 
+    // Render the seating phase screen
+    this.currentSeatingLayout = this.seatingRenderer.render(
+      this.canvas.width,
+      this.canvas.height,
+      state.game
+    );
+
+    // Return empty UILayout for compatibility
+    return this.createEmptyLayout();
+  }
+
+  getSeatingLayout(): SeatingLayout | null {
+    return this.currentSeatingLayout;
+  }
 
   private renderGameplayScreen(state: RootState): UILayout {
     // Initialize gameplay renderer if needed

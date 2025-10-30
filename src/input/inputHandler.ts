@@ -11,16 +11,19 @@ import {
 } from '../redux/actions';
 import { GameplayInputHandler } from './gameplayInputHandler';
 import { LobbyInputHandler } from './lobbyInputHandler';
+import { SeatingInputHandler } from './seatingInputHandler';
 
 export class InputHandler {
   private renderer: Renderer;
   private currentLayout: UILayout | null = null;
   private gameplayInputHandler: GameplayInputHandler | null = null;
   private lobbyInputHandler: LobbyInputHandler;
+  private seatingInputHandler: SeatingInputHandler;
 
   constructor(renderer: Renderer) {
     this.renderer = renderer;
     this.lobbyInputHandler = new LobbyInputHandler();
+    this.seatingInputHandler = new SeatingInputHandler();
     this.setupEventListeners();
   }
 
@@ -60,6 +63,13 @@ export class InputHandler {
     const state = store.getState();
     if (state.game.screen === 'gameplay' && this.gameplayInputHandler) {
       this.gameplayInputHandler.handleClick(x, y);
+      return;
+    }
+
+    // Seating screen handling
+    if (state.game.screen === 'seating') {
+      const seatingLayout = this.renderer.getSeatingLayout();
+      this.seatingInputHandler.handleClick(x, y, seatingLayout);
       return;
     }
 

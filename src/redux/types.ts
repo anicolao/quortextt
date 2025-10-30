@@ -9,8 +9,8 @@ import {
   Rotation,
 } from '../game/types';
 
-export type Screen = 'configuration' | 'gameplay' | 'game-over';
-export type GamePhase = 'setup' | 'playing' | 'finished';
+export type Screen = 'configuration' | 'seating' | 'gameplay' | 'game-over';
+export type GamePhase = 'setup' | 'seating' | 'playing' | 'finished';
 export type WinType = 'flow' | 'constraint' | 'tie';
 
 // Edge represents which edge of the display (0=bottom, 1=right, 2=top, 3=left)
@@ -30,6 +30,15 @@ export interface Move {
   readonly timestamp: number;
 }
 
+// Seating phase state
+export interface SeatingPhaseState {
+  active: boolean;              // Whether we're in seating phase
+  seatingOrder: string[];       // Player IDs in randomized turn order
+  seatingIndex: number;         // Current index in seating order
+  availableEdges: number[];     // Edge numbers (0-5) still available
+  edgeAssignments: Map<string, number>; // Player ID -> edge number
+}
+
 // Main game state
 export interface GameState {
   // UI state
@@ -37,6 +46,9 @@ export interface GameState {
   
   // Configuration
   configPlayers: ConfigPlayer[];
+  
+  // Seating phase
+  seatingPhase: SeatingPhaseState;
   
   // Game setup (after starting game)
   players: GamePlayer[];
