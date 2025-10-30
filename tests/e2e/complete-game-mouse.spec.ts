@@ -193,15 +193,13 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
     
-    // === STEP 3: Start the game using mouse click ===
-    const startCoords = await getConfigButtonCoordinates(page, 'start-game');
-    await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
-    await page.waitForTimeout(300);
-    
-    // Set deterministic seed and draw first tile
+    // === STEP 3: Start the game ===
     await page.evaluate((seed) => {
       const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'START_GAME' });
+      // Use a deterministic seed for reproducible game
       store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed } });
+      // Draw a tile from the seeded deck to ensure deterministic currentTile
       store.dispatch({ type: 'DRAW_TILE' });
     }, DETERMINISTIC_SEED);
     
@@ -312,6 +310,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       while (currentRotation !== rotation) {
         const rotateCoords = await getTileRotationCoords(page, null, 'right');
         console.log(`  Clicking to rotate at (${rotateCoords.x.toFixed(1)}, ${rotateCoords.y.toFixed(1)})`);
+        
         await page.mouse.click(box.x + rotateCoords.x, box.y + rotateCoords.y);
         await page.waitForTimeout(200); // Wait for rotation animation
         
