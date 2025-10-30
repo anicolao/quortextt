@@ -32,18 +32,9 @@ export function traceFlow(
   // Simply follow the linear flow path from start to finish
   let currentPos = startPos;
   let entryDir = startDirection;
-  
-  // Track visited positions to prevent infinite loops in circular flows
-  const visited = new Set<string>();
 
   while (true) {
     const posKey = positionToKey(currentPos);
-    
-    // Check if we've already visited this position (circular flow)
-    if (visited.has(posKey)) {
-      break;
-    }
-    visited.add(posKey);
 
     // Check if there's a tile at this position
     const tile = board.get(posKey);

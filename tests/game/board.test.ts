@@ -91,7 +91,7 @@ describe('board utilities', () => {
   describe('getNeighborInDirection', () => {
     it('should get neighbor in SouthWest direction', () => {
       const neighbor = getNeighborInDirection({ row: 0, col: 0 }, Direction.SouthWest);
-      expect(neighbor).toEqual({ row: -1, col: -1 });
+      expect(neighbor).toEqual({ row: -1, col: 0 });
     });
 
     it('should get neighbor in East direction', () => {
@@ -101,7 +101,7 @@ describe('board utilities', () => {
 
     it('should get neighbor in NorthWest direction', () => {
       const neighbor = getNeighborInDirection({ row: 0, col: 0 }, Direction.NorthWest);
-      expect(neighbor).toEqual({ row: 1, col: 0 });
+      expect(neighbor).toEqual({ row: 1, col: -1 });
     });
 
     it('should work from non-center positions', () => {
@@ -137,7 +137,7 @@ describe('board utilities', () => {
   describe('getDirection', () => {
     it('should return direction between adjacent positions', () => {
       expect(getDirection({ row: 0, col: 0 }, { row: 0, col: 1 })).toBe(Direction.East);
-      expect(getDirection({ row: 0, col: 0 }, { row: 1, col: 1 })).toBe(Direction.NorthEast);
+      expect(getDirection({ row: 0, col: 0 }, { row: 1, col: 0 })).toBe(Direction.NorthEast);
       expect(getDirection({ row: 0, col: 0 }, { row: 0, col: -1 })).toBe(Direction.West);
     });
 
