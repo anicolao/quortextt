@@ -5,20 +5,22 @@ import { PLAYER_COLORS } from '../redux/types';
 import { Renderer } from '../rendering/renderer';
 import { store } from '../redux/store';
 import {
-  addPlayer,
   removePlayer,
   changePlayerColor,
   startGame,
 } from '../redux/actions';
 import { GameplayInputHandler } from './gameplayInputHandler';
+import { LobbyInputHandler } from './lobbyInputHandler';
 
 export class InputHandler {
   private renderer: Renderer;
   private currentLayout: UILayout | null = null;
   private gameplayInputHandler: GameplayInputHandler | null = null;
+  private lobbyInputHandler: LobbyInputHandler;
 
   constructor(renderer: Renderer) {
     this.renderer = renderer;
+    this.lobbyInputHandler = new LobbyInputHandler();
     this.setupEventListeners();
   }
 
@@ -61,7 +63,14 @@ export class InputHandler {
       return;
     }
 
-    // Configuration screen handling
+    // Configuration screen handling - use new lobby input handler
+    if (state.game.screen === 'configuration') {
+      const lobbyLayout = this.renderer.getLobbyLayout();
+      this.lobbyInputHandler.handleClick(x, y, lobbyLayout);
+      return;
+    }
+
+    // Legacy configuration screen handling (fallback)
     if (!this.currentLayout) return;
 
     // Check if color picker is visible
@@ -70,10 +79,11 @@ export class InputHandler {
       return;
     }
 
+    // Legacy code - not used with new lobby
     // Check for button clicks
     if (this.isPointInButton(x, y, this.currentLayout.addPlayerButton)) {
       if (this.currentLayout.addPlayerButton.enabled) {
-        store.dispatch(addPlayer());
+        // Old addPlayer call - not used anymore
       }
       return;
     }

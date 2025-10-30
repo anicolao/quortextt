@@ -31,6 +31,10 @@ export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
 // Configuration action types
 export interface AddPlayerAction {
   type: typeof ADD_PLAYER;
+  payload: {
+    color: string;
+    edge: number; // 0=bottom, 1=right, 2=top, 3=left
+  };
 }
 
 export interface RemovePlayerAction {
@@ -147,8 +151,9 @@ export type UIAction =
   | ToggleLegalMovesAction;
 
 // Configuration action creators
-export const addPlayer = (): AddPlayerAction => ({
+export const addPlayer = (color: string, edge: number): AddPlayerAction => ({
   type: ADD_PLAYER,
+  payload: { color, edge },
 });
 
 export const removePlayer = (playerId: string): RemovePlayerAction => ({

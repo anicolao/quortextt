@@ -19,9 +19,9 @@ describe('Coverage Tests', () => {
   describe('gameReducer - uncovered lines', () => {
     it('should handle CHANGE_PLAYER_COLOR with color swap affecting third player (line 142)', () => {
       let state = initialState;
-      state = gameReducer(state, { type: 'ADD_PLAYER' });
-      state = gameReducer(state, { type: 'ADD_PLAYER' });
-      state = gameReducer(state, { type: 'ADD_PLAYER' });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#0173B2', edge: 0 } });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#DE8F05', edge: 1 } });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#029E73', edge: 2 } });
 
       const player1Id = state.configPlayers[0].id;
       const player2Id = state.configPlayers[1].id;

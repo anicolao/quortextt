@@ -107,8 +107,8 @@ function runCompleteGameTest(seed: number) {
       let state: GameState = initialState;
 
       // Add two players
-      state = gameReducer(state, { type: 'ADD_PLAYER' });
-      state = gameReducer(state, { type: 'ADD_PLAYER' });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#0173B2', edge: 0 } });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: '#DE8F05', edge: 1 } });
 
       // Start game
       state = gameReducer(state, { type: 'START_GAME' });
