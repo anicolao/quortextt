@@ -163,6 +163,17 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     // Increase timeout for this long-running test
     test.setTimeout(120000); // 2 minutes
     
+    // Screenshot counter for sequential naming
+    let screenshotCounter = 1;
+    const takeScreenshot = async (description: string) => {
+      const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
+      await page.screenshot({ 
+        path: `${SCREENSHOT_DIR}/${filename}`,
+        fullPage: false
+      });
+      screenshotCounter++;
+    };
+    
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
     
@@ -172,10 +183,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     if (!box) throw new Error('Canvas not found');
     
     // === STEP 1: Initial configuration screen ===
-    await page.screenshot({ 
-      path: `${SCREENSHOT_DIR}/001-initial-screen.png`,
-      fullPage: false
-    });
+    await takeScreenshot('initial-screen');
     
     // === STEP 2: Add two players using mouse clicks ===
     for (let i = 0; i < 2; i++) {
@@ -184,10 +192,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       await page.waitForTimeout(200);
     }
     
-    await page.screenshot({ 
-      path: `${SCREENSHOT_DIR}/002-players-added.png`,
-      fullPage: false
-    });
+    await takeScreenshot('players-added');
     
     // Verify we have 2 players
     let state = await getReduxState(page);
@@ -210,10 +215,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     expect(state.game.phase).toBe('playing');
     expect(state.game.players.length).toBe(2);
     
-    await page.screenshot({ 
-      path: `${SCREENSHOT_DIR}/003-game-started.png`,
-      fullPage: false
-    });
+    await takeScreenshot('game-started');
     
     const player1 = state.game.players[0];
     const player2 = state.game.players[1];
@@ -263,10 +265,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         gameEnded = true;
         moveNumber++;
         
-        await page.screenshot({ 
-          path: `${SCREENSHOT_DIR}/999-victory-final.png`,
-          fullPage: false
-        });
+        await takeScreenshot('victory-final');
         
         break;
       }
@@ -296,11 +295,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`\n=== Move ${moveNumber + 1}: Placing tile at (${position.row}, ${position.col}) with rotation ${rotation} ===`);
       
       // Take screenshot before placement
-      const stepNum = String((moveNumber + 1) * 10).padStart(3, '0');
-      await page.screenshot({ 
-        path: `${SCREENSHOT_DIR}/${stepNum}-before-move-${moveNumber + 1}.png`,
-        fullPage: false
-      });
+      await takeScreenshot(`before-move-${moveNumber + 1}`);
       
       // Step 1: Rotate the tile to desired rotation using mouse clicks
       state = await getReduxState(page);
@@ -324,10 +319,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         console.log(`  Rotated tile: now at rotation ${currentRotation}`);
         
         // Take screenshot of rotation state
-        await page.screenshot({ 
-          path: `${SCREENSHOT_DIR}/${stepNum}-rotation-${currentRotation}.png`,
-          fullPage: false
-        });
+        await takeScreenshot(`move-${moveNumber + 1}-rotation-${currentRotation}`);
       }
       
       // Step 2: Click on the hex position to place the tile
@@ -345,10 +337,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`  Tile placed at preview position`);
       
       // Take screenshot showing tile placement with checkmark/X buttons
-      await page.screenshot({ 
-        path: `${SCREENSHOT_DIR}/${stepNum}-tile-placed.png`,
-        fullPage: false
-      });
+      await takeScreenshot(`move-${moveNumber + 1}-tile-placed`);
       
       // Step 3: Click the checkmark button to confirm placement
       const checkCoords = await getConfirmationButtonCoords(page, position, 'check');
@@ -368,10 +357,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`  Tile confirmed and committed`);
       
       // Take screenshot after confirmation
-      await page.screenshot({ 
-        path: `${SCREENSHOT_DIR}/${stepNum}-move-${moveNumber}-complete.png`,
-        fullPage: false
-      });
+      await takeScreenshot(`move-${moveNumber}-complete`);
       
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       console.log(`Move ${moveNumber} complete: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}`);
@@ -392,10 +378,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         
         gameEnded = true;
         
-        await page.screenshot({ 
-          path: `${SCREENSHOT_DIR}/999-victory-final.png`,
-          fullPage: false
-        });
+        await takeScreenshot('victory-final');
         
         break;
       }
