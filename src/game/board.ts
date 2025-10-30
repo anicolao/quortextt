@@ -46,13 +46,14 @@ export function isValidPosition(pos: HexPosition): boolean {
 
 // Direction vectors in axial coordinates
 // These represent the offset to move in each direction
+// Matches the Rust implementation coordinate system
 const DIRECTION_VECTORS: Record<Direction, HexPosition> = {
-  [Direction.SouthWest]: { row: -1, col: 0 },
+  [Direction.SouthWest]: { row: -1, col: -1 },
   [Direction.West]: { row: 0, col: -1 },
-  [Direction.NorthWest]: { row: 1, col: -1 },
-  [Direction.NorthEast]: { row: 1, col: 0 },
+  [Direction.NorthWest]: { row: 1, col: 0 },
+  [Direction.NorthEast]: { row: 1, col: 1 },
   [Direction.East]: { row: 0, col: 1 },
-  [Direction.SouthEast]: { row: -1, col: 1 },
+  [Direction.SouthEast]: { row: -1, col: 0 },
 };
 
 // Get neighboring position in a given direction

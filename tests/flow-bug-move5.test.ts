@@ -5,7 +5,7 @@ import { TileType, PlacedTile, Player } from '../src/game/types';
 import { positionToKey } from '../src/game/board';
 
 describe('Flow Bug Investigation - Move 5', () => {
-  it('should propagate flow from (-3,0) to (-2,-1)', () => {
+  it('should propagate flow from (-3,0) to (-2,0)', () => {
     // Recreate the board state at move 5
     const board = new Map<string, PlacedTile>();
     
@@ -15,8 +15,8 @@ describe('Flow Bug Investigation - Move 5', () => {
     board.set('-3,2', { type: TileType.TwoSharps, rotation: 2, position: { row: -3, col: 2 } });
     board.set('-3,3', { type: TileType.OneSharp, rotation: 3, position: { row: -3, col: 3 } });
     
-    // Move 5: tile at (-2, -1)
-    board.set('-2,-1', { type: TileType.OneSharp, rotation: 4, position: { row: -2, col: -1 } });
+    // Move 5: tile at (-2, 0) in Rust coordinate system
+    board.set('-2,0', { type: TileType.OneSharp, rotation: 4, position: { row: -2, col: 0 } });
     
     // Player setup
     const player1: Player = {
@@ -40,7 +40,7 @@ describe('Flow Bug Investigation - Move 5', () => {
     
     console.log('Player 1 flows:', Array.from(flows.get('p1') || []));
     console.log('FlowEdges at (-3,0):', flowEdges.get('-3,0'));
-    console.log('FlowEdges at (-2,-1):', flowEdges.get('-2,-1'));
+    console.log('FlowEdges at (-2,0):', flowEdges.get('-2,0'));
     
     const player1Flows = flows.get('p1');
     expect(player1Flows).toBeDefined();
@@ -48,10 +48,10 @@ describe('Flow Bug Investigation - Move 5', () => {
     // Check if (-3,0) has flow
     expect(player1Flows!.has('-3,0')).toBe(true);
     
-    // BUG: (-2,-1) should have flow but doesn't
-    console.log('\nDoes (-2,-1) have flow?', player1Flows!.has('-2,-1'));
+    // Check if (-2,0) has flow
+    console.log('\nDoes (-2,0) have flow?', player1Flows!.has('-2,0'));
     
-    // This SHOULD pass but currently fails
-    expect(player1Flows!.has('-2,-1')).toBe(true);
+    // This should pass with the Rust coordinate system
+    expect(player1Flows!.has('-2,0')).toBe(true);
   });
 });

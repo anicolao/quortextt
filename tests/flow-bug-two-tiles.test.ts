@@ -21,17 +21,17 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     });
     
     // Tile 2: Adjacent to tile 1 in direction NorthWest (2)
-    // Position (-2, -1) is neighbor of (-3, 0) via direction 2
+    // Position (-2, 0) is neighbor of (-3, 0) via direction 2 (Rust coordinate system)
     // OneSharp tile with rotation 4 has connections:
     // - East (4) ↔ NorthEast (3)  
     // - SouthEast (5) ↔ West (1)
     // - SouthWest (0) ↔ NorthWest (2)
     // Flow enters from SouthEast (5) [opposite of NorthWest (2)]
     // Flow exits to West (1)
-    board.set('-2,-1', { 
+    board.set('-2,0', { 
       type: TileType.OneSharp, 
       rotation: 4, 
-      position: { row: -2, col: -1 } 
+      position: { row: -2, col: 0 } 
     });
     
     // Player on edge 0 (NorthWest edge, row -3)
@@ -53,14 +53,14 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     console.log('\n=== Two-Tile Flow Test ===');
     console.log('Player 1 flow positions:', Array.from(player1Flows || []));
     console.log('FlowEdges at (-3,0):', flowEdges.get('-3,0'));
-    console.log('FlowEdges at (-2,-1):', flowEdges.get('-2,-1'));
+    console.log('FlowEdges at (-2,0):', flowEdges.get('-2,0'));
     
     // Tile 1 should have flow (it's on the edge)
     expect(player1Flows!.has('-3,0')).toBe(true);
     
-    // BUG: Tile 2 should have flow (it's connected to tile 1) but doesn't
-    const hasTile2Flow = player1Flows!.has('-2,-1');
-    console.log('\nExpected: Tile at (-2,-1) has flow');
+    // Tile 2 should have flow (it's connected to tile 1)
+    const hasTile2Flow = player1Flows!.has('-2,0');
+    console.log('\nExpected: Tile at (-2,0) has flow');
     console.log('Actual:', hasTile2Flow ? 'HAS flow ✓' : 'NO flow ✗ BUG');
     
     expect(hasTile2Flow).toBe(true);
@@ -78,14 +78,14 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
       position: { row: -3, col: 1 } 
     });
     
-    // Adjacent tile at (-2,1) - neighbor via NorthEast (3)
+    // Adjacent tile at (-2,2) - neighbor via NorthEast (3) in Rust coordinate system
     // NoSharps at rotation 0: SW↔NW (0↔2), W↔E (1↔4), NE↔SE (3↔5)
     // Flow enters from SouthWest (0) [opposite of NorthEast (3)]
     // Flow exits to NorthWest (2)
-    board.set('-2,1', { 
+    board.set('-2,2', { 
       type: TileType.NoSharps, 
       rotation: 0, 
-      position: { row: -2, col: 1 } 
+      position: { row: -2, col: 2 } 
     });
     
     const player1: Player = {
@@ -102,7 +102,7 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     console.log('Player 1 flow positions:', Array.from(player1Flows || []));
     
     expect(player1Flows!.has('-3,1')).toBe(true);
-    expect(player1Flows!.has('-2,1')).toBe(true);
+    expect(player1Flows!.has('-2,2')).toBe(true);
   });
   
   describe('Comprehensive two-tile flow tests', () => {
@@ -155,11 +155,11 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
               position: { row: -3, col: 0 } 
             });
             
-            // Adjacent tile at (-2, -1) - neighbor via direction 2 (NorthWest)
-            board.set('-2,-1', { 
+            // Adjacent tile at (-2, 0) - neighbor via direction 2 (NorthWest) in Rust coordinate system
+            board.set('-2,0', { 
               type: adjacentTileType, 
               rotation: rotation, 
-              position: { row: -2, col: -1 } 
+              position: { row: -2, col: 0 } 
             });
             
             const player1: Player = {
@@ -188,8 +188,8 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
               
               if (adjacentTileAcceptsFlow) {
                 // Flow SHOULD propagate
-                const adjacentHasFlow = player1Flows!.has('-2,-1');
-                const adjacentFlowEdges = flowEdges.get('-2,-1');
+                const adjacentHasFlow = player1Flows!.has('-2,0');
+                const adjacentFlowEdges = flowEdges.get('-2,0');
                 
                 // THIS IS THE KEY ASSERTION: if both tiles have proper connections, flow must propagate
                 expect(adjacentHasFlow).toBe(true);
@@ -197,11 +197,11 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
                 expect(adjacentFlowEdges!.size).toBeGreaterThan(0);
               } else {
                 // Flow should NOT propagate (adjacent tile doesn't accept it)
-                expect(player1Flows!.has('-2,-1')).toBe(false);
+                expect(player1Flows!.has('-2,0')).toBe(false);
               }
             } else {
               // Edge tile doesn't have reachable flow in NorthWest direction, so flow cannot propagate
-              expect(player1Flows!.has('-2,-1')).toBe(false);
+              expect(player1Flows!.has('-2,0')).toBe(false);
             }
           });
         }

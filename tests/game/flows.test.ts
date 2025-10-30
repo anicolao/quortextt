@@ -45,7 +45,7 @@ describe('flow propagation', () => {
       const tile2: PlacedTile = {
         type: TileType.NoSharps, // Has SW-NW connection (among others)
         rotation: 0,
-        position: { row: 1, col: -1 }, // To the NW of tile1
+        position: { row: 1, col: 0 }, // To the NW of tile1
       };
       
       board.set(positionToKey(tile1.position), tile1);
