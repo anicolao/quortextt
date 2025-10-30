@@ -30,10 +30,12 @@ test.describe('Gameplay Screen Rendering', () => {
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
     
-    // Start the game
+    // Start the game with deterministic seed
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'START_GAME' });
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+      store.dispatch({ type: 'DRAW_TILE' });
     });
     
     // Wait for the gameplay screen to render
@@ -100,6 +102,8 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'START_GAME' });
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+      store.dispatch({ type: 'DRAW_TILE' });
     });
     
     await page.waitForTimeout(500);
@@ -132,6 +136,8 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'START_GAME' });
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+      store.dispatch({ type: 'DRAW_TILE' });
     });
     
     await page.waitForTimeout(500);
@@ -158,6 +164,8 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'START_GAME' });
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+      store.dispatch({ type: 'DRAW_TILE' });
     });
     
     await page.waitForTimeout(500);

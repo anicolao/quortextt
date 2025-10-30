@@ -43,6 +43,8 @@ test.describe('Complete 2-Player Game', () => {
       store.dispatch({ type: 'START_GAME' });
       // Use a deterministic seed for reproducible game
       store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed } });
+      // Draw a tile from the seeded deck to ensure deterministic currentTile
+      store.dispatch({ type: 'DRAW_TILE' });
     }, DETERMINISTIC_SEED);
     
     await page.waitForTimeout(500);
