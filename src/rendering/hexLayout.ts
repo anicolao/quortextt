@@ -179,9 +179,27 @@ export function getPlayerEdgePosition(
   layout: HexLayout,
 ): Point {
   // Board extends to about 7.2 * hex size from center
-  // Place preview just beyond the board edge at about 8.0 * hex size
+  // Place preview just beyond the board edge
+  // Need to ensure tiles stay within canvas bounds
   const boardRadius = layout.size * 7.2;
-  const previewDistance = boardRadius + layout.size * 1.5;
+  
+  // Calculate maximum distance that keeps tile within canvas
+  // For edges at 90° and 270°, the limiting factor is canvas height
+  const maxVerticalDistance = Math.min(
+    layout.origin.y - layout.size * 1.5,  // Top edge
+    layout.canvasHeight - layout.origin.y - layout.size * 1.5  // Bottom edge
+  );
+  
+  // For edges at 0° and 180°, the limiting factor is canvas width
+  const maxHorizontalDistance = Math.min(
+    layout.origin.x - layout.size * 1.5,  // Left edge
+    layout.canvasWidth - layout.origin.x - layout.size * 1.5  // Right edge
+  );
+  
+  // Use the smaller of board radius + margin or the canvas constraint
+  const idealDistance = boardRadius + layout.size * 1.5;
+  const maxDistance = Math.min(maxVerticalDistance, maxHorizontalDistance);
+  const previewDistance = Math.min(idealDistance, maxDistance);
 
   // Map edge positions to angles for flat-top hexagon
   // Edge 0 should be at bottom (270°) parallel to screen bottom
