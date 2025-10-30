@@ -19,7 +19,7 @@ export class GameplayInputHandler {
     
     // Check if we're in gameplay mode
     if (state.game.screen !== 'gameplay') return;
-    if (state.game.currentTile === null || state.game.currentTile === undefined) return;
+    if (state.game.currentTile == null) return;
 
     const layout = this.renderer.getLayout();
 
