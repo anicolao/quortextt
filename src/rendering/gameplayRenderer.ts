@@ -11,7 +11,10 @@ import {
   getPerpendicularVector,
   getPlayerEdgePosition,
 } from "./hexLayout";
-import { getAllBoardPositions, getEdgePositionsWithDirections } from "../game/board";
+import {
+  getAllBoardPositions,
+  getEdgePositionsWithDirections,
+} from "../game/board";
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 
@@ -23,7 +26,7 @@ const TILE_BORDER = "#444444"; // Slightly lighter gray
 const BUTTON_ICON = "#ffffff"; // White
 
 // Debug configuration
-const DEBUG_SHOW_EDGE_LABELS = true; // Show edge direction labels (0-5) on each hexagon
+const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on each hexagon
 
 export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -165,10 +168,10 @@ export class GameplayRenderer {
       // For each source edge, draw a colored line on the hexagon edge
       sourceEdges.forEach(({ pos, dir }) => {
         const center = hexToPixel(pos, this.layout);
-        
+
         // Get the two vertices that define this edge
         const vertices = getHexVertices(center, this.layout.size);
-        
+
         // Map direction to vertex pairs for pointy-top hexagons
         // Direction enum: SouthWest=0, West=1, NorthWest=2, NorthEast=3, East=4, SouthEast=5
         const vertexPairs = [
@@ -267,16 +270,16 @@ export class GameplayRenderer {
     connections.forEach(([dir1, dir2]) => {
       // Determine the color for THIS specific path based on flow edges
       let pathColor = "#888888"; // Default neutral grey
-      
+
       // Check if both ends of this path have flow from the same player
       if (tileFlowEdges) {
         const player1 = tileFlowEdges.get(dir1);
         const player2 = tileFlowEdges.get(dir2);
-        
+
         // Only color the path if BOTH ends have the same player's flow
         if (player1 && player1 === player2) {
           // Find the player's color
-          const player = state.game.players.find(p => p.id === player1);
+          const player = state.game.players.find((p) => p.id === player1);
           if (player) {
             pathColor = player.color;
           }
