@@ -86,12 +86,12 @@ Screenshots demonstrate:
 1. Initial configuration screen
 2. Two players added to the game
 3. Game started with board and player edges
-4-16. Progressive tile placements showing:
+4-38. Progressive tile placements (35 moves total) showing:
    - Players alternating turns
    - Tiles being placed on the board
    - Flows extending from player edges
    - Strategic positioning across the board
-   - Multiple moves leading toward potential victory
+   - Multiple moves leading toward a tie victory
 
 This story shows the complete user experience of:
 - Setting up a 2-player game
