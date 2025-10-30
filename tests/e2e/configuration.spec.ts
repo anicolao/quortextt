@@ -185,20 +185,19 @@ test.describe('Configuration Screen', () => {
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
 
-    // Click remove button for first player
+    // Click remove button for first player at bottom edge
+    // The first player entry should be visible at the bottom
     const removeButtonCoords = await page.evaluate(() => {
       const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
-      const minDim = Math.min(canvasWidth, canvasHeight);
-      const entryWidth = minDim * 0.25;
-      const entryHeight = minDim * 0.08;
-      const removeButtonSize = entryHeight * 0.5;
       
-      const x = canvasWidth / 2 + entryWidth / 2 - removeButtonSize / 2 - 5;
-      const y = canvasHeight - minDim * 0.05 - Math.max(60, minDim * 0.08) - minDim * 0.05 - entryHeight / 2;
-      
-      return { x, y };
+      // Approximate position - bottom center, slightly to the left for left column
+      // Player entry is roughly in the lower third, remove button is on the right side of entry
+      return {
+        x: canvasWidth * 0.45,  // Slightly left of center for left column
+        y: canvasHeight * 0.82  // Near bottom
+      };
     });
     
     await page.mouse.click(box.x + removeButtonCoords.x, box.y + removeButtonCoords.y);
@@ -225,17 +224,18 @@ test.describe('Configuration Screen', () => {
     const initialState = await getReduxState(page);
     expect(initialState.game.configPlayers[0].color).toBe('#0173B2'); // Blue
 
-    // Remove the player
+    // Remove the player (single player, single column layout)
     const removeButtonCoords = await page.evaluate(() => {
       const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       const minDim = Math.min(canvasWidth, canvasHeight);
-      const entryWidth = minDim * 0.25;
+      const entryWidth = minDim * 0.18;  // Updated to match new layout
       const entryHeight = minDim * 0.08;
       const removeButtonSize = entryHeight * 0.5;
       
-      const x = canvasWidth / 2 + entryWidth / 2 - removeButtonSize / 2 - 5;
+      // Single player is in column 0, row 0
+      const x = canvasWidth / 2 - entryWidth / 2 + entryWidth - removeButtonSize / 2 - 5;
       const y = canvasHeight - minDim * 0.05 - Math.max(60, minDim * 0.08) - minDim * 0.05 - entryHeight / 2;
       
       return { x, y };

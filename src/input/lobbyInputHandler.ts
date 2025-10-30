@@ -23,9 +23,8 @@ export class LobbyInputHandler {
     // Check exit buttons
     for (const exitBtn of layout.exitButtons) {
       if (isPointInCircle(x, y, exitBtn.x, exitBtn.y, exitBtn.size / 2)) {
-        // In lobby, exit means close/exit the app
-        // For now, we'll just reload to configuration
-        window.location.reload();
+        // In lobby, exit means close the window
+        window.close();
         return;
       }
     }

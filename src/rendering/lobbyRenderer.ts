@@ -134,12 +134,11 @@ export class LobbyRenderer {
   }
 
   private renderPlayerLists(lists: PlayerListEntry[][]): void {
-    // Only render one list (bottom edge for now, can be changed to show all 4)
-    // For simplicity, we'll just show the bottom edge list
-    const bottomList = lists[0];
-    
-    bottomList.forEach((entry, index) => {
-      this.renderPlayerEntry(entry, index);
+    // Render player lists at all 4 edges
+    lists.forEach((list) => {
+      list.forEach((entry, playerIndex) => {
+        this.renderPlayerEntry(entry, playerIndex);
+      });
     });
   }
 
