@@ -186,17 +186,50 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers.length).toBe(2);
 
     // Click remove button for first player at bottom edge
-    // The first player entry should be visible at the bottom
+    // Calculate the actual remove button position using the same logic as lobbyLayout
     const removeButtonCoords = await page.evaluate(() => {
       const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
+      const state = (window as any).__REDUX_STORE__.getState();
+      const players = state.game.configPlayers;
       
-      // Approximate position - bottom center, slightly to the left for left column
-      // Player entry is roughly in the lower third, remove button is on the right side of entry
+      // Replicate lobbyLayout calculations
+      const minDim = Math.min(canvasWidth, canvasHeight);
+      const buttonSize = Math.max(60, minDim * 0.08);
+      const edgeMargin = minDim * 0.05;
+      const entryWidth = minDim * 0.18;
+      const entryHeight = minDim * 0.08;
+      const removeButtonSize = entryHeight * 0.5;
+      const columnSpacing = 10;
+      
+      // For bottom edge (edge=0), first player (index=0)
+      const edge = 0;
+      const index = 0;
+      
+      // Calculate available space and determine if double column is needed
+      const startButtonSize = Math.max(120, minDim * 0.15);
+      const centerToEdge = Math.min(canvasWidth, canvasHeight) / 2 - startButtonSize / 2;
+      const availableSpace = centerToEdge - edgeMargin - buttonSize - edgeMargin * 2;
+      const singleColumnHeight = players.length * (entryHeight + 5);
+      const useDoubleColumn = singleColumnHeight > availableSpace;
+      
+      // Calculate position for first player (index 0)
+      const column = useDoubleColumn ? index % 2 : 0;
+      const row = useDoubleColumn ? Math.floor(index / 2) : index;
+      
+      let x: number, y: number;
+      if (useDoubleColumn) {
+        x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
+      } else {
+        x = canvasWidth / 2 - entryWidth / 2;
+      }
+      y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
+      
+      // Remove button position (from lobbyLayout line 242-244)
       return {
-        x: canvasWidth * 0.45,  // Slightly left of center for left column
-        y: canvasHeight * 0.82  // Near bottom
+        x: x + entryWidth - removeButtonSize - 5,
+        y: y + (entryHeight - removeButtonSize) / 2,
       };
     });
     

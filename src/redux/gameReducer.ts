@@ -1,6 +1,6 @@
 // Redux reducer for game state management
 
-import { GameState, ConfigPlayer, MAX_PLAYERS } from './types';
+import { GameState, ConfigPlayer, MAX_PLAYERS, PLAYER_COLORS } from './types';
 import {
   GameAction,
   ADD_PLAYER,
@@ -94,12 +94,38 @@ export function gameReducer(
         return state;
       }
 
-      const { color, edge } = action.payload;
+      // Get color and edge from payload, or auto-assign if not provided
+      const payload = action.payload || {};
+      let color = payload.color;
+      let edge = payload.edge;
+
+      // Auto-assign color if not provided
+      if (color === undefined) {
+        // Find the first available color
+        const usedColors = new Set(state.configPlayers.map((p) => p.color));
+        color = PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[0];
+      }
       
       // Check if color is already taken
       const colorTaken = state.configPlayers.some((p) => p.color === color);
       if (colorTaken) {
         return state;
+      }
+
+      // Auto-assign edge if not provided
+      if (edge === undefined) {
+        // Find the first available edge (0=bottom, 1=right, 2=top, 3=left)
+        const usedEdges = new Set(state.configPlayers.map((p) => p.edge));
+        for (let i = 0; i < 4; i++) {
+          if (!usedEdges.has(i as 0 | 1 | 2 | 3)) {
+            edge = i;
+            break;
+          }
+        }
+        // Default to 0 if all edges are somehow taken (shouldn't happen with MAX_PLAYERS=6)
+        if (edge === undefined) {
+          edge = 0;
+        }
       }
 
       const newPlayer: ConfigPlayer = {

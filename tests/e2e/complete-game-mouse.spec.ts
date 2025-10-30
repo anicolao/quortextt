@@ -114,43 +114,73 @@ async function getConfirmationButtonCoords(page: any, hexPos: HexPosition, butto
   }, { pos: hexPos, button });
 }
 
-// Helper to get button coordinates for configuration screen
-async function getConfigButtonCoordinates(page: any, buttonType: 'add-player' | 'start-game') {
-  return await page.evaluate((type: string) => {
+// Helper to get edge button coordinates for the new lobby
+// colorIndex: 0=blue, 1=orange, 2=green, 3=yellow, 4=purple, 5=red
+// edge: 0=bottom, 1=right, 2=top, 3=left
+async function getEdgeButtonCoordinates(page: any, colorIndex: number, edge: 0 | 1 | 2 | 3 = 0) {
+  return await page.evaluate(({ colorIndex, edge }: { colorIndex: number; edge: number }) => {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    const padding = Math.min(canvasWidth, canvasHeight) * 0.05;
-    const titleSize = Math.min(canvasWidth, canvasHeight) * 0.06;
-    const titleY = padding + titleSize;
-    const buttonHeight = Math.min(canvasWidth, canvasHeight) * 0.08;
+    const minDim = Math.min(canvasWidth, canvasHeight);
+    const buttonSize = Math.max(60, minDim * 0.08);
+    const edgeMargin = minDim * 0.05;
+    const buttonSpacing = buttonSize * 0.3;
     
-    // Get current players count from Redux store
+    // Get available colors from Redux
     const state = (window as any).__REDUX_STORE__.getState();
     const players = state.game.configPlayers;
+    const PLAYER_COLORS = ['#0173B2', '#DE8F05', '#029E73', '#ECE133', '#CC78BC', '#CA5127'];
+    const usedColors = new Set(players.map((p: any) => p.color));
+    const availableColors = PLAYER_COLORS.filter(color => !usedColors.has(color));
     
-    // Calculate player list area
-    const playerListStartY = titleY + titleSize + padding * 2;
-    const colorIconSize = Math.min(canvasWidth, canvasHeight) * 0.06;
-    const playerEntryHeight = colorIconSize + padding * 0.5;
+    // Find the actual index in available colors
+    const targetColor = PLAYER_COLORS[colorIndex];
+    const availableIndex = availableColors.indexOf(targetColor);
     
-    // Add Player button position
-    const addPlayerButtonY = players.length > 0
-      ? playerListStartY + players.length * playerEntryHeight + padding * 1.5
-      : playerListStartY;
-    
-    const buttonCenterX = canvasWidth / 2;
-    const addPlayerButtonCenterY = addPlayerButtonY + buttonHeight / 2;
-    
-    // Start Game button is below Add Player button
-    const startGameButtonCenterY = addPlayerButtonY + buttonHeight + padding + buttonHeight / 2;
-    
-    if (type === 'add-player') {
-      return { x: buttonCenterX, y: addPlayerButtonCenterY };
-    } else {
-      return { x: buttonCenterX, y: startGameButtonCenterY };
+    if (availableIndex === -1) {
+      // Color not available
+      return null;
     }
-  }, buttonType);
+    
+    // Calculate position based on edge
+    let x: number, y: number;
+    
+    if (edge === 0) { // Bottom
+      const totalWidth = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+      const startX = (canvasWidth - totalWidth) / 2;
+      x = startX + availableIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+      y = canvasHeight - edgeMargin - buttonSize / 2;
+    } else if (edge === 1) { // Right
+      const totalHeight = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+      const startY = (canvasHeight - totalHeight) / 2;
+      x = canvasWidth - edgeMargin - buttonSize / 2;
+      y = startY + availableIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+    } else if (edge === 2) { // Top
+      const totalWidth = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+      const startX = (canvasWidth - totalWidth) / 2;
+      x = startX + availableIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+      y = edgeMargin + buttonSize / 2;
+    } else { // Left
+      const totalHeight = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+      const startY = (canvasHeight - totalHeight) / 2;
+      x = edgeMargin + buttonSize / 2;
+      y = startY + availableIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+    }
+    
+    return { x, y };
+  }, { colorIndex, edge });
+}
+
+// Helper to get START button coordinates
+async function getStartButtonCoordinates(page: any) {
+  return await page.evaluate(() => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    return { x: canvasWidth / 2, y: canvasHeight / 2 };
+  });
 }
 
 test.describe('Complete 2-Player Game with Mouse Clicks', () => {
@@ -185,12 +215,18 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     // === STEP 1: Initial configuration screen ===
     await takeScreenshot('initial-screen');
     
-    // === STEP 2: Add two players using mouse clicks ===
-    for (let i = 0; i < 2; i++) {
-      const coords = await getConfigButtonCoordinates(page, 'add-player');
-      await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(200);
-    }
+    // === STEP 2: Add two players using mouse clicks on edge buttons ===
+    // Add player 1 (blue) at bottom edge
+    const player1Coords = await getEdgeButtonCoordinates(page, 0, 0);
+    if (!player1Coords) throw new Error('Could not find player 1 button coordinates');
+    await page.mouse.click(box.x + player1Coords.x, box.y + player1Coords.y);
+    await page.waitForTimeout(200);
+    
+    // Add player 2 (orange) at bottom edge
+    const player2Coords = await getEdgeButtonCoordinates(page, 1, 0);
+    if (!player2Coords) throw new Error('Could not find player 2 button coordinates');
+    await page.mouse.click(box.x + player2Coords.x, box.y + player2Coords.y);
+    await page.waitForTimeout(200);
     
     await takeScreenshot('players-added');
     

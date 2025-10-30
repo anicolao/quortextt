@@ -31,9 +31,9 @@ export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
 // Configuration action types
 export interface AddPlayerAction {
   type: typeof ADD_PLAYER;
-  payload: {
-    color: string;
-    edge: number; // 0=bottom, 1=right, 2=top, 3=left
+  payload?: {
+    color?: string;
+    edge?: number; // 0=bottom, 1=right, 2=top, 3=left
   };
 }
 
