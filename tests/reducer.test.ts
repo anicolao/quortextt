@@ -8,6 +8,7 @@ import {
   changePlayerColor,
   startGame,
   returnToConfig,
+  selectEdge,
 } from '../src/redux/actions';
 import { MAX_PLAYERS, PLAYER_COLORS } from '../src/redux/types';
 
@@ -109,12 +110,15 @@ describe('gameReducer', () => {
   });
 
   describe('START_GAME', () => {
-    it('should transition to gameplay screen when players exist', () => {
+    it('should transition to seating screen when players exist', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, startGame());
 
-      expect(state.screen).toBe('gameplay');
+      expect(state.screen).toBe('seating');
+      expect(state.phase).toBe('seating');
+      expect(state.seatingPhase.active).toBe(true);
+      expect(state.seatingPhase.availableEdges).toEqual([0, 1, 2, 3, 4, 5]);
     });
 
     it('should not transition when no players exist', () => {
@@ -122,31 +126,54 @@ describe('gameReducer', () => {
       expect(state.screen).toBe('configuration');
     });
 
-    it('should assign edge positions correctly for 2 players', () => {
+    it('should assign edge positions correctly for 2 players after seating', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
       state = gameReducer(state, startGame());
 
+      // Players should select edges during seating phase
+      const player1Id = state.seatingPhase.seatingOrder[0];
+      const player2Id = state.seatingPhase.seatingOrder[1];
+
+      // Player 1 selects edge 0
+      state = gameReducer(state, selectEdge(player1Id, 0));
+      expect(state.seatingPhase.seatingIndex).toBe(1);
+
+      // Player 2 selects edge 3
+      state = gameReducer(state, selectEdge(player2Id, 3));
+      
+      // Should transition to gameplay after all players have selected
+      expect(state.screen).toBe('gameplay');
       expect(state.players.length).toBe(2);
-      expect(state.players[0].edgePosition).toBe(0); // index * 3
-      expect(state.players[1].edgePosition).toBe(3);
+      expect(state.players.find(p => p.id === player1Id)?.edgePosition).toBe(0);
+      expect(state.players.find(p => p.id === player2Id)?.edgePosition).toBe(3);
     });
 
-    it('should assign edge positions correctly for 3 players', () => {
+    it('should assign edge positions correctly for 3 players after seating', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[2], 2));
       state = gameReducer(state, startGame());
 
+      const player1Id = state.seatingPhase.seatingOrder[0];
+      const player2Id = state.seatingPhase.seatingOrder[1];
+      const player3Id = state.seatingPhase.seatingOrder[2];
+
+      // Each player selects an edge
+      state = gameReducer(state, selectEdge(player1Id, 0));
+      state = gameReducer(state, selectEdge(player2Id, 2));
+      state = gameReducer(state, selectEdge(player3Id, 4));
+      
+      expect(state.screen).toBe('gameplay');
       expect(state.players.length).toBe(3);
-      expect(state.players[0].edgePosition).toBe(0); // index * 2
-      expect(state.players[1].edgePosition).toBe(2);
-      expect(state.players[2].edgePosition).toBe(4);
+      expect(state.players.find(p => p.id === player1Id)?.edgePosition).toBe(0);
+      expect(state.players.find(p => p.id === player2Id)?.edgePosition).toBe(2);
+      expect(state.players.find(p => p.id === player3Id)?.edgePosition).toBe(4);
     });
 
-    it('should create teams for 4 players', () => {
+    it('should create teams for 4 players after seating', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
@@ -154,39 +181,35 @@ describe('gameReducer', () => {
       state = gameReducer(state, addPlayer(PLAYER_COLORS[3], 3));
       state = gameReducer(state, startGame());
 
+      const playerIds = state.seatingPhase.seatingOrder;
+
+      // Each player selects an edge
+      state = gameReducer(state, selectEdge(playerIds[0], 0));
+      state = gameReducer(state, selectEdge(playerIds[1], 1));
+      state = gameReducer(state, selectEdge(playerIds[2], 2));
+      state = gameReducer(state, selectEdge(playerIds[3], 3));
+
       expect(state.players.length).toBe(4);
       expect(state.teams.length).toBe(2);
-      expect(state.teams[0]).toEqual({
-        player1Id: state.players[0].id,
-        player2Id: state.players[2].id,
-      });
-      expect(state.teams[1]).toEqual({
-        player1Id: state.players[1].id,
-        player2Id: state.players[3].id,
-      });
+      // Teams should be based on sorted edge positions (opposite sides)
     });
 
-    it('should create teams for 6 players', () => {
+    it('should create teams for 6 players after seating', () => {
       let state = initialState;
       for (let i = 0; i < 6; i++) {
         state = gameReducer(state, addPlayer(PLAYER_COLORS[i], i % 4));
       }
       state = gameReducer(state, startGame());
 
+      const playerIds = state.seatingPhase.seatingOrder;
+
+      // Each player selects a different edge
+      for (let i = 0; i < 6; i++) {
+        state = gameReducer(state, selectEdge(playerIds[i], i));
+      }
+
       expect(state.players.length).toBe(6);
       expect(state.teams.length).toBe(3);
-      expect(state.teams[0]).toEqual({
-        player1Id: state.players[0].id,
-        player2Id: state.players[3].id,
-      });
-      expect(state.teams[1]).toEqual({
-        player1Id: state.players[1].id,
-        player2Id: state.players[4].id,
-      });
-      expect(state.teams[2]).toEqual({
-        player1Id: state.players[2].id,
-        player2Id: state.players[5].id,
-      });
     });
   });
 

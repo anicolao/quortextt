@@ -10,6 +10,9 @@ import {
   RETURN_TO_CONFIG,
   SETUP_GAME,
   SHUFFLE_TILES,
+  START_SEATING_PHASE,
+  SELECT_EDGE,
+  COMPLETE_SEATING_PHASE,
   DRAW_TILE,
   PLACE_TILE,
   NEXT_PLAYER,
@@ -25,6 +28,13 @@ import { positionToKey } from '../game/board';
 export const initialState: GameState = {
   screen: 'configuration',
   configPlayers: [],
+  seatingPhase: {
+    active: false,
+    seatingOrder: [],
+    seatingIndex: 0,
+    availableEdges: [],
+    edgeAssignments: new Map(),
+  },
   players: [],
   teams: [],
   currentPlayerIndex: 0,
@@ -80,6 +90,42 @@ function seededRandom(seed: number): () => number {
     state = (state * 1664525 + 1013904223) % 4294967296;
     return state / 4294967296;
   };
+}
+
+// Helper function to randomize player order for seating selection
+// Uses Fisher-Yates shuffle for uniform distribution
+function randomizePlayerOrder(playerIds: string[]): string[] {
+  const shuffled = [...playerIds];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Helper function to determine gameplay order after seating is complete
+// Players are ordered clockwise by their edge positions
+// Starting player is the first from the seating order
+function determineGameplayOrder(
+  players: { id: string; edgePosition: number }[],
+  seatingOrder: string[]
+): string[] {
+  // Sort players by edge position (clockwise order)
+  const sortedPlayers = [...players].sort(
+    (a, b) => a.edgePosition - b.edgePosition
+  );
+  
+  // Find the starting player (first from seating order)
+  const startingPlayerId = seatingOrder[0];
+  const startIndex = sortedPlayers.findIndex(p => p.id === startingPlayerId);
+  
+  // Rotate array to start with the starting player
+  const gameplayOrder = [
+    ...sortedPlayers.slice(startIndex),
+    ...sortedPlayers.slice(0, startIndex)
+  ];
+  
+  return gameplayOrder.map(p => p.id);
 }
 
 // Reducer function
@@ -167,67 +213,22 @@ export function gameReducer(
         return state;
       }
 
-      // Create Player objects from ConfigPlayers
-      // Assign edge positions based on number of players
-      const players = state.configPlayers.map((cp, index) => {
-        // Distribute players evenly around the hexagon (6 edges)
-        // For 2 players: edges 0 and 3 (opposite sides)
-        // For 3 players: edges 0, 2, 4 (every other edge)
-        // For 4-6 players: consecutive edges
-        let edgePosition: number;
-        const numPlayers = state.configPlayers.length;
-        
-        if (numPlayers === 2) {
-          edgePosition = index * 3; // 0, 3
-        } else if (numPlayers === 3) {
-          edgePosition = index * 2; // 0, 2, 4
-        } else {
-          edgePosition = index; // 0, 1, 2, 3, 4, 5
-        }
+      // Randomize player order for seating selection
+      const playerIds = state.configPlayers.map(cp => cp.id);
+      const seatingOrder = randomizePlayerOrder(playerIds);
 
-        return {
-          id: cp.id,
-          color: cp.color,
-          edgePosition,
-          isAI: false,
-        };
-      });
-
-      // Create teams for 4 or 6 players (opposite sides team up)
-      const teams = [];
-      if (players.length === 4) {
-        teams.push(
-          { player1Id: players[0].id, player2Id: players[2].id },
-          { player1Id: players[1].id, player2Id: players[3].id }
-        );
-      } else if (players.length === 6) {
-        teams.push(
-          { player1Id: players[0].id, player2Id: players[3].id },
-          { player1Id: players[1].id, player2Id: players[4].id },
-          { player1Id: players[2].id, player2Id: players[5].id }
-        );
-      }
-
-      // Initialize the game
-      const availableTiles = createShuffledDeck();
-      const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
-      const remainingTiles = availableTiles.slice(1);
-
+      // Transition to seating phase
       return {
         ...state,
-        screen: 'gameplay',
-        players,
-        teams,
-        currentPlayerIndex: 0,
-        phase: 'playing',
-        board: new Map(),
-        availableTiles: remainingTiles,
-        currentTile,
-        flows: new Map(),
-        flowEdges: new Map(),
-        winner: null,
-        winType: null,
-        moveHistory: [],
+        screen: 'seating',
+        phase: 'seating',
+        seatingPhase: {
+          active: true,
+          seatingOrder,
+          seatingIndex: 0,
+          availableEdges: [0, 1, 2, 3, 4, 5],
+          edgeAssignments: new Map(),
+        },
       };
     }
 
@@ -265,6 +266,143 @@ export function gameReducer(
         ...state,
         availableTiles: createShuffledDeck(seed, tileDistribution),
       };
+    }
+
+    case START_SEATING_PHASE: {
+      const { seatingOrder } = action.payload;
+      
+      return {
+        ...state,
+        screen: 'seating',
+        phase: 'seating',
+        seatingPhase: {
+          active: true,
+          seatingOrder,
+          seatingIndex: 0,
+          availableEdges: [0, 1, 2, 3, 4, 5],
+          edgeAssignments: new Map(),
+        },
+      };
+    }
+
+    case SELECT_EDGE: {
+      const { playerId, edgeNumber } = action.payload;
+      const { seatingPhase } = state;
+      
+      // Validate edge is available
+      if (!seatingPhase.availableEdges.includes(edgeNumber)) {
+        return state;
+      }
+      
+      // Validate it's this player's turn
+      const currentPlayer = seatingPhase.seatingOrder[seatingPhase.seatingIndex];
+      if (currentPlayer !== playerId) {
+        return state;
+      }
+      
+      // Update edge assignments
+      const newEdgeAssignments = new Map(seatingPhase.edgeAssignments);
+      newEdgeAssignments.set(playerId, edgeNumber);
+      
+      // Remove edge from available
+      const newAvailableEdges = seatingPhase.availableEdges.filter(
+        e => e !== edgeNumber
+      );
+      
+      // Update or create player's edge position
+      const configPlayer = state.configPlayers.find(cp => cp.id === playerId);
+      if (!configPlayer) {
+        return state;
+      }
+      
+      const updatedPlayers = state.players.length > 0
+        ? state.players.map(p =>
+            p.id === playerId ? { ...p, edgePosition: edgeNumber } : p
+          )
+        : state.configPlayers.map(cp => ({
+            id: cp.id,
+            color: cp.color,
+            edgePosition: cp.id === playerId ? edgeNumber : -1,
+            isAI: false,
+          }));
+      
+      // Increment seating index
+      const newSeatingIndex = seatingPhase.seatingIndex + 1;
+      
+      // Check if seating is complete
+      const seatingComplete = newSeatingIndex >= seatingPhase.seatingOrder.length;
+      
+      if (seatingComplete) {
+        // Create teams for 4 or 6 players (opposite sides team up)
+        const teams = [];
+        const sortedPlayers = [...updatedPlayers].sort((a, b) => a.edgePosition - b.edgePosition);
+        
+        if (updatedPlayers.length === 4) {
+          teams.push(
+            { player1Id: sortedPlayers[0].id, player2Id: sortedPlayers[2].id },
+            { player1Id: sortedPlayers[1].id, player2Id: sortedPlayers[3].id }
+          );
+        } else if (updatedPlayers.length === 6) {
+          teams.push(
+            { player1Id: sortedPlayers[0].id, player2Id: sortedPlayers[3].id },
+            { player1Id: sortedPlayers[1].id, player2Id: sortedPlayers[4].id },
+            { player1Id: sortedPlayers[2].id, player2Id: sortedPlayers[5].id }
+          );
+        }
+        
+        // Determine gameplay order
+        const gameplayOrder = determineGameplayOrder(updatedPlayers, seatingPhase.seatingOrder);
+        const startingPlayerId = gameplayOrder[0];
+        const currentPlayerIndex = updatedPlayers.findIndex(p => p.id === startingPlayerId);
+        
+        // Initialize the game
+        const availableTiles = createShuffledDeck();
+        const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
+        const remainingTiles = availableTiles.slice(1);
+        
+        // Transition to gameplay
+        return {
+          ...state,
+          players: updatedPlayers,
+          teams,
+          currentPlayerIndex,
+          screen: 'gameplay',
+          phase: 'playing',
+          board: new Map(),
+          availableTiles: remainingTiles,
+          currentTile,
+          flows: new Map(),
+          flowEdges: new Map(),
+          winner: null,
+          winType: null,
+          moveHistory: [],
+          seatingPhase: {
+            ...seatingPhase,
+            active: false,
+            edgeAssignments: newEdgeAssignments,
+            availableEdges: newAvailableEdges,
+            seatingIndex: newSeatingIndex,
+          },
+        };
+      }
+      
+      // Continue seating phase
+      return {
+        ...state,
+        players: updatedPlayers,
+        seatingPhase: {
+          ...seatingPhase,
+          edgeAssignments: newEdgeAssignments,
+          availableEdges: newAvailableEdges,
+          seatingIndex: newSeatingIndex,
+        },
+      };
+    }
+
+    case COMPLETE_SEATING_PHASE: {
+      // This action can be used to manually complete seating if needed
+      // For now, it's handled automatically in SELECT_EDGE
+      return state;
     }
 
     case DRAW_TILE: {

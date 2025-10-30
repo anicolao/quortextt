@@ -13,6 +13,11 @@ export const RETURN_TO_CONFIG = 'RETURN_TO_CONFIG';
 export const SETUP_GAME = 'SETUP_GAME';
 export const SHUFFLE_TILES = 'SHUFFLE_TILES';
 
+// Seating phase actions
+export const START_SEATING_PHASE = 'START_SEATING_PHASE';
+export const SELECT_EDGE = 'SELECT_EDGE';
+export const COMPLETE_SEATING_PHASE = 'COMPLETE_SEATING_PHASE';
+
 // Gameplay actions
 export const DRAW_TILE = 'DRAW_TILE';
 export const PLACE_TILE = 'PLACE_TILE';
@@ -79,6 +84,26 @@ export interface ShuffleTilesAction {
   };
 }
 
+// Seating phase action types
+export interface StartSeatingPhaseAction {
+  type: typeof START_SEATING_PHASE;
+  payload: {
+    seatingOrder: string[];  // Randomized player IDs
+  };
+}
+
+export interface SelectEdgeAction {
+  type: typeof SELECT_EDGE;
+  payload: {
+    playerId: string;
+    edgeNumber: number;      // 0-5
+  };
+}
+
+export interface CompleteSeatingPhaseAction {
+  type: typeof COMPLETE_SEATING_PHASE;
+}
+
 // Gameplay action types
 export interface DrawTileAction {
   type: typeof DRAW_TILE;
@@ -138,6 +163,9 @@ export type GameAction =
   | ReturnToConfigAction
   | SetupGameAction
   | ShuffleTilesAction
+  | StartSeatingPhaseAction
+  | SelectEdgeAction
+  | CompleteSeatingPhaseAction
   | DrawTileAction
   | PlaceTileAction
   | NextPlayerAction
@@ -186,6 +214,21 @@ export const setupGame = (players: Player[], teams: Team[]): SetupGameAction => 
 export const shuffleTiles = (seed?: number): ShuffleTilesAction => ({
   type: SHUFFLE_TILES,
   payload: { seed },
+});
+
+// Seating phase action creators
+export const startSeatingPhase = (seatingOrder: string[]): StartSeatingPhaseAction => ({
+  type: START_SEATING_PHASE,
+  payload: { seatingOrder },
+});
+
+export const selectEdge = (playerId: string, edgeNumber: number): SelectEdgeAction => ({
+  type: SELECT_EDGE,
+  payload: { playerId, edgeNumber },
+});
+
+export const completeSeatingPhase = (): CompleteSeatingPhaseAction => ({
+  type: COMPLETE_SEATING_PHASE,
 });
 
 // Gameplay action creators
