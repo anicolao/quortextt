@@ -1,8 +1,10 @@
 // Canvas rendering functions
 
-import { RootState, PLAYER_COLORS } from '../redux/types';
-import { UILayout, Button, PlayerEntry, calculateLayout } from './layout';
+import { RootState } from '../redux/types';
+import { UILayout } from './layout';
 import { GameplayRenderer } from './gameplayRenderer';
+import { LobbyRenderer } from './lobbyRenderer';
+import { LobbyLayout } from './lobbyLayout';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -10,6 +12,8 @@ export class Renderer {
   private colorPickerPlayerId: string | null = null;
   private onRenderNeeded: (() => void) | null = null;
   private gameplayRenderer: GameplayRenderer | null = null;
+  private lobbyRenderer: LobbyRenderer | null = null;
+  private currentLobbyLayout: LobbyLayout | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -61,7 +65,7 @@ export class Renderer {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (screen === 'configuration') {
-      return this.renderConfigurationScreen(state);
+      return this.renderConfigurationScreenNew(state);
     } else if (screen === 'gameplay') {
       return this.renderGameplayScreen(state);
     }
@@ -69,33 +73,28 @@ export class Renderer {
     return this.createEmptyLayout();
   }
 
-  private renderConfigurationScreen(state: RootState): UILayout {
-    const layout = calculateLayout(
-      this.canvas.width,
-      this.canvas.height,
-      state.game.configPlayers,
-      this.colorPickerPlayerId
-    );
-
-    // Render title
-    this.renderTitle(layout);
-
-    // Render player entries
-    layout.playerEntries.forEach((entry, index) => {
-      this.renderPlayerEntry(entry, index + 1);
-    });
-
-    // Render buttons
-    this.renderButton(layout.addPlayerButton);
-    this.renderButton(layout.startGameButton);
-
-    // Render color picker if visible
-    if (layout.colorPicker && layout.colorPicker.visible) {
-      this.renderColorPicker(layout.colorPicker, state.game.configPlayers);
+  private renderConfigurationScreenNew(state: RootState): UILayout {
+    // Initialize lobby renderer if needed
+    if (!this.lobbyRenderer) {
+      this.lobbyRenderer = new LobbyRenderer(this.ctx);
     }
 
-    return layout;
+    // Render the new lobby layout
+    this.currentLobbyLayout = this.lobbyRenderer.render(
+      this.canvas.width,
+      this.canvas.height,
+      state.game.configPlayers
+    );
+
+    // Return empty UILayout for compatibility (new input handler will use LobbyLayout)
+    return this.createEmptyLayout();
   }
+
+  getLobbyLayout(): LobbyLayout | null {
+    return this.currentLobbyLayout;
+  }
+
+
 
   private renderGameplayScreen(state: RootState): UILayout {
     // Initialize gameplay renderer if needed
@@ -115,146 +114,6 @@ export class Renderer {
 
   getGameplayRenderer(): GameplayRenderer | null {
     return this.gameplayRenderer;
-  }
-
-  private renderTitle(layout: UILayout): void {
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = `bold ${layout.titleSize}px sans-serif`;
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText('QUORTEX', layout.titleX, layout.titleY);
-  }
-
-  private renderPlayerEntry(entry: PlayerEntry, playerNumber: number): void {
-    // Render color icon
-    this.ctx.fillStyle = entry.player.color;
-    this.ctx.fillRect(
-      entry.colorIconX,
-      entry.colorIconY,
-      entry.colorIconSize,
-      entry.colorIconSize
-    );
-
-    // Add border to color icon
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(
-      entry.colorIconX,
-      entry.colorIconY,
-      entry.colorIconSize,
-      entry.colorIconSize
-    );
-
-    // Render player label
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = `${entry.colorIconSize * 0.4}px sans-serif`;
-    this.ctx.textAlign = 'left';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(`Player ${playerNumber}`, entry.labelX, entry.labelY);
-
-    // Render remove button
-    this.renderButton(entry.removeButton);
-  }
-
-  private renderButton(button: Button): void {
-    // Button background
-    if (button.enabled) {
-      this.ctx.fillStyle = button.type === 'remove-player' ? '#d32f2f' : '#4CAF50';
-    } else {
-      this.ctx.fillStyle = '#555555';
-    }
-    this.ctx.fillRect(button.x, button.y, button.width, button.height);
-
-    // Button border
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(button.x, button.y, button.width, button.height);
-
-    // Button text
-    this.ctx.fillStyle = button.enabled ? '#ffffff' : '#999999';
-    this.ctx.font = `${button.height * 0.4}px sans-serif`;
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(
-      button.text,
-      button.x + button.width / 2,
-      button.y + button.height / 2
-    );
-  }
-
-  private renderColorPicker(
-    picker: { x: number; y: number; width: number; height: number },
-    players: { id: string; color: string }[]
-  ): void {
-    // Semi-transparent overlay
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Picker background
-    this.ctx.fillStyle = '#2a2a3e';
-    this.ctx.fillRect(picker.x, picker.y, picker.width, picker.height);
-
-    // Picker border
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeRect(picker.x, picker.y, picker.width, picker.height);
-
-    // Title
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = `${picker.height * 0.08}px sans-serif`;
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(
-      'Select Color',
-      picker.x + picker.width / 2,
-      picker.y + picker.height * 0.15
-    );
-
-    // Color swatches
-    const colorSize = Math.min(picker.width, picker.height) * 0.15;
-    const spacing = colorSize * 1.3;
-    const startX = picker.x + (picker.width - spacing * 3) / 2 + colorSize / 2;
-    const startY = picker.y + picker.height * 0.35;
-
-    const usedColors = new Set(players.map((p) => p.color));
-
-    PLAYER_COLORS.forEach((color, index) => {
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      const x = startX + col * spacing;
-      const y = startY + row * spacing;
-
-      // Draw color swatch
-      this.ctx.fillStyle = color;
-      this.ctx.fillRect(
-        x - colorSize / 2,
-        y - colorSize / 2,
-        colorSize,
-        colorSize
-      );
-
-      // Draw border
-      this.ctx.strokeStyle = '#ffffff';
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeRect(
-        x - colorSize / 2,
-        y - colorSize / 2,
-        colorSize,
-        colorSize
-      );
-
-      // Mark if color is in use
-      if (usedColors.has(color)) {
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 3;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x - colorSize * 0.3, y - colorSize * 0.3);
-        this.ctx.lineTo(x + colorSize * 0.3, y + colorSize * 0.3);
-        this.ctx.moveTo(x + colorSize * 0.3, y - colorSize * 0.3);
-        this.ctx.lineTo(x - colorSize * 0.3, y + colorSize * 0.3);
-        this.ctx.stroke();
-      }
-    });
   }
 
   private createEmptyLayout(): UILayout {

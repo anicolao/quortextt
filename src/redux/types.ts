@@ -13,10 +13,14 @@ export type Screen = 'configuration' | 'gameplay' | 'game-over';
 export type GamePhase = 'setup' | 'playing' | 'finished';
 export type WinType = 'flow' | 'constraint' | 'tie';
 
+// Edge represents which edge of the display (0=bottom, 1=right, 2=top, 3=left)
+export type Edge = 0 | 1 | 2 | 3;
+
 // Player for configuration (simplified)
 export interface ConfigPlayer {
   id: string;
   color: string;
+  edge: Edge; // Which edge they joined from
 }
 
 // Move history entry

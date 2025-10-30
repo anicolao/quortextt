@@ -1,6 +1,6 @@
 // Redux reducer for game state management
 
-import { GameState, ConfigPlayer, PLAYER_COLORS, MAX_PLAYERS } from './types';
+import { GameState, ConfigPlayer, MAX_PLAYERS } from './types';
 import {
   GameAction,
   ADD_PLAYER,
@@ -38,13 +38,6 @@ export const initialState: GameState = {
   winType: null,
   moveHistory: [],
 };
-
-// Helper function to get next available color
-function getNextAvailableColor(existingPlayers: ConfigPlayer[]): string {
-  const usedColors = new Set(existingPlayers.map((p) => p.color));
-  const availableColor = PLAYER_COLORS.find((color) => !usedColors.has(color));
-  return availableColor || PLAYER_COLORS[0];
-}
 
 // Helper function to generate unique player ID
 function generatePlayerId(): string {
@@ -101,9 +94,18 @@ export function gameReducer(
         return state;
       }
 
+      const { color, edge } = action.payload;
+      
+      // Check if color is already taken
+      const colorTaken = state.configPlayers.some((p) => p.color === color);
+      if (colorTaken) {
+        return state;
+      }
+
       const newPlayer: ConfigPlayer = {
         id: generatePlayerId(),
-        color: getNextAvailableColor(state.configPlayers),
+        color,
+        edge: edge as 0 | 1 | 2 | 3,
       };
 
       return {
