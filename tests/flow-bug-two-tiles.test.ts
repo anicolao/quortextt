@@ -69,18 +69,19 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
   it('should work with different tile types (original passing case)', () => {
     const board = new Map<string, PlacedTile>();
     
-    // Edge tile: TwoSharps at rotation 0
-    // Connections: 0↔5, 1↔4, 2↔3
+    // Edge tile: NoSharps at rotation 0
+    // Connections: SW↔NW (0↔2), W↔E (1↔4), NE↔SE (3↔5)
+    // Flow can enter from SE (edge direction) and exit to NE
     board.set('-3,1', { 
-      type: TileType.TwoSharps, 
+      type: TileType.NoSharps, 
       rotation: 0, 
       position: { row: -3, col: 1 } 
     });
     
     // Adjacent tile at (-2,1) - neighbor via NorthEast (3)
-    // NoSharps at rotation 0: 0↔2, 1↔4, 3↔5
-    // Flow enters from NorthWest (2) [opposite of SouthEast (5)]
-    // Flow exits to SouthWest (0)
+    // NoSharps at rotation 0: SW↔NW (0↔2), W↔E (1↔4), NE↔SE (3↔5)
+    // Flow enters from SouthWest (0) [opposite of NorthEast (3)]
+    // Flow exits to NorthWest (2)
     board.set('-2,1', { 
       type: TileType.NoSharps, 
       rotation: 0, 
@@ -125,6 +126,21 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
       return connections.some(([dir1, dir2]) => dir1 === direction || dir2 === direction);
     }
     
+    // Helper to check if a tile can flow from one direction to another
+    function canFlowBetween(tileType: TileType, rotation: number, fromDir: Direction, toDir: Direction): boolean {
+      const connections = getFlowConnections(tileType, rotation);
+      return connections.some(([dir1, dir2]) => 
+        (dir1 === fromDir && dir2 === toDir) || (dir1 === toDir && dir2 === fromDir)
+      );
+    }
+    
+    // Helper to check if edge tile can flow to target direction from edge directions
+    // Edge 0 has inward directions: SouthWest (0) and SouthEast (5)
+    function edgeTileCanFlowToDirection(tileType: TileType, rotation: number, targetDir: Direction): boolean {
+      const edgeDirections = [Direction.SouthWest, Direction.SouthEast];
+      return edgeDirections.some(edgeDir => canFlowBetween(tileType, rotation, edgeDir, targetDir));
+    }
+    
     // Test all combinations: 4 tile types × 4 tile types × 6 rotations = 96 tests
     tileTypes.forEach(edgeTileType => {
       tileTypes.forEach(adjacentTileType => {
@@ -162,10 +178,10 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
             expect(player1Flows!.has('-3,0')).toBe(true);
             
             // Determine if flow SHOULD propagate to adjacent tile
-            // Flow propagates from edge tile in direction 2 (NorthWest)
-            const edgeTileHasFlowInDir2 = hasConnectionInDirection(edgeTileType, 0, Direction.NorthWest);
+            // Check if edge tile can flow from edge directions (SW or SE) to NorthWest direction
+            const edgeTileCanReachNW = edgeTileCanFlowToDirection(edgeTileType, 0, Direction.NorthWest);
             
-            if (edgeTileHasFlowInDir2) {
+            if (edgeTileCanReachNW) {
               // Flow enters adjacent tile from opposite direction (SouthEast = 5)
               const entryDirection = getOppositeDirection(Direction.NorthWest);
               const adjacentTileAcceptsFlow = hasConnectionInDirection(adjacentTileType, rotation, entryDirection);
@@ -184,7 +200,7 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
                 expect(player1Flows!.has('-2,-1')).toBe(false);
               }
             } else {
-              // Edge tile doesn't have flow in direction 0, so flow cannot propagate
+              // Edge tile doesn't have reachable flow in NorthWest direction, so flow cannot propagate
               expect(player1Flows!.has('-2,-1')).toBe(false);
             }
           });
