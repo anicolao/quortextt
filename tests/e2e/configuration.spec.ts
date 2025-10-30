@@ -227,9 +227,13 @@ test.describe('Configuration Screen', () => {
       y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
       
       // Remove button position (from lobbyLayout line 242-244)
+      const btnX = x + entryWidth - removeButtonSize - 5;
+      const btnY = y + (entryHeight - removeButtonSize) / 2;
+      
+      // Return the CENTER of the button for clicking
       return {
-        x: x + entryWidth - removeButtonSize - 5,
-        y: y + (entryHeight - removeButtonSize) / 2,
+        x: btnX + removeButtonSize / 2,
+        y: btnY + removeButtonSize / 2,
       };
     });
     
