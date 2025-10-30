@@ -324,7 +324,7 @@ export class GameplayRenderer {
   }
 
   private renderCurrentTilePreview(state: RootState): void {
-    if (state.game.currentTile === null || state.game.currentTile === undefined) return;
+    if (state.game.currentTile == null) return;
 
     const currentPlayer = state.game.players[state.game.currentPlayerIndex];
     if (!currentPlayer) return;
