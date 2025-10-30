@@ -36,16 +36,16 @@ describe('flow propagation', () => {
     it('should trace flow through connected tiles', () => {
       const board = new Map<string, PlacedTile>();
       
-      // Create a simple path: two tiles side by side
+      // Create a simple path: two tiles connected via SW-NW
       const tile1: PlacedTile = {
-        type: TileType.NoSharps, // Now has SE-NW connection
+        type: TileType.NoSharps, // Has SW-NW connection (among others)
         rotation: 0,
         position: { row: 0, col: 0 },
       };
       const tile2: PlacedTile = {
-        type: TileType.NoSharps, // Now has SE-NW connection
+        type: TileType.NoSharps, // Has SW-NW connection (among others)
         rotation: 0,
-        position: { row: -1, col: 0 }, // To the NW of tile1
+        position: { row: 1, col: -1 }, // To the NW of tile1
       };
       
       board.set(positionToKey(tile1.position), tile1);
@@ -228,38 +228,34 @@ describe('flow propagation', () => {
       // Let's create a clearer test case
       const board2 = new Map<string, PlacedTile>();
       
-      // Place tile at (-3, 3) on edge 0 (NW edge)
-      // At this corner position, only NW direction should be used
-      const cornerTile: PlacedTile = {
-        type: TileType.TwoSharps, // Has connections (rotated -2): E-NE, SW-W, SE-NW
+      // Place tile at (-3, 1) on edge 0 (NW edge)
+      // Edge 0 has inward directions SW and SE
+      const edgeTile2: PlacedTile = {
+        type: TileType.NoSharps, // Has connections: SW↔NW, W↔E, NE↔SE
         rotation: 0,
-        position: { row: -3, col: 3 },
+        position: { row: -3, col: 1 },
       };
       
-      // Place tile to the east (not on player edge, outside board)
-      // and tile to NE (not on player edge, outside board)
-      // Place tile to SE which IS on the board
-      const seTile: PlacedTile = {
+      // Place tile to the NE (inward from edge)
+      // NE from (-3, 1) is (-2, 1)
+      const inwardTile2: PlacedTile = {
         type: TileType.NoSharps,
         rotation: 0,
-        position: { row: -2, col: 3 }, // SE of corner
+        position: { row: -2, col: 1 }, // NE of edge tile
       };
       
-      board2.set(positionToKey(cornerTile.position), cornerTile);
-      board2.set(positionToKey(seTile.position), seTile);
+      board2.set(positionToKey(edgeTile2.position), edgeTile2);
+      board2.set(positionToKey(inwardTile2.position), inwardTile2);
       
       const { flows: flows2 } = calculateFlows(board2, players);
       const playerFlow2 = flows2.get('p1');
       
-      // TwoSharps rotation 0 (rotated -2): E-NE, SW-W, SE-NW
-      // If entering from NW (player's edge), exits to SE (on board -> seTile)
-      // If entering from W (player's edge), exits to SW (off board)
-      // The tile should be in the flow
-      expect(playerFlow2?.has(positionToKey(cornerTile.position))).toBe(true);
+      // NoSharps has SE↔NE connection
+      // Flow enters from SE (edge direction), exits to NE (toward inward tile)
+      expect(playerFlow2?.has(positionToKey(edgeTile2.position))).toBe(true);
       
-      // The SE tile SHOULD be in flow because flow from NW goes to SE
-      // (TwoSharps has SE-NW connection)
-      expect(playerFlow2?.has(positionToKey(seTile.position))).toBe(true);
+      // The inward tile SHOULD be in flow because flow from SE exits to NE
+      expect(playerFlow2?.has(positionToKey(inwardTile2.position))).toBe(true);
     });
 
     it('should calculate flows for player with edge tile', () => {
