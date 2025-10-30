@@ -25,25 +25,7 @@ The existing lobby UI has several problems:
 
 ### Layout Overview
 
-The new lobby uses a radial, edge-based layout:
-
-```
-┌──────────────────────────────────────────┐
-│ X                                      X │ ← Exit buttons in corners
-│                                          │
-│  [Player 2 List]                         │ ← Player lists at edges
-│       ↑                                  │   (rotated to face outward)
-│       │                                  │
-│  [+ buttons]  ←────  [START]  ────→      │
-│                        ⬤                 │ ← Center start button
-│                                          │
-│                                          │
-│        ↓                                 │
-│  [Player 1 List]                         │
-│                                          │
-│ X                                      X │
-└──────────────────────────────────────────┘
-```
+The new lobby uses a radial, edge-based layout with + buttons at each edge for player addition, a central START button, corner X buttons for exit, and player lists displayed at all four edges rotated appropriately.
 
 ### Edge-Based Player Addition (+ Buttons)
 
@@ -105,7 +87,7 @@ The new lobby uses a radial, edge-based layout:
 - Same X button design used in gameplay
 - Clear, recognizable X or ✕ symbol
 - Size: 50x50 pixels minimum
-- Rotated to face the nearest edge (diagonal orientation)
+- Same orientation and positioning as current gameplay screen
 
 **Interaction**:
 - In lobby: Close/exit the application or return to main menu
@@ -197,7 +179,6 @@ Each entry shows:
 
 **Accessibility**:
 - Any player can remove any other player (trust-based, suitable for tabletop play)
-- Alternative: Only show X button for players who joined from this edge (if tracking needed)
 
 ## Technical Considerations
 
@@ -243,10 +224,14 @@ Each entry shows:
 - No animation blocking (UI remains responsive)
 
 **Implementation Approach**:
-- Use requestAnimationFrame for smooth updates
-- CSS transitions or Canvas-based animation depending on rendering approach
-- Animation state tracked in Redux for consistency
-- Queue system for sequential animations if needed
+- Canvas-based animations using requestAnimationFrame
+- Frame-count based timing: animations specified as integer frame counts
+- Animation timer counts down from totalFrames to 0
+- Generate floating point time value `t` calculated as: `t = (totalFrames - currentFrame) / (1.0 * totalFrames)`
+- Time value `t` starts at 0 and progresses to 1.0 over the animation duration
+- Use `t` to drive animation calculations (e.g., ease-out position interpolation)
+- Update Redux state at start of requestAnimationFrame, redraw shows outcome naturally
+- Generic, reusable animation framework applicable across entire application
 
 ### State Management
 
@@ -359,17 +344,6 @@ type Edge = 0 | 1 | 2 | 3;  // Bottom, Right, Top, Left
 6. **Landscape-Friendly**: Fits within typical tablet aspect ratios
 7. **Animation-Rich**: Clear feedback for all actions
 8. **Consistent**: X buttons work same way in lobby and gameplay
-
-## Future Enhancements
-
-Potential future additions (not in initial scope):
-
-- **Player Names**: Optional text input for player identification
-- **AI Players**: Special + button variant for adding computer players
-- **Teams**: Visual grouping of players into teams (4-6 player games)
-- **Game Options**: Center area could show game settings before start
-- **Join Animation**: More elaborate animation when player joins (e.g., color wave from edge to center)
-- **Audio Feedback**: Sounds for join, remove, and start actions
 
 ## Implementation Phases
 
