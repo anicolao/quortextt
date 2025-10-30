@@ -20,14 +20,14 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
       position: { row: -3, col: 0 } 
     });
     
-    // Tile 2: Adjacent to tile 1 in direction SouthWest (0)
-    // Position (-2, -1) is neighbor of (-3, 0) via direction 0
+    // Tile 2: Adjacent to tile 1 in direction NorthWest (2)
+    // Position (-2, -1) is neighbor of (-3, 0) via direction 2
     // OneSharp tile with rotation 4 has connections:
     // - East (4) ↔ NorthEast (3)  
     // - SouthEast (5) ↔ West (1)
     // - SouthWest (0) ↔ NorthWest (2)
-    // Flow enters from NorthEast (3) [opposite of SouthWest (0)]
-    // Flow exits to East (4)
+    // Flow enters from SouthEast (5) [opposite of NorthWest (2)]
+    // Flow exits to West (1)
     board.set('-2,-1', { 
       type: TileType.OneSharp, 
       rotation: 4, 
@@ -77,7 +77,7 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
       position: { row: -3, col: 1 } 
     });
     
-    // Adjacent tile at (-2,1) - neighbor via SouthEast (5)
+    // Adjacent tile at (-2,1) - neighbor via NorthEast (3)
     // NoSharps at rotation 0: 0↔2, 1↔4, 3↔5
     // Flow enters from NorthWest (2) [opposite of SouthEast (5)]
     // Flow exits to SouthWest (0)
@@ -139,7 +139,7 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
               position: { row: -3, col: 0 } 
             });
             
-            // Adjacent tile at (-2, -1) - neighbor via direction 0 (SouthWest)
+            // Adjacent tile at (-2, -1) - neighbor via direction 2 (NorthWest)
             board.set('-2,-1', { 
               type: adjacentTileType, 
               rotation: rotation, 
@@ -162,12 +162,12 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
             expect(player1Flows!.has('-3,0')).toBe(true);
             
             // Determine if flow SHOULD propagate to adjacent tile
-            // Flow propagates from edge tile in direction 0 (SouthWest)
-            const edgeTileHasFlowInDir0 = hasConnectionInDirection(edgeTileType, 0, Direction.SouthWest);
+            // Flow propagates from edge tile in direction 2 (NorthWest)
+            const edgeTileHasFlowInDir2 = hasConnectionInDirection(edgeTileType, 0, Direction.NorthWest);
             
-            if (edgeTileHasFlowInDir0) {
-              // Flow enters adjacent tile from opposite direction (NorthEast = 3)
-              const entryDirection = getOppositeDirection(Direction.SouthWest);
+            if (edgeTileHasFlowInDir2) {
+              // Flow enters adjacent tile from opposite direction (SouthEast = 5)
+              const entryDirection = getOppositeDirection(Direction.NorthWest);
               const adjacentTileAcceptsFlow = hasConnectionInDirection(adjacentTileType, rotation, entryDirection);
               
               if (adjacentTileAcceptsFlow) {
