@@ -71,20 +71,40 @@ async function main() {
     await page.waitForTimeout(200);
   }
   
+  // Helper to verify state
+  async function verifyPlayerCount(expected: number, context: string) {
+    const actual = await page.evaluate(() => {
+      const state = (window as any).__REDUX_STORE__.getState();
+      return state.game.configPlayers.length;
+    });
+    if (actual !== expected) {
+      throw new Error(`${context}: Expected ${expected} players, but found ${actual}`);
+    }
+    console.log(`✓ ${context}: ${actual} players confirmed`);
+  }
+  
   // 002: Player added from bottom (blue)
   await clickEdgeButton(0, 0);
+  await verifyPlayerCount(1, '002-player-added-bottom');
   await page.screenshot({ path: `${outputDir}/002-player-added-bottom.png` });
   
   // 003: Player added from right (orange)
   await clickEdgeButton(1, 1);
+  await verifyPlayerCount(2, '003-player-added-right');
   await page.screenshot({ path: `${outputDir}/003-player-added-right.png` });
   
   // 004: Player added from top (green)
   await clickEdgeButton(2, 2);
+  await verifyPlayerCount(3, '004-player-added-top');
   await page.screenshot({ path: `${outputDir}/004-player-added-top.png` });
   
   // 005: Player added from left (yellow)
   await clickEdgeButton(3, 3);
+  await verifyPlayerCount(4, '004-player-added-top (now have 4 players)');
+  
+  // Add 5th player from bottom edge (purple)
+  await clickEdgeButton(4, 0);  
+  await verifyPlayerCount(5, '005-player-added-left (now have 5 players)');
   await page.screenshot({ path: `${outputDir}/005-player-added-left.png` });
   
   // Helper to click remove button
@@ -164,36 +184,43 @@ async function main() {
   
   // 006: Remove from bottom (P1)
   await clickRemoveButton(0);
+  await verifyPlayerCount(3, '006-remove-from-bottom');
   await page.screenshot({ path: `${outputDir}/006-remove-from-bottom.png` });
   
   // 007: Remove from right (P2, now index 0)
   await clickRemoveButton(0);
+  await verifyPlayerCount(2, '007-remove-from-right');
   await page.screenshot({ path: `${outputDir}/007-remove-from-right.png` });
   
   // 008: Remove from top (P3, now index 0)
   await clickRemoveButton(0);
+  await verifyPlayerCount(1, '008-remove-from-top');
   await page.screenshot({ path: `${outputDir}/008-remove-from-top.png` });
   
   // 009: Remove from left (P4, now index 0)
   await clickRemoveButton(0);
+  await verifyPlayerCount(0, '009-remove-from-left');
   await page.screenshot({ path: `${outputDir}/009-remove-from-left.png` });
   
   // 010: Multiple players from same edge
   await clickEdgeButton(0, 0); // Blue bottom
   await clickEdgeButton(1, 0); // Orange bottom
   await clickEdgeButton(2, 0); // Green bottom
+  await verifyPlayerCount(3, '010-multiple-players-same-edge');
   await page.screenshot({ path: `${outputDir}/010-multiple-players-same-edge.png` });
   
   // Clear for portrait test
   await clickRemoveButton(0);
   await clickRemoveButton(0);
   await clickRemoveButton(0);
+  await verifyPlayerCount(0, 'Cleared for portrait test');
   
   // 011: Portrait mode
   await page.setViewportSize({ width: 720, height: 1024 });
   await page.waitForTimeout(500);
   await clickEdgeButton(0, 1); // Blue right
   await clickEdgeButton(1, 3); // Orange left
+  await verifyPlayerCount(2, '011-portrait-mode');
   await page.screenshot({ path: `${outputDir}/011-portrait-mode.png` });
   
   await browser.close();
