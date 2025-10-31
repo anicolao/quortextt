@@ -116,7 +116,7 @@ export class SeatingRenderer {
     
     this.ctx.beginPath();
     for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i - Math.PI / 6; // Start from top vertex
+      const angle = (Math.PI / 3) * i; // Flat-topped hexagon - vertices at 0°, 60°, 120°, 180°, 240°, 300°
       const x = centerX + size * Math.cos(angle);
       const y = centerY + size * Math.sin(angle);
       if (i === 0) {
@@ -147,21 +147,21 @@ export class SeatingRenderer {
       this.ctx.save();
       
       // Calculate the two vertices for this edge
-      // Edges match Direction enum with corrected angles
-      // For pointy-top hexagon, vertices are at 30°, 90°, 150°, 210°, 270°, 330° (indices 0-5)
+      // Edges match Direction enum: 0=SouthWest, 1=West, 2=NorthWest, 3=NorthEast, 4=East, 5=SouthEast
+      // For flat-topped hexagon, vertices are at 0°, 60°, 120°, 180°, 240°, 300° (indices 0-5)
       const edgeVertexPairs = [
-        [2, 3], // Edge 0 (180° - West): between vertices at 150° and 210°
-        [1, 2], // Edge 1 (120° - NorthWest): between vertices at 90° and 150°
-        [0, 1], // Edge 2 (60° - NorthEast): between vertices at 30° and 90°
-        [5, 0], // Edge 3 (0° - East): between vertices at 330° and 30°
-        [4, 5], // Edge 4 (300° - SouthEast): between vertices at 270° and 330°
-        [3, 4], // Edge 5 (240° - SouthWest): between vertices at 210° and 270°
+        [3, 4], // Edge 0 (SouthWest): between vertices at 180° and 240°
+        [2, 3], // Edge 1 (West): between vertices at 120° and 180°
+        [1, 2], // Edge 2 (NorthWest): between vertices at 60° and 120°
+        [0, 1], // Edge 3 (NorthEast): between vertices at 0° and 60°
+        [5, 0], // Edge 4 (East): between vertices at 300° and 0°
+        [4, 5], // Edge 5 (SouthEast): between vertices at 240° and 300°
       ];
       
       const [v1, v2] = edgeVertexPairs[edge];
       
-      const angle1 = (Math.PI / 3) * v1 - Math.PI / 6;
-      const angle2 = (Math.PI / 3) * v2 - Math.PI / 6;
+      const angle1 = (Math.PI / 3) * v1;
+      const angle2 = (Math.PI / 3) * v2;
       
       const x1 = centerX + size * Math.cos(angle1);
       const y1 = centerY + size * Math.sin(angle1);
