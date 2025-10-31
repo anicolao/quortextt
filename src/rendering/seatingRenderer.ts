@@ -75,16 +75,22 @@ export class SeatingRenderer {
 
   private calculateEdgeButtons(hexLayout: HexLayout, availableEdges: number[]): EdgeButton[] {
     const buttons: EdgeButton[] = [];
-    const boardRadius = hexLayout.size * 3.5; // Distance from center to edge buttons
+    const boardRadius = hexLayout.size * 7.2 + hexLayout.size * 0.8; // Board radius plus offset for buttons
     const buttonRadius = 25; // Button size (half of original 50px)
     
-    // Edge midpoint angles for pointy-top hexagon (centered on each edge, not corners)
-    // Edges match Direction enum: 0=SouthWest, 1=West, 2=NorthWest, 3=NorthEast, 4=East, 5=SouthEast
-    const edgeAngles = [180, 120, 60, 0, 300, 240];
+    // Edge midpoint angles for flat-topped hexagon
+    // Matches Direction enum and GameplayRenderer's edge mapping:
+    // Edge 0: Bottom (270°)
+    // Edge 1: Bottom-right (330°)
+    // Edge 2: Top-right (30°)
+    // Edge 3: Top (90°)
+    // Edge 4: Top-left (150°)
+    // Edge 5: Bottom-left (210°)
+    const edgeAngles = [270, 330, 30, 90, 150, 210];
 
     // Text rotation to make numbers upright when viewed from that edge
     // For edge pointing outward at angle θ, rotate text 90° clockwise: θ + 90°
-    const textRotations = edgeAngles.map((angle) => (angle + 270) % 360);
+    const textRotations = edgeAngles.map((angle) => (angle + 90) % 360);
     
     for (const edge of availableEdges) {
       const angle = edgeAngles[edge];
@@ -107,18 +113,19 @@ export class SeatingRenderer {
   }
 
   private drawBoard(hexLayout: HexLayout): void {
-    // Draw a large black hexagon representing the board
+    // Draw the actual game board (flat-topped hexagon matching GameplayRenderer)
     this.ctx.save();
     
-    const centerX = hexLayout.origin.x;
-    const centerY = hexLayout.origin.y;
-    const size = hexLayout.size * 3;
+    const center = hexLayout.origin;
+    const boardRadius = hexLayout.size * 7.2;
     
+    // Draw board as a large hexagon with flat-top orientation
+    this.ctx.fillStyle = '#000000';
     this.ctx.beginPath();
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i; // Flat-topped hexagon - vertices at 0°, 60°, 120°, 180°, 240°, 300°
-      const x = centerX + size * Math.cos(angle);
-      const y = centerY + size * Math.sin(angle);
+      const x = center.x + boardRadius * Math.cos(angle);
+      const y = center.y + boardRadius * Math.sin(angle);
       if (i === 0) {
         this.ctx.moveTo(x, y);
       } else {
@@ -126,36 +133,36 @@ export class SeatingRenderer {
       }
     }
     this.ctx.closePath();
-    
-    this.ctx.fillStyle = '#000000';
     this.ctx.fill();
-    
-    this.ctx.strokeStyle = '#333333';
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
     
     this.ctx.restore();
   }
 
   private drawSelectedEdges(hexLayout: HexLayout, selectedEdges: Map<number, string>): void {
-    // Draw colored borders for edges that have been selected
+    // Draw colored borders for edges that have been selected (matching GameplayRenderer)
     const centerX = hexLayout.origin.x;
     const centerY = hexLayout.origin.y;
-    const size = hexLayout.size * 3;
+    const boardRadius = hexLayout.size * 7.2;
     
     selectedEdges.forEach((color, edge) => {
       this.ctx.save();
       
       // Calculate the two vertices for this edge
-      // Edges match Direction enum: 0=SouthWest, 1=West, 2=NorthWest, 3=NorthEast, 4=East, 5=SouthEast
-      // For flat-topped hexagon, vertices are at 0°, 60°, 120°, 180°, 240°, 300° (indices 0-5)
+      // Matches GameplayRenderer's edge mapping for flat-topped hexagon
+      // Vertices are at 0°, 60°, 120°, 180°, 240°, 300° (indices 0-5)
+      // Edge 0: Bottom (270°) - between vertices 4 and 5
+      // Edge 1: Bottom-right (330°) - between vertices 5 and 0
+      // Edge 2: Top-right (30°) - between vertices 0 and 1
+      // Edge 3: Top (90°) - between vertices 1 and 2
+      // Edge 4: Top-left (150°) - between vertices 2 and 3
+      // Edge 5: Bottom-left (210°) - between vertices 3 and 4
       const edgeVertexPairs = [
-        [3, 4], // Edge 0 (SouthWest): between vertices at 180° and 240°
-        [2, 3], // Edge 1 (West): between vertices at 120° and 180°
-        [1, 2], // Edge 2 (NorthWest): between vertices at 60° and 120°
-        [0, 1], // Edge 3 (NorthEast): between vertices at 0° and 60°
-        [5, 0], // Edge 4 (East): between vertices at 300° and 0°
-        [4, 5], // Edge 5 (SouthEast): between vertices at 240° and 300°
+        [4, 5], // Edge 0: Bottom
+        [5, 0], // Edge 1: Bottom-right
+        [0, 1], // Edge 2: Top-right
+        [1, 2], // Edge 3: Top
+        [2, 3], // Edge 4: Top-left
+        [3, 4], // Edge 5: Bottom-left
       ];
       
       const [v1, v2] = edgeVertexPairs[edge];
@@ -163,17 +170,17 @@ export class SeatingRenderer {
       const angle1 = (Math.PI / 3) * v1;
       const angle2 = (Math.PI / 3) * v2;
       
-      const x1 = centerX + size * Math.cos(angle1);
-      const y1 = centerY + size * Math.sin(angle1);
-      const x2 = centerX + size * Math.cos(angle2);
-      const y2 = centerY + size * Math.sin(angle2);
+      const x1 = centerX + boardRadius * Math.cos(angle1);
+      const y1 = centerY + boardRadius * Math.sin(angle1);
+      const x2 = centerX + boardRadius * Math.cos(angle2);
+      const y2 = centerY + boardRadius * Math.sin(angle2);
       
       this.ctx.beginPath();
       this.ctx.moveTo(x1, y1);
       this.ctx.lineTo(x2, y2);
       
       this.ctx.strokeStyle = color;
-      this.ctx.lineWidth = 8;
+      this.ctx.lineWidth = hexLayout.size * 0.3; // Match GameplayRenderer's edge thickness
       this.ctx.lineCap = 'round';
       this.ctx.stroke();
       
