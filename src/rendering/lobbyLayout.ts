@@ -187,57 +187,24 @@ export function calculateLobbyLayout(
   const useDoubleColumn = singleColumnHeight > availableSpace;
 
   // For each edge, create player list entries
-  // Position labels inward from + buttons on each edge
+  // Always calculate positions as if on bottom edge, renderer will rotate around screen center
   for (let edge = 0; edge < 4; edge++) {
     sortedPlayers.forEach((player, index) => {
-      let x: number, y: number, rotation: number;
-      
       // Calculate column and row for this player
       const column = useDoubleColumn ? index % 2 : 0;
       const row = useDoubleColumn ? Math.floor(index / 2) : index;
 
-      // Position labels just inward from + buttons on each edge
-      switch (edge) {
-        case 0: // Bottom - labels above + buttons
-          if (useDoubleColumn) {
-            x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
-          } else {
-            x = canvasWidth / 2 - entryWidth / 2;
-          }
-          y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
-          rotation = 0;
-          break;
-        case 1: // Right - labels left of + buttons (inward)
-          x = canvasWidth - edgeMargin - buttonSize - edgeMargin - entryWidth - column * (entryWidth + columnSpacing);
-          if (useDoubleColumn) {
-            y = canvasHeight / 2 - entryHeight - columnSpacing / 2 + row * (entryHeight + columnSpacing);
-          } else {
-            y = canvasHeight / 2 - entryHeight / 2 + row * (entryHeight + 5);
-          }
-          rotation = 90;
-          break;
-        case 2: // Top - labels below + buttons (inward)
-          if (useDoubleColumn) {
-            x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
-          } else {
-            x = canvasWidth / 2 - entryWidth / 2;
-          }
-          y = edgeMargin + buttonSize + edgeMargin + row * (entryHeight + 5);
-          rotation = 180;
-          break;
-        case 3: // Left - labels right of + buttons (inward)
-          x = edgeMargin + buttonSize + edgeMargin + column * (entryWidth + columnSpacing);
-          if (useDoubleColumn) {
-            y = canvasHeight / 2 - entryHeight - columnSpacing / 2 + row * (entryHeight + columnSpacing);
-          } else {
-            y = canvasHeight / 2 - entryHeight / 2 + row * (entryHeight + 5);
-          }
-          rotation = 270;
-          break;
-        default:
-          // This should never happen since edge is controlled (0-3)
-          throw new Error(`Invalid edge value: ${edge}`);
+      // Always calculate position as if on bottom edge
+      let x: number, y: number;
+      if (useDoubleColumn) {
+        x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
+      } else {
+        x = canvasWidth / 2 - entryWidth / 2;
       }
+      y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
+
+      // Rotation depends on which edge this list is for
+      const rotation = edge * 90; // 0, 90, 180, 270
 
       playerLists[edge].push({
         player,
