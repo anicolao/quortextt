@@ -1,6 +1,6 @@
 // Lobby renderer for the redesigned edge-based lobby
 
-import { ConfigPlayer } from '../redux/types';
+import { ConfigPlayer } from "../redux/types";
 import {
   LobbyLayout,
   EdgeButton,
@@ -8,7 +8,7 @@ import {
   ExitButton,
   PlayerListEntry,
   calculateLobbyLayout,
-} from './lobbyLayout';
+} from "./lobbyLayout";
 
 export class LobbyRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -18,11 +18,15 @@ export class LobbyRenderer {
     this.ctx = ctx;
   }
 
-  render(canvasWidth: number, canvasHeight: number, players: ConfigPlayer[]): LobbyLayout {
+  render(
+    canvasWidth: number,
+    canvasHeight: number,
+    players: ConfigPlayer[],
+  ): LobbyLayout {
     this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players);
 
     // Clear canvas
-    this.ctx.fillStyle = '#1a1a2e';
+    this.ctx.fillStyle = "#1a1a2e";
     this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Render all elements
@@ -39,7 +43,7 @@ export class LobbyRenderer {
   }
 
   private renderEdgeButtons(buttons: EdgeButton[]): void {
-    buttons.forEach(button => {
+    buttons.forEach((button) => {
       this.ctx.save();
 
       // Draw button background
@@ -47,7 +51,7 @@ export class LobbyRenderer {
       this.ctx.fillRect(button.x, button.y, button.size, button.size);
 
       // Draw border
-      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.strokeStyle = "#ffffff";
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(button.x, button.y, button.size, button.size);
 
@@ -60,7 +64,7 @@ export class LobbyRenderer {
       this.ctx.translate(centerX, centerY);
       this.ctx.rotate((button.rotation * Math.PI) / 180);
 
-      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.strokeStyle = "#ffffff";
       this.ctx.lineWidth = 4;
       this.ctx.beginPath();
       // Horizontal line
@@ -82,19 +86,19 @@ export class LobbyRenderer {
     const radius = button.size / 2;
 
     // Draw circle
-    this.ctx.fillStyle = button.enabled ? '#4CAF50' : '#555555';
+    this.ctx.fillStyle = button.enabled ? "#4CAF50" : "#555555";
     this.ctx.beginPath();
     this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     this.ctx.fill();
 
     // Draw border
-    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 3;
     this.ctx.stroke();
 
     // Draw play triangle
     const triangleSize = radius * 0.5;
-    this.ctx.fillStyle = button.enabled ? '#ffffff' : '#999999';
+    this.ctx.fillStyle = button.enabled ? "#ffffff" : "#999999";
     this.ctx.beginPath();
     this.ctx.moveTo(centerX - triangleSize * 0.3, centerY - triangleSize * 0.6);
     this.ctx.lineTo(centerX - triangleSize * 0.3, centerY + triangleSize * 0.6);
@@ -104,25 +108,25 @@ export class LobbyRenderer {
   }
 
   private renderExitButtons(buttons: ExitButton[]): void {
-    buttons.forEach(button => {
+    buttons.forEach((button) => {
       const centerX = button.x;
       const centerY = button.y;
       const radius = button.size / 2;
 
       // Draw circle background
-      this.ctx.fillStyle = '#d32f2f';
+      this.ctx.fillStyle = "#d32f2f";
       this.ctx.beginPath();
       this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       this.ctx.fill();
 
       // Draw border
-      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.strokeStyle = "#ffffff";
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
 
       // Draw X symbol
       const xSize = radius * 0.6;
-      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.strokeStyle = "#ffffff";
       this.ctx.lineWidth = 3;
       this.ctx.beginPath();
       this.ctx.moveTo(centerX - xSize, centerY - xSize);
@@ -133,7 +137,11 @@ export class LobbyRenderer {
     });
   }
 
-  private renderPlayerLists(lists: PlayerListEntry[][], canvasWidth: number, canvasHeight: number): void {
+  private renderPlayerLists(
+    lists: PlayerListEntry[][],
+    canvasWidth: number,
+    canvasHeight: number,
+  ): void {
     // Render player lists at all 4 edges
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
@@ -142,7 +150,12 @@ export class LobbyRenderer {
     });
   }
 
-  private renderPlayerEntry(entry: PlayerListEntry, index: number, canvasWidth: number, canvasHeight: number): void {
+  private renderPlayerEntry(
+    entry: PlayerListEntry,
+    index: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): void {
     this.ctx.save();
 
     // Calculate screen center
@@ -172,10 +185,10 @@ export class LobbyRenderer {
       const minDim = Math.min(canvasWidth, canvasHeight);
       const maxDim = Math.max(canvasWidth, canvasHeight);
       const edgeAdjustment = (maxDim - minDim) / 2;
-      
+
       // Move labels away from center in the y-direction (after rotation)
       // This positions them correctly relative to the + buttons on left/right edges
-      this.ctx.translate(0, -edgeAdjustment);
+      this.ctx.translate(0, edgeAdjustment);
     }
     // Note: Top/bottom edges (0° and 180°) don't need adjustment as they're already
     // positioned correctly by the rotation around screen center
@@ -184,13 +197,23 @@ export class LobbyRenderer {
     // All coordinates are relative to entry center
 
     // Draw entry background
-    this.ctx.fillStyle = '#2a2a3e';
-    this.ctx.fillRect(-entry.width / 2, -entry.height / 2, entry.width, entry.height);
+    this.ctx.fillStyle = "#2a2a3e";
+    this.ctx.fillRect(
+      -entry.width / 2,
+      -entry.height / 2,
+      entry.width,
+      entry.height,
+    );
 
     // Draw border
-    this.ctx.strokeStyle = '#555555';
+    this.ctx.strokeStyle = "#555555";
     this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(-entry.width / 2, -entry.height / 2, entry.width, entry.height);
+    this.ctx.strokeRect(
+      -entry.width / 2,
+      -entry.height / 2,
+      entry.width,
+      entry.height,
+    );
 
     // Draw color indicator
     const colorSize = entry.height * 0.6;
@@ -199,29 +222,25 @@ export class LobbyRenderer {
 
     this.ctx.fillStyle = entry.player.color;
     this.ctx.fillRect(colorX, colorY, colorSize, colorSize);
-    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(colorX, colorY, colorSize, colorSize);
 
     // Draw player number
-    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillStyle = "#ffffff";
     this.ctx.font = `${entry.height * 0.4}px sans-serif`;
-    this.ctx.textAlign = 'left';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(
-      `P${index + 1}`,
-      colorX + colorSize + 10,
-      0
-    );
+    this.ctx.textAlign = "left";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(`P${index + 1}`, colorX + colorSize + 10, 0);
 
     // Draw remove button
     const removeBtn = entry.removeButton;
     const removeBtnX = entry.width / 2 - removeBtn.size - 5;
     const removeBtnY = -(removeBtn.size / 2);
-    
-    this.ctx.fillStyle = '#d32f2f';
+
+    this.ctx.fillStyle = "#d32f2f";
     this.ctx.fillRect(removeBtnX, removeBtnY, removeBtn.size, removeBtn.size);
-    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(removeBtnX, removeBtnY, removeBtn.size, removeBtn.size);
 
@@ -229,7 +248,7 @@ export class LobbyRenderer {
     const xSize = removeBtn.size * 0.3;
     const xCenterX = removeBtnX + removeBtn.size / 2;
     const xCenterY = removeBtnY + removeBtn.size / 2;
-    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
     this.ctx.moveTo(xCenterX - xSize, xCenterY - xSize);
