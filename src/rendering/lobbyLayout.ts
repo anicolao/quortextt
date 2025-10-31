@@ -206,6 +206,26 @@ export function calculateLobbyLayout(
       // Rotation depends on which edge this list is for
       const rotation = edge * 90; // 0, 90, 180, 270
 
+      // Calculate remove button position in bottom-edge coordinates
+      const removeBtnX = x + entryWidth - removeButtonSize - 5;
+      const removeBtnY = y + (entryHeight - removeButtonSize) / 2;
+      
+      // Transform remove button center position to match rendered position after rotation
+      const removeBtnCenterX = removeBtnX + removeButtonSize / 2;
+      const removeBtnCenterY = removeBtnY + removeButtonSize / 2;
+      const screenCenterX = canvasWidth / 2;
+      const screenCenterY = canvasHeight / 2;
+      
+      const transformedCenter = transformPoint(
+        removeBtnCenterX,
+        removeBtnCenterY,
+        rotation,
+        screenCenterX,
+        screenCenterY,
+        canvasWidth,
+        canvasHeight
+      );
+      
       playerLists[edge].push({
         player,
         x,
@@ -215,8 +235,9 @@ export function calculateLobbyLayout(
         edge: edge as Edge,
         rotation,
         removeButton: {
-          x: x + entryWidth - removeButtonSize - 5,
-          y: y + (entryHeight - removeButtonSize) / 2,
+          // Store button top-left from transformed center
+          x: transformedCenter.x - removeButtonSize / 2,
+          y: transformedCenter.y - removeButtonSize / 2,
           size: removeButtonSize,
         },
       });
@@ -256,4 +277,42 @@ export function isPointInCircle(
   const dx = x - centerX;
   const dy = y - centerY;
   return dx * dx + dy * dy <= radius * radius;
+}
+
+// Transform a point through rotation around screen center
+// This matches the transformation applied during rendering
+export function transformPoint(
+  x: number,
+  y: number,
+  rotation: number,
+  screenCenterX: number,
+  screenCenterY: number,
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number } {
+  // Calculate offset from screen center in bottom-edge coordinates
+  const xOffset = x - screenCenterX;
+  const yOffset = y - screenCenterY;
+  
+  // Apply rotation
+  const angleRad = (rotation * Math.PI) / 180;
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  
+  const rotatedX = xOffset * cos - yOffset * sin;
+  let rotatedY = xOffset * sin + yOffset * cos;
+  
+  // Apply aspect ratio adjustment for left/right edges
+  if (rotation === 90 || rotation === 270) {
+    const minDim = Math.min(canvasWidth, canvasHeight);
+    const maxDim = Math.max(canvasWidth, canvasHeight);
+    const edgeAdjustment = (maxDim - minDim) / 2;
+    rotatedY += edgeAdjustment;  // Note: positive now (user fixed the negation)
+  }
+  
+  // Translate back to screen coordinates
+  return {
+    x: screenCenterX + rotatedX,
+    y: screenCenterY + rotatedY
+  };
 }
