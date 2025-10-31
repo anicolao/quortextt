@@ -279,8 +279,20 @@ export function isPointInCircle(
   return dx * dx + dy * dy <= radius * radius;
 }
 
-// Transform a point through rotation around screen center
-// This matches the transformation applied during rendering
+/**
+ * Transform a point through rotation around screen center.
+ * This matches the transformation applied during rendering, ensuring that
+ * hit detection coordinates align with the visual representation.
+ * 
+ * @param x - X coordinate in bottom-edge space (pre-rotation)
+ * @param y - Y coordinate in bottom-edge space (pre-rotation)
+ * @param rotation - Rotation angle in degrees (0, 90, 180, 270)
+ * @param screenCenterX - X coordinate of screen center
+ * @param screenCenterY - Y coordinate of screen center
+ * @param canvasWidth - Width of the canvas
+ * @param canvasHeight - Height of the canvas
+ * @returns Transformed coordinates after rotation and aspect ratio adjustment
+ */
 export function transformPoint(
   x: number,
   y: number,
@@ -294,7 +306,7 @@ export function transformPoint(
   const xOffset = x - screenCenterX;
   const yOffset = y - screenCenterY;
   
-  // Apply rotation
+  // Apply rotation around the origin
   const angleRad = (rotation * Math.PI) / 180;
   const cos = Math.cos(angleRad);
   const sin = Math.sin(angleRad);
@@ -302,12 +314,13 @@ export function transformPoint(
   const rotatedX = xOffset * cos - yOffset * sin;
   let rotatedY = xOffset * sin + yOffset * cos;
   
-  // Apply aspect ratio adjustment for left/right edges
+  // Apply aspect ratio adjustment for left/right edges to maintain consistent
+  // distance from + buttons in both landscape and portrait orientations
   if (rotation === 90 || rotation === 270) {
     const minDim = Math.min(canvasWidth, canvasHeight);
     const maxDim = Math.max(canvasWidth, canvasHeight);
     const edgeAdjustment = (maxDim - minDim) / 2;
-    rotatedY += edgeAdjustment;  // Note: positive now (user fixed the negation)
+    rotatedY += edgeAdjustment;
   }
   
   // Translate back to screen coordinates
