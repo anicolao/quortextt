@@ -145,19 +145,25 @@ export class LobbyRenderer {
   private renderPlayerEntry(entry: PlayerListEntry, index: number): void {
     this.ctx.save();
 
-    // Draw entry background
+    // Translate to center of entry and apply rotation
+    const centerX = entry.x + entry.width / 2;
+    const centerY = entry.y + entry.height / 2;
+    this.ctx.translate(centerX, centerY);
+    this.ctx.rotate((entry.rotation * Math.PI) / 180);
+
+    // Draw entry background (relative to center)
     this.ctx.fillStyle = '#2a2a3e';
-    this.ctx.fillRect(entry.x, entry.y, entry.width, entry.height);
+    this.ctx.fillRect(-entry.width / 2, -entry.height / 2, entry.width, entry.height);
 
     // Draw border
     this.ctx.strokeStyle = '#555555';
     this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(entry.x, entry.y, entry.width, entry.height);
+    this.ctx.strokeRect(-entry.width / 2, -entry.height / 2, entry.width, entry.height);
 
     // Draw color indicator
     const colorSize = entry.height * 0.6;
-    const colorX = entry.x + 10;
-    const colorY = entry.y + (entry.height - colorSize) / 2;
+    const colorX = -entry.width / 2 + 10;
+    const colorY = -(colorSize / 2);
 
     this.ctx.fillStyle = entry.player.color;
     this.ctx.fillRect(colorX, colorY, colorSize, colorSize);
@@ -173,21 +179,24 @@ export class LobbyRenderer {
     this.ctx.fillText(
       `P${index + 1}`,
       colorX + colorSize + 10,
-      entry.y + entry.height / 2
+      0
     );
 
     // Draw remove button
     const removeBtn = entry.removeButton;
+    const removeBtnX = entry.width / 2 - removeBtn.size - 5;
+    const removeBtnY = -(removeBtn.size / 2);
+    
     this.ctx.fillStyle = '#d32f2f';
-    this.ctx.fillRect(removeBtn.x, removeBtn.y, removeBtn.size, removeBtn.size);
+    this.ctx.fillRect(removeBtnX, removeBtnY, removeBtn.size, removeBtn.size);
     this.ctx.strokeStyle = '#ffffff';
     this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(removeBtn.x, removeBtn.y, removeBtn.size, removeBtn.size);
+    this.ctx.strokeRect(removeBtnX, removeBtnY, removeBtn.size, removeBtn.size);
 
     // Draw X on remove button
     const xSize = removeBtn.size * 0.3;
-    const xCenterX = removeBtn.x + removeBtn.size / 2;
-    const xCenterY = removeBtn.y + removeBtn.size / 2;
+    const xCenterX = removeBtnX + removeBtn.size / 2;
+    const xCenterY = removeBtnY + removeBtn.size / 2;
     this.ctx.strokeStyle = '#ffffff';
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
