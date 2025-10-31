@@ -88,7 +88,8 @@ export class SeatingRenderer {
     const edgeAngles = [180, 240, 300, 0, 60, 120];
     
     // Text rotation to make numbers upright when viewed from that edge
-    const textRotations = [180, 120, 60, 0, -60, -120];
+    // For a player sitting at edge angle θ looking at the center, rotate text by -θ
+    const textRotations = [-180, -240, -300, 0, -60, -120];
     
     for (const edge of availableEdges) {
       const angle = edgeAngles[edge];
