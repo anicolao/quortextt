@@ -51,14 +51,37 @@ Add to Redux state:
 interface AnimationState {
   frameCounter: number;           // Global frame counter
   paused: boolean;                // For debugging: pause all animations
-  animations: Map<string, ActiveAnimation>; // ID -> animation
+  animations: ActiveAnimation[];  // List sorted by startFrame
 }
 
 interface ActiveAnimation {
   id: string;                     // Unique animation ID
+  animationName: string;          // Name of registered animation function
   startFrame: number;             // Frame when animation starts
   endFrame: number;               // Frame when animation ends
-  animationFn: (t: number) => void; // Animation function to call each frame
+}
+```
+
+### Animation Function Registry
+
+Animation functions are stored in a separate registry outside Redux (not serializable):
+
+```typescript
+// Global registry of animation functions
+const animationFunctions: Map<string, (t: number) => void> = new Map();
+
+/**
+ * Register a named animation function
+ */
+function defineAnimation(name: string, animFn: (t: number) => void): void {
+  animationFunctions.set(name, animFn);
+}
+
+/**
+ * Get animation function by name
+ */
+function getAnimationFunction(name: string): ((t: number) => void) | undefined {
+  return animationFunctions.get(name);
 }
 ```
 
@@ -72,13 +95,14 @@ const totalFrames = animation.endFrame - animation.startFrame;
 const elapsedFrames = currentFrame - animation.startFrame;
 const t = Math.min(1, Math.max(0, elapsedFrames / totalFrames));
 
-// Call animation function
-animation.animationFn(t);
-
-// Remove when complete
-if (t >= 1) {
-  removeAnimation(animation.id);
+// Get and call animation function
+const animFn = getAnimationFunction(animation.animationName);
+if (animFn) {
+  animFn(t);
 }
+
+// Animation is complete when t >= 1
+// It will be removed from the list during processing
 ```
 
 ## Animation Registration API
@@ -88,22 +112,25 @@ if (t >= 1) {
 ```typescript
 /**
  * Register an animation to start immediately
- * @param animationFn - Function that receives t (0 to 1)
+ * @param animationName - Name of registered animation function
  * @param duration - Animation duration in frames
  * @returns Unique animation ID
  */
 function registerAnimation(
-  animationFn: (t: number) => void,
+  animationName: string,
   duration: number
 ): string;
 ```
 
 **Example:**
 ```typescript
-// Fade in over 18 frames (~300ms)
-registerAnimation((t) => {
+// First, define the animation function
+defineAnimation('fade-in', (t) => {
   element.opacity = t;
-}, 18);
+});
+
+// Then register it to run over 18 frames (~300ms)
+registerAnimation('fade-in', 18);
 ```
 
 ### Delayed Registration
@@ -111,13 +138,13 @@ registerAnimation((t) => {
 ```typescript
 /**
  * Register an animation to start after a delay
- * @param animationFn - Function that receives t (0 to 1)
+ * @param animationName - Name of registered animation function
  * @param duration - Animation duration in frames
  * @param delay - Delay before starting in frames
  * @returns Unique animation ID
  */
 function registerAnimation(
-  animationFn: (t: number) => void,
+  animationName: string,
   duration: number,
   delay: number
 ): string;
@@ -125,10 +152,13 @@ function registerAnimation(
 
 **Example:**
 ```typescript
-// Fade in after 30 frames delay, over 18 frames duration
-registerAnimation((t) => {
+// Define the animation
+defineAnimation('fade-in-delayed', (t) => {
   element.opacity = t;
-}, 18, 30);
+});
+
+// Register to run after 30 frames delay, over 18 frames duration
+registerAnimation('fade-in-delayed', 18, 30);
 ```
 
 ### Redux Action
@@ -138,9 +168,9 @@ interface RegisterAnimationAction {
   type: 'REGISTER_ANIMATION';
   payload: {
     id: string;               // Generated unique ID
+    animationName: string;    // Name of animation function (no function reference)
     startFrame: number;       // frameCounter + delay
     endFrame: number;         // startFrame + duration
-    animationFn: (t: number) => void;
   };
 }
 ```
@@ -179,11 +209,17 @@ function animationLoop() {
 function processAnimations() {
   const state = store.getState();
   const currentFrame = state.animation.frameCounter;
+  const animations = state.animation.animations;
   
-  state.animation.animations.forEach((animation) => {
+  // List is sorted by startFrame, so active animations are at the front
+  const activeAnimations: ActiveAnimation[] = [];
+  
+  for (const animation of animations) {
     // Skip if not started yet
     if (currentFrame < animation.startFrame) {
-      return;
+      // Since list is sorted, all remaining animations are also not started
+      activeAnimations.push(animation);
+      continue;
     }
     
     // Calculate progress
@@ -191,17 +227,26 @@ function processAnimations() {
     const elapsedFrames = currentFrame - animation.startFrame;
     const t = Math.min(1, elapsedFrames / totalFrames);
     
-    // Call animation function
-    animation.animationFn(t);
-    
-    // Remove when complete
-    if (t >= 1) {
-      store.dispatch({
-        type: 'REMOVE_ANIMATION',
-        payload: { id: animation.id }
-      });
+    // Get and call animation function
+    const animFn = getAnimationFunction(animation.animationName);
+    if (animFn) {
+      animFn(t);
     }
-  });
+    
+    // Keep animation if not complete
+    if (t < 1) {
+      activeAnimations.push(animation);
+    }
+    // If t >= 1, animation is omitted from new list (automatically removed)
+  }
+  
+  // Update animation list with completed animations removed
+  if (activeAnimations.length !== animations.length) {
+    store.dispatch({
+      type: 'UPDATE_ANIMATIONS',
+      payload: { animations: activeAnimations }
+    });
+  }
 }
 ```
 
@@ -247,10 +292,14 @@ function easeInOut(animFn: (t: number) => void): (t: number) => void {
 
 **Usage:**
 ```typescript
+// Define base animation
 const fadeAnim = (t: number) => { element.opacity = t; };
 
-// Fade with ease-out
-registerAnimation(easeOut(fadeAnim), 18);
+// Define composed animation with ease-out
+defineAnimation('fade-ease-out', easeOut(fadeAnim));
+
+// Register the composed animation
+registerAnimation('fade-ease-out', 18);
 ```
 
 ### Animation Sequencing
@@ -296,13 +345,14 @@ function parallel(
 
 **Usage:**
 ```typescript
-// Fade and scale simultaneously
+// Define parallel animation: fade and scale simultaneously
 const combined = parallel([
   (t) => { element.opacity = t; },
   (t) => { element.scale = 0.8 + 0.2 * t; }
 ]);
 
-registerAnimation(combined, 18);
+defineAnimation('fade-and-scale', combined);
+registerAnimation('fade-and-scale', 18);
 ```
 
 ## Debugging and Testing
@@ -350,11 +400,10 @@ Tests can verify animations are registered and running:
 ```typescript
 // Check active animations
 const animations = store.getState().animation.animations;
-expect(animations.size).toBeGreaterThan(0);
+expect(animations.length).toBeGreaterThan(0);
 
 // Verify specific animation exists
-const fadeAnimation = Array.from(animations.values())
-  .find(a => a.id === 'fade-in-player-1');
+const fadeAnimation = animations.find(a => a.animationName === 'fade-in-player-1');
 expect(fadeAnimation).toBeDefined();
 ```
 
@@ -366,13 +415,17 @@ From SEATING_UX.md: Button scales down to 0.95 for 100ms (6 frames):
 
 ```typescript
 function handleButtonPress(buttonElement: Element) {
-  registerAnimation((t) => {
+  // Define the animation
+  defineAnimation('button-press', (t) => {
     // Scale from 1.0 to 0.95 and back
     const scale = t < 0.5
       ? 1.0 - 0.05 * (t * 2)      // Scale down
       : 0.95 + 0.05 * ((t - 0.5) * 2); // Scale up
     buttonElement.style.transform = `scale(${scale})`;
-  }, 6); // 100ms at 60fps
+  });
+  
+  // Register it to run for 6 frames (100ms at 60fps)
+  registerAnimation('button-press', 6);
 }
 ```
 
@@ -385,21 +438,29 @@ function handleEdgeSelection(edge: number, playerColor: string) {
   const edgeElement = getEdgeElement(edge);
   const buttonElement = getButtonElement(edge);
   
-  // Stage 1: Button press (0-100ms)
-  registerAnimation((t) => {
+  // Define animations
+  defineAnimation('button-scale-down', (t) => {
     buttonElement.style.transform = `scale(${1.0 - 0.05 * t})`;
-  }, 6, 0);
+  });
   
-  // Stage 2: Edge border fade-in (100-300ms)
-  registerAnimation((t) => {
+  defineAnimation('edge-fade-in', (t) => {
     edgeElement.style.borderColor = playerColor;
     edgeElement.style.opacity = t;
-  }, 12, 6);
+  });
+  
+  defineAnimation('button-fade-out', (t) => {
+    buttonElement.style.opacity = 1 - t;
+  });
+  
+  // Register animations with timing
+  // Stage 1: Button press (0-100ms)
+  registerAnimation('button-scale-down', 6, 0);
+  
+  // Stage 2: Edge border fade-in (100-300ms)
+  registerAnimation('edge-fade-in', 12, 6);
   
   // Stage 3: Button fade-out (300-450ms)
-  registerAnimation((t) => {
-    buttonElement.style.opacity = 1 - t;
-  }, 9, 18);
+  registerAnimation('button-fade-out', 9, 18);
 }
 ```
 
@@ -414,7 +475,8 @@ function placeTile(tile: TileElement, position: HexPosition) {
     (t) => { tile.scale = 0.8 + 0.2 * t; }
   ]);
   
-  registerAnimation(easeOut(fadeScale), 12); // 200ms
+  defineAnimation('tile-place', easeOut(fadeScale));
+  registerAnimation('tile-place', 12); // 200ms
 }
 ```
 
@@ -424,10 +486,12 @@ From UI_DESIGN.md: 450ms smooth rotation:
 
 ```typescript
 function rotateTile(tile: TileElement, fromAngle: number, toAngle: number) {
-  registerAnimation(easeInOut((t) => {
+  defineAnimation('tile-rotate', easeInOut((t) => {
     const angle = fromAngle + (toAngle - fromAngle) * t;
     tile.style.transform = `rotate(${angle}deg)`;
-  }), 27); // 450ms
+  }));
+  
+  registerAnimation('tile-rotate', 27); // 450ms
 }
 ```
 
@@ -439,23 +503,29 @@ From UI_DESIGN.md: Different speeds for snap-in vs snap-out:
 // Snap-in: slow 600ms
 function snapIn(tile: TileElement, targetPos: Position) {
   const startPos = tile.position;
-  registerAnimation(easeOut((t) => {
+  
+  defineAnimation('snap-in', easeOut((t) => {
     tile.position = {
       x: startPos.x + (targetPos.x - startPos.x) * t,
       y: startPos.y + (targetPos.y - startPos.y) * t
     };
-  }), 36); // 600ms
+  }));
+  
+  registerAnimation('snap-in', 36); // 600ms
 }
 
 // Snap-out: fast 200ms
 function snapOut(tile: TileElement, cursorPos: Position) {
   const startPos = tile.position;
-  registerAnimation(easeIn((t) => {
+  
+  defineAnimation('snap-out', easeIn((t) => {
     tile.position = {
       x: startPos.x + (cursorPos.x - startPos.x) * t,
       y: startPos.y + (cursorPos.y - startPos.y) * t
     };
-  }), 12); // 200ms
+  }));
+  
+  registerAnimation('snap-out', 12); // 200ms
 }
 ```
 
@@ -465,8 +535,8 @@ function snapOut(tile: TileElement, cursorPos: Position) {
 
 - Animation functions should directly update render state, not trigger Redux actions
 - Keep animation functions lightweight (avoid heavy computations)
-- Use `Map` for O(1) animation lookup and removal
-- Clean up completed animations immediately
+- Use sorted list for efficient processing: active animations are at the front
+- Clean up completed animations immediately by rebuilding list
 
 ### Memory Management
 
@@ -485,11 +555,13 @@ function snapOut(tile: TileElement, cursorPos: Position) {
 The animation framework provides:
 
 1. **Frame-based timing**: Integer frame counts for deterministic playback
-2. **Redux integration**: Animations live in Redux state
-3. **Simple API**: `registerAnimation(fn, duration, delay?)` 
-4. **Normalized parameter**: Animation functions receive `t` from 0 to 1
-5. **Composability**: Higher-order functions for easing and composition
-6. **Debuggability**: Pause, step, and inspect animations
-7. **Testability**: E2E tests can verify every frame
+2. **Redux integration**: Animations stored as serializable list in Redux state
+3. **Function registry**: Animation functions stored separately (not in Redux)
+4. **Simple API**: `defineAnimation(name, fn)` then `registerAnimation(name, duration, delay?)`
+5. **Normalized parameter**: Animation functions receive `t` from 0 to 1
+6. **Composability**: Higher-order functions for easing and composition
+7. **Efficient processing**: Sorted list with automatic cleanup of completed animations
+8. **Debuggability**: Pause, step, and inspect animations
+9. **Testability**: E2E tests can verify every frame
 
-This design enables smooth 60fps animations while maintaining the benefits of Redux state management and providing powerful debugging capabilities for development and testing.
+This design enables smooth 60fps animations while maintaining Redux serialization requirements and providing powerful debugging capabilities for development and testing.
