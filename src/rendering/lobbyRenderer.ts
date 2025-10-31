@@ -29,7 +29,7 @@ export class LobbyRenderer {
     this.renderEdgeButtons(this.layout.edgeButtons);
     this.renderStartButton(this.layout.startButton);
     this.renderExitButtons(this.layout.exitButtons);
-    this.renderPlayerLists(this.layout.playerLists);
+    this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
 
     return this.layout;
   }
@@ -133,27 +133,69 @@ export class LobbyRenderer {
     });
   }
 
-  private renderPlayerLists(lists: PlayerListEntry[][]): void {
+  private renderPlayerLists(lists: PlayerListEntry[][], canvasWidth: number, canvasHeight: number): void {
     // Render player lists at all 4 edges
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
-        this.renderPlayerEntry(entry, playerIndex);
+        this.renderPlayerEntry(entry, playerIndex, canvasWidth, canvasHeight);
       });
     });
   }
 
-  private renderPlayerEntry(entry: PlayerListEntry, index: number): void {
+  private renderPlayerEntry(entry: PlayerListEntry, index: number, canvasWidth: number, canvasHeight: number): void {
     this.ctx.save();
 
-    // Calculate entry center position
+    // Calculate screen center
+    const screenCenterX = canvasWidth / 2;
+    const screenCenterY = canvasHeight / 2;
+
+    // Calculate entry center position (as laid out for bottom edge)
     const entryCenterX = entry.x + entry.width / 2;
     const entryCenterY = entry.y + entry.height / 2;
 
-    // Translate to entry center and rotate around it
-    this.ctx.translate(entryCenterX, entryCenterY);
+    // Step 1: Translate to screen center
+    this.ctx.translate(screenCenterX, screenCenterY);
+
+    // Step 2: Rotate around screen center based on edge
     this.ctx.rotate((entry.rotation * Math.PI) / 180);
 
-    // Now draw the entry upright (relative to entry center)
+    // Step 3: Translate to position relative to center (in bottom-edge coordinates)
+    // These offsets are from screen center in the bottom-edge layout
+    const xOffset = entryCenterX - screenCenterX;
+    const yOffset = entryCenterY - screenCenterY;
+    this.ctx.translate(xOffset, yOffset);
+
+    // Step 4: After rotation, adjust position to maintain consistent distance from + buttons
+    // For edges perpendicular to the screen orientation, we need to move labels
+    // closer to or further from the edge to maintain proper spacing from + buttons
+    const minDim = Math.min(canvasWidth, canvasHeight);
+    const maxDim = Math.max(canvasWidth, canvasHeight);
+    
+    // Calculate how much the labels should be offset after rotation
+    // to maintain consistent distance from + buttons on all edges
+    let edgeAdjustment = 0;
+    
+    if (entry.rotation === 90 || entry.rotation === 270) {
+      // For left/right edges, adjust based on width vs height difference
+      // Move labels to maintain consistent distance from edge
+      const dimensionDiff = (maxDim - minDim) / 2;
+      edgeAdjustment = dimensionDiff;
+    }
+    
+    // Apply the adjustment in the y-direction (after rotation, this moves toward/away from edge)
+    if (entry.rotation === 90) {
+      // Right edge: move away from center (positive y after rotation = toward right edge)
+      this.ctx.translate(0, -edgeAdjustment);
+    } else if (entry.rotation === 270) {
+      // Left edge: move away from center (positive y after rotation = toward left edge)
+      this.ctx.translate(0, -edgeAdjustment);
+    } else if (entry.rotation === 180) {
+      // Top edge: move away from center
+      const topAdjustment = 0; // Top/bottom are already positioned correctly
+      this.ctx.translate(0, topAdjustment);
+    }
+
+    // Now draw the entry upright (no additional rotation needed)
     // All coordinates are relative to entry center
 
     // Draw entry background
