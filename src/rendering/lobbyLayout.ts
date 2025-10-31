@@ -235,9 +235,8 @@ export function calculateLobbyLayout(
           rotation = 270;
           break;
         default:
-          x = 0;
-          y = 0;
-          rotation = 0;
+          // This should never happen since edge is controlled (0-3)
+          throw new Error(`Invalid edge value: ${edge}`);
       }
 
       playerLists[edge].push({
