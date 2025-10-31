@@ -80,17 +80,11 @@ export class SeatingRenderer {
     
     // Edge midpoint angles for pointy-top hexagon (centered on each edge, not corners)
     // Edges match Direction enum: 0=SouthWest, 1=West, 2=NorthWest, 3=NorthEast, 4=East, 5=SouthEast
-    // Edge 0 (SouthWest): 240°
-    // Edge 1 (West): 180°
-    // Edge 2 (NorthWest): 120°
-    // Edge 3 (NorthEast): 60°
-    // Edge 4 (East): 0°
-    // Edge 5 (SouthEast): 300°
-    const edgeAngles = [240, 180, 120, 60, 0, 300];
-    
+    const edgeAngles = [180, 120, 60, 0, 300, 240];
+
     // Text rotation to make numbers upright when viewed from that edge
     // For edge pointing outward at angle θ, rotate text 90° clockwise: θ + 90°
-    const textRotations = [330, 270, 210, 150, 90, 30];
+    const textRotations = edgeAngles.map((angle) => (angle + 270) % 360);
     
     for (const edge of availableEdges) {
       const angle = edgeAngles[edge];
@@ -153,15 +147,15 @@ export class SeatingRenderer {
       this.ctx.save();
       
       // Calculate the two vertices for this edge
-      // Edges match Direction enum: 0=SouthWest, 1=West, 2=NorthWest, 3=NorthEast, 4=East, 5=SouthEast
+      // Edges match Direction enum with corrected angles
       // For pointy-top hexagon, vertices are at 30°, 90°, 150°, 210°, 270°, 330° (indices 0-5)
       const edgeVertexPairs = [
-        [3, 4], // Edge 0 (SouthWest): between vertices at 210° and 270°
-        [2, 3], // Edge 1 (West): between vertices at 150° and 210°
-        [1, 2], // Edge 2 (NorthWest): between vertices at 90° and 150°
-        [0, 1], // Edge 3 (NorthEast): between vertices at 30° and 90°
-        [5, 0], // Edge 4 (East): between vertices at 330° and 30°
-        [4, 5], // Edge 5 (SouthEast): between vertices at 270° and 330°
+        [2, 3], // Edge 0 (180° - West): between vertices at 150° and 210°
+        [1, 2], // Edge 1 (120° - NorthWest): between vertices at 90° and 150°
+        [0, 1], // Edge 2 (60° - NorthEast): between vertices at 30° and 90°
+        [5, 0], // Edge 3 (0° - East): between vertices at 330° and 30°
+        [4, 5], // Edge 4 (300° - SouthEast): between vertices at 270° and 330°
+        [3, 4], // Edge 5 (240° - SouthWest): between vertices at 210° and 270°
       ];
       
       const [v1, v2] = edgeVertexPairs[edge];
