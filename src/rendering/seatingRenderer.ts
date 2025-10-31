@@ -76,19 +76,19 @@ export class SeatingRenderer {
   private calculateEdgeButtons(hexLayout: HexLayout, availableEdges: number[]): EdgeButton[] {
     const buttons: EdgeButton[] = [];
     const boardRadius = hexLayout.size * 3.5; // Distance from center to edge buttons
-    const buttonRadius = 50; // Button size
+    const buttonRadius = 25; // Button size (half of original 50px)
     
-    // Edge angles for pointy-top hexagon (starting from NorthWest edge, going clockwise)
-    // Edge 0: NorthWest (150°)
-    // Edge 1: West (210°)
-    // Edge 2: SouthWest (270°)
-    // Edge 3: SouthEast (330°)
-    // Edge 4: East (30°)
-    // Edge 5: NorthEast (90°)
-    const edgeAngles = [150, 210, 270, 330, 30, 90];
+    // Edge midpoint angles for pointy-top hexagon (centered on each edge, not corners)
+    // Edge 0: NorthWest (180°)
+    // Edge 1: West (240°)
+    // Edge 2: SouthWest (300°)
+    // Edge 3: SouthEast (0°/360°)
+    // Edge 4: East (60°)
+    // Edge 5: NorthEast (120°)
+    const edgeAngles = [180, 240, 300, 0, 60, 120];
     
     // Text rotation to make numbers upright when viewed from that edge
-    const textRotations = [150, 90, 30, -30, -90, -150];
+    const textRotations = [180, 120, 60, 0, -60, -120];
     
     for (const edge of availableEdges) {
       const angle = edgeAngles[edge];
@@ -197,7 +197,7 @@ export class SeatingRenderer {
       
       // Draw border
       this.ctx.strokeStyle = '#ffffff';
-      this.ctx.lineWidth = 3;
+      this.ctx.lineWidth = 2;
       this.ctx.stroke();
       
       // Draw player number
@@ -206,7 +206,7 @@ export class SeatingRenderer {
       this.ctx.rotate((button.rotation * Math.PI) / 180);
       
       this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = 'bold 36px sans-serif';
+      this.ctx.font = 'bold 18px sans-serif';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillText(playerNumber.toString(), 0, 0);
