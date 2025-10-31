@@ -29,7 +29,7 @@ export class LobbyRenderer {
     this.renderEdgeButtons(this.layout.edgeButtons);
     this.renderStartButton(this.layout.startButton);
     this.renderExitButtons(this.layout.exitButtons);
-    this.renderPlayerLists(this.layout.playerLists);
+    this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
 
     return this.layout;
   }
@@ -133,25 +133,42 @@ export class LobbyRenderer {
     });
   }
 
-  private renderPlayerLists(lists: PlayerListEntry[][]): void {
+  private renderPlayerLists(lists: PlayerListEntry[][], canvasWidth: number, canvasHeight: number): void {
     // Render player lists at all 4 edges
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
-        this.renderPlayerEntry(entry, playerIndex);
+        this.renderPlayerEntry(entry, playerIndex, canvasWidth, canvasHeight);
       });
     });
   }
 
-  private renderPlayerEntry(entry: PlayerListEntry, index: number): void {
+  private renderPlayerEntry(entry: PlayerListEntry, index: number, canvasWidth: number, canvasHeight: number): void {
     this.ctx.save();
 
-    // Translate to center of entry and apply rotation
-    const centerX = entry.x + entry.width / 2;
-    const centerY = entry.y + entry.height / 2;
-    this.ctx.translate(centerX, centerY);
+    // Calculate screen center
+    const screenCenterX = canvasWidth / 2;
+    const screenCenterY = canvasHeight / 2;
+
+    // Calculate entry center position (as laid out for bottom edge)
+    const entryCenterX = entry.x + entry.width / 2;
+    const entryCenterY = entry.y + entry.height / 2;
+
+    // Step 1: Translate to screen center
+    this.ctx.translate(screenCenterX, screenCenterY);
+
+    // Step 2: Rotate around screen center based on edge
     this.ctx.rotate((entry.rotation * Math.PI) / 180);
 
-    // Draw entry background (relative to center)
+    // Step 3: Translate to position relative to center (in bottom-edge coordinates)
+    // These offsets are from screen center in the bottom-edge layout
+    const xOffset = entryCenterX - screenCenterX;
+    const yOffset = entryCenterY - screenCenterY;
+    this.ctx.translate(xOffset, yOffset);
+
+    // Now draw the entry upright (no additional rotation needed)
+    // All coordinates are relative to entry center
+    
+    // Draw entry background
     this.ctx.fillStyle = '#2a2a3e';
     this.ctx.fillRect(-entry.width / 2, -entry.height / 2, entry.width, entry.height);
 
