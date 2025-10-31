@@ -60,13 +60,14 @@ This story demonstrates the multi-directional lobby interface where player label
 
 ![005-player-added-left](./005-player-added-left.png)
 
-- **Action**: After adding P1-P4 from all edges, user clicks purple + button at bottom edge to add a 5th player
-- **State**: Player P5 added to bottom edge (second player on bottom)
+- **Action**: User clicks yellow + button at left edge
+- **State**: Player P4 added to left edge
 - **What to verify**:
-  - P5 label at bottom edge is upright like P1
-  - All five players visible at all edges
-  - Labels for P1 and P5 on bottom edge are stacked/arranged properly
-  - Remove (X) buttons correctly positioned on all players
+  - P4 label at left edge is rotated 270° clockwise
+  - Label readable from the left side
+  - Remove (X) button correctly positioned
+  - **All four players (P1, P2, P3, P4) visible at all four edges**
+  - Each edge shows all players with appropriate rotation
 
 ### 006-remove-from-bottom.png
 

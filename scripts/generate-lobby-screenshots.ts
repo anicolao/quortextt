@@ -98,13 +98,9 @@ async function main() {
   await verifyPlayerCount(3, '004-player-added-top');
   await page.screenshot({ path: `${outputDir}/004-player-added-top.png` });
   
-  // 005: Player added from left (yellow)
+  // 005: Player added from left (yellow) - 4th player total
   await clickEdgeButton(3, 3);
-  await verifyPlayerCount(4, '004-player-added-top (now have 4 players)');
-  
-  // Add 5th player from bottom edge (purple)
-  await clickEdgeButton(4, 0);  
-  await verifyPlayerCount(5, '005-player-added-left (now have 5 players)');
+  await verifyPlayerCount(4, '005-player-added-left');
   await page.screenshot({ path: `${outputDir}/005-player-added-left.png` });
   
   // Helper to click remove button
