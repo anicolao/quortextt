@@ -1,6 +1,6 @@
 // Lobby UI layout calculations for the redesigned edge-based lobby
 
-import { ConfigPlayer, PLAYER_COLORS, Edge } from '../redux/types';
+import { ConfigPlayer, PLAYER_COLORS, Edge } from "../redux/types";
 
 export interface EdgeButton {
   x: number;
@@ -49,15 +49,15 @@ export interface LobbyLayout {
 
 // Calculate which colors are available (not yet taken by players)
 function getAvailableColors(players: ConfigPlayer[]): string[] {
-  const usedColors = new Set(players.map(p => p.color));
-  return PLAYER_COLORS.filter(color => !usedColors.has(color));
+  const usedColors = new Set(players.map((p) => p.color));
+  return PLAYER_COLORS.filter((color) => !usedColors.has(color));
 }
 
 // Calculate layout for the redesigned lobby
 export function calculateLobbyLayout(
   canvasWidth: number,
   canvasHeight: number,
-  players: ConfigPlayer[]
+  players: ConfigPlayer[],
 ): LobbyLayout {
   const minDim = Math.min(canvasWidth, canvasHeight);
   const buttonSize = Math.max(60, minDim * 0.08); // Minimum 60px for touch targets
@@ -70,11 +70,13 @@ export function calculateLobbyLayout(
 
   // Calculate edge buttons (+ buttons) for each edge
   const edgeButtons: EdgeButton[] = [];
-  
+
   // Bottom edge (0°)
   const bottomY = canvasHeight - edgeMargin - buttonSize;
   availableColors.forEach((color, index) => {
-    const totalWidth = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+    const totalWidth =
+      availableColors.length * buttonSize +
+      (availableColors.length - 1) * buttonSpacing;
     const startX = (canvasWidth - totalWidth) / 2;
     edgeButtons.push({
       x: startX + index * (buttonSize + buttonSpacing),
@@ -89,7 +91,9 @@ export function calculateLobbyLayout(
   // Right edge (90° clockwise)
   const rightX = canvasWidth - edgeMargin - buttonSize;
   availableColors.forEach((color, index) => {
-    const totalHeight = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+    const totalHeight =
+      availableColors.length * buttonSize +
+      (availableColors.length - 1) * buttonSpacing;
     const startY = (canvasHeight - totalHeight) / 2;
     edgeButtons.push({
       x: rightX,
@@ -104,7 +108,9 @@ export function calculateLobbyLayout(
   // Top edge (180°)
   const topY = edgeMargin;
   availableColors.forEach((color, index) => {
-    const totalWidth = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+    const totalWidth =
+      availableColors.length * buttonSize +
+      (availableColors.length - 1) * buttonSpacing;
     const startX = (canvasWidth - totalWidth) / 2;
     edgeButtons.push({
       x: startX + index * (buttonSize + buttonSpacing),
@@ -119,7 +125,9 @@ export function calculateLobbyLayout(
   // Left edge (270° clockwise)
   const leftX = edgeMargin;
   availableColors.forEach((color, index) => {
-    const totalHeight = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
+    const totalHeight =
+      availableColors.length * buttonSize +
+      (availableColors.length - 1) * buttonSpacing;
     const startY = (canvasHeight - totalHeight) / 2;
     edgeButtons.push({
       x: leftX,
@@ -169,7 +177,7 @@ export function calculateLobbyLayout(
 
   // Player lists (one per edge, showing all players)
   const playerLists: PlayerListEntry[][] = [[], [], [], []];
-  const entryWidth = minDim * 0.18;  // Smaller to fit two columns
+  const entryWidth = minDim * 0.18; // Smaller to fit two columns
   const entryHeight = minDim * 0.08;
   const removeButtonSize = entryHeight * 0.5;
   const columnSpacing = 10;
@@ -179,9 +187,11 @@ export function calculateLobbyLayout(
 
   // Calculate available space for player lists at each edge
   // Space between edge buttons and start button
-  const centerToEdge = Math.min(canvasWidth, canvasHeight) / 2 - startButtonSize / 2;
-  const availableSpace = centerToEdge - edgeMargin - buttonSize - edgeMargin * 2;
-  
+  const centerToEdge =
+    Math.min(canvasWidth, canvasHeight) / 2 - startButtonSize / 2;
+  const availableSpace =
+    centerToEdge - edgeMargin - buttonSize - edgeMargin * 2;
+
   // Determine if we need two columns
   const singleColumnHeight = sortedPlayers.length * (entryHeight + 5);
   const useDoubleColumn = singleColumnHeight > availableSpace;
@@ -197,11 +207,20 @@ export function calculateLobbyLayout(
       // Always calculate position as if on bottom edge
       let x: number, y: number;
       if (useDoubleColumn) {
-        x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
+        x =
+          canvasWidth / 2 -
+          entryWidth -
+          columnSpacing / 2 +
+          column * (entryWidth + columnSpacing);
       } else {
         x = canvasWidth / 2 - entryWidth / 2;
       }
-      y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
+      y =
+        canvasHeight -
+        edgeMargin -
+        buttonSize -
+        edgeMargin -
+        (row + 1) * (entryHeight + 5);
 
       // Rotation depends on which edge this list is for
       const rotation = edge * 90; // 0, 90, 180, 270
@@ -209,13 +228,13 @@ export function calculateLobbyLayout(
       // Calculate remove button position in bottom-edge coordinates
       const removeBtnX = x + entryWidth - removeButtonSize - 5;
       const removeBtnY = y + (entryHeight - removeButtonSize) / 2;
-      
+
       // Transform remove button center position to match rendered position after rotation
       const removeBtnCenterX = removeBtnX + removeButtonSize / 2;
       const removeBtnCenterY = removeBtnY + removeButtonSize / 2;
       const screenCenterX = canvasWidth / 2;
       const screenCenterY = canvasHeight / 2;
-      
+
       const transformedCenter = transformPoint(
         removeBtnCenterX,
         removeBtnCenterY,
@@ -223,9 +242,9 @@ export function calculateLobbyLayout(
         screenCenterX,
         screenCenterY,
         canvasWidth,
-        canvasHeight
+        canvasHeight,
       );
-      
+
       playerLists[edge].push({
         player,
         x,
@@ -256,7 +275,7 @@ export function calculateLobbyLayout(
 export function isPointInButton(
   x: number,
   y: number,
-  button: { x: number; y: number; size: number }
+  button: { x: number; y: number; size: number },
 ): boolean {
   return (
     x >= button.x &&
@@ -272,7 +291,7 @@ export function isPointInCircle(
   y: number,
   centerX: number,
   centerY: number,
-  radius: number
+  radius: number,
 ): boolean {
   const dx = x - centerX;
   const dy = y - centerY;
@@ -283,7 +302,7 @@ export function isPointInCircle(
  * Transform a point through rotation around screen center.
  * This matches the transformation applied during rendering, ensuring that
  * hit detection coordinates align with the visual representation.
- * 
+ *
  * @param x - X coordinate in bottom-edge space (pre-rotation)
  * @param y - Y coordinate in bottom-edge space (pre-rotation)
  * @param rotation - Rotation angle in degrees (0, 90, 180, 270)
@@ -300,32 +319,32 @@ export function transformPoint(
   screenCenterX: number,
   screenCenterY: number,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
 ): { x: number; y: number } {
   // Calculate offset from screen center in bottom-edge coordinates
   const xOffset = x - screenCenterX;
   const yOffset = y - screenCenterY;
-  
+
   // Apply rotation around the origin
   const angleRad = (rotation * Math.PI) / 180;
   const cos = Math.cos(angleRad);
   const sin = Math.sin(angleRad);
-  
-  const rotatedX = xOffset * cos - yOffset * sin;
-  let rotatedY = xOffset * sin + yOffset * cos;
-  
+
+  let rotatedX = xOffset * cos - yOffset * sin;
+  const rotatedY = xOffset * sin + yOffset * cos;
+
   // Apply aspect ratio adjustment for left/right edges to maintain consistent
   // distance from + buttons in both landscape and portrait orientations
   if (rotation === 90 || rotation === 270) {
     const minDim = Math.min(canvasWidth, canvasHeight);
     const maxDim = Math.max(canvasWidth, canvasHeight);
     const edgeAdjustment = (maxDim - minDim) / 2;
-    rotatedY += edgeAdjustment;
+    rotatedX -= edgeAdjustment;
   }
-  
+
   // Translate back to screen coordinates
   return {
     x: screenCenterX + rotatedX,
-    y: screenCenterY + rotatedY
+    y: screenCenterY + rotatedY,
   };
 }
