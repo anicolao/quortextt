@@ -166,34 +166,19 @@ export class LobbyRenderer {
     this.ctx.translate(xOffset, yOffset);
 
     // Step 4: After rotation, adjust position to maintain consistent distance from + buttons
-    // For edges perpendicular to the screen orientation, we need to move labels
-    // closer to or further from the edge to maintain proper spacing from + buttons
-    const minDim = Math.min(canvasWidth, canvasHeight);
-    const maxDim = Math.max(canvasWidth, canvasHeight);
-    
-    // Calculate how much the labels should be offset after rotation
-    // to maintain consistent distance from + buttons on all edges
-    let edgeAdjustment = 0;
-    
+    // For left/right edges (perpendicular to screen orientation), adjust based on aspect ratio
+    // to maintain proper spacing from + buttons in both landscape and portrait modes
     if (entry.rotation === 90 || entry.rotation === 270) {
-      // For left/right edges, adjust based on width vs height difference
-      // Move labels to maintain consistent distance from edge
-      const dimensionDiff = (maxDim - minDim) / 2;
-      edgeAdjustment = dimensionDiff;
-    }
-    
-    // Apply the adjustment in the y-direction (after rotation, this moves toward/away from edge)
-    if (entry.rotation === 90) {
-      // Right edge: move away from center (positive y after rotation = toward right edge)
+      const minDim = Math.min(canvasWidth, canvasHeight);
+      const maxDim = Math.max(canvasWidth, canvasHeight);
+      const edgeAdjustment = (maxDim - minDim) / 2;
+      
+      // Move labels away from center in the y-direction (after rotation)
+      // This positions them correctly relative to the + buttons on left/right edges
       this.ctx.translate(0, -edgeAdjustment);
-    } else if (entry.rotation === 270) {
-      // Left edge: move away from center (positive y after rotation = toward left edge)
-      this.ctx.translate(0, -edgeAdjustment);
-    } else if (entry.rotation === 180) {
-      // Top edge: move away from center
-      const topAdjustment = 0; // Top/bottom are already positioned correctly
-      this.ctx.translate(0, topAdjustment);
     }
+    // Note: Top/bottom edges (0° and 180°) don't need adjustment as they're already
+    // positioned correctly by the rotation around screen center
 
     // Now draw the entry upright (no additional rotation needed)
     // All coordinates are relative to entry center
