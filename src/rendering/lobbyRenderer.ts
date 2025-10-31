@@ -167,7 +167,7 @@ export class LobbyRenderer {
 
     // Now draw the entry upright (no additional rotation needed)
     // All coordinates are relative to entry center
-    
+
     // Draw entry background
     this.ctx.fillStyle = '#2a2a3e';
     this.ctx.fillRect(-entry.width / 2, -entry.height / 2, entry.width, entry.height);
