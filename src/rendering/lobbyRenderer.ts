@@ -29,7 +29,7 @@ export class LobbyRenderer {
     this.renderEdgeButtons(this.layout.edgeButtons);
     this.renderStartButton(this.layout.startButton);
     this.renderExitButtons(this.layout.exitButtons);
-    this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
+    this.renderPlayerLists(this.layout.playerLists);
 
     return this.layout;
   }
@@ -133,39 +133,27 @@ export class LobbyRenderer {
     });
   }
 
-  private renderPlayerLists(lists: PlayerListEntry[][], canvasWidth: number, canvasHeight: number): void {
+  private renderPlayerLists(lists: PlayerListEntry[][]): void {
     // Render player lists at all 4 edges
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
-        this.renderPlayerEntry(entry, playerIndex, canvasWidth, canvasHeight);
+        this.renderPlayerEntry(entry, playerIndex);
       });
     });
   }
 
-  private renderPlayerEntry(entry: PlayerListEntry, index: number, canvasWidth: number, canvasHeight: number): void {
+  private renderPlayerEntry(entry: PlayerListEntry, index: number): void {
     this.ctx.save();
 
-    // Calculate screen center
-    const screenCenterX = canvasWidth / 2;
-    const screenCenterY = canvasHeight / 2;
-
-    // Calculate entry center position (as laid out for bottom edge)
+    // Calculate entry center position
     const entryCenterX = entry.x + entry.width / 2;
     const entryCenterY = entry.y + entry.height / 2;
 
-    // Step 1: Translate to screen center
-    this.ctx.translate(screenCenterX, screenCenterY);
-
-    // Step 2: Rotate around screen center based on edge
+    // Translate to entry center and rotate around it
+    this.ctx.translate(entryCenterX, entryCenterY);
     this.ctx.rotate((entry.rotation * Math.PI) / 180);
 
-    // Step 3: Translate to position relative to center (in bottom-edge coordinates)
-    // These offsets are from screen center in the bottom-edge layout
-    const xOffset = entryCenterX - screenCenterX;
-    const yOffset = entryCenterY - screenCenterY;
-    this.ctx.translate(xOffset, yOffset);
-
-    // Now draw the entry upright (no additional rotation needed)
+    // Now draw the entry upright (relative to entry center)
     // All coordinates are relative to entry center
 
     // Draw entry background
