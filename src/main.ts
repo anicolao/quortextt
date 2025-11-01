@@ -4,6 +4,8 @@ import { store } from './redux/store';
 import { Renderer } from './rendering/renderer';
 import { InputHandler } from './input/inputHandler';
 import { GameplayInputHandler } from './input/gameplayInputHandler';
+import { incrementFrame } from './animation/actions';
+import { processAnimations } from './animation/processor';
 
 // Expose store to window for testing
 declare global {
@@ -59,8 +61,19 @@ function init() {
   // Animation loop for smooth rendering
   function animate() {
     requestAnimationFrame(animate);
-    // We only render when state changes, so nothing to do here
-    // But keeping the animation loop for future enhancements
+    
+    const state = store.getState();
+    
+    // Skip if paused (for debugging)
+    if (state.animation.paused) {
+      return;
+    }
+    
+    // Process active animations
+    processAnimations(state.animation, store.dispatch);
+    
+    // Increment frame counter (triggers render via store subscription)
+    store.dispatch(incrementFrame());
   }
 
   animate();

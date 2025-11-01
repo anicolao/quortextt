@@ -94,6 +94,7 @@ export interface UIState {
 export interface RootState {
   game: GameState;
   ui: UIState;
+  animation: import('../animation/types').AnimationState;
 }
 
 // Available color-blind friendly palette
