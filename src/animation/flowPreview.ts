@@ -101,8 +101,8 @@ export function calculateNewFlowPaths(
       let firstNewSegmentIndex = 0;
 
       if (actualPlayerFlow) {
-        // Find the first segment that's not in the actual flow
-        // BUT: Always include segments at the preview position even if they exist in actual flow
+        // Find the first segment (connection) that doesn't exist in the actual flow
+        // A segment exists if BOTH directions have the player's flow at that position
         for (let i = 0; i < previewSegments.length; i++) {
           const segment = previewSegments[i];
           const actualEdges = actualFlows.flowEdges.get(segment.position);
@@ -113,11 +113,13 @@ export function calculateNewFlowPaths(
             break;
           }
           
-          // Check if this segment exists in actual flow
+          // Check if THIS SPECIFIC CONNECTION (dir1<->dir2) exists in actual flow
+          // We need BOTH directions to have the player's flow for this segment to exist
           const hasDir1 = actualEdges?.get(segment.direction1) === player.id;
           const hasDir2 = actualEdges?.get(segment.direction2) === player.id;
           
-          if (!hasDir1 || !hasDir2 || !actualPlayerFlow.has(segment.position)) {
+          // If either direction doesn't have the player's flow, this segment is new
+          if (!hasDir1 || !hasDir2) {
             firstNewSegmentIndex = i;
             break;
           }
@@ -125,7 +127,7 @@ export function calculateNewFlowPaths(
         }
       }
 
-      // Only include the new segments (the suffix of the path, starting from preview tile or first new tile)
+      // Only include the new segments (the suffix of the path)
       const newSegments = previewSegments.slice(firstNewSegmentIndex);
       
       if (newSegments.length > 0) {
