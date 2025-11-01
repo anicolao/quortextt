@@ -18,6 +18,7 @@ import {
 } from "../game/board";
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
+import { getFlowPreviewData } from "../animation/flowPreview";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -320,11 +321,13 @@ export class GameplayRenderer {
     const connections = getFlowConnections(tile.type, tile.rotation);
     const tileKey = `${tile.position.row},${tile.position.col}`;
     const tileFlowEdges = state.game.flowEdges.get(tileKey);
+    const flowPreviewData = getFlowPreviewData();
 
     // For each flow connection, draw a Bézier curve
     connections.forEach(([dir1, dir2]) => {
       // Determine the color for THIS specific path based on flow edges
       let pathColor = "#888888"; // Default neutral grey
+      let animationProgress = 1.0; // Default to full opacity (no animation)
 
       // Check if both ends of this path have flow from the same player
       if (tileFlowEdges) {
@@ -338,6 +341,18 @@ export class GameplayRenderer {
           if (player) {
             pathColor = player.color;
           }
+        }
+      }
+
+      // Check if this path has animation data
+      const animKey = `flow-preview-${tileKey}-${dir1}-${dir2}`;
+      if (flowPreviewData[animKey]) {
+        animationProgress = flowPreviewData[animKey].animationProgress;
+        // Get player color for preview
+        const playerId = flowPreviewData[animKey].playerId;
+        const player = state.game.players.find((p) => p.id === playerId);
+        if (player) {
+          pathColor = player.color;
         }
       }
 
@@ -358,24 +373,96 @@ export class GameplayRenderer {
         y: end.y + control2Vec.y,
       };
 
-      // Use the determined color for this path
-      this.ctx.strokeStyle = pathColor;
-      this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
-      this.ctx.lineCap = "round";
+      // Apply animation if in progress
+      if (animationProgress < 1.0) {
+        // Draw partial path using animation progress
+        this.ctx.save();
+        this.ctx.strokeStyle = pathColor;
+        this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
+        this.ctx.lineCap = "round";
+        this.ctx.globalAlpha = 0.7; // Preview opacity
 
-      // Draw Bézier curve
-      this.ctx.beginPath();
-      this.ctx.moveTo(start.x, start.y);
-      this.ctx.bezierCurveTo(
-        control1.x,
-        control1.y,
-        control2.x,
-        control2.y,
-        end.x,
-        end.y,
-      );
-      this.ctx.stroke();
+        // Use setLineDash to create animated "fill in" effect
+        const pathLength = this.estimateBezierLength(start, control1, control2, end);
+        const dashLength = pathLength * animationProgress;
+        this.ctx.setLineDash([dashLength, pathLength - dashLength]);
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.bezierCurveTo(
+          control1.x,
+          control1.y,
+          control2.x,
+          control2.y,
+          end.x,
+          end.y,
+        );
+        this.ctx.stroke();
+        this.ctx.restore();
+      } else {
+        // Draw complete path
+        this.ctx.strokeStyle = pathColor;
+        this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
+        this.ctx.lineCap = "round";
+
+        // Draw Bézier curve
+        this.ctx.beginPath();
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.bezierCurveTo(
+          control1.x,
+          control1.y,
+          control2.x,
+          control2.y,
+          end.x,
+          end.y,
+        );
+        this.ctx.stroke();
+      }
     });
+  }
+
+  // Estimate Bezier curve length for animation
+  private estimateBezierLength(
+    start: Point,
+    control1: Point,
+    control2: Point,
+    end: Point
+  ): number {
+    // Simple estimation using line segments
+    const steps = 10;
+    let length = 0;
+    let prevPoint = start;
+    
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const point = this.bezierPoint(t, start, control1, control2, end);
+      const dx = point.x - prevPoint.x;
+      const dy = point.y - prevPoint.y;
+      length += Math.sqrt(dx * dx + dy * dy);
+      prevPoint = point;
+    }
+    
+    return length;
+  }
+
+  // Calculate point on Bezier curve at t
+  private bezierPoint(
+    t: number,
+    p0: Point,
+    p1: Point,
+    p2: Point,
+    p3: Point
+  ): Point {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+    const uuu = uu * u;
+    const ttt = tt * t;
+
+    return {
+      x: uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+      y: uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y,
+    };
   }
 
   private renderCurrentTilePreview(state: RootState): void {

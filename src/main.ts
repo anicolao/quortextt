@@ -6,6 +6,8 @@ import { InputHandler } from './input/inputHandler';
 import { GameplayInputHandler } from './input/gameplayInputHandler';
 import { incrementFrame } from './animation/actions';
 import { processAnimations } from './animation/processor';
+import { updateFlowPreview } from './animation/flowPreview';
+import { HexPosition, Rotation } from './game/types';
 
 // Expose store to window for testing
 declare global {
@@ -52,8 +54,29 @@ function init() {
     render();
   });
 
+  // Track previous state for flow preview updates
+  let prevSelectedPosition: HexPosition | null = null;
+  let prevRotation: Rotation = 0;
+
   // Subscribe to store changes
-  store.subscribe(render);
+  store.subscribe(() => {
+    const state = store.getState();
+    
+    // Check if we should update flow preview
+    if (state.game.screen === 'gameplay') {
+      const selectedPos = state.ui.selectedPosition;
+      const rotation = state.ui.currentRotation;
+      
+      // Update flow preview if position or rotation changed
+      if (selectedPos !== prevSelectedPosition || rotation !== prevRotation) {
+        prevSelectedPosition = selectedPos;
+        prevRotation = rotation;
+        updateFlowPreview(selectedPos, rotation, state.game.currentTile);
+      }
+    }
+    
+    render();
+  });
 
   // Initial render
   render();
