@@ -1,48 +1,55 @@
 // End-to-end tests for the gameplay screen rendering
 import { test, expect } from '@playwright/test';
+import { getReduxState, completeSeatingPhase } from './helpers';
 
-// Helper to get Redux state
-async function getReduxState(page: any) {
-  return await page.evaluate(() => {
-    return (window as any).__REDUX_STORE__.getState();
+// Helper to setup a game with two players
+async function setupTwoPlayerGame(page: any) {
+  await page.goto('/');
+  await page.waitForSelector('canvas#game-canvas');
+  
+  const canvas = page.locator('canvas#game-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas not found');
+  
+  // Add two players
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'ADD_PLAYER' });
+    store.dispatch({ type: 'ADD_PLAYER' });
   });
+  
+  await page.waitForTimeout(100);
+  
+  // Start the game (transitions to seating)
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'START_GAME' });
+  });
+  
+  await page.waitForTimeout(100);
+  
+  // Complete seating phase
+  await completeSeatingPhase(page, canvas, box);
+  
+  // Shuffle with deterministic seed and draw a tile
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+    store.dispatch({ type: 'DRAW_TILE' });
+  });
+  
+  await page.waitForTimeout(100);
 }
 
 test.describe('Gameplay Screen Rendering', () => {
   test('should render gameplay screen with two players', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('canvas#game-canvas');
+    await setupTwoPlayerGame(page);
     
     const canvas = page.locator('canvas#game-canvas');
     await expect(canvas).toBeVisible();
     
-    // Dispatch actions to add two players and start game
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
-    });
-    
-    // Wait a bit for the state to update
-    await page.waitForTimeout(100);
-    
-    // Verify we have 2 players
-    let state = await getReduxState(page);
-    expect(state.game.configPlayers.length).toBe(2);
-    
-    // Start the game with deterministic seed
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'START_GAME' });
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    
-    // Wait for the gameplay screen to render
-    await page.waitForTimeout(500);
-    
     // Verify screen changed to gameplay
-    state = await getReduxState(page);
+    const state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
     expect(state.game.phase).toBe('playing');
     expect(state.game.players.length).toBe(2);
@@ -52,12 +59,16 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(state.game.players[0].edgePosition).toBeDefined();
     expect(state.game.players[1].edgePosition).toBeDefined();
     
-    // Edge 0 should be at the bottom
+    // Verify edges are assigned
     const player1Edge = state.game.players[0].edgePosition;
     const player2Edge = state.game.players[1].edgePosition;
     
-    // For 2 players, they should be on opposite edges (0 and 3)
-    expect([player1Edge, player2Edge].sort()).toEqual([0, 3]);
+    // Players should have different edge positions (assigned during seating)
+    expect(player1Edge).not.toBe(player2Edge);
+    expect(player1Edge).toBeGreaterThanOrEqual(0);
+    expect(player1Edge).toBeLessThan(6);
+    expect(player2Edge).toBeGreaterThanOrEqual(0);
+    expect(player2Edge).toBeLessThan(6);
     
     // Take a screenshot of the gameplay screen
     await page.screenshot({ 
@@ -93,20 +104,7 @@ test.describe('Gameplay Screen Rendering', () => {
   });
 
   test('should display board hexagon with colored player edges', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('canvas#game-canvas');
-    
-    // Add two players and start game
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'START_GAME' });
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    
-    await page.waitForTimeout(500);
+    await setupTwoPlayerGame(page);
     
     const state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -127,20 +125,7 @@ test.describe('Gameplay Screen Rendering', () => {
   });
 
   test('should display preview tile with grey flows', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('canvas#game-canvas');
-    
-    // Add two players and start game
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'START_GAME' });
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    
-    await page.waitForTimeout(500);
+    await setupTwoPlayerGame(page);
     
     const state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -155,20 +140,7 @@ test.describe('Gameplay Screen Rendering', () => {
   });
 
   test('should have properly sized hexagons (÷17 factor)', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForSelector('canvas#game-canvas');
-    
-    // Add two players and start game
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'START_GAME' });
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    
-    await page.waitForTimeout(500);
+    await setupTwoPlayerGame(page);
     
     // Verify hex size calculation
     const hexSize = await page.evaluate(() => {

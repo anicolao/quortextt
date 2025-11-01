@@ -235,16 +235,28 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     expect(state.game.configPlayers.length).toBe(2);
     
     // === STEP 3: Start the game ===
+    // Click the Start button
+    const startCoords = await getStartButtonCoordinates(page);
+    await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
+    await page.waitForTimeout(200);
+    
+    // We should now be in seating phase - need to select edges
+    state = await getReduxState(page);
+    expect(state.game.screen).toBe('seating');
+    
+    // Complete the seating phase using mouse clicks
+    // Import the helper at the top and use it
+    const { completeSeatingPhase } = await import('./helpers');
+    await completeSeatingPhase(page, canvas, box);
+    
+    // Shuffle with deterministic seed and draw a tile
     await page.evaluate((seed) => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'START_GAME' });
-      // Use a deterministic seed for reproducible game
       store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed } });
-      // Draw a tile from the seeded deck to ensure deterministic currentTile
       store.dispatch({ type: 'DRAW_TILE' });
     }, DETERMINISTIC_SEED);
     
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(200);
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -259,8 +271,8 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     console.log('Player 1:', player1.id, 'edge:', player1.edgePosition, 'color:', player1.color);
     console.log('Player 2:', player2.id, 'edge:', player2.edgePosition, 'color:', player2.color);
     
-    // Players in 2-player game should be on opposite edges (0 and 3)
-    expect([player1.edgePosition, player2.edgePosition].sort()).toEqual([0, 3]);
+    // Verify players have different edge positions
+    expect(player1.edgePosition).not.toBe(player2.edgePosition);
     
     // === Play the game using mouse clicks ===
     let moveNumber = 0;
