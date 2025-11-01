@@ -1,7 +1,7 @@
 // End-to-end tests for the game configuration screen (redesigned edge-based lobby)
 
 import { test, expect } from '@playwright/test';
-import { getReduxState } from './helpers';
+import { getReduxState, completeSeatingPhase } from './helpers';
 
 // Helper to get edge button coordinates for the new lobby
 // colorIndex: 0=blue, 1=orange, 2=green, 3=yellow, 4=purple, 5=red
@@ -315,13 +315,13 @@ test.describe('Configuration Screen', () => {
     await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
     await page.waitForTimeout(100);
     
-    // Shuffle with deterministic seed and draw a tile
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 54321 } });
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    await page.waitForTimeout(100);
+    // Verify we're now in seating phase
+    state = await getReduxState(page);
+    expect(state.game.screen).toBe('seating');
+    expect(state.game.seatingPhase.active).toBe(true);
+
+    // Complete the seating phase
+    await completeSeatingPhase(page, canvas, box);
     
     // Verify screen changed to gameplay
     state = await getReduxState(page);
