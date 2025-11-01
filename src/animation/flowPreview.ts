@@ -1,9 +1,9 @@
 // Flow preview animation for tile placement
 
-import { HexPosition, PlacedTile, Player, Rotation } from '../game/types';
+import { HexPosition, PlacedTile, Player, Rotation, Direction } from '../game/types';
 import { calculateFlows } from '../game/flows';
-import { positionToKey } from '../game/board';
-import { getFlowConnections } from '../game/tiles';
+import { positionToKey, getNeighborInDirection, getOppositeDirection, getEdgePositionsWithDirections } from '../game/board';
+import { getFlowExit } from '../game/tiles';
 import { defineAnimation, undefineAnimation } from './registry';
 import { registerAnimation } from './actions';
 import { store } from '../redux/store';
@@ -14,88 +14,126 @@ interface FlowSegment {
   direction1: number; // Direction enum
   direction2: number; // Direction enum
   playerId: string;
+  orderInPath: number; // Order of this segment in its flow path
+}
+
+// Represents an ordered flow path
+interface OrderedFlowPath {
+  playerId: string;
+  segments: FlowSegment[];
 }
 
 // Store current preview segments to track changes
 let currentPreviewSegments: FlowSegment[] = [];
 
 /**
- * Calculate which flow segments are new in the preview compared to actual game
+ * Trace a flow path from a starting position and return ordered segments
  */
-export function calculateNewFlowSegments(
+function traceOrderedFlowPath(
+  board: Map<string, PlacedTile>,
+  startPos: HexPosition,
+  startDirection: Direction,
+  playerId: string
+): FlowSegment[] {
+  const segments: FlowSegment[] = [];
+  let currentPos = startPos;
+  let entryDir = startDirection;
+  let orderIndex = 0;
+
+  while (true) {
+    const posKey = positionToKey(currentPos);
+    const tile = board.get(posKey);
+    
+    if (!tile) break;
+
+    const exitDir = getFlowExit(tile, entryDir);
+    if (exitDir === null) break;
+
+    // Add this segment to the ordered list
+    segments.push({
+      position: posKey,
+      direction1: entryDir,
+      direction2: exitDir,
+      playerId,
+      orderInPath: orderIndex++,
+    });
+
+    // Move to next position
+    const nextPos = getNeighborInDirection(currentPos, exitDir);
+    currentPos = nextPos;
+    entryDir = getOppositeDirection(exitDir);
+  }
+
+  return segments;
+}
+
+/**
+ * Calculate which flow segments are new in the preview compared to actual game
+ * Returns ordered paths where each path contains segments in sequence
+ */
+export function calculateNewFlowPaths(
   previewBoard: Map<string, PlacedTile>,
   actualBoard: Map<string, PlacedTile>,
   players: Player[]
-): FlowSegment[] {
-  // Calculate flows for both boards
-  const previewFlows = calculateFlows(previewBoard, players);
+): OrderedFlowPath[] {
+  const newPaths: OrderedFlowPath[] = [];
   const actualFlows = calculateFlows(actualBoard, players);
 
-  const newSegments: FlowSegment[] = [];
-
-  // For each player, find flow edges that exist in preview but not in actual
+  // For each player, trace their flows from edge positions
   for (const player of players) {
-    const previewPlayerFlow = previewFlows.flows.get(player.id);
-    const actualPlayerFlow = actualFlows.flows.get(player.id);
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition);
 
-    if (!previewPlayerFlow) continue;
+    for (const { pos, dir } of edgeData) {
+      const posKey = positionToKey(pos);
+      const previewTile = previewBoard.get(posKey);
+      
+      if (!previewTile) continue;
 
-    // Check each position in the preview flow
-    for (const posKey of previewPlayerFlow) {
-      const previewEdges = previewFlows.flowEdges.get(posKey);
-      const actualEdges = actualFlows.flowEdges.get(posKey);
+      // Trace the flow path in the preview
+      const previewSegments = traceOrderedFlowPath(previewBoard, pos, dir, player.id);
+      
+      if (previewSegments.length === 0) continue;
 
-      if (!previewEdges) continue;
+      // Find where the actual flow ends (if it exists)
+      const actualPlayerFlow = actualFlows.flows.get(player.id);
+      let firstNewSegmentIndex = 0;
 
-      // Get all directions for this position that have this player's flow
-      const previewDirs: number[] = [];
-      previewEdges.forEach((playerId, dir) => {
-        if (playerId === player.id) {
-          previewDirs.push(dir);
-        }
-      });
-
-      // Get actual directions (empty if position not in actual flow)
-      const actualDirs: number[] = [];
-      if (actualEdges) {
-        actualEdges.forEach((playerId, dir) => {
-          if (playerId === player.id) {
-            actualDirs.push(dir);
+      if (actualPlayerFlow) {
+        // Find the first segment that's not in the actual flow
+        for (let i = 0; i < previewSegments.length; i++) {
+          const segment = previewSegments[i];
+          const actualEdges = actualFlows.flowEdges.get(segment.position);
+          
+          // Check if this segment exists in actual flow
+          const hasDir1 = actualEdges?.get(segment.direction1) === player.id;
+          const hasDir2 = actualEdges?.get(segment.direction2) === player.id;
+          
+          if (!hasDir1 || !hasDir2 || !actualPlayerFlow.has(segment.position)) {
+            firstNewSegmentIndex = i;
+            break;
           }
-        });
+          firstNewSegmentIndex = i + 1;
+        }
       }
 
-      // Find new directions
-      const newDirs = previewDirs.filter(dir => !actualDirs.includes(dir));
-
-      // If there are new directions, this is a new or extended flow segment
-      if (newDirs.length > 0 || !actualPlayerFlow?.has(posKey)) {
-        // Get the tile to find flow connections
-        const tile = previewBoard.get(posKey);
-        if (tile) {
-          // For simplicity, track that this position has new flow
-          // We'll animate all connections at this position
-          const connections = getFlowConnections(tile.type, tile.rotation);
-          for (const [dir1, dir2] of connections) {
-            // Check if this connection involves the player
-            const hasDir1 = previewEdges.get(dir1) === player.id;
-            const hasDir2 = previewEdges.get(dir2) === player.id;
-            
-            if (hasDir1 && hasDir2) {
-              newSegments.push({
-                position: posKey,
-                direction1: dir1,
-                direction2: dir2,
-                playerId: player.id,
-              });
-            }
-          }
-        }
+      // Only include the new segments (the suffix of the path)
+      const newSegments = previewSegments.slice(firstNewSegmentIndex);
+      
+      if (newSegments.length > 0) {
+        // Renumber the segments to start from 0
+        newSegments.forEach((seg, idx) => {
+          seg.orderInPath = idx;
+        });
+        
+        newPaths.push({
+          playerId: player.id,
+          segments: newSegments,
+        });
       }
     }
   }
 
-  return newSegments;
+  return newPaths;
 }
 
 
@@ -132,31 +170,46 @@ export function updateFlowPreview(
   };
   previewBoard.set(positionToKey(previewPosition), previewTile);
 
-  // Calculate new flow segments
-  const newSegments = calculateNewFlowSegments(previewBoard, board, players);
-  currentPreviewSegments = newSegments;
+  // Calculate new flow paths with ordered segments
+  const newPaths = calculateNewFlowPaths(previewBoard, board, players);
+  
+  // Flatten all segments for tracking
+  const allSegments: FlowSegment[] = [];
+  newPaths.forEach(path => {
+    allSegments.push(...path.segments);
+  });
+  currentPreviewSegments = allSegments;
 
-  // Register animations for each new segment
-  newSegments.forEach((segment) => {
-    const animName = `flow-preview-${segment.position}-${segment.direction1}-${segment.direction2}`;
-    
-    // Store segment data for rendering
-    const segmentData = {
-      ...segment,
-      animationProgress: 0,
-    };
+  // Animation duration per segment (in frames)
+  const segmentDuration = 12; // ~200ms per segment at 60fps
 
-    // Define animation that updates progress
-    defineAnimation(animName, (t: number) => {
-      segmentData.animationProgress = t;
-      // Store in global state for renderer to access
-      const previewData = (window as any).__FLOW_PREVIEW_DATA__ || {};
-      previewData[animName] = segmentData;
-      (window as any).__FLOW_PREVIEW_DATA__ = previewData;
+  // Register animations for each path
+  // Each path's segments animate sequentially, but different paths can animate concurrently
+  newPaths.forEach((path) => {
+    path.segments.forEach((segment) => {
+      const animName = `flow-preview-${segment.position}-${segment.direction1}-${segment.direction2}`;
+      
+      // Store segment data for rendering
+      const segmentData = {
+        ...segment,
+        animationProgress: 0,
+      };
+
+      // Define animation that updates progress
+      defineAnimation(animName, (t: number) => {
+        segmentData.animationProgress = t;
+        // Store in global state for renderer to access
+        const previewData = (window as any).__FLOW_PREVIEW_DATA__ || {};
+        previewData[animName] = segmentData;
+        (window as any).__FLOW_PREVIEW_DATA__ = previewData;
+      });
+
+      // Calculate delay: each segment starts after the previous one in its path completes
+      const delay = segment.orderInPath * segmentDuration;
+      
+      // Register animation with delay
+      store.dispatch(registerAnimation(animName, segmentDuration, delay));
     });
-
-    // Register animation: 18 frames (~300ms) with ease-out
-    store.dispatch(registerAnimation(animName, 18));
   });
 }
 
