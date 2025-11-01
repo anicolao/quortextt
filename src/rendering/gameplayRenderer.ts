@@ -32,6 +32,7 @@ const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on eac
 export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
   private layout: HexLayout;
+  private bezierLengthCache: Map<string, number> = new Map();
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -44,6 +45,8 @@ export class GameplayRenderer {
 
   updateLayout(canvasWidth: number, canvasHeight: number): void {
     this.layout = calculateHexLayout(canvasWidth, canvasHeight);
+    // Clear cache when layout changes
+    this.bezierLengthCache.clear();
   }
 
   render(state: RootState): void {
@@ -328,7 +331,13 @@ export class GameplayRenderer {
         this.ctx.globalAlpha = 0.7; // Preview opacity
 
         // Use setLineDash to create animated "fill in" effect
-        const pathLength = this.estimateBezierLength(start, control1, control2, end);
+        // Cache the path length to avoid recalculation each frame
+        const cacheKey = `${tileKey}-${dir1}-${dir2}`;
+        let pathLength = this.bezierLengthCache.get(cacheKey);
+        if (pathLength === undefined) {
+          pathLength = this.estimateBezierLength(start, control1, control2, end);
+          this.bezierLengthCache.set(cacheKey, pathLength);
+        }
         const dashLength = pathLength * animationProgress;
         this.ctx.setLineDash([dashLength, pathLength - dashLength]);
         
