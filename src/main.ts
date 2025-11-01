@@ -13,6 +13,7 @@ import { HexPosition, Rotation } from './game/types';
 declare global {
   interface Window {
     __REDUX_STORE__: typeof store;
+    ANIMATIONS_DEBUG_SLOWDOWN?: number;
   }
 }
 window.__REDUX_STORE__ = store;
@@ -82,6 +83,8 @@ function init() {
   render();
 
   // Animation loop for smooth rendering
+  let frameSkipCounter = 0;
+  
   function animate() {
     requestAnimationFrame(animate);
     
@@ -92,11 +95,20 @@ function init() {
       return;
     }
     
-    // Process active animations
-    processAnimations(state.animation, store.dispatch);
+    // Apply debug slowdown if set
+    const slowdown = window.ANIMATIONS_DEBUG_SLOWDOWN || 1;
+    frameSkipCounter++;
     
-    // Increment frame counter (triggers render via store subscription)
-    store.dispatch(incrementFrame());
+    // Only process animations every Nth frame based on slowdown
+    if (frameSkipCounter >= slowdown) {
+      frameSkipCounter = 0;
+      
+      // Process active animations
+      processAnimations(state.animation, store.dispatch);
+      
+      // Increment frame counter (triggers render via store subscription)
+      store.dispatch(incrementFrame());
+    }
   }
 
   animate();
