@@ -4,11 +4,16 @@ import { store } from './redux/store';
 import { Renderer } from './rendering/renderer';
 import { InputHandler } from './input/inputHandler';
 import { GameplayInputHandler } from './input/gameplayInputHandler';
+import { incrementFrame } from './animation/actions';
+import { processAnimations } from './animation/processor';
+import { updateFlowPreview } from './animation/flowPreview';
+import { HexPosition, Rotation } from './game/types';
 
 // Expose store to window for testing
 declare global {
   interface Window {
     __REDUX_STORE__: typeof store;
+    ANIMATIONS_DEBUG_SLOWDOWN?: number;
   }
 }
 window.__REDUX_STORE__ = store;
@@ -50,17 +55,60 @@ function init() {
     render();
   });
 
+  // Track previous state for flow preview updates
+  let prevSelectedPosition: HexPosition | null = null;
+  let prevRotation: Rotation = 0;
+
   // Subscribe to store changes
-  store.subscribe(render);
+  store.subscribe(() => {
+    const state = store.getState();
+    
+    // Check if we should update flow preview
+    if (state.game.screen === 'gameplay') {
+      const selectedPos = state.ui.selectedPosition;
+      const rotation = state.ui.currentRotation;
+      
+      // Update flow preview if position or rotation changed
+      if (selectedPos !== prevSelectedPosition || rotation !== prevRotation) {
+        prevSelectedPosition = selectedPos;
+        prevRotation = rotation;
+        updateFlowPreview(selectedPos, rotation, state.game.currentTile);
+      }
+    }
+    
+    render();
+  });
 
   // Initial render
   render();
 
   // Animation loop for smooth rendering
+  let frameSkipCounter = 0;
+  
   function animate() {
     requestAnimationFrame(animate);
-    // We only render when state changes, so nothing to do here
-    // But keeping the animation loop for future enhancements
+    
+    const state = store.getState();
+    
+    // Skip if paused (for debugging)
+    if (state.animation.paused) {
+      return;
+    }
+    
+    // Apply debug slowdown if set
+    const slowdown = window.ANIMATIONS_DEBUG_SLOWDOWN || 1;
+    frameSkipCounter++;
+    
+    // Only process animations every Nth frame based on slowdown
+    if (frameSkipCounter >= slowdown) {
+      frameSkipCounter = 0;
+      
+      // Process active animations
+      processAnimations(state.animation, store.dispatch);
+      
+      // Increment frame counter (triggers render via store subscription)
+      store.dispatch(incrementFrame());
+    }
   }
 
   animate();
