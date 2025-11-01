@@ -7,6 +7,7 @@ import { LobbyRenderer } from './lobbyRenderer';
 import { LobbyLayout } from './lobbyLayout';
 import { SeatingRenderer } from './seatingRenderer';
 import { SeatingLayout } from './seatingRenderer';
+import { GameOverRenderer, GameOverLayout } from './gameOverRenderer';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -18,6 +19,8 @@ export class Renderer {
   private currentLobbyLayout: LobbyLayout | null = null;
   private seatingRenderer: SeatingRenderer | null = null;
   private currentSeatingLayout: SeatingLayout | null = null;
+  private gameOverRenderer: GameOverRenderer | null = null;
+  private currentGameOverLayout: GameOverLayout | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -74,6 +77,8 @@ export class Renderer {
       return this.renderSeatingScreen(state);
     } else if (screen === 'gameplay') {
       return this.renderGameplayScreen(state);
+    } else if (screen === 'game-over') {
+      return this.renderGameOverScreen(state);
     }
 
     return this.createEmptyLayout();
@@ -139,6 +144,27 @@ export class Renderer {
 
   getGameplayRenderer(): GameplayRenderer | null {
     return this.gameplayRenderer;
+  }
+
+  private renderGameOverScreen(state: RootState): UILayout {
+    // Initialize game over renderer if needed
+    if (!this.gameOverRenderer) {
+      this.gameOverRenderer = new GameOverRenderer(this.ctx);
+    }
+
+    // Render the game over screen
+    this.currentGameOverLayout = this.gameOverRenderer.render(
+      this.canvas.width,
+      this.canvas.height,
+      state.game
+    );
+
+    // Return empty UILayout for compatibility
+    return this.createEmptyLayout();
+  }
+
+  getGameOverLayout(): GameOverLayout | null {
+    return this.currentGameOverLayout;
   }
 
   private createEmptyLayout(): UILayout {
