@@ -12,6 +12,7 @@ import {
 import { GameplayInputHandler } from './gameplayInputHandler';
 import { LobbyInputHandler } from './lobbyInputHandler';
 import { SeatingInputHandler } from './seatingInputHandler';
+import { GameOverInputHandler } from './gameOverInputHandler';
 
 export class InputHandler {
   private renderer: Renderer;
@@ -19,11 +20,13 @@ export class InputHandler {
   private gameplayInputHandler: GameplayInputHandler | null = null;
   private lobbyInputHandler: LobbyInputHandler;
   private seatingInputHandler: SeatingInputHandler;
+  private gameOverInputHandler: GameOverInputHandler;
 
   constructor(renderer: Renderer) {
     this.renderer = renderer;
     this.lobbyInputHandler = new LobbyInputHandler();
     this.seatingInputHandler = new SeatingInputHandler();
+    this.gameOverInputHandler = new GameOverInputHandler();
     this.setupEventListeners();
   }
 
@@ -77,6 +80,13 @@ export class InputHandler {
     if (state.game.screen === 'configuration') {
       const lobbyLayout = this.renderer.getLobbyLayout();
       this.lobbyInputHandler.handleClick(x, y, lobbyLayout);
+      return;
+    }
+
+    // Game over screen handling
+    if (state.game.screen === 'game-over') {
+      const gameOverLayout = this.renderer.getGameOverLayout();
+      this.gameOverInputHandler.handleClick(x, y, gameOverLayout);
       return;
     }
 
