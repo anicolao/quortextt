@@ -1,9 +1,10 @@
 // Flow preview animation for tile placement
 
-import { HexPosition, PlacedTile, Player, Rotation } from '../game/types';
+import { HexPosition, PlacedTile, Player, Rotation, FlowConnection } from '../game/types';
 import { calculateFlows } from '../game/flows';
 import { positionToKey } from '../game/board';
-import { defineAnimation } from './registry';
+import { getFlowConnections } from '../game/tiles';
+import { defineAnimation, undefineAnimation } from './registry';
 import { registerAnimation } from './actions';
 import { store } from '../redux/store';
 
@@ -98,8 +99,7 @@ export function calculateNewFlowSegments(
 }
 
 // Helper to get flow connections for a tile
-function getFlowConnectionsForTile(tile: PlacedTile): [number, number][] {
-  const { getFlowConnections } = require('../game/tiles');
+function getFlowConnectionsForTile(tile: PlacedTile): FlowConnection[] {
   return getFlowConnections(tile.type, tile.rotation);
 }
 
@@ -114,7 +114,6 @@ export function updateFlowPreview(
   // Clear old animations by undefining them
   currentPreviewSegments.forEach((segment) => {
     const animName = `flow-preview-${segment.position}-${segment.direction1}-${segment.direction2}`;
-    const { undefineAnimation } = require('./registry');
     undefineAnimation(animName);
   });
   currentPreviewSegments = [];
