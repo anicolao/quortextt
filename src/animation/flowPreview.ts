@@ -1,6 +1,6 @@
 // Flow preview animation for tile placement
 
-import { HexPosition, PlacedTile, Player, Rotation, FlowConnection } from '../game/types';
+import { HexPosition, PlacedTile, Player, Rotation } from '../game/types';
 import { calculateFlows } from '../game/flows';
 import { positionToKey } from '../game/board';
 import { getFlowConnections } from '../game/tiles';
@@ -75,7 +75,7 @@ export function calculateNewFlowSegments(
         if (tile) {
           // For simplicity, track that this position has new flow
           // We'll animate all connections at this position
-          const connections = getFlowConnectionsForTile(tile);
+          const connections = getFlowConnections(tile.type, tile.rotation);
           for (const [dir1, dir2] of connections) {
             // Check if this connection involves the player
             const hasDir1 = previewEdges.get(dir1) === player.id;
@@ -98,10 +98,7 @@ export function calculateNewFlowSegments(
   return newSegments;
 }
 
-// Helper to get flow connections for a tile
-function getFlowConnectionsForTile(tile: PlacedTile): FlowConnection[] {
-  return getFlowConnections(tile.type, tile.rotation);
-}
+
 
 /**
  * Update flow preview when tile position or rotation changes
