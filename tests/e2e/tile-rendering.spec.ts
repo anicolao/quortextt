@@ -1,7 +1,7 @@
 // End-to-end test for tile rendering - visualize all tile types in all rotations
 // This test helps verify that tile rendering matches the logical model
 import { test, expect } from '@playwright/test';
-import { getReduxState } from './helpers';
+import { getReduxState, completeSeatingPhase } from './helpers';
 
 test.describe('Tile Rendering Tests', () => {
   // TileType enum values (must match src/game/types.ts)
@@ -64,13 +64,27 @@ test.describe('Tile Rendering Tests', () => {
           store.dispatch({ type: 'RETURN_TO_CONFIG' });
         });
         
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(100);
+        
+        // Get canvas for seating
+        const canvas = page.locator('canvas#game-canvas');
+        const box = await canvas.boundingBox();
+        if (!box) throw new Error('Canvas not found');
         
         // Start game with specific tile distribution (all tiles of one type)
-        await page.evaluate(({ distribution }) => {
+        await page.evaluate(() => {
           const store = (window as any).__REDUX_STORE__;
           store.dispatch({ type: 'START_GAME' });
-          // Immediately shuffle with custom distribution
+        });
+        
+        await page.waitForTimeout(100);
+        
+        // Complete seating phase
+        await completeSeatingPhase(page, canvas, box);
+        
+        // Shuffle with custom distribution and draw first tile
+        await page.evaluate(({ distribution }) => {
+          const store = (window as any).__REDUX_STORE__;
           store.dispatch({ 
             type: 'SHUFFLE_TILES', 
             payload: { 
@@ -78,11 +92,10 @@ test.describe('Tile Rendering Tests', () => {
               tileDistribution: distribution 
             } 
           });
-          // Draw first tile
           store.dispatch({ type: 'DRAW_TILE' });
         }, { distribution: tileType.distribution });
         
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(100);
         
         // Place the tile at center position for visibility
         await page.evaluate(({ rotation }) => {

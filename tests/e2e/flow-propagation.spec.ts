@@ -1,7 +1,35 @@
 // End-to-end test for flow propagation from player edges
 // This test verifies that flows only enter from hex edges that belong to the player's board edge
 import { test, expect } from '@playwright/test';
-import { getReduxState } from './helpers';
+import { getReduxState, completeSeatingPhase } from './helpers';
+
+// Helper to setup a game with two players
+async function setupTwoPlayerGame(page: any) {
+  const canvas = page.locator('canvas#game-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas not found');
+  
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'ADD_PLAYER' });
+    store.dispatch({ type: 'ADD_PLAYER' });
+    store.dispatch({ type: 'START_GAME' });
+  });
+  
+  await page.waitForTimeout(100);
+  
+  // Complete seating phase
+  await completeSeatingPhase(page, canvas, box);
+  
+  // Shuffle with deterministic seed and draw a tile
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 42 } });
+    store.dispatch({ type: 'DRAW_TILE' });
+  });
+  
+  await page.waitForTimeout(100);
+}
 
 test.describe('Flow Propagation from Player Edges', () => {
   test('should show correct flows only from player edge hex directions', async ({ page }) => {
@@ -9,18 +37,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     await page.waitForSelector('canvas#game-canvas');
     
     // Set up game with two players
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'START_GAME' });
-      // Use deterministic seed for reproducibility
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 42 } });
-      // Draw a tile from the seeded deck to ensure deterministic currentTile
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    
-    await page.waitForTimeout(500);
+    await setupTwoPlayerGame(page);
     
     // Get initial state
     let state = await getReduxState(page);
@@ -63,17 +80,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
     
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'START_GAME' });
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 42 } });
-      // Draw a tile from the seeded deck to ensure deterministic currentTile
-      store.dispatch({ type: 'DRAW_TILE' });
-    });
-    
-    await page.waitForTimeout(500);
+    await setupTwoPlayerGame(page);
     
     // Get the new player references after reload
     state = await getReduxState(page);
