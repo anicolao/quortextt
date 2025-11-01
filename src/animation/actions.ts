@@ -62,13 +62,18 @@ export const registerAnimation = (
   const state = (window as any).__REDUX_STORE__.getState();
   const currentFrame = state.animation.frameCounter;
   
+  // Apply debug slowdown if set
+  const slowdown = (window as any).ANIMATIONS_DEBUG_SLOWDOWN || 1;
+  const adjustedDuration = duration * slowdown;
+  const adjustedDelay = delay * slowdown;
+  
   return {
     type: REGISTER_ANIMATION,
     payload: {
       id: `${animationName}-${Date.now()}-${Math.random()}`,
       animationName,
-      startFrame: currentFrame + delay,
-      endFrame: currentFrame + delay + duration,
+      startFrame: currentFrame + adjustedDelay,
+      endFrame: currentFrame + adjustedDelay + adjustedDuration,
     },
   };
 };
