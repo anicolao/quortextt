@@ -178,20 +178,8 @@ export class LobbyRenderer {
     const yOffset = entryCenterY - screenCenterY;
     this.ctx.translate(xOffset, yOffset);
 
-    // Step 4: After rotation, adjust position to maintain consistent distance from + buttons
-    // For left/right edges (perpendicular to screen orientation), adjust based on aspect ratio
-    // to maintain proper spacing from + buttons in both landscape and portrait modes
-    if (entry.rotation === 90 || entry.rotation === 270) {
-      const minDim = Math.min(canvasWidth, canvasHeight);
-      const maxDim = Math.max(canvasWidth, canvasHeight);
-      const edgeAdjustment = (maxDim - minDim) / 2;
-
-      // Move labels away from center in the y-direction (after rotation)
-      // This positions them correctly relative to the + buttons on left/right edges
-      this.ctx.translate(0, edgeAdjustment);
-    }
-    // Note: Top/bottom edges (0° and 180°) don't need adjustment as they're already
-    // positioned correctly by the rotation around screen center
+    // Note: All edges are positioned correctly by the rotation around screen center
+    // The layout calculations in lobbyLayout.ts handle the positioning relative to + buttons
 
     // Now draw the entry upright (no additional rotation needed)
     // All coordinates are relative to entry center
