@@ -74,7 +74,8 @@ function traceOrderedFlowPath(
 export function calculateNewFlowPaths(
   previewBoard: Map<string, PlacedTile>,
   actualBoard: Map<string, PlacedTile>,
-  players: Player[]
+  players: Player[],
+  previewPosition: HexPosition
 ): OrderedFlowPath[] {
   const newPaths: OrderedFlowPath[] = [];
   const actualFlows = calculateFlows(actualBoard, players);
@@ -96,13 +97,21 @@ export function calculateNewFlowPaths(
 
       // Find where the actual flow ends (if it exists)
       const actualPlayerFlow = actualFlows.flows.get(player.id);
+      const previewPosKey = positionToKey(previewPosition);
       let firstNewSegmentIndex = 0;
 
       if (actualPlayerFlow) {
         // Find the first segment that's not in the actual flow
+        // BUT: Always include segments at the preview position even if they exist in actual flow
         for (let i = 0; i < previewSegments.length; i++) {
           const segment = previewSegments[i];
           const actualEdges = actualFlows.flowEdges.get(segment.position);
+          
+          // If this segment is at the preview position, it's new (tile was just placed)
+          if (segment.position === previewPosKey) {
+            firstNewSegmentIndex = i;
+            break;
+          }
           
           // Check if this segment exists in actual flow
           const hasDir1 = actualEdges?.get(segment.direction1) === player.id;
@@ -116,7 +125,7 @@ export function calculateNewFlowPaths(
         }
       }
 
-      // Only include the new segments (the suffix of the path)
+      // Only include the new segments (the suffix of the path, starting from preview tile or first new tile)
       const newSegments = previewSegments.slice(firstNewSegmentIndex);
       
       if (newSegments.length > 0) {
@@ -152,6 +161,9 @@ export function updateFlowPreview(
     undefineAnimation(animName);
   });
   currentPreviewSegments = [];
+  
+  // Clear old flow preview data to prevent old animations from persisting
+  clearFlowPreviewData();
 
   // If no preview position, nothing to animate
   if (!previewPosition || currentTile === null) {
@@ -171,7 +183,7 @@ export function updateFlowPreview(
   previewBoard.set(positionToKey(previewPosition), previewTile);
 
   // Calculate new flow paths with ordered segments
-  const newPaths = calculateNewFlowPaths(previewBoard, board, players);
+  const newPaths = calculateNewFlowPaths(previewBoard, board, players, previewPosition);
   
   // Flatten all segments for tracking
   const allSegments: FlowSegment[] = [];
