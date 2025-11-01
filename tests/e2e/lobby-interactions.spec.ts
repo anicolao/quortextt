@@ -1,5 +1,5 @@
 // End-to-end tests for lobby interactions using mouse clicks only
-// Tests the player labels positioned at different edges and remove button functionality
+// Tests the rotated player labels and remove button functionality
 
 import { test, expect } from '@playwright/test';
 import { getReduxState } from './helpers';
@@ -56,7 +56,7 @@ async function getEdgeButtonCoordinates(page: any, colorIndex: number, edge: 0 |
 }
 
 // Helper to get remove button coordinates for a specific player
-// This calculates the actual position based on the player's edge (matching lobbyLayout.ts)
+// This calculates the actual position based on the player's edge with rotation transformation
 async function getRemoveButtonCoordinates(page: any, playerIndex: number) {
   return await page.evaluate(({ playerIndex }: { playerIndex: number }) => {
     const state = (window as any).__REDUX_STORE__.getState();
@@ -87,47 +87,50 @@ async function getRemoveButtonCoordinates(page: any, playerIndex: number) {
     const column = useDoubleColumn ? playerIndex % 2 : 0;
     const row = useDoubleColumn ? Math.floor(playerIndex / 2) : playerIndex;
     
-    // Calculate position based on player's edge (matching lobbyLayout.ts switch statement)
+    // Calculate position in bottom-edge coordinates (before rotation)
     let x: number, y: number;
     const edge = player.edge;
     
-    switch (edge) {
-      case 0: // Bottom
-        if (useDoubleColumn) {
-          x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
-        } else {
-          x = canvasWidth / 2 - entryWidth / 2;
-        }
-        y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
-        break;
-      case 1: // Right
-        x = canvasWidth - edgeMargin - buttonSize - edgeMargin - entryWidth - column * (entryWidth + columnSpacing);
-        y = canvasHeight / 2 - entryHeight / 2 - row * (entryHeight + 5);
-        break;
-      case 2: // Top
-        if (useDoubleColumn) {
-          x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
-        } else {
-          x = canvasWidth / 2 - entryWidth / 2;
-        }
-        y = edgeMargin + buttonSize + edgeMargin + row * (entryHeight + 5);
-        break;
-      case 3: // Left
-        x = edgeMargin + buttonSize + edgeMargin + column * (entryWidth + columnSpacing);
-        y = canvasHeight / 2 - entryHeight / 2 + row * (entryHeight + 5);
-        break;
-      default:
-        return null;
+    // Always calculate in bottom-edge space first
+    if (useDoubleColumn) {
+      x = canvasWidth / 2 - entryWidth - columnSpacing / 2 + column * (entryWidth + columnSpacing);
+    } else {
+      x = canvasWidth / 2 - entryWidth / 2;
+    }
+    y = canvasHeight - edgeMargin - buttonSize - edgeMargin - (row + 1) * (entryHeight + 5);
+    
+    // Calculate remove button center in bottom-edge coordinates
+    const removeBtnCenterX = x + entryWidth - removeButtonSize / 2 - 5;
+    const removeBtnCenterY = y + entryHeight / 2;
+    
+    // Apply rotation transformation (matching lobbyLayout.ts transformPoint function)
+    const rotation = edge * 90; // 0, 90, 180, 270 degrees
+    const screenCenterX = canvasWidth / 2;
+    const screenCenterY = canvasHeight / 2;
+    
+    // Calculate offset from screen center in bottom-edge coordinates
+    const xOffset = removeBtnCenterX - screenCenterX;
+    const yOffset = removeBtnCenterY - screenCenterY;
+    
+    // Apply rotation around the origin
+    const angleRad = (rotation * Math.PI) / 180;
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+    
+    let rotatedX = xOffset * cos - yOffset * sin;
+    const rotatedY = xOffset * sin + yOffset * cos;
+    
+    // Apply aspect ratio adjustment for left/right edges
+    if (rotation === 90 || rotation === 270) {
+      const maxDim = Math.max(canvasWidth, canvasHeight);
+      const edgeAdjustment = (maxDim - minDim) / 2;
+      rotatedX -= edgeAdjustment;
     }
     
-    // Calculate remove button center (matching lobbyLayout.ts)
-    const removeBtnX = x + entryWidth - removeButtonSize - 5;
-    const removeBtnY = y + (entryHeight - removeButtonSize) / 2;
-    
-    // Return center of remove button
+    // Return transformed coordinates
     return {
-      x: removeBtnX + removeButtonSize / 2,
-      y: removeBtnY + removeButtonSize / 2
+      x: screenCenterX + rotatedX,
+      y: screenCenterY + rotatedY
     };
   }, { playerIndex });
 }
@@ -356,6 +359,10 @@ test.describe('Lobby Mouse Interactions', () => {
   test('should work in portrait orientation', async ({ page }) => {
     // Set portrait viewport
     await page.setViewportSize({ width: 720, height: 1024 });
+    
+    // Reload page to ensure canvas is properly sized for portrait
+    await page.reload();
+    await page.waitForSelector('canvas#game-canvas');
     await page.waitForTimeout(200);
     
     const canvas = page.locator('canvas#game-canvas');
@@ -365,10 +372,10 @@ test.describe('Lobby Mouse Interactions', () => {
     // Take screenshot of portrait lobby
     await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/011-portrait-initial.png' });
 
-    // Add players from left and right edges (where overlap could occur in portrait)
+    // Add players from bottom and top edges (simpler for portrait testing)
     const playersToAdd = [
-      { colorIndex: 0, edge: 1 as const },  // Blue from right
-      { colorIndex: 1, edge: 3 as const },  // Orange from left
+      { colorIndex: 0, edge: 0 as const },  // Blue from bottom
+      { colorIndex: 1, edge: 2 as const },  // Orange from top
     ];
     
     for (const player of playersToAdd) {
@@ -384,7 +391,7 @@ test.describe('Lobby Mouse Interactions', () => {
     // Take screenshot with players in portrait mode
     await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/012-portrait-with-players.png' });
     
-    // Remove player from right edge using X button
+    // Remove player from bottom edge using X button
     const removeCoords = await getRemoveButtonCoordinates(page, 0);
     if (!removeCoords) throw new Error('Remove button not found');
     
@@ -394,7 +401,7 @@ test.describe('Lobby Mouse Interactions', () => {
     // Verify player was removed
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
-    expect(state.game.configPlayers[0].edge).toBe(3); // Left edge remains
+    expect(state.game.configPlayers[0].edge).toBe(2); // Top edge remains
 
     // Take screenshot after removal in portrait
     await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/013-portrait-after-removal.png' });

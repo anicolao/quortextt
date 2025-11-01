@@ -74,7 +74,7 @@ The lobby in portrait mode (720x1024).
 
 ![012-portrait-with-players.png](012-portrait-with-players.png)
 
-Two players added from right and left edges in portrait mode.
+Two players added from bottom and top edges in portrait mode.
 
 ![013-portrait-after-removal.png](013-portrait-after-removal.png)
 
