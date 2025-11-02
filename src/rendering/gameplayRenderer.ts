@@ -370,11 +370,12 @@ export class GameplayRenderer {
       
       // Draw if: (1) animation completed (progress >= 1.0), or (2) actual filled flow exists and not animating
       if (animData && animData.animationProgress >= 1.0) {
-        // Animation completed - draw the completed flow
+        // Animation completed - draw the completed flow using actual flow direction
         const playerId = animData.playerId;
         const player = state.game.players.find((p) => p.id === playerId);
         if (player) {
-          this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false);
+          // Use the actual flow direction from animation data
+          this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, 1.0, false);
         }
       } else if (!animData || animData.animationProgress >= 1.0) {
         // No animation data or animation done - check for actual filled flow
@@ -412,7 +413,8 @@ export class GameplayRenderer {
           const playerId = animData.playerId;
           const player = state.game.players.find((p) => p.id === playerId);
           if (player) {
-            this.drawFlowConnection(center, dir1, dir2, player.color, animationProgress, true);
+            // Use the actual flow direction from animation data
+            this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, animationProgress, true);
           }
         }
       }
