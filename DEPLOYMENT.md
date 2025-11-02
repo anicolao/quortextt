@@ -32,7 +32,7 @@ This document outlines the deployment strategy for Quortex, a web-based implemen
                                                           │   Users Access  │
                                                           │ your-username.  │
                                                           │ github.io/      │
-                                                          │ quortextt       │
+                                                          │ your-repo-name  │
                                                           └─────────────────┘
 ```
 
@@ -47,7 +47,7 @@ The application uses Vite as its build tool. For GitHub Pages deployment, the `b
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/quortextt/', // Replace with your repository name
+  base: '/your-repo-name/', // Replace with your repository name
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -63,7 +63,7 @@ export default defineConfig({
 ```
 
 **Rationale:**
-- `base: '/quortextt/'` ensures asset paths work correctly when deployed to `username.github.io/quortextt/`
+- `base: '/your-repo-name/'` ensures asset paths work correctly when deployed to `username.github.io/your-repo-name/`
 - Single bundle simplifies caching and reduces request overhead
 - Minification with terser provides better compression than esbuild
 
@@ -187,7 +187,7 @@ git push origin main
 #    - Builds the application
 #    - Deploys to GitHub Pages
 
-# 4. Site is live at: https://username.github.io/quortextt/
+# 4. Site is live at: https://username.github.io/your-repo-name/
 ```
 
 **Manual Deployment:**
@@ -457,7 +457,7 @@ If you need to migrate from GitHub Pages to another platform:
 
 1. **Update `vite.config.ts`:**
    ```typescript
-   base: '/', // Change from '/quortextt/' to root
+   base: '/', // Change from '/your-repo-name/' to root
    ```
 
 2. **Deploy to new platform** using their deployment process
@@ -603,7 +603,7 @@ cat > vite.config.ts << 'EOF'
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/quortextt/',
+  base: '/your-repo-name/', // Replace with your repository name
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -628,10 +628,10 @@ git push origin main
 # (Done via GitHub web UI: Settings → Pages → Source: GitHub Actions)
 
 # 5. Wait for deployment
-# Check: https://github.com/username/quortextt/actions
+# Check: https://github.com/username/your-repo-name/actions
 
 # 6. Access site
-# URL: https://username.github.io/quortextt/
+# URL: https://username.github.io/your-repo-name/
 ```
 
 ---
@@ -645,7 +645,7 @@ git push origin main
 **Solution:**
 ```typescript
 // For GitHub Pages with repository name
-base: '/quortextt/', // Must match repository name
+base: '/your-repo-name/', // Must match repository name
 
 // For custom domain or root deployment
 base: '/',
