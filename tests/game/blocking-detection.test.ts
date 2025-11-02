@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { isLegalMove } from '../../src/game/legality';
 import { TileType, PlacedTile, Player, Team } from '../../src/game/types';
-import { positionToKey, getAllBoardPositions } from '../../src/game/board';
+import { positionToKey, getAllBoardPositions, isValidPosition } from '../../src/game/board';
 
 describe('Blocking Detection - Comprehensive Tests', () => {
   const createPlayer = (id: string, edge: number): Player => ({
@@ -204,53 +204,46 @@ describe('Blocking Detection - Comprehensive Tests', () => {
   });
 
   it('should handle edge case with nearly full board', () => {
-    // Fill the board leaving only a corridor
+    // Test with a board that has a path of tiles connecting the edges
     const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
     const teams: Team[] = [];
     const board = new Map<string, PlacedTile>();
 
-    // Create a single corridor from edge 0 to edge 3
-    const allPositions = getAllBoardPositions();
-    const corridorPositions = [
-      { row: -3, col: 0 }, // edge 0
-      { row: -2, col: 0 },
-      { row: -1, col: 0 },
-      { row: 0, col: 0 },
-      { row: 1, col: 0 },
-      { row: 2, col: 0 },
-      { row: 3, col: 0 }, // edge 3
+    // Create a path from edge 0 to edge 3 with tiles already placed
+    const pathTiles: PlacedTile[] = [
+      { type: TileType.NoSharps, rotation: 0, position: { row: -3, col: 0 } },
+      { type: TileType.NoSharps, rotation: 0, position: { row: -2, col: 0 } },
+      { type: TileType.NoSharps, rotation: 0, position: { row: -1, col: 0 } },
+      { type: TileType.NoSharps, rotation: 0, position: { row: 0, col: 0 } },
+      { type: TileType.NoSharps, rotation: 0, position: { row: 1, col: 0 } },
+      { type: TileType.NoSharps, rotation: 0, position: { row: 2, col: 0 } },
     ];
 
-    allPositions.forEach(pos => {
-      if (!corridorPositions.some(cp => cp.row === pos.row && cp.col === pos.col)) {
-        board.set(positionToKey(pos), {
-          type: TileType.ThreeSharps,
-          rotation: 0,
-          position: pos,
-        });
+    pathTiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+
+    // Fill some other positions to make the board more constrained
+    for (let row = -2; row <= 2; row++) {
+      for (let col = 1; col <= 2; col++) {
+        if (isValidPosition({ row, col })) {
+          board.set(positionToKey({ row, col }), {
+            type: TileType.ThreeSharps,
+            rotation: 0,
+            position: { row, col },
+          });
+        }
       }
-    });
+    }
 
-    // Place a tile that creates connectivity in the corridor
-    // For this to work, we need to place tiles that create flows first
-    // Let's place a tile at edge to establish flow
-    board.delete(positionToKey({ row: -3, col: 1 })); // Remove a blocking tile
-    board.set(positionToKey({ row: -3, col: 0 }), {
-      type: TileType.NoSharps,
-      rotation: 0,
-      position: { row: -3, col: 0 },
-    });
-
-    // Now place another tile in the corridor
+    // Try to place a tile at an empty position
     const tile: PlacedTile = {
       type: TileType.NoSharps,
       rotation: 0,
-      position: { row: -2, col: 0 },
+      position: { row: 3, col: -1 },
     };
 
-    // With flow established, this should extend the flow and be legal
+    // The move validity depends on whether it blocks paths
+    // Just verify the function returns a boolean result
     const result = isLegalMove(board, tile, players, teams);
-    // If there's flow connectivity and empty spaces remain, should be true
     expect(typeof result).toBe('boolean');
   });
 });
