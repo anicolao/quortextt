@@ -363,18 +363,28 @@ export class GameplayRenderer {
     const flowPreviewData = getFlowPreviewData();
 
     connections.forEach(([dir1, dir2]) => {
-      // Check if this connection has filled flow (not animating)
       const animKey = `flow-preview-${tileKey}-${dir1}-${dir2}`;
-      const isAnimating = flowPreviewData[animKey] && flowPreviewData[animKey].animationProgress < 1.0;
+      const animData = flowPreviewData[animKey];
+      
+      // Draw if: (1) animation completed (progress >= 1.0), or (2) actual filled flow exists and not animating
+      if (animData && animData.animationProgress >= 1.0) {
+        // Animation completed - draw the completed flow
+        const playerId = animData.playerId;
+        const player = state.game.players.find((p) => p.id === playerId);
+        if (player) {
+          this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false);
+        }
+      } else if (!animData || animData.animationProgress >= 1.0) {
+        // No animation data or animation done - check for actual filled flow
+        if (tileFlowEdges) {
+          const player1 = tileFlowEdges.get(dir1);
+          const player2 = tileFlowEdges.get(dir2);
 
-      if (!isAnimating && tileFlowEdges) {
-        const player1 = tileFlowEdges.get(dir1);
-        const player2 = tileFlowEdges.get(dir2);
-
-        if (player1 && player1 === player2) {
-          const player = state.game.players.find((p) => p.id === player1);
-          if (player) {
-            this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false);
+          if (player1 && player1 === player2) {
+            const player = state.game.players.find((p) => p.id === player1);
+            if (player) {
+              this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false);
+            }
           }
         }
       }
