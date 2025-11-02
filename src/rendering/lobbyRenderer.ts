@@ -184,17 +184,17 @@ export class LobbyRenderer {
     if (entry.rotation === 90 || entry.rotation === 270) {
       const minDim = Math.min(canvasWidth, canvasHeight);
       const maxDim = Math.max(canvasWidth, canvasHeight);
-      const rawAdjustment = (maxDim - minDim) / 2;
-      
-      // In portrait mode (height > width), limit adjustment to prevent labels from going off-screen
-      // The adjustment should not push labels beyond the narrower dimension
+      const edgeAdjustment = (maxDim - minDim) / 2;
+
       const isPortrait = canvasHeight > canvasWidth;
-      const maxSafeAdjustment = isPortrait ? minDim * 0.15 : rawAdjustment;
-      const edgeAdjustment = Math.min(rawAdjustment, maxSafeAdjustment);
 
       // Move labels away from center in the y-direction (after rotation)
       // This positions them correctly relative to the + buttons on left/right edges
-      this.ctx.translate(0, edgeAdjustment);
+      if (!isPortrait) {
+        this.ctx.translate(0, edgeAdjustment);
+      } else {
+        this.ctx.translate(0, -edgeAdjustment);
+      }
     }
     // Note: Top/bottom edges (0° and 180°) don't need adjustment as they're already
     // positioned correctly by the rotation around screen center
