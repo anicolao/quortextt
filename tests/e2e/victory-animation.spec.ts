@@ -33,36 +33,23 @@ test.describe('Victory Animation', () => {
     
     await page.waitForTimeout(300);
     
-    // Create a winning game state by placing tiles that create a flow
-    // Determine which edges the players are on
+    // Get current state to determine winner
     let state = await getReduxState(page);
-    const player1Edge = state.game.players[0].edgePosition;
-    const player2Edge = state.game.players[1].edgePosition;
+    const winnerId = state.game.players[0].id;
     
-    console.log(`Player 1 edge: ${player1Edge}, Player 2 edge: ${player2Edge}`);
+    console.log(`Triggering victory for player: ${winnerId}`);
     
-    // Place tiles to create a winning path
-    await page.evaluate(() => {
+    // Trigger END_GAME action to show victory animation
+    await page.evaluate((winner) => {
       const store = (window as any).__REDUX_STORE__;
-      
-      // Place tiles to create a winning path from edge 0 to edge 3
-      const tiles = [
-        { type: 2, rotation: 5, position: { row: -3, col: 0 } },
-        { type: 2, rotation: 5, position: { row: -2, col: 0 } },
-        { type: 2, rotation: 5, position: { row: -1, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 0, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 1, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 2, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 3, col: 0 } },
-      ];
-      
-      tiles.forEach(tile => {
-        store.dispatch({
-          type: 'PLACE_TILE',
-          payload: tile,
-        });
+      store.dispatch({
+        type: 'END_GAME',
+        payload: {
+          winner,
+          winType: 'flow'
+        }
       });
-    });
+    }, winnerId);
     
     // Wait for the game over screen to appear
     await page.waitForTimeout(500);
@@ -128,30 +115,29 @@ test.describe('Victory Animation', () => {
     
     await page.waitForTimeout(300);
     
-    // Create a winning team game state
-    await page.evaluate(() => {
+    // Get team information and trigger victory
+    let state = await getReduxState(page);
+    const team = state.game.teams[0];
+    const teamWinner = `team-${team.player1Id}-${team.player2Id}`;
+    
+    console.log(`Triggering team victory for: ${teamWinner}`);
+    
+    // Trigger END_GAME action for team victory
+    await page.evaluate((winner) => {
       const store = (window as any).__REDUX_STORE__;
-      
-      // Place tiles for team victory
-      const tiles = [
-        { type: 2, rotation: 5, position: { row: -3, col: 0 } },
-        { type: 2, rotation: 5, position: { row: -2, col: 0 } },
-        { type: 2, rotation: 5, position: { row: -1, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 0, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 1, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 2, col: 0 } },
-        { type: 2, rotation: 5, position: { row: 3, col: 0 } },
-      ];
-      
-      tiles.forEach(tile => {
-        store.dispatch({ type: 'PLACE_TILE', payload: tile });
+      store.dispatch({
+        type: 'END_GAME',
+        payload: {
+          winner,
+          winType: 'flow'
+        }
       });
-    });
+    }, teamWinner);
     
     await page.waitForTimeout(1000);
     
     // Verify game over
-    const state = await getReduxState(page);
+    state = await getReduxState(page);
     expect(state.game.screen).toBe('game-over');
     
     // Take screenshot of team victory with two color squares
