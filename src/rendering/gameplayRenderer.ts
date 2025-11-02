@@ -28,7 +28,7 @@ const BUTTON_ICON = "#ffffff"; // White
 
 // Debug configuration
 const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on each hexagon
-const DEBUG_SHOW_VICTORY_EDGES = true; // Highlight victory condition edges for each player
+const DEBUG_SHOW_VICTORY_EDGES = false; // Highlight victory condition edges for each player
 
 export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
