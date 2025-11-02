@@ -84,7 +84,15 @@ One player removed, showing the UI works correctly in portrait orientation.
 
 ![014-portrait-left-right.png](014-portrait-left-right.png)
 
-Players from left and right edges now display correctly in portrait mode (720x1024). The aspect ratio adjustment has been capped to prevent labels from being translated off-screen, ensuring player labels, colors, and X buttons remain visible and functional.
+Players from left and right edges display correctly in portrait mode (720x1024). The aspect ratio adjustment direction is inverted in portrait orientation to keep labels visible and properly positioned.
+
+![015-portrait-after-right-removal.png](015-portrait-after-right-removal.png)
+
+After removing the right edge player using the X button, only the left edge player remains.
+
+![016-portrait-after-left-removal.png](016-portrait-after-left-removal.png)
+
+After removing the left edge player, the lobby returns to empty state. This demonstrates that hit detection works correctly for both left and right edge players in portrait mode.
 
 ## Key Features Demonstrated
 
