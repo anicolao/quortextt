@@ -14,6 +14,8 @@ import {
 import {
   getAllBoardPositions,
   getEdgePositionsWithDirections,
+  getOppositeEdge,
+  getOppositeDirection,
 } from "../game/board";
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
@@ -27,6 +29,7 @@ const BUTTON_ICON = "#ffffff"; // White
 
 // Debug configuration
 const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on each hexagon
+const DEBUG_SHOW_VICTORY_EDGES = true; // Highlight victory condition edges for each player
 
 export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -61,6 +64,11 @@ export class GameplayRenderer {
     // Layer 2.7: Debug - Draw edge direction labels (0-5) inside each hexagon
     if (DEBUG_SHOW_EDGE_LABELS) {
       this.renderEdgeDirectionLabels();
+    }
+
+    // Layer 2.8: Debug - Highlight victory condition edges
+    if (DEBUG_SHOW_VICTORY_EDGES) {
+      this.renderVictoryConditionEdges(state);
     }
 
     // Layer 3: Placed tiles
@@ -196,6 +204,53 @@ export class GameplayRenderer {
         this.ctx.moveTo(v1.x, v1.y);
         this.ctx.lineTo(v2.x, v2.y);
         this.ctx.stroke();
+      });
+    });
+  }
+
+  private renderVictoryConditionEdges(state: RootState): void {
+    // Debug rendering: Highlight the outward-facing edges on the opposite side that are victory conditions
+    if (state.game.players.length === 0) return;
+
+    state.game.players.forEach((player) => {
+      const targetEdge = getOppositeEdge(player.edgePosition);
+      const targetEdgeData = getEdgePositionsWithDirections(targetEdge);
+
+      // For each position on the target edge, highlight the outward-facing edge
+      targetEdgeData.forEach(({ pos, dir }) => {
+        const center = hexToPixel(pos, this.layout);
+        const outwardDir = getOppositeDirection(dir);
+
+        // Get the two vertices that define the outward-facing edge
+        const vertices = getHexVertices(center, this.layout.size);
+
+        // Map direction to vertex pairs for pointy-top hexagons
+        const vertexPairs = [
+          [4, 5], // SouthWest (240°)
+          [3, 4], // West (180°)
+          [2, 3], // NorthWest (120°)
+          [1, 2], // NorthEast (60°)
+          [0, 1], // East (0°)
+          [5, 0], // SouthEast (300°)
+        ];
+
+        const [v1Index, v2Index] = vertexPairs[outwardDir];
+        const v1 = vertices[v1Index];
+        const v2 = vertices[v2Index];
+
+        // Draw a dashed line in the player's color to indicate victory edge
+        this.ctx.strokeStyle = player.color;
+        this.ctx.lineWidth = this.layout.size * 0.15;
+        this.ctx.lineCap = "round";
+        this.ctx.setLineDash([5, 5]); // Dashed pattern
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(v1.x, v1.y);
+        this.ctx.lineTo(v2.x, v2.y);
+        this.ctx.stroke();
+
+        // Reset dash pattern
+        this.ctx.setLineDash([]);
       });
     });
   }
