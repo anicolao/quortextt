@@ -178,6 +178,63 @@ export function isLegalMove(
   return allPlayersHaveViablePath(testBoard, players, teams);
 }
 
+// Get list of players/teams that would be blocked by placing a tile
+// Returns an array of player IDs that would be blocked
+export function getBlockedPlayers(
+  board: Map<string, PlacedTile>,
+  tile: PlacedTile,
+  players: Player[],
+  teams: Team[]
+): string[] {
+  const blockedPlayerIds: string[] = [];
+  
+  // If position is occupied, no one is blocked (move is invalid for other reasons)
+  const posKey = positionToKey(tile.position);
+  if (board.has(posKey)) {
+    return blockedPlayerIds;
+  }
+  
+  // If this causes a victory, no one is blocked (move is forced)
+  if (wouldCauseVictory(board, tile, players, teams)) {
+    return blockedPlayerIds;
+  }
+  
+  // Create temporary board with the new tile
+  const testBoard = new Map(board);
+  testBoard.set(posKey, tile);
+  
+  // Check which players/teams would be blocked
+  if (teams.length > 0) {
+    // Team games - check each team
+    for (const team of teams) {
+      const player1 = players.find((p) => p.id === team.player1Id);
+      const player2 = players.find((p) => p.id === team.player2Id);
+      
+      if (!player1 || !player2) continue;
+      
+      // Check if team has a viable path (either player can complete it)
+      const path1 = hasViablePath(testBoard, player1, player2.edgePosition);
+      const path2 = hasViablePath(testBoard, player2, player1.edgePosition);
+      
+      if (!path1 && !path2) {
+        // Team is blocked - add both players
+        blockedPlayerIds.push(player1.id);
+        blockedPlayerIds.push(player2.id);
+      }
+    }
+  } else {
+    // Individual games - check each player
+    for (const player of players) {
+      const targetEdge = getOppositeEdge(player.edgePosition);
+      if (!hasViablePath(testBoard, player, targetEdge)) {
+        blockedPlayerIds.push(player.id);
+      }
+    }
+  }
+  
+  return blockedPlayerIds;
+}
+
 // Find all legal positions for a given tile type and rotation
 export function findLegalMoves(
   board: Map<string, PlacedTile>,

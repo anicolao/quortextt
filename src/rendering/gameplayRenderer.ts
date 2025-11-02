@@ -19,6 +19,7 @@ import {
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 import { getFlowPreviewData } from "../animation/flowPreview";
+import { isLegalMove, getBlockedPlayers } from "../game/legality";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -614,21 +615,51 @@ export class GameplayRenderer {
   }
 
   private renderActionButtons(state: RootState): void {
-    // TODO: Render checkmark and X buttons when tile is placed on board
-    if (!state.ui.selectedPosition) return;
+    if (!state.ui.selectedPosition || state.game.currentTile === null) return;
 
     // Calculate button positions relative to selected hex
     const center = hexToPixel(state.ui.selectedPosition, this.layout);
     const buttonSize = this.layout.size * 0.8;
     const buttonSpacing = this.layout.size * 2;
 
+    // Check if the move is legal
+    const placedTile: PlacedTile = {
+      type: state.game.currentTile,
+      rotation: state.ui.currentRotation,
+      position: state.ui.selectedPosition,
+    };
+    
+    const isLegal = isLegalMove(
+      state.game.board,
+      placedTile,
+      state.game.players,
+      state.game.teams
+    );
+    
+    // Get blocked players if move is illegal
+    let blockedPlayers: typeof state.game.players = [];
+    if (!isLegal) {
+      const blockedPlayerIds = getBlockedPlayers(
+        state.game.board,
+        placedTile,
+        state.game.players,
+        state.game.teams
+      );
+      blockedPlayers = state.game.players.filter(p => blockedPlayerIds.includes(p.id));
+    }
+
     // Checkmark button (to the right)
     const checkPos = { x: center.x + buttonSpacing, y: center.y };
-    this.renderCheckmarkButton(checkPos, buttonSize, true); // TODO: determine if enabled
+    this.renderCheckmarkButton(checkPos, buttonSize, isLegal);
 
     // X button (to the left)
     const xPos = { x: center.x - buttonSpacing, y: center.y };
     this.renderXButton(xPos, buttonSize);
+    
+    // Show blocked players warning if move is illegal
+    if (!isLegal && blockedPlayers.length > 0) {
+      this.renderBlockedPlayersWarning(center, blockedPlayers);
+    }
   }
 
   private renderCheckmarkButton(
@@ -676,6 +707,89 @@ export class GameplayRenderer {
     this.ctx.moveTo(center.x + offset, center.y - offset);
     this.ctx.lineTo(center.x - offset, center.y + offset);
     this.ctx.stroke();
+  }
+
+  private renderBlockedPlayersWarning(
+    tileCenter: Point,
+    blockedPlayers: Array<{ id: string; color: string }>,
+  ): void {
+    // Show warning message below the tile
+    const warningY = tileCenter.y + this.layout.size * 1.5;
+    
+    // Draw warning background
+    const padding = 10;
+    const lineHeight = 20;
+    const warningText = "Would block:";
+    
+    this.ctx.font = "bold 14px sans-serif";
+    const warningWidth = this.ctx.measureText(warningText).width;
+    
+    // Calculate max player name width
+    this.ctx.font = "12px sans-serif";
+    let maxPlayerWidth = warningWidth;
+    blockedPlayers.forEach(player => {
+      const playerText = `Player ${player.id}`;
+      const textWidth = this.ctx.measureText(playerText).width;
+      if (textWidth > maxPlayerWidth) {
+        maxPlayerWidth = textWidth;
+      }
+    });
+    
+    const boxWidth = maxPlayerWidth + padding * 3;
+    const boxHeight = lineHeight * (blockedPlayers.length + 1) + padding * 2;
+    
+    // Draw semi-transparent background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+    this.ctx.fillRect(
+      tileCenter.x - boxWidth / 2,
+      warningY - padding,
+      boxWidth,
+      boxHeight
+    );
+    
+    // Draw border
+    this.ctx.strokeStyle = "rgba(255, 165, 0, 0.9)";
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(
+      tileCenter.x - boxWidth / 2,
+      warningY - padding,
+      boxWidth,
+      boxHeight
+    );
+    
+    // Draw warning text
+    this.ctx.font = "bold 14px sans-serif";
+    this.ctx.fillStyle = "rgba(255, 165, 0, 1)";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
+    this.ctx.fillText(warningText, tileCenter.x, warningY);
+    
+    // Draw each blocked player with their color
+    this.ctx.font = "12px sans-serif";
+    blockedPlayers.forEach((player, index) => {
+      const y = warningY + lineHeight + index * lineHeight;
+      
+      // Draw colored circle indicator
+      const circleRadius = 6;
+      const circleX = tileCenter.x - maxPlayerWidth / 2 + padding;
+      this.ctx.fillStyle = player.color;
+      this.ctx.beginPath();
+      this.ctx.arc(circleX, y + lineHeight / 2, circleRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Draw player text
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.textAlign = "left";
+      this.ctx.fillText(
+        `Player ${player.id}`,
+        circleX + circleRadius + 5,
+        y
+      );
+    });
+    
+    // Reset text alignment
+    this.ctx.textAlign = "left";
+    this.ctx.textBaseline = "alphabetic";
   }
 
   private renderExitButtons(): void {
