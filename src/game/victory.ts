@@ -1,7 +1,7 @@
 // Victory condition checking for Quortex/Flows
 
 import { PlacedTile, Player, Team, TileType, Direction } from './types';
-import { getEdgePositions, getOppositeEdge, positionToKey, getEdgePositionsWithDirections, getOppositeDirection, getNeighborInDirection, isValidPosition } from './board';
+import { getEdgePositions, getOppositeEdge, positionToKey, getNeighborInDirection, isValidPosition } from './board';
 import { canTileBePlacedAnywhere } from './legality';
 
 export type WinType = 'flow' | 'constraint' | 'tie';
