@@ -15,7 +15,6 @@ import {
   getAllBoardPositions,
   getEdgePositionsWithDirections,
   getOppositeEdge,
-  getOppositeDirection,
 } from "../game/board";
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
@@ -209,19 +208,20 @@ export class GameplayRenderer {
   }
 
   private renderVictoryConditionEdges(state: RootState): void {
-    // Debug rendering: Highlight the outward-facing edges on the opposite side that are victory conditions
+    // Debug rendering: Highlight the victory condition edges
+    // Victory edges are the same as the start edges for a player on the opposite side
     if (state.game.players.length === 0) return;
 
     state.game.players.forEach((player) => {
       const targetEdge = getOppositeEdge(player.edgePosition);
       const targetEdgeData = getEdgePositionsWithDirections(targetEdge);
 
-      // For each position on the target edge, highlight the outward-facing edge
+      // Draw the same edges as start edges, but for the opposite side
+      // These are the edges where flow must exit to win
       targetEdgeData.forEach(({ pos, dir }) => {
         const center = hexToPixel(pos, this.layout);
-        const outwardDir = getOppositeDirection(dir);
 
-        // Get the two vertices that define the outward-facing edge
+        // Get the two vertices that define this edge
         const vertices = getHexVertices(center, this.layout.size);
 
         // Map direction to vertex pairs for pointy-top hexagons
@@ -234,7 +234,7 @@ export class GameplayRenderer {
           [5, 0], // SouthEast (300°)
         ];
 
-        const [v1Index, v2Index] = vertexPairs[outwardDir];
+        const [v1Index, v2Index] = vertexPairs[dir];
         const v1 = vertices[v1Index];
         const v2 = vertices[v2Index];
 
