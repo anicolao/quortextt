@@ -362,6 +362,11 @@ export class GameplayRenderer {
     const tileFlowEdges = state.game.flowEdges.get(tileKey);
     const flowPreviewData = getFlowPreviewData();
 
+    // Check if we should add victory glow
+    const isGameOver = state.game.screen === 'game-over';
+    const winnerId = state.game.winner;
+    let shouldGlow = false;
+
     connections.forEach(([dir1, dir2]) => {
       // Check both possible direction orderings for animation data
       const animKey1 = `flow-preview-${tileKey}-${dir1}-${dir2}`;
@@ -374,8 +379,11 @@ export class GameplayRenderer {
         const playerId = animData.playerId;
         const player = state.game.players.find((p) => p.id === playerId);
         if (player) {
+          // Check if this flow belongs to the winner
+          shouldGlow = isGameOver && winnerId !== null && this.isWinningFlow(winnerId, playerId, state);
+          
           // Use the actual flow direction from animation data
-          this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, 1.0, false);
+          this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, 1.0, false, shouldGlow);
         }
       } else if (!animData || animData.animationProgress >= 1.0) {
         // No animation data or animation done - check for actual filled flow
@@ -386,12 +394,33 @@ export class GameplayRenderer {
           if (player1 && player1 === player2) {
             const player = state.game.players.find((p) => p.id === player1);
             if (player) {
-              this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false);
+              // Check if this flow belongs to the winner
+              shouldGlow = isGameOver && winnerId !== null && this.isWinningFlow(winnerId, player1, state);
+              
+              this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false, shouldGlow);
             }
           }
         }
       }
     });
+  }
+
+  private isWinningFlow(winnerId: string, playerId: string, state: RootState): boolean {
+    // Check if the flow belongs to the winning player or team
+    if (winnerId === playerId) {
+      return true;
+    }
+    
+    // Check if it's a team victory
+    const team = state.game.teams.find(t => 
+      `team-${t.player1Id}-${t.player2Id}` === winnerId
+    );
+    
+    if (team && (team.player1Id === playerId || team.player2Id === playerId)) {
+      return true;
+    }
+    
+    return false;
   }
 
   private renderAnimatingFlows(tile: PlacedTile, state: RootState): void {
@@ -427,7 +456,8 @@ export class GameplayRenderer {
     dir2: number,
     color: string,
     progress: number,
-    isAnimating: boolean
+    isAnimating: boolean,
+    withGlow: boolean = false
   ): void {
     // Get edge midpoints
     const start = getEdgeMidpoint(center, this.layout.size, dir1);
@@ -447,6 +477,19 @@ export class GameplayRenderer {
     };
 
     this.ctx.save();
+
+    // Add pulsing glow effect if this is a winning flow
+    if (withGlow) {
+      // Import victory animation state dynamically
+      const { victoryAnimationState } = require('../animation/victoryAnimations');
+      const glowIntensity = victoryAnimationState.glowIntensity;
+      
+      // Draw outer glow
+      this.ctx.shadowBlur = 20 * glowIntensity;
+      this.ctx.shadowColor = color;
+      this.ctx.globalAlpha = 0.8 + 0.2 * glowIntensity;
+    }
+
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = this.layout.size * 0.15;
     this.ctx.lineCap = "round";
