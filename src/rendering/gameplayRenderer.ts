@@ -308,8 +308,10 @@ export class GameplayRenderer {
     const flowPreviewData = getFlowPreviewData();
 
     connections.forEach(([dir1, dir2]) => {
-      const animKey = `flow-preview-${tileKey}-${dir1}-${dir2}`;
-      const animData = flowPreviewData[animKey];
+      // Check both possible direction orderings for animation data
+      const animKey1 = `flow-preview-${tileKey}-${dir1}-${dir2}`;
+      const animKey2 = `flow-preview-${tileKey}-${dir2}-${dir1}`;
+      const animData = flowPreviewData[animKey1] || flowPreviewData[animKey2];
       
       // Draw if: (1) animation completed (progress >= 1.0), or (2) actual filled flow exists and not animating
       if (animData && animData.animationProgress >= 1.0) {
@@ -343,12 +345,16 @@ export class GameplayRenderer {
     const flowPreviewData = getFlowPreviewData();
 
     connections.forEach(([dir1, dir2]) => {
-      const animKey = `flow-preview-${tileKey}-${dir1}-${dir2}`;
-      if (flowPreviewData[animKey]) {
-        const animationProgress = flowPreviewData[animKey].animationProgress;
+      // Check both possible direction orderings for animation data
+      const animKey1 = `flow-preview-${tileKey}-${dir1}-${dir2}`;
+      const animKey2 = `flow-preview-${tileKey}-${dir2}-${dir1}`;
+      const animData = flowPreviewData[animKey1] || flowPreviewData[animKey2];
+      
+      if (animData) {
+        const animationProgress = animData.animationProgress;
         
         if (animationProgress < 1.0) {
-          const playerId = flowPreviewData[animKey].playerId;
+          const playerId = animData.playerId;
           const player = state.game.players.find((p) => p.id === playerId);
           if (player) {
             this.drawFlowConnection(center, dir1, dir2, player.color, animationProgress, true);
