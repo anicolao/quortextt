@@ -6,6 +6,7 @@ import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
 import { isValidPosition } from '../game/board';
+import { isLegalMove } from '../game/legality';
 
 export class GameplayInputHandler {
   private renderer: GameplayRenderer;
@@ -39,7 +40,19 @@ export class GameplayInputHandler {
       );
       if (distToCheck < buttonSize / 2) {
         // Checkmark clicked - place the tile
-        // TODO: Check if placement is legal first
+        // Check if placement is legal first
+        const placedTile = {
+          type: state.game.currentTile,
+          rotation: state.ui.currentRotation,
+          position: state.ui.selectedPosition,
+        };
+        
+        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams)) {
+          // Move is illegal - don't allow placement
+          // The UI should already show the button as disabled
+          return;
+        }
+        
         store.dispatch(placeTile(
           state.ui.selectedPosition,
           state.ui.currentRotation

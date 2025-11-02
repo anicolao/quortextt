@@ -16,11 +16,12 @@ import {
   getEdgePositionsWithDirections,
   getOppositeEdge,
 } from "../game/board";
+import { victoryAnimationState } from "../animation/victoryAnimations";
+import { isConnectionInWinningPath } from "../game/victory";
 import { TileType, PlacedTile, Direction } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 import { getFlowPreviewData } from "../animation/flowPreview";
-import { victoryAnimationState } from "../animation/victoryAnimations";
-import { isConnectionInWinningPath } from "../game/victory";
+import { isLegalMove, getBlockedPlayers } from "../game/legality";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -347,7 +348,8 @@ export class GameplayRenderer {
 
     connections.forEach(([dir1, dir2]) => {
       // Only draw grey if this connection doesn't have filled flow
-      const hasFlow = tileFlowEdges &&
+      const hasFlow =
+        tileFlowEdges &&
         tileFlowEdges.get(dir1) === tileFlowEdges.get(dir2) &&
         tileFlowEdges.get(dir1) !== undefined;
 
@@ -365,7 +367,7 @@ export class GameplayRenderer {
     const flowPreviewData = getFlowPreviewData();
 
     // Check if we should add victory glow
-    const isGameOver = state.game.screen === 'game-over';
+    const isGameOver = state.game.screen === "game-over";
     const winnerId = state.game.winner;
 
     connections.forEach(([dir1, dir2]) => {
@@ -373,7 +375,7 @@ export class GameplayRenderer {
       const animKey1 = `flow-preview-${tileKey}-${dir1}-${dir2}`;
       const animKey2 = `flow-preview-${tileKey}-${dir2}-${dir1}`;
       const animData = flowPreviewData[animKey1] || flowPreviewData[animKey2];
-      
+
       // Draw if: (1) animation completed (progress >= 1.0), or (2) actual filled flow exists and not animating
       if (animData && animData.animationProgress >= 1.0) {
         // Animation completed - draw the completed flow using actual flow direction
@@ -381,7 +383,9 @@ export class GameplayRenderer {
         const player = state.game.players.find((p) => p.id === playerId);
         if (player) {
           // Check if this specific connection is part of the winning path
-          const shouldGlow = isGameOver && winnerId !== null && 
+          const shouldGlow =
+            isGameOver &&
+            winnerId !== null &&
             this.isWinningFlow(winnerId, playerId, state) &&
             isConnectionInWinningPath(
               tile.position,
@@ -389,11 +393,19 @@ export class GameplayRenderer {
               animData.direction2 as Direction,
               playerId,
               state.game.flows,
-              state.game.flowEdges
+              state.game.flowEdges,
             );
-          
+
           // Use the actual flow direction from animation data
-          this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, 1.0, false, shouldGlow);
+          this.drawFlowConnection(
+            center,
+            animData.direction1,
+            animData.direction2,
+            player.color,
+            1.0,
+            false,
+            shouldGlow,
+          );
         }
       } else if (!animData || animData.animationProgress >= 1.0) {
         // No animation data or animation done - check for actual filled flow
@@ -405,7 +417,9 @@ export class GameplayRenderer {
             const player = state.game.players.find((p) => p.id === player1);
             if (player) {
               // Check if this specific connection is part of the winning path
-              const shouldGlow = isGameOver && winnerId !== null && 
+              const shouldGlow =
+                isGameOver &&
+                winnerId !== null &&
                 this.isWinningFlow(winnerId, player1, state) &&
                 isConnectionInWinningPath(
                   tile.position,
@@ -413,10 +427,18 @@ export class GameplayRenderer {
                   dir2 as Direction,
                   player1,
                   state.game.flows,
-                  state.game.flowEdges
+                  state.game.flowEdges,
                 );
-              
-              this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false, shouldGlow);
+
+              this.drawFlowConnection(
+                center,
+                dir1,
+                dir2,
+                player.color,
+                1.0,
+                false,
+                shouldGlow,
+              );
             }
           }
         }
@@ -424,21 +446,25 @@ export class GameplayRenderer {
     });
   }
 
-  private isWinningFlow(winnerId: string, playerId: string, state: RootState): boolean {
+  private isWinningFlow(
+    winnerId: string,
+    playerId: string,
+    state: RootState,
+  ): boolean {
     // Check if the flow belongs to the winning player or team
     if (winnerId === playerId) {
       return true;
     }
-    
+
     // Check if it's a team victory
-    const team = state.game.teams.find(t => 
-      `team-${t.player1Id}-${t.player2Id}` === winnerId
+    const team = state.game.teams.find(
+      (t) => `team-${t.player1Id}-${t.player2Id}` === winnerId,
     );
-    
+
     if (team && (team.player1Id === playerId || team.player2Id === playerId)) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -453,16 +479,23 @@ export class GameplayRenderer {
       const animKey1 = `flow-preview-${tileKey}-${dir1}-${dir2}`;
       const animKey2 = `flow-preview-${tileKey}-${dir2}-${dir1}`;
       const animData = flowPreviewData[animKey1] || flowPreviewData[animKey2];
-      
+
       if (animData) {
         const animationProgress = animData.animationProgress;
-        
+
         if (animationProgress < 1.0) {
           const playerId = animData.playerId;
           const player = state.game.players.find((p) => p.id === playerId);
           if (player) {
             // Use the actual flow direction from animation data
-            this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, animationProgress, true);
+            this.drawFlowConnection(
+              center,
+              animData.direction1,
+              animData.direction2,
+              player.color,
+              animationProgress,
+              true,
+            );
           }
         }
       }
@@ -476,7 +509,7 @@ export class GameplayRenderer {
     color: string,
     progress: number,
     isAnimating: boolean,
-    withGlow: boolean = false
+    withGlow: boolean = false,
   ): void {
     // Get edge midpoints
     const start = getEdgeMidpoint(center, this.layout.size, dir1);
@@ -501,7 +534,7 @@ export class GameplayRenderer {
     if (withGlow) {
       // Get current glow intensity from animation state
       const glowIntensity = victoryAnimationState.glowIntensity;
-      
+
       // Draw outer glow
       this.ctx.shadowBlur = 20 * glowIntensity;
       this.ctx.shadowColor = color;
@@ -514,7 +547,7 @@ export class GameplayRenderer {
 
     if (isAnimating) {
       this.ctx.globalAlpha = 0.7; // Preview opacity
-      
+
       // Use setLineDash to create animated "fill in" effect
       const tileKey = `${Math.round(center.x)}-${Math.round(center.y)}`;
       const cacheKey = `${tileKey}-${dir1}-${dir2}`;
@@ -541,20 +574,18 @@ export class GameplayRenderer {
     this.ctx.restore();
   }
 
-
-
   // Estimate Bezier curve length for animation
   private estimateBezierLength(
     start: Point,
     control1: Point,
     control2: Point,
-    end: Point
+    end: Point,
   ): number {
     // Simple estimation using line segments
     const steps = 10;
     let length = 0;
     let prevPoint = start;
-    
+
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
       const point = this.bezierPoint(t, start, control1, control2, end);
@@ -563,7 +594,7 @@ export class GameplayRenderer {
       length += Math.sqrt(dx * dx + dy * dy);
       prevPoint = point;
     }
-    
+
     return length;
   }
 
@@ -573,7 +604,7 @@ export class GameplayRenderer {
     p0: Point,
     p1: Point,
     p2: Point,
-    p3: Point
+    p3: Point,
   ): Point {
     const u = 1 - t;
     const tt = t * t;
@@ -675,21 +706,53 @@ export class GameplayRenderer {
   }
 
   private renderActionButtons(state: RootState): void {
-    // TODO: Render checkmark and X buttons when tile is placed on board
-    if (!state.ui.selectedPosition) return;
+    if (!state.ui.selectedPosition || state.game.currentTile === null) return;
 
     // Calculate button positions relative to selected hex
     const center = hexToPixel(state.ui.selectedPosition, this.layout);
     const buttonSize = this.layout.size * 0.8;
     const buttonSpacing = this.layout.size * 2;
 
+    // Check if the move is legal
+    const placedTile: PlacedTile = {
+      type: state.game.currentTile,
+      rotation: state.ui.currentRotation,
+      position: state.ui.selectedPosition,
+    };
+
+    const isLegal = isLegalMove(
+      state.game.board,
+      placedTile,
+      state.game.players,
+      state.game.teams,
+    );
+
+    // Get blocked players if move is illegal
+    let blockedPlayers: typeof state.game.players = [];
+    if (!isLegal) {
+      const blockedPlayerIds = getBlockedPlayers(
+        state.game.board,
+        placedTile,
+        state.game.players,
+        state.game.teams,
+      );
+      blockedPlayers = state.game.players.filter((p) =>
+        blockedPlayerIds.includes(p.id),
+      );
+    }
+
     // Checkmark button (to the right)
     const checkPos = { x: center.x + buttonSpacing, y: center.y };
-    this.renderCheckmarkButton(checkPos, buttonSize, true); // TODO: determine if enabled
+    this.renderCheckmarkButton(checkPos, buttonSize, isLegal);
 
     // X button (to the left)
     const xPos = { x: center.x - buttonSpacing, y: center.y };
     this.renderXButton(xPos, buttonSize);
+
+    // Show blocked players warning if move is illegal
+    if (!isLegal && blockedPlayers.length > 0) {
+      this.renderBlockedPlayersWarning(center, blockedPlayers);
+    }
   }
 
   private renderCheckmarkButton(
@@ -737,6 +800,85 @@ export class GameplayRenderer {
     this.ctx.moveTo(center.x + offset, center.y - offset);
     this.ctx.lineTo(center.x - offset, center.y + offset);
     this.ctx.stroke();
+  }
+
+  private renderBlockedPlayersWarning(
+    tileCenter: Point,
+    blockedPlayers: Array<{ id: string; color: string }>,
+  ): void {
+    // Show warning message below the tile
+    const warningY = tileCenter.y + this.layout.size * 1.5;
+
+    // Draw warning background
+    const padding = 10;
+    const lineHeight = 20;
+    const warningText = "Would block:";
+
+    this.ctx.font = "bold 14px sans-serif";
+    const warningWidth = this.ctx.measureText(warningText).width;
+
+    // Calculate max player name width
+    this.ctx.font = "12px sans-serif";
+    let maxPlayerWidth = warningWidth;
+    blockedPlayers.forEach((player) => {
+      const playerText = `Player ${player.id}`;
+      const textWidth = this.ctx.measureText(playerText).width;
+      if (textWidth > maxPlayerWidth) {
+        maxPlayerWidth = textWidth;
+      }
+    });
+
+    const boxWidth = maxPlayerWidth + padding * 3;
+    const boxHeight = lineHeight * (blockedPlayers.length + 1) + padding * 2;
+
+    // Draw semi-transparent background
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+    this.ctx.fillRect(
+      tileCenter.x - boxWidth / 2,
+      warningY - padding,
+      boxWidth,
+      boxHeight,
+    );
+
+    // Draw border
+    this.ctx.strokeStyle = "rgba(255, 165, 0, 0.9)";
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(
+      tileCenter.x - boxWidth / 2,
+      warningY - padding,
+      boxWidth,
+      boxHeight,
+    );
+
+    // Draw warning text
+    this.ctx.font = "bold 14px sans-serif";
+    this.ctx.fillStyle = "rgba(255, 165, 0, 1)";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
+    this.ctx.fillText(warningText, tileCenter.x, warningY);
+
+    // Draw each blocked player with their color
+    this.ctx.font = "12px sans-serif";
+    blockedPlayers.forEach((player, index) => {
+      const y = warningY + lineHeight + index * lineHeight;
+
+      // Draw colored circle indicator
+      const circleRadius = 6;
+      const circleX = tileCenter.x - maxPlayerWidth / 2 + padding;
+      this.ctx.fillStyle = player.color;
+      this.ctx.beginPath();
+      this.ctx.arc(circleX, y + lineHeight / 2, circleRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Draw player text
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.textAlign = "left";
+      this.ctx.fillText(`Player ${player.id}`, circleX + circleRadius + 5, y);
+    });
+
+    // Reset text alignment
+    this.ctx.textAlign = "left";
+    this.ctx.textBaseline = "alphabetic";
   }
 
   private renderExitButtons(): void {

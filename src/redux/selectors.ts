@@ -3,7 +3,7 @@
 import { RootState } from './types';
 import { HexPosition, Player } from '../game/types';
 import { getAllBoardPositions } from '../game/board';
-import { isLegalMove } from '../game/legality';
+import { isLegalMove, getBlockedPlayers } from '../game/legality';
 
 // Get current player
 export const selectCurrentPlayer = (state: RootState): Player | null => {
@@ -122,4 +122,25 @@ export const selectRemainingTileCounts = (state: RootState) => {
   });
 
   return counts;
+};
+
+// Check if the current selected position would block any players
+export const selectBlockedPlayers = (state: RootState): Player[] => {
+  const { board, currentTile, players, teams } = state.game;
+  const { selectedPosition, currentRotation } = state.ui;
+
+  if (!selectedPosition || currentTile === null) {
+    return [];
+  }
+
+  const placedTile = {
+    type: currentTile,
+    rotation: currentRotation,
+    position: selectedPosition,
+  };
+
+  const blockedPlayerIds = getBlockedPlayers(board, placedTile, players, teams);
+  
+  // Return the actual Player objects for the blocked players
+  return players.filter(player => blockedPlayerIds.includes(player.id));
 };
