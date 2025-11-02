@@ -19,6 +19,7 @@ import {
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 import { getFlowPreviewData } from "../animation/flowPreview";
+import { victoryAnimationState } from "../animation/victoryAnimations";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -480,8 +481,7 @@ export class GameplayRenderer {
 
     // Add pulsing glow effect if this is a winning flow
     if (withGlow) {
-      // Import victory animation state dynamically
-      const { victoryAnimationState } = require('../animation/victoryAnimations');
+      // Get current glow intensity from animation state
       const glowIntensity = victoryAnimationState.glowIntensity;
       
       // Draw outer glow
