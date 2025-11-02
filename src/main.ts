@@ -55,13 +55,25 @@ function init() {
     render();
   });
 
-  // Track previous state for flow preview updates
+  // Track previous state for flow preview updates and screen transitions
   let prevSelectedPosition: HexPosition | null = null;
   let prevRotation: Rotation = 0;
+  let prevScreen: string | null = null;
 
   // Subscribe to store changes
   store.subscribe(() => {
     const state = store.getState();
+    
+    // Check if we transitioned to game-over screen
+    if (state.game.screen === 'game-over' && prevScreen !== 'game-over') {
+      // Initialize victory animations
+      import('./animation/victoryAnimations').then(({ initVictoryAnimations, continuePulseAnimation }) => {
+        initVictoryAnimations();
+        // Start continuous pulse after initial animation
+        setTimeout(() => continuePulseAnimation(), 300);
+      });
+    }
+    prevScreen = state.game.screen;
     
     // Check if we should update flow preview
     if (state.game.screen === 'gameplay') {
