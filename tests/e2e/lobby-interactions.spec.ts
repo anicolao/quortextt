@@ -124,7 +124,19 @@ async function getRemoveButtonCoordinates(page: any, playerIndex: number) {
     if (rotation === 90 || rotation === 270) {
       const maxDim = Math.max(canvasWidth, canvasHeight);
       const edgeAdjustment = (maxDim - minDim) / 2;
-      rotatedX -= edgeAdjustment;
+      
+      const isPortrait = canvasHeight > canvasWidth;
+      
+      // Translate(0, y) after rotation maps to X-axis adjustment differently for 90° vs 270°
+      // For 90°: translate(0, y) → (-y, 0) in original coords
+      // For 270°: translate(0, y) → (y, 0) in original coords
+      const adjustment = isPortrait ? -edgeAdjustment : edgeAdjustment;
+      
+      if (rotation === 90) {
+        rotatedX -= adjustment;
+      } else {
+        rotatedX += adjustment;
+      }
     }
     
     // Return transformed coordinates
@@ -434,10 +446,37 @@ test.describe('Lobby Mouse Interactions', () => {
       await page.waitForTimeout(100);
     }
     
-    const state = await getReduxState(page);
+    let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
 
     // Take screenshot showing left/right edge players are now visible in portrait mode
     await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/014-portrait-left-right.png' });
+    
+    // Test removal of player from right edge using X button
+    let removeCoords = await getRemoveButtonCoordinates(page, 0);
+    if (!removeCoords) throw new Error('Remove button not found for right edge player');
+    
+    await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.game.configPlayers.length).toBe(1);
+    expect(state.game.configPlayers[0].edge).toBe(3); // Left edge remains
+    
+    // Take screenshot after removing right edge player
+    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/015-portrait-after-right-removal.png' });
+    
+    // Test removal of player from left edge using X button
+    removeCoords = await getRemoveButtonCoordinates(page, 0);
+    if (!removeCoords) throw new Error('Remove button not found for left edge player');
+    
+    await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.game.configPlayers.length).toBe(0);
+    
+    // Take screenshot after removing left edge player
+    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/016-portrait-after-left-removal.png' });
   });
 });
