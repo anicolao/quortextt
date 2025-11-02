@@ -80,6 +80,12 @@ Two players added from bottom and top edges in portrait mode.
 
 One player removed, showing the UI works correctly in portrait orientation.
 
+### 9. Known Bug: Left/Right Edge Players in Portrait Mode
+
+![014-portrait-left-right-bug.png](014-portrait-left-right-bug.png)
+
+This screenshot demonstrates a rendering bug where players added from left and right edges in portrait mode are translated off-screen. The player labels, colors, and X buttons are not visible, although hit detection still works correctly. This is a production code issue with the aspect ratio adjustment calculation for rotated labels in portrait orientation.
+
 ## Key Features Demonstrated
 
 1. **Multi-edge Support**: Players can join from any of the four edges (bottom, right, top, left)
@@ -96,6 +102,7 @@ The test suite verifies:
 - Removing players from each individual edge
 - Handling multiple players and sequential removals
 - Maintaining correct state after player operations
-- Portrait orientation compatibility
+- Portrait orientation compatibility (with bottom/top edges)
 - Correct edge assignment for each player
 - Proper cleanup when all players are removed
+- Documents known rendering bug for left/right edges in portrait mode
