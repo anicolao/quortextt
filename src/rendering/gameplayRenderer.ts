@@ -232,9 +232,25 @@ export class GameplayRenderer {
   }
 
   private renderPlacedTiles(state: RootState): void {
-    // Render each placed tile on the board
+    // Multi-pass rendering for correct layering:
+    // Pass 1: Draw all tile backgrounds
     state.game.board.forEach((tile) => {
-      this.renderTile(tile, state, 1.0); // Full opacity for placed tiles
+      this.renderTileBackground(tile, 1.0);
+    });
+
+    // Pass 2: Draw all grey channels (unfilled connections)
+    state.game.board.forEach((tile) => {
+      this.renderGreyChannels(tile, state);
+    });
+
+    // Pass 3: Draw all filled flows
+    state.game.board.forEach((tile) => {
+      this.renderFilledFlows(tile, state);
+    });
+
+    // Pass 4: Draw all animating flows
+    state.game.board.forEach((tile) => {
+      this.renderAnimatingFlows(tile, state);
     });
   }
 
@@ -243,6 +259,14 @@ export class GameplayRenderer {
     state: RootState,
     opacity: number,
   ): void {
+    // Render tile with all layers in correct order
+    this.renderTileBackground(tile, opacity);
+    this.renderGreyChannels(tile, state);
+    this.renderFilledFlows(tile, state);
+    this.renderAnimatingFlows(tile, state);
+  }
+
+  private renderTileBackground(tile: PlacedTile, opacity: number): void {
     const center = hexToPixel(tile.position, this.layout);
 
     // Fill tile background
@@ -255,125 +279,135 @@ export class GameplayRenderer {
     this.ctx.lineWidth = 1;
     this.drawHexagon(center, this.layout.size, false);
 
-    // Draw flow paths
-    this.renderFlowPaths(tile, state, center);
-
     this.ctx.globalAlpha = 1.0;
   }
 
-  private renderFlowPaths(
-    tile: PlacedTile,
-    state: RootState,
-    center: Point,
-  ): void {
+  private renderGreyChannels(tile: PlacedTile, state: RootState): void {
+    const center = hexToPixel(tile.position, this.layout);
+    const connections = getFlowConnections(tile.type, tile.rotation);
+    const tileKey = `${tile.position.row},${tile.position.col}`;
+    const tileFlowEdges = state.game.flowEdges.get(tileKey);
+
+    connections.forEach(([dir1, dir2]) => {
+      // Only draw grey if this connection doesn't have filled flow
+      const hasFlow = tileFlowEdges &&
+        tileFlowEdges.get(dir1) === tileFlowEdges.get(dir2) &&
+        tileFlowEdges.get(dir1) !== undefined;
+
+      if (!hasFlow) {
+        this.drawFlowConnection(center, dir1, dir2, "#888888", 1.0, false);
+      }
+    });
+  }
+
+  private renderFilledFlows(tile: PlacedTile, state: RootState): void {
+    const center = hexToPixel(tile.position, this.layout);
     const connections = getFlowConnections(tile.type, tile.rotation);
     const tileKey = `${tile.position.row},${tile.position.col}`;
     const tileFlowEdges = state.game.flowEdges.get(tileKey);
     const flowPreviewData = getFlowPreviewData();
 
-    // For each flow connection, draw a Bézier curve
     connections.forEach(([dir1, dir2]) => {
-      // Determine the color for THIS specific path based on flow edges
-      let pathColor = "#888888"; // Default neutral grey
-      let animationProgress = 1.0; // Default to full opacity (no animation)
+      // Check if this connection has filled flow (not animating)
+      const animKey = `flow-preview-${tileKey}-${dir1}-${dir2}`;
+      const isAnimating = flowPreviewData[animKey] && flowPreviewData[animKey].animationProgress < 1.0;
 
-      // Check if both ends of this path have flow from the same player
-      if (tileFlowEdges) {
+      if (!isAnimating && tileFlowEdges) {
         const player1 = tileFlowEdges.get(dir1);
         const player2 = tileFlowEdges.get(dir2);
 
-        // Only color the path if BOTH ends have the same player's flow
         if (player1 && player1 === player2) {
-          // Find the player's color
           const player = state.game.players.find((p) => p.id === player1);
           if (player) {
-            pathColor = player.color;
+            this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false);
           }
         }
       }
+    });
+  }
 
-      // Check if this path has animation data
+  private renderAnimatingFlows(tile: PlacedTile, state: RootState): void {
+    const center = hexToPixel(tile.position, this.layout);
+    const connections = getFlowConnections(tile.type, tile.rotation);
+    const tileKey = `${tile.position.row},${tile.position.col}`;
+    const flowPreviewData = getFlowPreviewData();
+
+    connections.forEach(([dir1, dir2]) => {
       const animKey = `flow-preview-${tileKey}-${dir1}-${dir2}`;
       if (flowPreviewData[animKey]) {
-        animationProgress = flowPreviewData[animKey].animationProgress;
-        // Get player color for preview
-        const playerId = flowPreviewData[animKey].playerId;
-        const player = state.game.players.find((p) => p.id === playerId);
-        if (player) {
-          pathColor = player.color;
-        }
-      }
-
-      // Get edge midpoints
-      const start = getEdgeMidpoint(center, this.layout.size, dir1);
-      const end = getEdgeMidpoint(center, this.layout.size, dir2);
-
-      // Get control points (perpendicular to edges)
-      const control1Vec = getPerpendicularVector(dir1, this.layout.size);
-      const control2Vec = getPerpendicularVector(dir2, this.layout.size);
-
-      const control1 = {
-        x: start.x + control1Vec.x,
-        y: start.y + control1Vec.y,
-      };
-      const control2 = {
-        x: end.x + control2Vec.x,
-        y: end.y + control2Vec.y,
-      };
-
-      // Apply animation if in progress
-      if (animationProgress < 1.0) {
-        // Draw partial path using animation progress
-        this.ctx.save();
-        this.ctx.strokeStyle = pathColor;
-        this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
-        this.ctx.lineCap = "round";
-        this.ctx.globalAlpha = 0.7; // Preview opacity
-
-        // Use setLineDash to create animated "fill in" effect
-        // Cache the path length to avoid recalculation each frame
-        const cacheKey = `${tileKey}-${dir1}-${dir2}`;
-        let pathLength = this.bezierLengthCache.get(cacheKey);
-        if (pathLength === undefined) {
-          pathLength = this.estimateBezierLength(start, control1, control2, end);
-          this.bezierLengthCache.set(cacheKey, pathLength);
-        }
-        const dashLength = pathLength * animationProgress;
-        this.ctx.setLineDash([dashLength, pathLength - dashLength]);
+        const animationProgress = flowPreviewData[animKey].animationProgress;
         
-        this.ctx.beginPath();
-        this.ctx.moveTo(start.x, start.y);
-        this.ctx.bezierCurveTo(
-          control1.x,
-          control1.y,
-          control2.x,
-          control2.y,
-          end.x,
-          end.y,
-        );
-        this.ctx.stroke();
-        this.ctx.restore();
-      } else {
-        // Draw complete path
-        this.ctx.strokeStyle = pathColor;
-        this.ctx.lineWidth = this.layout.size * 0.15; // 15% of hex radius
-        this.ctx.lineCap = "round";
-
-        // Draw Bézier curve
-        this.ctx.beginPath();
-        this.ctx.moveTo(start.x, start.y);
-        this.ctx.bezierCurveTo(
-          control1.x,
-          control1.y,
-          control2.x,
-          control2.y,
-          end.x,
-          end.y,
-        );
-        this.ctx.stroke();
+        if (animationProgress < 1.0) {
+          const playerId = flowPreviewData[animKey].playerId;
+          const player = state.game.players.find((p) => p.id === playerId);
+          if (player) {
+            this.drawFlowConnection(center, dir1, dir2, player.color, animationProgress, true);
+          }
+        }
       }
     });
   }
+
+  private drawFlowConnection(
+    center: Point,
+    dir1: number,
+    dir2: number,
+    color: string,
+    progress: number,
+    isAnimating: boolean
+  ): void {
+    // Get edge midpoints
+    const start = getEdgeMidpoint(center, this.layout.size, dir1);
+    const end = getEdgeMidpoint(center, this.layout.size, dir2);
+
+    // Get control points (perpendicular to edges)
+    const control1Vec = getPerpendicularVector(dir1, this.layout.size);
+    const control2Vec = getPerpendicularVector(dir2, this.layout.size);
+
+    const control1 = {
+      x: start.x + control1Vec.x,
+      y: start.y + control1Vec.y,
+    };
+    const control2 = {
+      x: end.x + control2Vec.x,
+      y: end.y + control2Vec.y,
+    };
+
+    this.ctx.save();
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = this.layout.size * 0.15;
+    this.ctx.lineCap = "round";
+
+    if (isAnimating) {
+      this.ctx.globalAlpha = 0.7; // Preview opacity
+      
+      // Use setLineDash to create animated "fill in" effect
+      const tileKey = `${Math.round(center.x)}-${Math.round(center.y)}`;
+      const cacheKey = `${tileKey}-${dir1}-${dir2}`;
+      let pathLength = this.bezierLengthCache.get(cacheKey);
+      if (pathLength === undefined) {
+        pathLength = this.estimateBezierLength(start, control1, control2, end);
+        this.bezierLengthCache.set(cacheKey, pathLength);
+      }
+      const dashLength = pathLength * progress;
+      this.ctx.setLineDash([dashLength, pathLength - dashLength]);
+    }
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(start.x, start.y);
+    this.ctx.bezierCurveTo(
+      control1.x,
+      control1.y,
+      control2.x,
+      control2.y,
+      end.x,
+      end.y,
+    );
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
+
 
   // Estimate Bezier curve length for animation
   private estimateBezierLength(
