@@ -407,7 +407,7 @@ test.describe('Lobby Mouse Interactions', () => {
     await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/013-portrait-after-removal.png' });
   });
 
-  test('should demonstrate left/right edge rendering bug in portrait mode', async ({ page }) => {
+  test('should work with left/right edges in portrait mode', async ({ page }) => {
     // Set portrait viewport
     await page.setViewportSize({ width: 720, height: 1024 });
     
@@ -420,8 +420,8 @@ test.describe('Lobby Mouse Interactions', () => {
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
 
-    // Add players from left and right edges to demonstrate the rendering bug
-    // where player labels are translated off-screen in portrait mode
+    // Add players from left and right edges in portrait mode
+    // This verifies that player labels stay visible and properly positioned
     const playersToAdd = [
       { colorIndex: 0, edge: 1 as const },  // Blue from right edge
       { colorIndex: 1, edge: 3 as const },  // Orange from left edge
@@ -437,9 +437,7 @@ test.describe('Lobby Mouse Interactions', () => {
     const state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
 
-    // Take screenshot showing the rendering bug where player labels are off-screen
-    // Note: The player labels and X buttons are not visible due to excessive translation
-    // but hit detection still works correctly
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/014-portrait-left-right-bug.png' });
+    // Take screenshot showing left/right edge players are now visible in portrait mode
+    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/014-portrait-left-right.png' });
   });
 });

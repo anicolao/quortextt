@@ -338,7 +338,13 @@ export function transformPoint(
   if (rotation === 90 || rotation === 270) {
     const minDim = Math.min(canvasWidth, canvasHeight);
     const maxDim = Math.max(canvasWidth, canvasHeight);
-    const edgeAdjustment = (maxDim - minDim) / 2;
+    const rawAdjustment = (maxDim - minDim) / 2;
+    
+    // In portrait mode (height > width), limit adjustment to prevent labels from going off-screen
+    const isPortrait = canvasHeight > canvasWidth;
+    const maxSafeAdjustment = isPortrait ? minDim * 0.15 : rawAdjustment;
+    const edgeAdjustment = Math.min(rawAdjustment, maxSafeAdjustment);
+    
     rotatedX -= edgeAdjustment;
   }
 
