@@ -22,10 +22,10 @@ function wouldCauseVictory(
   testBoard.set(positionToKey(tile.position), tile);
   
   // Calculate flows with the new tile
-  const { flows } = calculateFlows(testBoard, players);
+  const { flows, flowEdges } = calculateFlows(testBoard, players);
   
   // Check if this causes a victory
-  const victory = checkFlowVictory(flows, players, teams);
+  const victory = checkFlowVictory(flows, flowEdges, players, teams);
   
   return victory.winner !== null;
 }

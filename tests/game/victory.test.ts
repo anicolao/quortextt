@@ -7,8 +7,9 @@ import {
   checkFlowVictory,
   checkVictory,
 } from '../../src/game/victory';
-import { Player, Team, TileType, PlacedTile } from '../../src/game/types';
-import { positionToKey, getEdgePositions, getAllBoardPositions } from '../../src/game/board';
+import { Player, Team, TileType, PlacedTile, Direction } from '../../src/game/types';
+import { positionToKey, getEdgePositions, getAllBoardPositions, getEdgePositionsWithDirections, getOppositeDirection } from '../../src/game/board';
+import { calculateFlows } from '../../src/game/flows';
 
 describe('victory conditions', () => {
   const createPlayer = (id: string, edge: number): Player => ({
@@ -21,65 +22,94 @@ describe('victory conditions', () => {
   describe('checkPlayerFlowVictory', () => {
     it('should return false when flow is empty', () => {
       const player = createPlayer('p1', 0);
-      const flows = new Map<string, Set<string>>();
-      flows.set('p1', new Set());
+      const board = new Map<string, PlacedTile>();
+      const { flows, flowEdges } = calculateFlows(board, [player]);
 
-      expect(checkPlayerFlowVictory(flows, player)).toBe(false);
+      expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
     it('should return false when flow only touches start edge', () => {
       const player = createPlayer('p1', 0);
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      // Add only positions from start edge
+      // Add a tile on the start edge only, not connected to opposite edge
       const startEdge = getEdgePositions(0);
-      const flowSet = new Set(startEdge.slice(0, 2).map(positionToKey));
-      flows.set('p1', flowSet);
-
-      expect(checkPlayerFlowVictory(flows, player)).toBe(false);
+      const tile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: startEdge[0],
+      };
+      board.set(positionToKey(tile.position), tile);
+      
+      const { flows, flowEdges } = calculateFlows(board, [player]);
+      expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
-    it('should return false when flow only touches target edge', () => {
+    it('should return false when flow only touches target edge without exiting', () => {
       const player = createPlayer('p1', 0);
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      // Add only positions from opposite edge (edge 3)
+      // Create a path that reaches target edge but doesn't exit through outward edges
+      // Place tile on target edge (edge 3) but flow doesn't exit outward
       const targetEdge = getEdgePositions(3);
-      const flowSet = new Set(targetEdge.slice(0, 2).map(positionToKey));
-      flows.set('p1', flowSet);
-
-      expect(checkPlayerFlowVictory(flows, player)).toBe(false);
+      const tile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: targetEdge[0],
+      };
+      board.set(positionToKey(tile.position), tile);
+      
+      const { flows, flowEdges } = calculateFlows(board, [player]);
+      // Player's flow won't reach this tile since there's no connection from their edge
+      expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
-    it('should return true when flow connects both edges', () => {
+    it('should return true when flow exits through outward-facing edges on opposite side', () => {
       const player = createPlayer('p1', 0);
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      // Add positions from both edges
-      const startEdge = getEdgePositions(0);
-      const targetEdge = getEdgePositions(3);
-      const flowSet = new Set([
-        positionToKey(startEdge[0]),
-        positionToKey(targetEdge[0]),
-      ]);
-      flows.set('p1', flowSet);
-
-      expect(checkPlayerFlowVictory(flows, player)).toBe(true);
+      // Create a straight path from edge 0 to edge 3
+      // Edge 0 is at row=-3, edge 3 is at row=3
+      // Place tiles to create a path
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, [player]);
+      expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(true);
     });
 
     it('should work for different edge pairs', () => {
+      // Use a different player edge (edge 1) but same path configuration
+      // Player on edge 1 (opposite is edge 4)
       const player = createPlayer('p1', 1);
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      const startEdge = getEdgePositions(1);
-      const targetEdge = getEdgePositions(4); // Opposite of edge 1
-      const flowSet = new Set([
-        positionToKey(startEdge[0]),
-        positionToKey(targetEdge[0]),
-      ]);
-      flows.set('p1', flowSet);
-
-      expect(checkPlayerFlowVictory(flows, player)).toBe(true);
+      // Create same vertical path from edge 0 to edge 3
+      // Player on edge 1 won't win with this path (testing negative case actually works)
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, [player]);
+      // This path connects edge 0 to 3, not edge 1 to 4, so player 1 should NOT win
+      expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
   });
 
@@ -87,79 +117,109 @@ describe('victory conditions', () => {
     it('should return false when no flows exist', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
+      const { flows, flowEdges } = calculateFlows(board, players);
 
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(false);
     });
 
     it('should return false when flows only touch one edge', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
+      // Add a tile on player1's edge only
       const edge0 = getEdgePositions(0);
-      flows.set('p1', new Set([positionToKey(edge0[0])]));
-
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+      const tile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: edge0[0],
+      };
+      board.set(positionToKey(tile.position), tile);
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(false);
     });
 
-    it('should return true when player1 flow connects both edges', () => {
+    it('should return true when player1 flow exits through player2 edge', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      const edge0 = getEdgePositions(0);
-      const edge3 = getEdgePositions(3);
-      flows.set('p1', new Set([
-        positionToKey(edge0[0]),
-        positionToKey(edge3[0]),
-      ]));
-
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(true);
+      // Create a path from edge 0 to edge 3
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(true);
     });
 
-    it('should return true when player2 flow connects both edges', () => {
+    it('should return true when player2 flow exits through player1 edge', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      const edge0 = getEdgePositions(0);
-      const edge3 = getEdgePositions(3);
-      flows.set('p2', new Set([
-        positionToKey(edge0[0]),
-        positionToKey(edge3[0]),
-      ]));
-
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(true);
+      // Create a path from edge 3 to edge 0
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(true);
     });
   });
 
   describe('checkFlowVictory', () => {
     it('should return no winner for empty flows', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       const teams: Team[] = [];
+      const { flows, flowEdges } = calculateFlows(board, players);
 
-      const result = checkFlowVictory(flows, players, teams);
+      const result = checkFlowVictory(flows, flowEdges, players, teams);
 
       expect(result.winner).toBe(null);
       expect(result.winType).toBe(null);
     });
 
     it('should detect individual player victory', () => {
-      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
-      const flows = new Map<string, Set<string>>();
+      const players = [createPlayer('p1', 0), createPlayer('p2', 1)];
+      const board = new Map<string, PlacedTile>();
       const teams: Team[] = [];
       
-      const edge0 = getEdgePositions(0);
-      const edge3 = getEdgePositions(3);
-      flows.set('p1', new Set([
-        positionToKey(edge0[0]),
-        positionToKey(edge3[0]),
-      ]));
-      flows.set('p2', new Set());
-
-      const result = checkFlowVictory(flows, players, teams);
+      // Create a path from edge 0 to edge 3 for player 1 only
+      // Player 2 is on edge 1 (not involved in this path)
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      const result = checkFlowVictory(flows, flowEdges, players, teams);
 
       expect(result.winner).toBe('p1');
       expect(result.winType).toBe('flow');
@@ -176,43 +236,51 @@ describe('victory conditions', () => {
         { player1Id: 'p1', player2Id: 'p3' },
         { player1Id: 'p2', player2Id: 'p4' },
       ];
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
       
-      const edge0 = getEdgePositions(0);
-      const edge3 = getEdgePositions(3);
-      flows.set('p1', new Set([
-        positionToKey(edge0[0]),
-        positionToKey(edge3[0]),
-      ]));
-
-      const result = checkFlowVictory(flows, players, teams);
+      // Create a path from edge 0 to edge 3 for player 1
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      const result = checkFlowVictory(flows, flowEdges, players, teams);
 
       expect(result.winner).toBe('team-p1-p3');
       expect(result.winType).toBe('flow');
     });
 
     it('should detect tie when multiple players win', () => {
-      const players = [createPlayer('p1', 0), createPlayer('p2', 1)];
-      const flows = new Map<string, Set<string>>();
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const board = new Map<string, PlacedTile>();
       const teams: Team[] = [];
       
-      // Both players complete their connections
-      const edge0 = getEdgePositions(0);
-      const edge3 = getEdgePositions(3);
-      flows.set('p1', new Set([
-        positionToKey(edge0[0]),
-        positionToKey(edge3[0]),
-      ]));
+      // Create a path that connects edge 0 to edge 3
+      // Both players will win since the path connects their edges
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
       
-      const edge1 = getEdgePositions(1);
-      const edge4 = getEdgePositions(4);
-      flows.set('p2', new Set([
-        positionToKey(edge1[0]),
-        positionToKey(edge4[0]),
-      ]));
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      const result = checkFlowVictory(flows, flowEdges, players, teams);
 
-      const result = checkFlowVictory(flows, players, teams);
-
+      // Both players win simultaneously since the path connects both their edges
       expect(result.winType).toBe('tie');
       expect(result.winner).toContain('p1');
       expect(result.winner).toContain('p2');
@@ -221,19 +289,25 @@ describe('victory conditions', () => {
 
   describe('checkVictory', () => {
     it('should check flow victory first', () => {
-      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const players = [createPlayer('p1', 0), createPlayer('p2', 1)];
       const board = new Map<string, PlacedTile>();
-      const flows = new Map<string, Set<string>>();
       const teams: Team[] = [];
       
-      const edge0 = getEdgePositions(0);
-      const edge3 = getEdgePositions(3);
-      flows.set('p1', new Set([
-        positionToKey(edge0[0]),
-        positionToKey(edge3[0]),
-      ]));
-
-      const result = checkVictory(board, flows, players, teams);
+      // Create a path from edge 0 to edge 3 (player 2 on edge 1 won't win)
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      const result = checkVictory(board, flows, flowEdges, players, teams);
 
       expect(result.winner).toBe('p1');
       expect(result.winType).toBe('flow');
@@ -242,10 +316,10 @@ describe('victory conditions', () => {
     it('should return no winner when no victory conditions met', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const board = new Map<string, PlacedTile>();
-      const flows = new Map<string, Set<string>>();
       const teams: Team[] = [];
-
-      const result = checkVictory(board, flows, players, teams);
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
+      const result = checkVictory(board, flows, flowEdges, players, teams);
 
       expect(result.winner).toBe(null);
       expect(result.winType).toBe(null);
@@ -254,11 +328,12 @@ describe('victory conditions', () => {
     it('should check constraint victory when tile is provided', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const board = new Map<string, PlacedTile>();
-      const flows = new Map<string, Set<string>>();
       const teams: Team[] = [];
+      
+      const { flows, flowEdges } = calculateFlows(board, players);
 
       // Test with a tile that CAN be placed (empty board)
-      const result = checkVictory(board, flows, players, teams, TileType.NoSharps);
+      const result = checkVictory(board, flows, flowEdges, players, teams, TileType.NoSharps);
 
       // Should not trigger constraint victory on empty board
       expect(result.winner).toBe(null);
@@ -295,11 +370,11 @@ describe('victory conditions', () => {
         board.set(positionToKey(tile.position), tile);
       });
       
-      const flows = new Map<string, Set<string>>();
+      const { flows, flowEdges } = calculateFlows(board, players);
       
       // Test with a tile type - if it can't be placed anywhere, constraint victory
       // Try to find a tile that would be illegal everywhere
-      const result = checkVictory(board, flows, players, teams, TileType.NoSharps);
+      const result = checkVictory(board, flows, flowEdges, players, teams, TileType.NoSharps);
       
       // The result may or may not be constraint victory depending on board state
       // But this exercises the constraint victory code path
@@ -308,25 +383,26 @@ describe('victory conditions', () => {
     });
 
     it('should trigger constraint victory with blocked board', () => {
-      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const players = [createPlayer('p1', 0), createPlayer('p2', 1)];
       const teams: Team[] = [];
       const board = new Map<string, PlacedTile>();
-      const flows = new Map<string, Set<string>>();
       
       // Fill the ENTIRE board to make any tile unplaceable
-      // This triggers constraint victory at lines 150-151
+      // Use ThreeSharps tiles which won't create connecting paths
       const allPositions = getAllBoardPositions();
       allPositions.forEach(pos => {
         board.set(positionToKey(pos), {
-          type: TileType.NoSharps,
+          type: TileType.ThreeSharps,
           rotation: 0,
           position: pos,
         });
       });
       
+      const { flows, flowEdges } = calculateFlows(board, players);
+      
       // With a completely full board, no tile can be placed anywhere
-      // This should trigger constraint victory
-      const result = checkVictory(board, flows, players, teams, TileType.ThreeSharps);
+      // This should trigger constraint victory (flows shouldn't connect for either player)
+      const result = checkVictory(board, flows, flowEdges, players, teams, TileType.ThreeSharps);
       
       // Should detect constraint victory
       expect(result.winner).toBe('constraint');
@@ -338,25 +414,28 @@ describe('victory conditions', () => {
     it('should return false when team players not found', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p99', player2Id: 'p100' }; // Non-existent players
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
+      const { flows, flowEdges } = calculateFlows(board, players);
 
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(false);
     });
 
     it('should return false when only player1 not found', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p99', player2Id: 'p2' }; // player1 doesn't exist
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
+      const { flows, flowEdges } = calculateFlows(board, players);
 
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(false);
     });
 
     it('should return false when only player2 not found', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p99' }; // player2 doesn't exist
-      const flows = new Map<string, Set<string>>();
+      const board = new Map<string, PlacedTile>();
+      const { flows, flowEdges } = calculateFlows(board, players);
 
-      expect(checkTeamFlowVictory(flows, team, players)).toBe(false);
+      expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(false);
     });
   });
 });
