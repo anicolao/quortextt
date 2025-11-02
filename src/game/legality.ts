@@ -6,6 +6,7 @@ import {
   positionToKey,
   getEdgePositions,
   getOppositeEdge,
+  getNeighbors,
 } from './board';
 import { calculateFlows } from './flows';
 import { checkFlowVictory } from './victory';
@@ -31,8 +32,7 @@ function wouldCauseVictory(
 }
 
 // Check if a player/team still has a viable path to victory
-// This is a simplified check - we verify that there's at least one empty position
-// that could potentially complete a path
+// Uses BFS to check if there's a potential path from start to target edge
 function hasViablePath(
   board: Map<string, PlacedTile>,
   player: Player,
@@ -59,10 +59,59 @@ function hasViablePath(
     return hasStart && hasTarget;
   }
   
-  // Simplified check: if there are empty positions between edges, path is viable
-  // A more sophisticated implementation would use pathfinding algorithms
-  // For now, we assume viability unless the board is completely filled
-  return true;
+  // Use BFS to check if there's a potential path from start to target
+  // We can traverse through empty positions (where tiles could be placed)
+  // OR positions that are already in this player's flow (existing connections)
+  const { flows } = calculateFlows(board, [player]);
+  const playerFlow = flows.get(player.id);
+  const visited = new Set<string>();
+  const queue: HexPosition[] = [];
+  const emptyPosSet = new Set(emptyPositions.map(positionToKey));
+  
+  // Check if we can traverse through a position:
+  // - It's empty (tiles could be placed), OR
+  // - It's already in player's flow (existing connection)
+  const canTraverse = (key: string): boolean => {
+    return emptyPosSet.has(key) || (playerFlow ? playerFlow.has(key) : false);
+  };
+  
+  // Start from all positions on the start edge that are traversable
+  for (const pos of startPositions) {
+    const key = positionToKey(pos);
+    if (canTraverse(key)) {
+      queue.push(pos);
+      visited.add(key);
+    }
+  }
+  
+  // BFS to find if we can reach any target position
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const currentKey = positionToKey(current);
+    
+    // Check if we've reached the target edge
+    if (targetPositions.some(pos => positionToKey(pos) === currentKey)) {
+      return true;
+    }
+    
+    // Explore all neighbors
+    const neighbors = getNeighbors(current);
+    for (const neighbor of neighbors) {
+      const neighborKey = positionToKey(neighbor);
+      
+      // Skip if already visited or not traversable
+      if (visited.has(neighborKey) || !canTraverse(neighborKey)) {
+        continue;
+      }
+      
+      // Add to queue and mark as visited
+      queue.push(neighbor);
+      visited.add(neighborKey);
+    }
+  }
+  
+  // No path found
+  return false;
 }
 
 // Check if all players/teams have a viable path after placing a tile
