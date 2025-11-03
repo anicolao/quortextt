@@ -1,15 +1,19 @@
 // Legal move validation for Quortex/Flows
 
-import { PlacedTile, Player, Team, HexPosition, TileType, Rotation } from './types';
+import { PlacedTile, Player, Team, HexPosition, TileType, Rotation, Direction } from './types';
 import {
   getAllBoardPositions,
   positionToKey,
   getEdgePositions,
   getOppositeEdge,
   getNeighbors,
+  getNeighborInDirection,
+  getOppositeDirection,
+  isValidPosition,
 } from './board';
 import { calculateFlows } from './flows';
 import { checkFlowVictory } from './victory';
+import { getFlowConnections } from './tiles';
 
 // Check if placing a tile would result in a victory
 function wouldCauseVictory(
@@ -31,8 +35,35 @@ function wouldCauseVictory(
   return victory.winner !== null;
 }
 
+// Represents a node in the edge graph: a specific edge of a specific hex tile
+interface EdgeNode {
+  position: HexPosition;
+  direction: Direction;
+}
+
+// Create a unique key for an edge node
+function edgeNodeKey(node: EdgeNode): string {
+  return `${node.position.row},${node.position.col},${node.direction}`;
+}
+
+// Get the opposite edge node (the edge on the neighboring tile that this edge connects to)
+function getOppositeEdgeNode(node: EdgeNode): EdgeNode | null {
+  const { position, direction } = node;
+  const neighborPos = getNeighborInDirection(position, direction);
+  
+  if (!isValidPosition(neighborPos)) {
+    return null;
+  }
+  
+  const oppositeDir = getOppositeDirection(direction);
+  return {
+    position: neighborPos,
+    direction: oppositeDir,
+  };
+}
+
 // Check if a player/team still has a viable path to victory
-// Uses BFS to check if there's a potential path from start to target edge
+// Uses edge-based graph BFS: creates nodes for each tile edge and checks flow connectivity
 function hasViablePath(
   board: Map<string, PlacedTile>,
   player: Player,
@@ -42,142 +73,129 @@ function hasViablePath(
   const startPositions = getEdgePositions(startEdge);
   const targetPositions = getEdgePositions(targetEdge);
   
-  // Get all empty positions
-  const emptyPositions = getAllBoardPositions().filter(
-    (pos) => !board.has(positionToKey(pos))
-  );
+  // Build edge connectivity graph
+  // For each tile position, we create nodes for each of its 6 edges
+  // If the tile is occupied, we connect only the edges that the tile connects
+  // If the tile is empty, we connect ALL edges (any tile could be placed)
   
-  // If there are no empty positions, check current state
-  if (emptyPositions.length === 0) {
-    const { flows } = calculateFlows(board, [player]);
-    const playerFlow = flows.get(player.id);
-    if (!playerFlow) return false;
+  const allPositions = getAllBoardPositions();
+  
+  // Build adjacency list: for each edge node, which other edge nodes can it connect to?
+  const adjacencyMap = new Map<string, Set<string>>();
+  
+  const addEdge = (from: EdgeNode, to: EdgeNode) => {
+    const fromKey = edgeNodeKey(from);
+    const toKey = edgeNodeKey(to);
     
-    const hasStart = startPositions.some((pos) => playerFlow.has(positionToKey(pos)));
-    const hasTarget = targetPositions.some((pos) => playerFlow.has(positionToKey(pos)));
-    
-    return hasStart && hasTarget;
-  }
-  
-  // Use BFS to check if there's a potential path from start to target
-  // We need to be conservative: only consider paths that could realistically be created
-  // with tiles, not just geometric hex adjacency
-  const { flows } = calculateFlows(board, [player]);
-  const playerFlow = flows.get(player.id);
-  const visited = new Set<string>();
-  const queue: HexPosition[] = [];
-  const emptyPosSet = new Set(emptyPositions.map(positionToKey));
-  
-  // Build a set of positions that are occupied (have tiles)
-  const occupiedPosSet = new Set<string>();
-  for (const pos of getAllBoardPositions()) {
-    const key = positionToKey(pos);
-    if (board.has(key)) {
-      occupiedPosSet.add(key);
+    if (!adjacencyMap.has(fromKey)) {
+      adjacencyMap.set(fromKey, new Set());
     }
-  }
+    adjacencyMap.get(fromKey)!.add(toKey);
+  };
   
-  // Check if an empty position is "reachable" - meaning it's adjacent to:
-  // - An occupied position (could extend from existing tiles), OR
-  // - A start edge position (could start from player's edge), OR
-  // - The player's current flow (could extend from existing flow)
-  const isEmptyPositionReachable = (pos: HexPosition): boolean => {
+  // For each board position, create edges
+  for (const pos of allPositions) {
     const posKey = positionToKey(pos);
-    if (!emptyPosSet.has(posKey)) return false;
+    const tile = board.get(posKey);
     
-    // Check if adjacent to any occupied position or start edge
-    const neighbors = getNeighbors(pos);
-    for (const neighbor of neighbors) {
-      const neighborKey = positionToKey(neighbor);
-      // Adjacent to occupied tile
-      if (occupiedPosSet.has(neighborKey)) return true;
-      // Adjacent to start edge
-      if (startPositions.some(sp => positionToKey(sp) === neighborKey)) return true;
-      // Adjacent to player's flow
-      if (playerFlow && playerFlow.has(neighborKey)) return true;
-    }
-    
-    return false;
-  };
-  
-  // Check if we can traverse through a position:
-  // - It's in player's flow (proven connection), OR  
-  // - It's an empty position that's reachable from existing tiles/flow
-  const canTraverse = (pos: HexPosition): boolean => {
-    const key = positionToKey(pos);
-    if (playerFlow && playerFlow.has(key)) return true;
-    return isEmptyPositionReachable(pos);
-  };
-  
-  // Start from all positions on the start edge that are traversable
-  for (const pos of startPositions) {
-    if (canTraverse(pos)) {
-      queue.push(pos);
-      visited.add(positionToKey(pos));
+    if (tile) {
+      // Occupied tile: connect only the edges that the tile's flow pattern connects
+      const connections = getFlowConnections(tile.type, tile.rotation);
+      
+      for (const [dir1, dir2] of connections) {
+        const edge1: EdgeNode = { position: pos, direction: dir1 };
+        const edge2: EdgeNode = { position: pos, direction: dir2 };
+        
+        // Connect these two edges on this tile (bidirectional)
+        addEdge(edge1, edge2);
+        addEdge(edge2, edge1);
+      }
+      
+      // Also connect each edge to its opposite edge on the neighboring tile
+      for (let dir = 0; dir < 6; dir++) {
+        const direction = dir as Direction;
+        const edge: EdgeNode = { position: pos, direction };
+        const oppositeEdge = getOppositeEdgeNode(edge);
+        
+        if (oppositeEdge) {
+          addEdge(edge, oppositeEdge);
+          addEdge(oppositeEdge, edge);
+        }
+      }
+    } else {
+      // Empty tile: all edges can connect to each other (any tile could be placed)
+      // Connect all pairs of edges on this tile
+      for (let dir1 = 0; dir1 < 6; dir1++) {
+        for (let dir2 = dir1 + 1; dir2 < 6; dir2++) {
+          const edge1: EdgeNode = { position: pos, direction: dir1 as Direction };
+          const edge2: EdgeNode = { position: pos, direction: dir2 as Direction };
+          
+          addEdge(edge1, edge2);
+          addEdge(edge2, edge1);
+        }
+        
+        // Also connect to opposite edges on neighboring tiles
+        const direction = dir1 as Direction;
+        const edge: EdgeNode = { position: pos, direction };
+        const oppositeEdge = getOppositeEdgeNode(edge);
+        
+        if (oppositeEdge) {
+          addEdge(edge, oppositeEdge);
+          addEdge(oppositeEdge, edge);
+        }
+      }
     }
   }
   
-  // BFS to find if we can reach any target position
-  // Note: we need to expand the reachable set as we go
-  const reachableEmpty = new Set<string>();
+  // Now perform BFS from all start edge nodes to see if we can reach any target edge node
+  const visited = new Set<string>();
+  const queue: string[] = [];
   
+  // Add all edges from start positions as starting points
+  // For edge positions, we need to consider the inward-facing edges
+  for (const pos of startPositions) {
+    for (let dir = 0; dir < 6; dir++) {
+      const direction = dir as Direction;
+      const edgeNode: EdgeNode = { position: pos, direction };
+      const key = edgeNodeKey(edgeNode);
+      
+      if (!visited.has(key)) {
+        queue.push(key);
+        visited.add(key);
+      }
+    }
+  }
+  
+  // BFS
   while (queue.length > 0) {
-    const current = queue.shift()!;
-    const currentKey = positionToKey(current);
+    const currentKey = queue.shift()!;
     
-    // Check if we've reached the target edge
-    if (targetPositions.some(pos => positionToKey(pos) === currentKey)) {
+    // Parse current node
+    const [rowStr, colStr, dirStr] = currentKey.split(',');
+    const currentNode: EdgeNode = {
+      position: { row: parseInt(rowStr), col: parseInt(colStr) },
+      direction: parseInt(dirStr) as Direction,
+    };
+    
+    // Check if we've reached any target position
+    const isTarget = targetPositions.some(targetPos => 
+      targetPos.row === currentNode.position.row && 
+      targetPos.col === currentNode.position.col
+    );
+    
+    if (isTarget) {
       return true;
     }
     
-    // Mark current as reachable if it's empty
-    if (emptyPosSet.has(currentKey)) {
-      reachableEmpty.add(currentKey);
-    }
-    
-    // Explore all neighbors
-    const neighbors = getNeighbors(current);
-    for (const neighbor of neighbors) {
-      const neighborKey = positionToKey(neighbor);
-      
-      // Skip if already visited
-      if (visited.has(neighborKey)) {
-        continue;
-      }
-      
-      // Check if this neighbor can be traversed
-      // For empty positions, they need to be adjacent to something reachable
-      let canTraverseNeighbor = false;
-      
-      if (playerFlow && playerFlow.has(neighborKey)) {
-        // In player's flow - always traversable
-        canTraverseNeighbor = true;
-      } else if (emptyPosSet.has(neighborKey)) {
-        // Empty position - check if reachable from current position or other reachable positions
-        const neighborPos = neighbor;
-        const neighborNeighbors = getNeighbors(neighborPos);
-        
-        for (const nn of neighborNeighbors) {
-          const nnKey = positionToKey(nn);
-          // Reachable if adjacent to: flow, occupied tile, reachable empty, or start edge
-          if ((playerFlow && playerFlow.has(nnKey)) ||
-              occupiedPosSet.has(nnKey) ||
-              reachableEmpty.has(nnKey) ||
-              visited.has(nnKey) ||
-              startPositions.some(sp => positionToKey(sp) === nnKey)) {
-            canTraverseNeighbor = true;
-            break;
-          }
+    // Explore neighbors
+    const neighbors = adjacencyMap.get(currentKey);
+    if (neighbors) {
+      for (const neighborKey of neighbors) {
+        if (!visited.has(neighborKey)) {
+          visited.add(neighborKey);
+          queue.push(neighborKey);
         }
       }
-      
-      if (!canTraverseNeighbor) {
-        continue;
-      }
-      
-      // Add to queue and mark as visited
-      queue.push(neighbor);
-      visited.add(neighborKey);
     }
   }
   
