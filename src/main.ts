@@ -66,11 +66,11 @@ function init() {
     
     // Check if we transitioned to game-over screen
     if (state.game.screen === 'game-over' && prevScreen !== 'game-over') {
-      // Initialize victory animations
+      // Initialize victory pulse animation
       import('./animation/victoryAnimations').then(({ initVictoryAnimations, continuePulseAnimation }) => {
         initVictoryAnimations();
-        // Start continuous pulse after initial animation
-        setTimeout(() => continuePulseAnimation(), 300);
+        // Start continuous pulse after initial animation completes (~2 seconds)
+        setTimeout(() => continuePulseAnimation(), 2000);
       });
     }
     prevScreen = state.game.screen;
