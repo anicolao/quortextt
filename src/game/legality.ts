@@ -60,31 +60,67 @@ function hasViablePath(
   }
   
   // Use BFS to check if there's a potential path from start to target
-  // We can traverse through empty positions (where tiles could be placed)
-  // OR positions that are already in this player's flow (existing connections)
+  // We need to be conservative: only consider paths that could realistically be created
+  // with tiles, not just geometric hex adjacency
   const { flows } = calculateFlows(board, [player]);
   const playerFlow = flows.get(player.id);
   const visited = new Set<string>();
   const queue: HexPosition[] = [];
   const emptyPosSet = new Set(emptyPositions.map(positionToKey));
   
+  // Build a set of positions that are occupied (have tiles)
+  const occupiedPosSet = new Set<string>();
+  for (const pos of getAllBoardPositions()) {
+    const key = positionToKey(pos);
+    if (board.has(key)) {
+      occupiedPosSet.add(key);
+    }
+  }
+  
+  // Check if an empty position is "reachable" - meaning it's adjacent to:
+  // - An occupied position (could extend from existing tiles), OR
+  // - A start edge position (could start from player's edge), OR
+  // - The player's current flow (could extend from existing flow)
+  const isEmptyPositionReachable = (pos: HexPosition): boolean => {
+    const posKey = positionToKey(pos);
+    if (!emptyPosSet.has(posKey)) return false;
+    
+    // Check if adjacent to any occupied position or start edge
+    const neighbors = getNeighbors(pos);
+    for (const neighbor of neighbors) {
+      const neighborKey = positionToKey(neighbor);
+      // Adjacent to occupied tile
+      if (occupiedPosSet.has(neighborKey)) return true;
+      // Adjacent to start edge
+      if (startPositions.some(sp => positionToKey(sp) === neighborKey)) return true;
+      // Adjacent to player's flow
+      if (playerFlow && playerFlow.has(neighborKey)) return true;
+    }
+    
+    return false;
+  };
+  
   // Check if we can traverse through a position:
-  // - It's empty (tiles could be placed), OR
-  // - It's already in player's flow (existing connection)
-  const canTraverse = (key: string): boolean => {
-    return emptyPosSet.has(key) || (playerFlow ? playerFlow.has(key) : false);
+  // - It's in player's flow (proven connection), OR  
+  // - It's an empty position that's reachable from existing tiles/flow
+  const canTraverse = (pos: HexPosition): boolean => {
+    const key = positionToKey(pos);
+    if (playerFlow && playerFlow.has(key)) return true;
+    return isEmptyPositionReachable(pos);
   };
   
   // Start from all positions on the start edge that are traversable
   for (const pos of startPositions) {
-    const key = positionToKey(pos);
-    if (canTraverse(key)) {
+    if (canTraverse(pos)) {
       queue.push(pos);
-      visited.add(key);
+      visited.add(positionToKey(pos));
     }
   }
   
   // BFS to find if we can reach any target position
+  // Note: we need to expand the reachable set as we go
+  const reachableEmpty = new Set<string>();
+  
   while (queue.length > 0) {
     const current = queue.shift()!;
     const currentKey = positionToKey(current);
@@ -94,13 +130,48 @@ function hasViablePath(
       return true;
     }
     
+    // Mark current as reachable if it's empty
+    if (emptyPosSet.has(currentKey)) {
+      reachableEmpty.add(currentKey);
+    }
+    
     // Explore all neighbors
     const neighbors = getNeighbors(current);
     for (const neighbor of neighbors) {
       const neighborKey = positionToKey(neighbor);
       
-      // Skip if already visited or not traversable
-      if (visited.has(neighborKey) || !canTraverse(neighborKey)) {
+      // Skip if already visited
+      if (visited.has(neighborKey)) {
+        continue;
+      }
+      
+      // Check if this neighbor can be traversed
+      // For empty positions, they need to be adjacent to something reachable
+      let canTraverseNeighbor = false;
+      
+      if (playerFlow && playerFlow.has(neighborKey)) {
+        // In player's flow - always traversable
+        canTraverseNeighbor = true;
+      } else if (emptyPosSet.has(neighborKey)) {
+        // Empty position - check if reachable from current position or other reachable positions
+        const neighborPos = neighbor;
+        const neighborNeighbors = getNeighbors(neighborPos);
+        
+        for (const nn of neighborNeighbors) {
+          const nnKey = positionToKey(nn);
+          // Reachable if adjacent to: flow, occupied tile, reachable empty, or start edge
+          if ((playerFlow && playerFlow.has(nnKey)) ||
+              occupiedPosSet.has(nnKey) ||
+              reachableEmpty.has(nnKey) ||
+              visited.has(nnKey) ||
+              startPositions.some(sp => positionToKey(sp) === nnKey)) {
+            canTraverseNeighbor = true;
+            break;
+          }
+        }
+      }
+      
+      if (!canTraverseNeighbor) {
         continue;
       }
       
