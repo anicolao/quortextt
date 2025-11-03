@@ -6,7 +6,6 @@ import { initVictoryAnimations, victoryAnimationState } from '../src/animation/v
 describe('Victory Animations', () => {
   beforeEach(() => {
     // Reset animation state before each test
-    victoryAnimationState.modalOpacity = 0;
     victoryAnimationState.glowIntensity = 0;
     
     // Mock the window.__REDUX_STORE__ if needed for tests
@@ -21,29 +20,18 @@ describe('Victory Animations', () => {
     };
   });
 
-  it('should initialize with zero opacity and intensity', () => {
-    expect(victoryAnimationState.modalOpacity).toBe(0);
+  it('should initialize with zero intensity', () => {
     expect(victoryAnimationState.glowIntensity).toBe(0);
   });
 
-  it('should register animations when initialized', () => {
+  it('should register pulse animation when initialized', () => {
     const mockDispatch = vi.fn();
     (global as any).window.__REDUX_STORE__.dispatch = mockDispatch;
     
     initVictoryAnimations();
     
-    // Should have registered two animations: modal fade-in and flow pulse
-    expect(mockDispatch).toHaveBeenCalledTimes(2);
-    
-    // Check that modal fade-in was registered
-    expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'REGISTER_ANIMATION',
-        payload: expect.objectContaining({
-          animationName: 'victory-modal-fade-in'
-        })
-      })
-    );
+    // Should have registered one animation: flow pulse
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
     
     // Check that flow pulse was registered
     expect(mockDispatch).toHaveBeenCalledWith(
@@ -56,35 +44,7 @@ describe('Victory Animations', () => {
     );
   });
 
-  it('should update modalOpacity when fade-in animation runs', async () => {
-    // Get the animation function registry
-    const { defineAnimation, getAnimationFunction } = await import('../src/animation/registry');
-    
-    // Define the animation
-    defineAnimation('victory-modal-fade-in', (t: number) => {
-      victoryAnimationState.modalOpacity = t;
-    });
-    
-    // Get and execute the animation at various time points
-    const animFn = getAnimationFunction('victory-modal-fade-in');
-    expect(animFn).toBeDefined();
-    
-    if (animFn) {
-      // At start
-      animFn(0);
-      expect(victoryAnimationState.modalOpacity).toBe(0);
-      
-      // Halfway
-      animFn(0.5);
-      expect(victoryAnimationState.modalOpacity).toBe(0.5);
-      
-      // Complete
-      animFn(1);
-      expect(victoryAnimationState.modalOpacity).toBe(1);
-    }
-  });
-
-  it('should pulse glowIntensity between 0.5 and 1.0', async () => {
+  it('should pulse glowIntensity', async () => {
     const { defineAnimation, getAnimationFunction } = await import('../src/animation/registry');
     
     // Define the pulse animation
