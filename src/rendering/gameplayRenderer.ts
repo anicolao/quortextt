@@ -22,7 +22,11 @@ import { isConnectionInWinningPath } from "../game/victory";
 import { TileType, PlacedTile, Direction } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 import { getFlowPreviewData } from "../animation/flowPreview";
-import { isLegalMove, getBlockedPlayers, getDebugPathInfo } from "../game/legality";
+import {
+  isLegalMove,
+  getBlockedPlayers,
+  getDebugPathInfo,
+} from "../game/legality";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -130,17 +134,17 @@ export class GameplayRenderer {
     color: string,
   ): void {
     // Create a polygon from the zig-zag of source edges plus perpendiculars to board boundary
-    
+
     // Get all source edge positions and their vertices (the zig-zag)
     const sourceEdges = getEdgePositionsWithDirections(edgePosition);
     if (sourceEdges.length === 0) return;
-    
+
     // Collect all the edge vertices that form the zig-zag pattern
     const zigzagVertices: Point[] = [];
     sourceEdges.forEach(({ pos, dir }) => {
       const hexCenter = hexToPixel(pos, this.layout);
       const vertices = getHexVertices(hexCenter, this.layout.size);
-      
+
       // Map direction to vertex pairs for pointy-top hexagons
       const vertexPairs = [
         [4, 5], // SouthWest (240°)
@@ -150,16 +154,16 @@ export class GameplayRenderer {
         [0, 1], // East (0°)
         [5, 0], // SouthEast (300°)
       ];
-      
+
       const [v1Index, v2Index] = vertexPairs[dir];
       zigzagVertices.push(vertices[v1Index]);
       zigzagVertices.push(vertices[v2Index]);
     });
-    
+
     // Get endpoints of the zig-zag (first and last vertices)
     const firstEndpoint = zigzagVertices[0];
     const lastEndpoint = zigzagVertices[zigzagVertices.length - 1];
-    
+
     // Get the board hexagon vertices and edge
     const boardVertices = this.getFlatTopHexVertices(center, radius);
     const vertexMap = [
@@ -170,29 +174,37 @@ export class GameplayRenderer {
       [2, 3], // Edge 4: Top-left
       [3, 4], // Edge 5: Bottom-left
     ];
-    
+
     const [v1Index, v2Index] = vertexMap[edgePosition];
     const boardV1 = boardVertices[v1Index];
     const boardV2 = boardVertices[v2Index];
-    
+
     // Find closest point on board edge to each endpoint
-    const closestToFirst = this.closestPointOnLineSegment(firstEndpoint, boardV1, boardV2);
-    const closestToLast = this.closestPointOnLineSegment(lastEndpoint, boardV1, boardV2);
-    
+    const closestToFirst = this.closestPointOnLineSegment(
+      firstEndpoint,
+      boardV1,
+      boardV2,
+    );
+    const closestToLast = this.closestPointOnLineSegment(
+      lastEndpoint,
+      boardV1,
+      boardV2,
+    );
+
     // Determine which endpoint is closer to the boundary
     const distFirstToBoard = this.distance(firstEndpoint, closestToFirst);
     const distLastToBoard = this.distance(lastEndpoint, closestToLast);
-    
+
     // The closer endpoint connects to its closest point, then to the further corner
     // The farther endpoint connects to a 60° rotated version of the closest point
     let closerEndpoint: Point;
     let closestPoint: Point;
     let fartherCorner: Point, nearerCorner: Point;
-    
+
     if (distFirstToBoard < distLastToBoard) {
       closerEndpoint = firstEndpoint;
       closestPoint = closestToFirst;
-      
+
       // Determine which corner is farther from the closest point
       const distToV1 = this.distance(closestPoint, boardV1);
       const distToV2 = this.distance(closestPoint, boardV2);
@@ -206,7 +218,7 @@ export class GameplayRenderer {
     } else {
       closerEndpoint = lastEndpoint;
       closestPoint = closestToLast;
-      
+
       const distToV1 = this.distance(closestPoint, boardV1);
       const distToV2 = this.distance(closestPoint, boardV2);
       if (distToV1 > distToV2) {
@@ -217,23 +229,27 @@ export class GameplayRenderer {
         nearerCorner = boardV1;
       }
     }
-    
+
     // Calculate the 60° rotated point for the farther endpoint
     // Rotate the closest point 60° around the board center
-    const rotatedPoint = this.rotatePointAround(closestPoint, center, Math.PI / 3); // 60° in radians
-    
+    const rotatedPoint = this.rotatePointAround(
+      closestPoint,
+      center,
+      -Math.PI / 3,
+    ); // 60° in radians
+
     // Build the polygon
     this.ctx.beginPath();
-    
+
     // Start from the farther corner
     this.ctx.moveTo(fartherCorner.x, fartherCorner.y);
-    
+
     // Go to the closest point
     this.ctx.lineTo(closestPoint.x, closestPoint.y);
-    
+
     // Connect to the closer endpoint
     this.ctx.lineTo(closerEndpoint.x, closerEndpoint.y);
-    
+
     // Draw all the zig-zag vertices
     if (closerEndpoint === firstEndpoint) {
       // Draw forward through the zig-zag
@@ -246,63 +262,66 @@ export class GameplayRenderer {
         this.ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
       }
     }
-    
+
     // Connect to the rotated point
     this.ctx.lineTo(rotatedPoint.x, rotatedPoint.y);
-    
-    // Go to the nearer corner
-    this.ctx.lineTo(nearerCorner.x, nearerCorner.y);
-    
+
     // Close the polygon (back to farther corner)
     this.ctx.closePath();
-    
+
     // Fill and stroke
     this.ctx.fillStyle = color;
     this.ctx.globalAlpha = 0.3;
     this.ctx.fill();
     this.ctx.globalAlpha = 1.0;
-    
+
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = this.layout.size * 0.15;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
     this.ctx.stroke();
   }
-  
+
   // Helper: Find closest point on a line segment to a given point
-  private closestPointOnLineSegment(point: Point, lineStart: Point, lineEnd: Point): Point {
+  private closestPointOnLineSegment(
+    point: Point,
+    lineStart: Point,
+    lineEnd: Point,
+  ): Point {
     const dx = lineEnd.x - lineStart.x;
     const dy = lineEnd.y - lineStart.y;
     const lengthSquared = dx * dx + dy * dy;
-    
+
     if (lengthSquared === 0) return lineStart;
-    
-    let t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / lengthSquared;
+
+    let t =
+      ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) /
+      lengthSquared;
     t = Math.max(0, Math.min(1, t));
-    
+
     return {
       x: lineStart.x + t * dx,
-      y: lineStart.y + t * dy
+      y: lineStart.y + t * dy,
     };
   }
-  
+
   // Helper: Calculate distance between two points
   private distance(p1: Point, p2: Point): number {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     return Math.sqrt(dx * dx + dy * dy);
   }
-  
+
   // Helper: Rotate a point around a center by an angle
   private rotatePointAround(point: Point, center: Point, angle: number): Point {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     const dx = point.x - center.x;
     const dy = point.y - center.y;
-    
+
     return {
       x: center.x + dx * cos - dy * sin,
-      y: center.y + dx * sin + dy * cos
+      y: center.y + dx * sin + dy * cos,
     };
   }
 
@@ -1136,15 +1155,22 @@ export class GameplayRenderer {
   private renderDebugLegalityPaths(state: RootState): void {
     // Log debug mode status once
     if (!(window as any).__debugLegalityLogged) {
-      console.log('%c[DEBUG_LEGALITY_TEST] Debug mode enabled', 'color: #00ff00; font-weight: bold');
-      console.log('Showing edge-level winning paths for all players');
-      console.log('- Light lines/dots: all visited edges during BFS');
-      console.log('- Thick dashed line: the winning path through specific edges');
-      console.log('- Large dots: specific hex edges on the path');
-      console.log('Each edge is shown as a line from hex center to edge midpoint');
+      console.log(
+        "%c[DEBUG_LEGALITY_TEST] Debug mode enabled",
+        "color: #00ff00; font-weight: bold",
+      );
+      console.log("Showing edge-level winning paths for all players");
+      console.log("- Light lines/dots: all visited edges during BFS");
+      console.log(
+        "- Thick dashed line: the winning path through specific edges",
+      );
+      console.log("- Large dots: specific hex edges on the path");
+      console.log(
+        "Each edge is shown as a line from hex center to edge midpoint",
+      );
       (window as any).__debugLegalityLogged = true;
     }
-    
+
     // Include the previewed tile in the board state if one exists
     let boardToUse = state.game.board;
     if (state.ui.selectedPosition && state.game.currentTile !== null) {
@@ -1157,136 +1183,157 @@ export class GameplayRenderer {
       };
       boardToUse.set(positionToKey(state.ui.selectedPosition), previewedTile);
     }
-    
+
     // Get debug path information for all players with the previewed tile
     const debugInfo = getDebugPathInfo(
       boardToUse,
       state.game.players,
-      state.game.teams
+      state.game.teams,
     );
-    
+
     // Render each player's path information
     debugInfo.forEach((info: any) => {
       // Skip if no path
       if (!info.hasPath) {
         return;
       }
-      
+
       // Draw visited edges (lighter lines)
       this.ctx.strokeStyle = info.playerColor;
       this.ctx.lineWidth = 2;
       this.ctx.globalAlpha = 0.15;
-      
+
       for (const edge of info.visitedEdges) {
         const center = hexToPixel(edge.position, this.layout);
-        const edgeMid = getEdgeMidpoint(center, this.layout.size, edge.direction);
-        
+        const edgeMid = getEdgeMidpoint(
+          center,
+          this.layout.size,
+          edge.direction,
+        );
+
         // Draw a small line from center toward the edge
         this.ctx.beginPath();
         this.ctx.moveTo(center.x, center.y);
         this.ctx.lineTo(edgeMid.x, edgeMid.y);
         this.ctx.stroke();
-        
+
         // Draw a small circle at the edge
         this.ctx.beginPath();
         this.ctx.arc(edgeMid.x, edgeMid.y, 3, 0, Math.PI * 2);
         this.ctx.fill();
       }
-      
+
       this.ctx.globalAlpha = 1.0;
-      
+
       // Draw path edges (thicker, more visible)
       this.ctx.strokeStyle = info.playerColor;
       this.ctx.lineWidth = 4;
       this.ctx.globalAlpha = 0.7;
       this.ctx.setLineDash([8, 4]);
-      
+
       if (info.pathEdges.length > 0) {
         this.ctx.beginPath();
-        
+
         // Start from the first edge
         const firstEdge = info.pathEdges[0];
         const firstCenter = hexToPixel(firstEdge.position, this.layout);
-        const firstEdgeMid = getEdgeMidpoint(firstCenter, this.layout.size, firstEdge.direction);
+        const firstEdgeMid = getEdgeMidpoint(
+          firstCenter,
+          this.layout.size,
+          firstEdge.direction,
+        );
         this.ctx.moveTo(firstEdgeMid.x, firstEdgeMid.y);
-        
+
         // Draw lines through subsequent edges
         for (let i = 1; i < info.pathEdges.length; i++) {
           const edge = info.pathEdges[i];
           const center = hexToPixel(edge.position, this.layout);
-          const edgeMid = getEdgeMidpoint(center, this.layout.size, edge.direction);
+          const edgeMid = getEdgeMidpoint(
+            center,
+            this.layout.size,
+            edge.direction,
+          );
           this.ctx.lineTo(edgeMid.x, edgeMid.y);
         }
-        
+
         this.ctx.stroke();
       }
-      
+
       this.ctx.setLineDash([]);
       this.ctx.globalAlpha = 1.0;
-      
+
       // Draw path edge markers (filled circles)
       this.ctx.fillStyle = info.playerColor;
       this.ctx.globalAlpha = 0.8;
-      
+
       for (const edge of info.pathEdges) {
         const center = hexToPixel(edge.position, this.layout);
-        const edgeMid = getEdgeMidpoint(center, this.layout.size, edge.direction);
-        
+        const edgeMid = getEdgeMidpoint(
+          center,
+          this.layout.size,
+          edge.direction,
+        );
+
         this.ctx.beginPath();
         this.ctx.arc(edgeMid.x, edgeMid.y, 5, 0, Math.PI * 2);
         this.ctx.fill();
       }
-      
+
       this.ctx.globalAlpha = 1.0;
     });
-    
+
     // Draw legend in top-right corner
     const legendX = this.layout.canvasWidth - 250;
     const legendY = 80;
     const lineHeight = 25;
-    
+
     // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(legendX - 10, legendY - 10, 240, debugInfo.length * lineHeight + 40);
-    
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    this.ctx.fillRect(
+      legendX - 10,
+      legendY - 10,
+      240,
+      debugInfo.length * lineHeight + 40,
+    );
+
     // Title
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 14px sans-serif';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText('DEBUG: Winning Paths', legendX, legendY + 10);
-    
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 14px sans-serif";
+    this.ctx.textAlign = "left";
+    this.ctx.fillText("DEBUG: Winning Paths", legendX, legendY + 10);
+
     // Player info
-    this.ctx.font = '12px sans-serif';
+    this.ctx.font = "12px sans-serif";
     debugInfo.forEach((info: any, index: number) => {
       const y = legendY + 30 + index * lineHeight;
-      
+
       // Color indicator
       this.ctx.fillStyle = info.playerColor;
       this.ctx.beginPath();
       this.ctx.arc(legendX + 10, y, 6, 0, Math.PI * 2);
       this.ctx.fill();
-      
+
       // Player text
-      this.ctx.fillStyle = info.hasPath ? '#00ff00' : '#ff0000';
+      this.ctx.fillStyle = info.hasPath ? "#00ff00" : "#ff0000";
       this.ctx.fillText(
-        `${info.playerId}: ${info.hasPath ? 'PATH FOUND' : 'NO PATH'}`,
+        `${info.playerId}: ${info.hasPath ? "PATH FOUND" : "NO PATH"}`,
         legendX + 25,
-        y + 4
+        y + 4,
       );
-      
+
       // Path length
       if (info.hasPath) {
-        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.fillStyle = "#aaaaaa";
         this.ctx.fillText(
           `(${info.pathEdges?.length || 0} edges)`,
           legendX + 25,
-          y + 16
+          y + 16,
         );
       }
     });
-    
+
     // Reset text alignment
-    this.ctx.textAlign = 'left';
+    this.ctx.textAlign = "left";
   }
 
   getLayout(): HexLayout {
