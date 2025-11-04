@@ -47,9 +47,9 @@ export function checkPlayerFlowVictory(
     return false;
   }
   
-  // Check if the flow exits through the target edge (outward-facing directions)
-  // The outward-facing directions at the target edge are the same as the inward-facing
-  // directions returned by getEdgePositionsWithDirections for that edge
+  // Check if the flow exits through the target edge
+  // getEdgePositionsWithDirections returns the directions that point inward from the board edge.
+  // For the target edge, these same directions represent the flow exiting outward off the board.
   const targetEdgeNodes = getEdgePositionsWithDirections(targetEdge);
   const exitsTargetEdge = targetEdgeNodes.some(({ pos, dir }) => {
     const posKey = positionToKey(pos);

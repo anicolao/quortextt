@@ -583,7 +583,7 @@ describe('victory conditions', () => {
       expect(result.winType).toBe('flow');
     });
 
-    it('should detect victory for the player whose flow traverses the path correctly', () => {
+    it('should detect victory when flow enters from player edge and exits through target edge', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const board = new Map<string, PlacedTile>();
       const teams: Team[] = [];
