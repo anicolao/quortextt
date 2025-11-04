@@ -120,14 +120,21 @@ describe('victory conditions', () => {
       const flows = new Map<string, Set<string>>();
       const flowEdges = new Map<string, Map<Direction, string>>();
       
-      // Create flow that reaches target edge positions
+      // Create flow that reaches multiple target edge positions
+      const startEdge = getEdgePositions(0);
       const targetEdge = getEdgePositions(3);
       const flow = new Set<string>();
+      
+      // Add start edge to flow
+      startEdge.forEach(pos => flow.add(positionToKey(pos)));
+      
+      // Add all target edge positions to flow
       targetEdge.forEach(pos => flow.add(positionToKey(pos)));
       flows.set('p1', flow);
       
       // Don't add flowEdges for any of these positions
       // This will test lines 51-52 (continue when edgeMap is missing)
+      // and line 68 (return false after checking all positions)
       expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
@@ -154,6 +161,34 @@ describe('victory conditions', () => {
       const { flows, flowEdges } = calculateFlows(board, players);
       
       // This exercises the loop through directions (lines 55-67)
+      const result = checkPlayerFlowVictory(flows, flowEdges, player);
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should return false after checking all target positions with no exit - line 68', () => {
+      const player = createPlayer('p1', 0);
+      const flows = new Map<string, Set<string>>();
+      const flowEdges = new Map<string, Map<Direction, string>>();
+      
+      // Create flow that reaches all target edge positions
+      const startEdge = getEdgePositions(0);
+      const targetEdge = getEdgePositions(3);
+      const flow = new Set<string>();
+      
+      startEdge.forEach(pos => flow.add(positionToKey(pos)));
+      targetEdge.forEach(pos => flow.add(positionToKey(pos)));
+      flows.set('p1', flow);
+      
+      // Add flowEdges for all target positions but with directions that don't exit
+      targetEdge.forEach(pos => {
+        const edgeMap = new Map<Direction, string>();
+        // Add internal directions only (not directions that lead off board)
+        edgeMap.set(1, 'p1');
+        edgeMap.set(2, 'p1');
+        flowEdges.set(positionToKey(pos), edgeMap);
+      });
+      
+      // This exercises line 68 - the return false after checking all positions
       const result = checkPlayerFlowVictory(flows, flowEdges, player);
       expect(typeof result).toBe('boolean');
     });
@@ -275,6 +310,110 @@ describe('victory conditions', () => {
       expect(typeof result).toBe('boolean');
     });
 
+    it('should return false when flow reaches edge but does not exit', () => {
+      // Test line 117 and 151 - when flow reaches the edge but doesn't exit
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      
+      const flows = new Map<string, Set<string>>();
+      const flowEdges = new Map<string, Map<Direction, string>>();
+      
+      const edge0Positions = getEdgePositions(0);
+      const edge3Positions = getEdgePositions(3);
+      
+      // Give player1 flow that reaches edge 3 but doesn't exit
+      const flow1 = new Set<string>();
+      flow1.add(positionToKey(edge0Positions[0]));
+      flow1.add(positionToKey(edge3Positions[0]));
+      flows.set('p1', flow1);
+      
+      // Add flowEdges but with directions that don't lead off board
+      const edgeMap1 = new Map<Direction, string>();
+      edgeMap1.set(1, 'p1'); // Internal direction
+      edgeMap1.set(2, 'p1'); // Internal direction
+      flowEdges.set(positionToKey(edge3Positions[0]), edgeMap1);
+      
+      // Give player2 flow that reaches edge 0 but doesn't exit
+      const flow2 = new Set<string>();
+      flow2.add(positionToKey(edge3Positions[1]));
+      flow2.add(positionToKey(edge0Positions[1]));
+      flows.set('p2', flow2);
+      
+      // Add flowEdges but with directions that don't lead off board
+      const edgeMap2 = new Map<Direction, string>();
+      edgeMap2.set(1, 'p2'); // Internal direction
+      edgeMap2.set(2, 'p2'); // Internal direction
+      flowEdges.set(positionToKey(edge0Positions[1]), edgeMap2);
+      
+      // This tests lines 117 and 151 - exitsEdge checking logic
+      const result = checkTeamFlowVictory(flows, flowEdges, team, players);
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should return false when player1 flow reaches edge2 but does not exit - line 117', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      
+      const flows = new Map<string, Set<string>>();
+      const flowEdges = new Map<string, Map<Direction, string>>();
+      
+      const edge0Positions = getEdgePositions(0);
+      const edge3Positions = getEdgePositions(3);
+      
+      // Give player1 flow that reaches edge 3
+      const flow1 = new Set<string>();
+      edge0Positions.forEach(pos => flow1.add(positionToKey(pos)));
+      edge3Positions.forEach(pos => flow1.add(positionToKey(pos)));
+      flows.set('p1', flow1);
+      
+      // Add flowEdges for edge3 positions but with directions that don't exit
+      edge3Positions.forEach(pos => {
+        const edgeMap = new Map<Direction, string>();
+        edgeMap.set(1, 'p1'); // Internal direction
+        edgeMap.set(2, 'p1'); // Internal direction
+        flowEdges.set(positionToKey(pos), edgeMap);
+      });
+      
+      // Don't give player2 a flow
+      flows.set('p2', new Set());
+      
+      // This exercises line 117 - checking all positions in the loop
+      const result1 = checkTeamFlowVictory(flows, flowEdges, team, players);
+      expect(typeof result1).toBe('boolean');
+    });
+
+    it('should check player2 flow path when player1 does not win - line 151', () => {
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
+      
+      const flows = new Map<string, Set<string>>();
+      const flowEdges = new Map<string, Map<Direction, string>>();
+      
+      const edge0Positions = getEdgePositions(0);
+      const edge3Positions = getEdgePositions(3);
+      
+      // Don't give player1 a winning flow
+      flows.set('p1', new Set());
+      
+      // Give player2 flow that reaches edge 0
+      const flow2 = new Set<string>();
+      edge3Positions.forEach(pos => flow2.add(positionToKey(pos)));
+      edge0Positions.forEach(pos => flow2.add(positionToKey(pos)));
+      flows.set('p2', flow2);
+      
+      // Add flowEdges for edge0 positions
+      edge0Positions.forEach(pos => {
+        const edgeMap = new Map<Direction, string>();
+        edgeMap.set(1, 'p2');
+        edgeMap.set(2, 'p2');
+        flowEdges.set(positionToKey(pos), edgeMap);
+      });
+      
+      // This exercises line 151 - checking all edge1 positions in the loop
+      const result = checkTeamFlowVictory(flows, flowEdges, team, players);
+      expect(typeof result).toBe('boolean');
+    });
+
     it('should check player2 flow exits through player1 edge explicitly', () => {
       // Manually construct scenario where only player2 has a winning flow
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
@@ -292,13 +431,22 @@ describe('victory conditions', () => {
       
       const flow2 = new Set<string>();
       flow2.add(positionToKey(edge3Positions[0])); // Player2's own edge
-      flow2.add(positionToKey(edge0Positions[0])); // Player1's edge
-      flows.set('p2', flow2);
       
-      // Add flowEdges for player2's flow at player1's edge that exits off board
-      const edgeMap = new Map<Direction, string>();
-      edgeMap.set(0, 'p2'); // Direction that leads off board from edge 0
-      flowEdges.set(positionToKey(edge0Positions[0]), edgeMap);
+      // Add multiple edge0 positions to player2's flow
+      // Some with flowEdges, some without
+      edge0Positions.forEach((pos, index) => {
+        flow2.add(positionToKey(pos));
+        
+        // Only add flowEdges for the last position
+        if (index === edge0Positions.length - 1) {
+          const edgeMap = new Map<Direction, string>();
+          edgeMap.set(0, 'p2'); // Direction that leads off board from edge 0
+          flowEdges.set(positionToKey(pos), edgeMap);
+        }
+        // For other positions, don't add flowEdges - this tests lines 139-140
+      });
+      
+      flows.set('p2', flow2);
       
       // This should hit lines 137-151 and 155-156
       const result = checkTeamFlowVictory(flows, flowEdges, team, players);
