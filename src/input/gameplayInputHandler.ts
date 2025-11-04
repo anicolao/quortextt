@@ -1,7 +1,7 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, placeTile, nextPlayer, drawTile } from '../redux/actions';
+import { setRotation, setSelectedPosition, placeTile, nextPlayer, drawTile, returnToConfig } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
@@ -162,9 +162,8 @@ export class GameplayInputHandler {
         y >= corner.y &&
         y <= corner.y + corner.height
       ) {
-        // Exit button clicked
-        // TODO: Show exit confirmation dialog
-        console.log('Exit button clicked');
+        // Exit button clicked - return to lobby
+        store.dispatch(returnToConfig());
         return;
       }
     }
