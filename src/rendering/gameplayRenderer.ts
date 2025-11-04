@@ -129,17 +129,20 @@ export class GameplayRenderer {
     edgePosition: number,
     color: string,
   ): void {
-    // Get the two vertices that define this edge for flat-top hexagon
-    const vertices = this.getFlatTopHexVertices(center, radius);
+    // Create a polygon that includes:
+    // 1. All outward-facing edges from source hexagons (zig-zag pattern)
+    // 2. Perpendicular lines at each end (perpendicular to board edge)
+    // 3. Board boundary segment to close the polygon
 
-    // For flat-top hexagon with vertex 0 at right (0°):
-    // Edge 0: Bottom (270°) - between vertices 4 and 5
-    // Edge 1: Bottom-right (330°) - between vertices 5 and 0
-    // Edge 2: Top-right (30°) - between vertices 0 and 1
-    // Edge 3: Top (90°) - between vertices 1 and 2
-    // Edge 4: Top-left (150°) - between vertices 2 and 3
-    // Edge 5: Bottom-left (210°) - between vertices 3 and 4
+    // Get all source edge positions and their inward-facing directions
+    const sourceEdges = getEdgePositionsWithDirections(edgePosition);
+    
+    if (sourceEdges.length === 0) return;
 
+    // Get the board hexagon vertices
+    const boardVertices = this.getFlatTopHexVertices(center, radius);
+    
+    // Map edge positions to board vertex indices (for flat-top hexagon)
     const vertexMap = [
       [4, 5], // Edge 0: Bottom
       [5, 0], // Edge 1: Bottom-right
@@ -149,18 +152,82 @@ export class GameplayRenderer {
       [3, 4], // Edge 5: Bottom-left
     ];
 
-    const [v1Index, v2Index] = vertexMap[edgePosition];
-    const v1 = vertices[v1Index];
-    const v2 = vertices[v2Index];
+    const [boardV1Index, boardV2Index] = vertexMap[edgePosition];
+    const boardV1 = boardVertices[boardV1Index];
+    const boardV2 = boardVertices[boardV2Index];
 
-    // Draw a thick colored line for this edge
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = this.layout.size * 0.3; // Thick edge
-    this.ctx.lineCap = "round";
+    // Calculate the board edge direction vector (from v1 to v2)
+    const boardEdgeVec = {
+      x: boardV2.x - boardV1.x,
+      y: boardV2.y - boardV1.y
+    };
+    const boardEdgeLength = Math.sqrt(boardEdgeVec.x * boardEdgeVec.x + boardEdgeVec.y * boardEdgeVec.y);
+    const boardEdgeUnit = {
+      x: boardEdgeVec.x / boardEdgeLength,
+      y: boardEdgeVec.y / boardEdgeLength
+    };
+    
+    // Perpendicular to board edge (rotate 90 degrees inward)
+    const perpVec = {
+      x: -boardEdgeUnit.y,
+      y: boardEdgeUnit.x
+    };
 
+    // Build the polygon path
     this.ctx.beginPath();
-    this.ctx.moveTo(v1.x, v1.y);
-    this.ctx.lineTo(v2.x, v2.y);
+    
+    // Start at the first board vertex
+    this.ctx.moveTo(boardV1.x, boardV1.y);
+    
+    // Draw perpendicular from first board vertex to first source edge
+    const firstEdge = sourceEdges[0];
+    const firstHexCenter = hexToPixel(firstEdge.pos, this.layout);
+    const firstEdgeMidpoint = getEdgeMidpoint(firstHexCenter, this.layout.size, firstEdge.dir);
+    
+    // Find intersection of perpendicular line from boardV1 with line through firstEdgeMidpoint
+    // For simplicity, we'll just draw from boardV1 perpendicular until we reach the vicinity of firstEdgeMidpoint
+    const perpLength = this.layout.size * 2; // Extend perpendicular inward
+    const perpEndpoint1 = {
+      x: boardV1.x + perpVec.x * perpLength,
+      y: boardV1.y + perpVec.y * perpLength
+    };
+    this.ctx.lineTo(perpEndpoint1.x, perpEndpoint1.y);
+    
+    // Now draw to the first edge midpoint
+    this.ctx.lineTo(firstEdgeMidpoint.x, firstEdgeMidpoint.y);
+    
+    // Draw all the edge midpoints in sequence (creating zig-zag)
+    for (let i = 1; i < sourceEdges.length; i++) {
+      const edge = sourceEdges[i];
+      const hexCenter = hexToPixel(edge.pos, this.layout);
+      const edgeMidpoint = getEdgeMidpoint(hexCenter, this.layout.size, edge.dir);
+      this.ctx.lineTo(edgeMidpoint.x, edgeMidpoint.y);
+    }
+    
+    // Draw perpendicular from last edge position to board edge
+    const perpEndpoint2 = {
+      x: boardV2.x + perpVec.x * perpLength,
+      y: boardV2.y + perpVec.y * perpLength
+    };
+    this.ctx.lineTo(perpEndpoint2.x, perpEndpoint2.y);
+    
+    // Draw perpendicular to second board vertex
+    this.ctx.lineTo(boardV2.x, boardV2.y);
+    
+    // Close the polygon along the board boundary (back to boardV1)
+    this.ctx.closePath();
+    
+    // Fill the polygon with player color (semi-transparent)
+    this.ctx.fillStyle = color;
+    this.ctx.globalAlpha = 0.3;
+    this.ctx.fill();
+    this.ctx.globalAlpha = 1.0;
+    
+    // Stroke the polygon border for emphasis
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = this.layout.size * 0.15;
+    this.ctx.lineCap = "round";
+    this.ctx.lineJoin = "round";
     this.ctx.stroke();
   }
 
