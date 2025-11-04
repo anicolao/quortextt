@@ -1,7 +1,7 @@
 // End-to-end test for tile rendering - visualize all tile types in all rotations
 // This test helps verify that tile rendering matches the logical model
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState, completeSeatingPhase, enableDeterministicPlayerIds } from './helpers';
 
 test.describe('Tile Rendering Tests', () => {
   // TileType enum values (must match src/game/types.ts)
@@ -48,6 +48,7 @@ test.describe('Tile Rendering Tests', () => {
     test(`should render ${tileType.name} in all 6 rotations with edge labels`, async ({ page }) => {
       await page.goto('/');
       await page.waitForSelector('canvas#game-canvas');
+      await enableDeterministicPlayerIds(page);
       
       // Set up game once
       await page.evaluate(() => {

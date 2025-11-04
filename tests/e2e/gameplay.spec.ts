@@ -1,11 +1,12 @@
 // End-to-end tests for the gameplay screen rendering
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
 
 // Helper to setup a game with two players
 async function setupTwoPlayerGame(page: any) {
   await page.goto('/');
   await page.waitForSelector('canvas#game-canvas');
+  await enableDeterministicPlayerIds(page);
   
   const canvas = page.locator('canvas#game-canvas');
   const box = await canvas.boundingBox();

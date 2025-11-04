@@ -14,6 +14,7 @@ declare global {
   interface Window {
     __REDUX_STORE__: typeof store;
     ANIMATIONS_DEBUG_SLOWDOWN?: number;
+    __TEST_PLAYER_ID_COUNTER__?: number;
   }
 }
 window.__REDUX_STORE__ = store;

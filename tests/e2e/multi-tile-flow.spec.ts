@@ -1,11 +1,12 @@
 // E2E test demonstrating correct multi-tile flow propagation with screenshots
 import { test } from '@playwright/test';
-import { completeSeatingPhase , pauseAnimations } from './helpers';
+import { completeSeatingPhase , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
 
 test.describe('Multi-Tile Flow Progression', () => {
   test('should generate screenshots showing correct flow behavior', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
+    await enableDeterministicPlayerIds(page);
     
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
