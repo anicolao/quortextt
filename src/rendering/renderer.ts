@@ -94,7 +94,9 @@ export class Renderer {
     this.currentLobbyLayout = this.lobbyRenderer.render(
       this.canvas.width,
       this.canvas.height,
-      state.game.configPlayers
+      state.game.configPlayers,
+      state.ui.showSettings,
+      state.ui.settings
     );
 
     // Return empty UILayout for compatibility (new input handler will use LobbyLayout)

@@ -25,6 +25,12 @@ export interface ExitButton {
   corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
 }
 
+export interface SettingsButton {
+  x: number;
+  y: number;
+  size: number;
+}
+
 export interface PlayerListEntry {
   player: ConfigPlayer;
   x: number;
@@ -44,6 +50,7 @@ export interface LobbyLayout {
   edgeButtons: EdgeButton[];
   startButton: StartButton;
   exitButtons: ExitButton[];
+  settingsButton: SettingsButton;
   playerLists: PlayerListEntry[][]; // One list per edge [bottom, right, top, left]
 }
 
@@ -145,6 +152,14 @@ export function calculateLobbyLayout(
     y: canvasHeight / 2 - startButtonSize / 2,
     size: startButtonSize,
     enabled: players.length > 0,
+  };
+
+  // Settings button (gear icon) - positioned below start button
+  const settingsButtonSize = Math.max(60, minDim * 0.08);
+  const settingsButton: SettingsButton = {
+    x: canvasWidth / 2 - settingsButtonSize / 2,
+    y: canvasHeight / 2 + startButtonSize / 2 + minDim * 0.08,
+    size: settingsButtonSize,
   };
 
   // Corner exit buttons
@@ -267,6 +282,7 @@ export function calculateLobbyLayout(
     edgeButtons,
     startButton,
     exitButtons,
+    settingsButton,
     playerLists,
   };
 }

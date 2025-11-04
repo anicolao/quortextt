@@ -1,12 +1,22 @@
 // Input handler for the redesigned lobby
 
 import { store } from '../redux/store';
-import { addPlayer, removePlayer, startGame } from '../redux/actions';
+import { addPlayer, removePlayer, startGame, toggleSettings } from '../redux/actions';
 import { LobbyLayout, isPointInButton, isPointInCircle } from '../rendering/lobbyLayout';
 
 export class LobbyInputHandler {
   handleClick(x: number, y: number, layout: LobbyLayout | null): void {
     if (!layout) return;
+
+    // Check settings button
+    const settingsCenterX = layout.settingsButton.x + layout.settingsButton.size / 2;
+    const settingsCenterY = layout.settingsButton.y + layout.settingsButton.size / 2;
+    const settingsRadius = layout.settingsButton.size / 2;
+    
+    if (isPointInCircle(x, y, settingsCenterX, settingsCenterY, settingsRadius)) {
+      store.dispatch(toggleSettings());
+      return;
+    }
 
     // Check start button
     if (layout.startButton.enabled) {

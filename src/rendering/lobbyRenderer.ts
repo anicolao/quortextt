@@ -6,6 +6,7 @@ import {
   EdgeButton,
   StartButton,
   ExitButton,
+  SettingsButton,
   PlayerListEntry,
   calculateLobbyLayout,
 } from "./lobbyLayout";
@@ -22,6 +23,8 @@ export class LobbyRenderer {
     canvasWidth: number,
     canvasHeight: number,
     players: ConfigPlayer[],
+    showSettings: boolean = false,
+    settings?: import("../redux/types").GameSettings,
   ): LobbyLayout {
     this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players);
 
@@ -32,8 +35,14 @@ export class LobbyRenderer {
     // Render all elements
     this.renderEdgeButtons(this.layout.edgeButtons);
     this.renderStartButton(this.layout.startButton);
+    this.renderSettingsButton(this.layout.settingsButton);
     this.renderExitButtons(this.layout.exitButtons);
     this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
+
+    // Render settings dialog if open
+    if (showSettings && settings) {
+      this.renderSettingsDialog(canvasWidth, canvasHeight, settings);
+    }
 
     return this.layout;
   }
@@ -104,6 +113,53 @@ export class LobbyRenderer {
     this.ctx.lineTo(centerX - triangleSize * 0.3, centerY + triangleSize * 0.6);
     this.ctx.lineTo(centerX + triangleSize * 0.7, centerY);
     this.ctx.closePath();
+    this.ctx.fill();
+  }
+
+  private renderSettingsButton(button: SettingsButton): void {
+    const centerX = button.x + button.size / 2;
+    const centerY = button.y + button.size / 2;
+    const radius = button.size / 2;
+
+    // Draw circle
+    this.ctx.fillStyle = "#757575";
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    this.ctx.fill();
+
+    // Draw border
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+
+    // Draw gear icon
+    const gearRadius = radius * 0.35;
+    const innerRadius = radius * 0.2;
+    const numTeeth = 8;
+    const toothDepth = radius * 0.15;
+
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.beginPath();
+    
+    for (let i = 0; i < numTeeth * 2; i++) {
+      const angle = (i * Math.PI) / numTeeth;
+      const r = i % 2 === 0 ? gearRadius + toothDepth : gearRadius;
+      const x = centerX + r * Math.cos(angle);
+      const y = centerY + r * Math.sin(angle);
+      
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Draw inner circle (hole)
+    this.ctx.fillStyle = "#757575";
+    this.ctx.beginPath();
+    this.ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
     this.ctx.fill();
   }
 
@@ -264,5 +320,126 @@ export class LobbyRenderer {
     this.ctx.stroke();
 
     this.ctx.restore();
+  }
+
+  private renderSettingsDialog(
+    canvasWidth: number,
+    canvasHeight: number,
+    settings: import("../redux/types").GameSettings,
+  ): void {
+    // Semi-transparent overlay
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Dialog box
+    const dialogWidth = Math.min(500, canvasWidth * 0.8);
+    const dialogHeight = Math.min(600, canvasHeight * 0.8);
+    const dialogX = (canvasWidth - dialogWidth) / 2;
+    const dialogY = (canvasHeight - dialogHeight) / 2;
+
+    // Dialog background
+    this.ctx.fillStyle = "#2a2a3e";
+    this.ctx.fillRect(dialogX, dialogY, dialogWidth, dialogHeight);
+    this.ctx.strokeStyle = "#555555";
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(dialogX, dialogY, dialogWidth, dialogHeight);
+
+    // Title
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 24px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
+    this.ctx.fillText("Settings", canvasWidth / 2, dialogY + 20);
+
+    // Settings content
+    const contentX = dialogX + 30;
+    let contentY = dialogY + 70;
+    const lineHeight = 50;
+
+    this.ctx.font = "18px sans-serif";
+    this.ctx.textAlign = "left";
+
+    // Board Radius
+    this.ctx.fillText(
+      `Board Radius: ${settings.boardRadius}`,
+      contentX,
+      contentY,
+    );
+    contentY += lineHeight;
+
+    // Supermove
+    this.ctx.fillText(
+      `Supermove: ${settings.supermove ? "ON" : "OFF"}`,
+      contentX,
+      contentY,
+    );
+    contentY += lineHeight;
+
+    // Debug section
+    contentY += 10;
+    this.ctx.font = "bold 20px sans-serif";
+    this.ctx.fillText("Debug Options", contentX, contentY);
+    contentY += lineHeight;
+
+    this.ctx.font = "18px sans-serif";
+    this.ctx.fillText(
+      `Show Edge Labels: ${settings.debugShowEdgeLabels ? "ON" : "OFF"}`,
+      contentX,
+      contentY,
+    );
+    contentY += lineHeight;
+
+    this.ctx.fillText(
+      `Show Victory Edges: ${settings.debugShowVictoryEdges ? "ON" : "OFF"}`,
+      contentX,
+      contentY,
+    );
+    contentY += lineHeight;
+
+    this.ctx.fillText(
+      `Legality Test: ${settings.debugLegalityTest ? "ON" : "OFF"}`,
+      contentX,
+      contentY,
+    );
+    contentY += lineHeight;
+
+    this.ctx.fillText(
+      `Animation Slowdown: ${settings.debugAnimationSlowdown}x`,
+      contentX,
+      contentY,
+    );
+    contentY += lineHeight;
+
+    // Close button
+    const closeButtonWidth = 100;
+    const closeButtonHeight = 40;
+    const closeButtonX = canvasWidth / 2 - closeButtonWidth / 2;
+    const closeButtonY = dialogY + dialogHeight - 60;
+
+    this.ctx.fillStyle = "#555555";
+    this.ctx.fillRect(
+      closeButtonX,
+      closeButtonY,
+      closeButtonWidth,
+      closeButtonHeight,
+    );
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(
+      closeButtonX,
+      closeButtonY,
+      closeButtonWidth,
+      closeButtonHeight,
+    );
+
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "18px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(
+      "Close",
+      closeButtonX + closeButtonWidth / 2,
+      closeButtonY + closeButtonHeight / 2,
+    );
   }
 }
