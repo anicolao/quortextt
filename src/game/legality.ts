@@ -18,14 +18,15 @@ function wouldCauseVictory(
   board: Map<string, PlacedTile>,
   tile: PlacedTile,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius = 3
 ): boolean {
   // Create a new board with the proposed tile
   const testBoard = new Map(board);
   testBoard.set(positionToKey(tile.position), tile);
   
   // Check if this causes a victory
-  const victory = checkFlowVictory(testBoard, players, teams);
+  const victory = checkFlowVictory(testBoard, players, teams, boardRadius);
   
   return victory.winners.length > 0;
 }
@@ -74,7 +75,8 @@ export function hasViablePath(
   player: Player,
   targetEdge: number,
   returnDebugInfo = false,
-  allowEmptyHexes = true
+  allowEmptyHexes = true,
+  boardRadius = 3
 ): boolean | PathFindingResult {
   const startEdge = player.edgePosition;
   
@@ -83,7 +85,7 @@ export function hasViablePath(
   // If the tile is occupied, we connect only the edges that the tile connects
   // If the tile is empty, we connect ALL edges (any tile could be placed)
   
-  const allPositions = getAllBoardPositions();
+  const allPositions = getAllBoardPositions(boardRadius);
   
   // Build adjacency list: for each edge node, which other edge nodes can it connect to?
   const adjacencyMap = new Map<string, Set<string>>();
@@ -276,7 +278,8 @@ export function hasViablePath(
 function allPlayersHaveViablePath(
   board: Map<string, PlacedTile>,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius = 3
 ): boolean {
   // For team games
   if (teams.length > 0) {
@@ -287,8 +290,8 @@ function allPlayersHaveViablePath(
       if (!player1 || !player2) continue;
       
       // Check if team has a viable path (either player can complete it)
-      const path1 = hasViablePath(board, player1, player2.edgePosition, false, true);
-      const path2 = hasViablePath(board, player2, player1.edgePosition, false, true);
+      const path1 = hasViablePath(board, player1, player2.edgePosition, false, true, boardRadius);
+      const path2 = hasViablePath(board, player2, player1.edgePosition, false, true, boardRadius);
       
       if (!path1 && !path2) {
         return false;
@@ -298,7 +301,7 @@ function allPlayersHaveViablePath(
     // For individual games
     for (const player of players) {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      if (!hasViablePath(board, player, targetEdge, false, true)) {
+      if (!hasViablePath(board, player, targetEdge, false, true, boardRadius)) {
         return false;
       }
     }
@@ -312,7 +315,8 @@ export function isLegalMove(
   board: Map<string, PlacedTile>,
   tile: PlacedTile,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius = 3
 ): boolean {
   // A move is illegal if:
   // 1. The position is already occupied
@@ -323,7 +327,7 @@ export function isLegalMove(
   
   // 2. It would cause a victory - this is actually LEGAL and must be played
   // So we check this first
-  if (wouldCauseVictory(board, tile, players, teams)) {
+  if (wouldCauseVictory(board, tile, players, teams, boardRadius)) {
     return true; // Victory moves are always legal
   }
   
@@ -333,7 +337,7 @@ export function isLegalMove(
   testBoard.set(posKey, tile);
   
   // Check if all players still have viable paths
-  return allPlayersHaveViablePath(testBoard, players, teams);
+  return allPlayersHaveViablePath(testBoard, players, teams, boardRadius);
 }
 
 // Get list of players/teams that would be blocked by placing a tile
@@ -342,7 +346,8 @@ export function getBlockedPlayers(
   board: Map<string, PlacedTile>,
   tile: PlacedTile,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius = 3
 ): string[] {
   const blockedPlayerIds: string[] = [];
   
@@ -353,7 +358,7 @@ export function getBlockedPlayers(
   }
   
   // If this causes a victory, no one is blocked (move is forced)
-  if (wouldCauseVictory(board, tile, players, teams)) {
+  if (wouldCauseVictory(board, tile, players, teams, boardRadius)) {
     return blockedPlayerIds;
   }
   
@@ -371,8 +376,8 @@ export function getBlockedPlayers(
       if (!player1 || !player2) continue;
       
       // Check if team has a viable path (either player can complete it)
-      const path1 = hasViablePath(testBoard, player1, player2.edgePosition, false, true);
-      const path2 = hasViablePath(testBoard, player2, player1.edgePosition, false, true);
+      const path1 = hasViablePath(testBoard, player1, player2.edgePosition, false, true, boardRadius);
+      const path2 = hasViablePath(testBoard, player2, player1.edgePosition, false, true, boardRadius);
       
       if (!path1 && !path2) {
         // Team is blocked - add both players
@@ -384,7 +389,7 @@ export function getBlockedPlayers(
     // Individual games - check each player
     for (const player of players) {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      if (!hasViablePath(testBoard, player, targetEdge, false, true)) {
+      if (!hasViablePath(testBoard, player, targetEdge, false, true, boardRadius)) {
         blockedPlayerIds.push(player.id);
       }
     }
@@ -399,12 +404,13 @@ export function findLegalMoves(
   tileType: TileType,
   rotation: Rotation,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius = 3
 ): HexPosition[] {
   const legalPositions: HexPosition[] = [];
   
   // Check all empty board positions
-  const allPositions = getAllBoardPositions();
+  const allPositions = getAllBoardPositions(boardRadius);
   
   for (const position of allPositions) {
     const tile: PlacedTile = {
@@ -413,7 +419,7 @@ export function findLegalMoves(
       position,
     };
     
-    if (isLegalMove(board, tile, players, teams)) {
+    if (isLegalMove(board, tile, players, teams, boardRadius)) {
       legalPositions.push(position);
     }
   }

@@ -47,7 +47,7 @@ export class GameplayInputHandler {
           position: state.ui.selectedPosition,
         };
         
-        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams)) {
+        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams, state.game.boardRadius)) {
           // Move is illegal - don't allow placement
           // The UI should already show the button as disabled
           return;

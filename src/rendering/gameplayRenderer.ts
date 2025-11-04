@@ -62,15 +62,15 @@ export class GameplayRenderer {
     // Layer 2: Board hexagon with colored edges
     this.renderBoardHexagon(state);
 
-    // Layer 2.5: Render all 37 hex positions (for debugging/visibility)
-    this.renderHexPositions();
+    // Layer 2.5: Render all hex positions (for debugging/visibility)
+    this.renderHexPositions(state.game.boardRadius);
 
     // Layer 2.6: Color source hexagon edges with player colors
     //this.renderSourceHexagonEdges(state);
 
     // Layer 2.7: Debug - Draw edge direction labels (0-5) inside each hexagon
     if (state.ui.settings.debugShowEdgeLabels) {
-      this.renderEdgeDirectionLabels();
+      this.renderEdgeDirectionLabels(state.game.boardRadius);
     }
 
     // Layer 2.8: Debug - Highlight victory condition edges
@@ -512,9 +512,9 @@ export class GameplayRenderer {
     };
   }
 
-  private renderHexPositions(): void {
-    // Render all 37 hex positions with subtle outlines
-    const positions = getAllBoardPositions();
+  private renderHexPositions(radius: number): void {
+    // Render all hex positions with subtle outlines
+    const positions = getAllBoardPositions(radius);
 
     this.ctx.strokeStyle = "#666666"; // Dark gray outline
     this.ctx.lineWidth = 1;
@@ -575,9 +575,9 @@ export class GameplayRenderer {
     });
   }
 
-  private renderEdgeDirectionLabels(): void {
+  private renderEdgeDirectionLabels(radius: number): void {
     // Debug rendering: Label each edge with its direction number (0-5) inside each hexagon
-    const positions = getAllBoardPositions();
+    const positions = getAllBoardPositions(radius);
 
     this.ctx.fillStyle = "#ffffff"; // White for visibility
     this.ctx.font = `${this.layout.size * 0.25}px sans-serif`;
@@ -1016,6 +1016,7 @@ export class GameplayRenderer {
       placedTile,
       state.game.players,
       state.game.teams,
+      state.game.boardRadius,
     );
 
     // Get blocked players if move is illegal
@@ -1026,6 +1027,7 @@ export class GameplayRenderer {
         placedTile,
         state.game.players,
         state.game.teams,
+        state.game.boardRadius,
       );
       blockedPlayers = state.game.players.filter((p) =>
         blockedPlayerIds.includes(p.id),

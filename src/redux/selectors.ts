@@ -24,7 +24,7 @@ export const selectLegalPositions = (state: RootState): HexPosition[] => {
   }
 
   // Get all valid board positions
-  const allPositions = getAllBoardPositions();
+  const allPositions = getAllBoardPositions(state.game.boardRadius);
 
   // Filter to positions that are empty and legal
   return allPositions.filter((position) => {
@@ -41,7 +41,7 @@ export const selectLegalPositions = (state: RootState): HexPosition[] => {
       position,
     };
 
-    return isLegalMove(board, placedTile, players, teams);
+    return isLegalMove(board, placedTile, players, teams, state.game.boardRadius);
   });
 };
 
@@ -139,7 +139,7 @@ export const selectBlockedPlayers = (state: RootState): Player[] => {
     position: selectedPosition,
   };
 
-  const blockedPlayerIds = getBlockedPlayers(board, placedTile, players, teams);
+  const blockedPlayerIds = getBlockedPlayers(board, placedTile, players, teams, state.game.boardRadius);
   
   // Return the actual Player objects for the blocked players
   return players.filter(player => blockedPlayerIds.includes(player.id));

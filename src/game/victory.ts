@@ -20,11 +20,12 @@ export interface VictoryResult {
 // Uses hasViablePath with allowEmptyHexes=false to check if there's a path using only placed tiles
 export function checkPlayerFlowVictory(
   board: Map<string, PlacedTile>,
-  player: Player
+  player: Player,
+  boardRadius = 3
 ): boolean {
   const targetEdge = getOppositeEdge(player.edgePosition);
   // Use hasViablePath with allowEmptyHexes=false to check victory with only placed tiles
-  return hasViablePath(board, player, targetEdge, false, false) as boolean;
+  return hasViablePath(board, player, targetEdge, false, false, boardRadius) as boolean;
 }
 
 // Check if a team's flows connect their two edges (for 4-6 player games)
@@ -32,7 +33,8 @@ export function checkPlayerFlowVictory(
 export function checkTeamFlowVictory(
   board: Map<string, PlacedTile>,
   team: Team,
-  players: Player[]
+  players: Player[],
+  boardRadius = 3
 ): boolean {
   const player1 = players.find((p) => p.id === team.player1Id);
   const player2 = players.find((p) => p.id === team.player2Id);
@@ -43,13 +45,13 @@ export function checkTeamFlowVictory(
   
   // Check if player1's flow connects from edge1 to edge2
   // Use hasViablePath with allowEmptyHexes=false to check victory with only placed tiles
-  const path1 = hasViablePath(board, player1, player2.edgePosition, false, false) as boolean;
+  const path1 = hasViablePath(board, player1, player2.edgePosition, false, false, boardRadius) as boolean;
   if (path1) {
     return true;
   }
   
   // Check if player2's flow connects from edge2 to edge1
-  const path2 = hasViablePath(board, player2, player1.edgePosition, false, false) as boolean;
+  const path2 = hasViablePath(board, player2, player1.edgePosition, false, false, boardRadius) as boolean;
   return path2;
 }
 
@@ -57,14 +59,15 @@ export function checkTeamFlowVictory(
 export function checkFlowVictory(
   board: Map<string, PlacedTile>,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius = 3
 ): VictoryResult {
   const winners: string[] = [];
   
   // For team games (4-6 players)
   if (teams.length > 0) {
     for (const team of teams) {
-      if (checkTeamFlowVictory(board, team, players)) {
+      if (checkTeamFlowVictory(board, team, players, boardRadius)) {
         // Credit both players individually instead of the team
         winners.push(team.player1Id);
         winners.push(team.player2Id);
@@ -73,7 +76,7 @@ export function checkFlowVictory(
   } else {
     // For individual games (2-3 players)
     for (const player of players) {
-      if (checkPlayerFlowVictory(board, player)) {
+      if (checkPlayerFlowVictory(board, player, boardRadius)) {
         winners.push(player.id);
       }
     }
@@ -108,10 +111,11 @@ export function checkVictory(
   board: Map<string, PlacedTile>,
   players: Player[],
   teams: Team[],
-  currentTile?: TileType
+  currentTile?: TileType,
+  boardRadius = 3
 ): VictoryResult {
   // First check for flow victory
-  const flowVictory = checkFlowVictory(board, players, teams);
+  const flowVictory = checkFlowVictory(board, players, teams, boardRadius);
   if (flowVictory.winners.length > 0) {
     return flowVictory;
   }
