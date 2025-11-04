@@ -85,6 +85,9 @@ export class GameplayInputHandler {
           return;
         }
         
+        // Check if we're completing a supermove
+        const completingSupermove = state.game.supermoveInProgress;
+        
         store.dispatch(placeTile(
           state.ui.selectedPosition,
           state.ui.currentRotation
@@ -92,11 +95,10 @@ export class GameplayInputHandler {
         store.dispatch(setSelectedPosition(null));
         store.dispatch(setRotation(0));
         
-        // Only advance to next player if not in supermove
-        if (!state.game.supermoveInProgress) {
-          store.dispatch(nextPlayer());
-          store.dispatch(drawTile());
-        }
+        // Always advance to next player after placing a tile
+        // (even when completing supermove)
+        store.dispatch(nextPlayer());
+        store.dispatch(drawTile());
         return;
       }
       
