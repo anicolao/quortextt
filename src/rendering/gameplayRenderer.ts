@@ -35,10 +35,6 @@ const TILE_BG = "#2a2a2a"; // Dark gray
 const TILE_BORDER = "#444444"; // Slightly lighter gray
 const BUTTON_ICON = "#ffffff"; // White
 
-// Debug configuration
-const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on each hexagon
-const DEBUG_SHOW_VICTORY_EDGES = false; // Highlight victory condition edges for each player
-
 export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
   private layout: HexLayout;
@@ -73,12 +69,12 @@ export class GameplayRenderer {
     //this.renderSourceHexagonEdges(state);
 
     // Layer 2.7: Debug - Draw edge direction labels (0-5) inside each hexagon
-    if (DEBUG_SHOW_EDGE_LABELS) {
+    if (state.ui.settings.debugShowEdgeLabels) {
       this.renderEdgeDirectionLabels();
     }
 
     // Layer 2.8: Debug - Highlight victory condition edges
-    if (DEBUG_SHOW_VICTORY_EDGES) {
+    if (state.ui.settings.debugShowVictoryEdges) {
       this.renderVictoryConditionEdges(state);
     }
 
@@ -100,7 +96,7 @@ export class GameplayRenderer {
     this.renderExitButtons();
 
     // Layer 7: Debug legality test - show winning paths
-    if ((window as any).DEBUG_LEGALITY_TEST) {
+    if (state.ui.settings.debugLegalityTest) {
       this.renderDebugLegalityPaths(state);
     }
   }

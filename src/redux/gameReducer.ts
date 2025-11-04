@@ -28,6 +28,7 @@ import { positionToKey } from '../game/board';
 export const initialState: GameState = {
   screen: 'configuration',
   configPlayers: [],
+  boardRadius: 3,
   seatingPhase: {
     active: false,
     seatingOrder: [],
@@ -249,6 +250,7 @@ export function gameReducer(
         ...state,
         screen: 'seating',
         phase: 'seating',
+        boardRadius: action.payload?.boardRadius ?? state.boardRadius,
         seatingPhase: {
           active: true,
           seatingOrder,

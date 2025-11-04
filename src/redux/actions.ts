@@ -62,6 +62,9 @@ export interface ChangePlayerColorAction {
 
 export interface StartGameAction {
   type: typeof START_GAME;
+  payload?: {
+    boardRadius?: number;
+  };
 }
 
 export interface ReturnToConfigAction {
@@ -211,8 +214,9 @@ export const changePlayerColor = (
   payload: { playerId, color },
 });
 
-export const startGame = (): StartGameAction => ({
+export const startGame = (boardRadius?: number): StartGameAction => ({
   type: START_GAME,
+  payload: boardRadius ? { boardRadius } : undefined,
 });
 
 export const returnToConfig = (): ReturnToConfigAction => ({
