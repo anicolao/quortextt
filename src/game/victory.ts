@@ -83,8 +83,14 @@ export function checkFlowVictory(
     return { winners: [], winType: null };
   }
   
-  // Return all winning players
-  return { winners, winType: winners.length > players.length / 2 ? 'tie' : 'flow' };
+  // Determine if it's a tie (multiple winners/teams)
+  // In team games, check if multiple teams won (more than 2 winning players means multiple teams)
+  // In individual games, check if multiple players won
+  const isTie = teams.length > 0 
+    ? winners.length > 2  // Multiple teams won (each team has 2 players)
+    : winners.length > 1; // Multiple individual players won
+  
+  return { winners, winType: isTie ? 'tie' : 'flow' };
 }
 
 // Check if current tile cannot be placed legally anywhere
