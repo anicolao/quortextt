@@ -91,6 +91,11 @@ export class GameplayRenderer {
     // Layer 5: Action buttons (checkmark and X)
     this.renderActionButtons(state);
 
+    // Layer 5.5: Victory stars at player edges (if game is over)
+    if (state.game.screen === "game-over") {
+      this.renderVictoryStars(state);
+    }
+
     // Layer 6: Exit buttons in corners
     this.renderExitButtons();
 
@@ -345,6 +350,113 @@ export class GameplayRenderer {
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
     this.ctx.stroke();
+  }
+
+  // Render victory stars at player edges
+  private renderVictoryStars(state: RootState): void {
+    const { winners, players } = state.game;
+    if (winners.length === 0) return;
+
+    const center = this.layout.origin;
+    const boardRadius = this.layout.size * 7.2;
+    const boardVertices = this.getFlatTopHexVertices(center, boardRadius);
+
+    // Get the glow intensity for pulsing effect
+    const glowIntensity = victoryAnimationState.glowIntensity;
+
+    // Map edge positions to their midpoints on the board
+    const vertexMap = [
+      [4, 5], // Edge 0: Bottom
+      [5, 0], // Edge 1: Bottom-right
+      [0, 1], // Edge 2: Top-right
+      [1, 2], // Edge 3: Top
+      [2, 3], // Edge 4: Top-left
+      [3, 4], // Edge 5: Bottom-left
+    ];
+
+    // Group winners by edge position for handling multiple winners on same edge
+    const winnersByEdge = new Map<number, string[]>();
+    winners.forEach((playerId) => {
+      const player = players.find((p) => p.id === playerId);
+      if (player) {
+        const edge = player.edgePosition;
+        if (!winnersByEdge.has(edge)) {
+          winnersByEdge.set(edge, []);
+        }
+        winnersByEdge.get(edge)!.push(playerId);
+      }
+    });
+
+    // Render star at each winning player's edge
+    winnersByEdge.forEach((playerIds, edgePosition) => {
+      const [v1Index, v2Index] = vertexMap[edgePosition];
+      const v1 = boardVertices[v1Index];
+      const v2 = boardVertices[v2Index];
+      
+      // Calculate midpoint of the edge
+      const midpoint = {
+        x: (v1.x + v2.x) / 2,
+        y: (v1.y + v2.y) / 2,
+      };
+
+      // If multiple winners on same edge, alternate colors with pulse timing
+      if (playerIds.length > 1) {
+        // Use pulse to determine which color to show
+        // When glowIntensity < 0.75, show first player, else show second
+        const activePlayerIndex = glowIntensity < 0.75 ? 0 : 1;
+        const activePlayerId = playerIds[activePlayerIndex % playerIds.length];
+        const player = players.find((p) => p.id === activePlayerId);
+        if (player) {
+          this.drawStar(midpoint, this.layout.size * 0.4, player.color, glowIntensity);
+        }
+      } else {
+        // Single winner on this edge
+        const player = players.find((p) => p.id === playerIds[0]);
+        if (player) {
+          this.drawStar(midpoint, this.layout.size * 0.4, player.color, glowIntensity);
+        }
+      }
+    });
+  }
+
+  // Draw a star shape
+  private drawStar(
+    center: Point,
+    size: number,
+    color: string,
+    pulseIntensity: number
+  ): void {
+    const points = 5;
+    const outerRadius = size * (0.9 + 0.1 * pulseIntensity);
+    const innerRadius = outerRadius * 0.4;
+
+    this.ctx.save();
+
+    // Add glow effect
+    this.ctx.shadowBlur = 15 * pulseIntensity;
+    this.ctx.shadowColor = color;
+    this.ctx.globalAlpha = 0.9 + 0.1 * pulseIntensity;
+
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+
+    for (let i = 0; i < points * 2; i++) {
+      const angle = (Math.PI / points) * i - Math.PI / 2;
+      const radius = i % 2 === 0 ? outerRadius : innerRadius;
+      const x = center.x + Math.cos(angle) * radius;
+      const y = center.y + Math.sin(angle) * radius;
+
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.restore();
   }
 
   // Helper: Find closest point on a line segment to a given point
