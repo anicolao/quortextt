@@ -402,8 +402,9 @@ export class GameplayRenderer {
       // If multiple winners on same edge, alternate colors with pulse timing
       if (playerIds.length > 1) {
         // Use pulse to determine which color to show
-        // When glowIntensity < 0.75, show first player, else show second
-        const activePlayerIndex = glowIntensity < 0.75 ? 0 : 1;
+        // Threshold for alternating between colors (0.5 = halfway through pulse)
+        const COLOR_ALTERNATION_THRESHOLD = 0.75;
+        const activePlayerIndex = glowIntensity < COLOR_ALTERNATION_THRESHOLD ? 0 : 1;
         const activePlayerId = playerIds[activePlayerIndex % playerIds.length];
         const player = players.find((p) => p.id === activePlayerId);
         if (player) {
