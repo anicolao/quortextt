@@ -70,7 +70,7 @@ describe('victory conditions', () => {
       const flows = new Map<string, Set<string>>();
       const flowEdges = new Map<string, Map<Direction, string>>();
       
-      // Don't add player flow to the map - this tests line 27-29
+      // Don't add player flow to the map - tests the early return when flow doesn't exist
       expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
@@ -82,7 +82,7 @@ describe('victory conditions', () => {
       // Create a flow but without edge map for target positions
       const targetPos = getEdgePositions(3)[0]; // Target edge position
       flows.set('p1', new Set([positionToKey(targetPos)]));
-      // Don't add flowEdges for this position - this tests line 50-52
+      // Don't add flowEdges for this position - tests the continue path when edgeMap is missing
       
       expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
@@ -111,7 +111,7 @@ describe('victory conditions', () => {
       edgeMap.set(1, 'p1');
       flowEdges.set(positionToKey(targetEdge[0]), edgeMap);
       
-      // This tests line 68 - loops through but doesn't exit
+      // Tests the loop completion path when no positions exit the board
       expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
@@ -134,7 +134,7 @@ describe('victory conditions', () => {
       
       // Don't add flowEdges for any of these positions
       // This will test lines 51-52 (continue when edgeMap is missing)
-      // and line 68 (return false after checking all positions)
+      // and the relevant code path (return false after checking all positions)
       expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
 
@@ -165,7 +165,7 @@ describe('victory conditions', () => {
       expect(typeof result).toBe('boolean');
     });
 
-    it('should return false after checking all target positions with no exit - line 68', () => {
+    it('should return false after checking all target positions with no exit', () => {
       const player = createPlayer('p1', 0);
       const flows = new Map<string, Set<string>>();
       const flowEdges = new Map<string, Map<Direction, string>>();
@@ -188,7 +188,7 @@ describe('victory conditions', () => {
         flowEdges.set(positionToKey(pos), edgeMap);
       });
       
-      // This exercises line 68 - the return false after checking all positions
+      // Exercises the loop completion path when all positions are checked but none exit
       const result = checkPlayerFlowVictory(flows, flowEdges, player);
       expect(typeof result).toBe('boolean');
     });
@@ -280,7 +280,7 @@ describe('victory conditions', () => {
       // Create player1 flow that reaches player2's edge but without flowEdges
       const edge2Pos = getEdgePositions(3)[0];
       flows.set('p1', new Set([positionToKey(edge2Pos)]));
-      // Don't add flowEdges - this tests line 104-106
+      // Don't add flowEdges - this tests the relevant code path
       
       expect(checkTeamFlowVictory(flows, flowEdges, team, players)).toBe(false);
     });
@@ -311,7 +311,7 @@ describe('victory conditions', () => {
     });
 
     it('should return false when flow reaches edge but does not exit', () => {
-      // Test line 117 and 151 - when flow reaches the edge but doesn't exit
+      // Test the relevant code path and 151 - when flow reaches the edge but doesn't exit
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
       
@@ -350,7 +350,7 @@ describe('victory conditions', () => {
       expect(typeof result).toBe('boolean');
     });
 
-    it('should return false when player1 flow reaches edge2 but does not exit - line 117', () => {
+    it('should return false when player1 flow reaches edge2 but does not exit - the relevant code path', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
       
@@ -377,12 +377,12 @@ describe('victory conditions', () => {
       // Don't give player2 a flow
       flows.set('p2', new Set());
       
-      // This exercises line 117 - checking all positions in the loop
+      // This exercises the relevant code path - checking all positions in the loop
       const result1 = checkTeamFlowVictory(flows, flowEdges, team, players);
       expect(typeof result1).toBe('boolean');
     });
 
-    it('should check player2 flow path when player1 does not win - line 151', () => {
+    it('should check player2 flow path when player1 does not win - the relevant code path', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const team: Team = { player1Id: 'p1', player2Id: 'p2' };
       
@@ -409,7 +409,7 @@ describe('victory conditions', () => {
         flowEdges.set(positionToKey(pos), edgeMap);
       });
       
-      // This exercises line 151 - checking all edge1 positions in the loop
+      // This exercises the relevant code path - checking all edge1 positions in the loop
       const result = checkTeamFlowVictory(flows, flowEdges, team, players);
       expect(typeof result).toBe('boolean');
     });
