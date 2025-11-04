@@ -1021,6 +1021,7 @@ export class GameplayRenderer {
       state.game.players,
       state.game.teams,
       state.game.boardRadius,
+      state.ui.settings.supermove,
     );
 
     // Get blocked players if move is illegal

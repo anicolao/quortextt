@@ -22,6 +22,7 @@ export const COMPLETE_SEATING_PHASE = 'COMPLETE_SEATING_PHASE';
 // Gameplay actions
 export const DRAW_TILE = 'DRAW_TILE';
 export const PLACE_TILE = 'PLACE_TILE';
+export const REPLACE_TILE = 'REPLACE_TILE';
 
 // Game flow actions
 export const NEXT_PLAYER = 'NEXT_PLAYER';
@@ -123,6 +124,14 @@ export interface PlaceTileAction {
   };
 }
 
+export interface ReplaceTileAction {
+  type: typeof REPLACE_TILE;
+  payload: {
+    position: HexPosition;
+    rotation: Rotation;
+  };
+}
+
 // Game flow action types
 export interface NextPlayerAction {
   type: typeof NEXT_PLAYER;
@@ -183,6 +192,7 @@ export type GameAction =
   | CompleteSeatingPhaseAction
   | DrawTileAction
   | PlaceTileAction
+  | ReplaceTileAction
   | NextPlayerAction
   | EndGameAction
   | ResetGameAction;
@@ -256,6 +266,11 @@ export const drawTile = (): DrawTileAction => ({
 
 export const placeTile = (position: HexPosition, rotation: Rotation): PlaceTileAction => ({
   type: PLACE_TILE,
+  payload: { position, rotation },
+});
+
+export const replaceTile = (position: HexPosition, rotation: Rotation): ReplaceTileAction => ({
+  type: REPLACE_TILE,
   payload: { position, rotation },
 });
 

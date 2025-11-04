@@ -316,7 +316,8 @@ export function isLegalMove(
   tile: PlacedTile,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius = 3,
+  supermoveEnabled = false
 ): boolean {
   // A move is illegal if:
   // 1. The position is already occupied
@@ -331,7 +332,13 @@ export function isLegalMove(
     return true; // Victory moves are always legal
   }
   
-  // 3. It would block all paths for any player/team
+  // 3. With supermove enabled, all non-blocking moves are legal
+  // (blocking is allowed, player can use supermove to unblock)
+  if (supermoveEnabled) {
+    return true;
+  }
+  
+  // 4. It would block all paths for any player/team (standard rules)
   // Create temporary board with the new tile
   const testBoard = new Map(board);
   testBoard.set(posKey, tile);
@@ -530,4 +537,99 @@ export function getDebugPathInfo(
   }
   
   return debugInfo;
+}
+
+// Check if a specific player is currently blocked (has no viable path)
+export function isPlayerBlocked(
+  board: Map<string, PlacedTile>,
+  player: Player,
+  players: Player[],
+  teams: Team[],
+  boardRadius = 3
+): boolean {
+  // For team games, check if the player's team is blocked
+  if (teams.length > 0) {
+    // Find the team this player is on
+    const team = teams.find(t => t.player1Id === player.id || t.player2Id === player.id);
+    if (!team) return false;
+    
+    const player1 = players.find(p => p.id === team.player1Id);
+    const player2 = players.find(p => p.id === team.player2Id);
+    
+    if (!player1 || !player2) return false;
+    
+    // Team is blocked if neither player can reach the other
+    const path1 = hasViablePath(board, player1, player2.edgePosition, false, true, boardRadius);
+    const path2 = hasViablePath(board, player2, player1.edgePosition, false, true, boardRadius);
+    
+    return !path1 && !path2;
+  } else {
+    // Individual game - check if player can reach opposite edge
+    const targetEdge = getOppositeEdge(player.edgePosition);
+    return !hasViablePath(board, player, targetEdge, false, true, boardRadius);
+  }
+}
+
+// Check if replacing a tile at a position would unblock a specific player
+export function wouldReplacementUnblock(
+  board: Map<string, PlacedTile>,
+  replacementPosition: HexPosition,
+  newTile: PlacedTile,
+  player: Player,
+  players: Player[],
+  teams: Team[],
+  boardRadius = 3
+): boolean {
+  // First, check if player is currently blocked
+  if (!isPlayerBlocked(board, player, players, teams, boardRadius)) {
+    return false; // Player is not blocked, replacement not needed
+  }
+  
+  // Create a board with the replacement
+  const testBoard = new Map(board);
+  const posKey = positionToKey(replacementPosition);
+  
+  // Remove the old tile and place the new one
+  testBoard.set(posKey, newTile);
+  
+  // Check if the player is no longer blocked after replacement
+  return !isPlayerBlocked(testBoard, player, players, teams, boardRadius);
+}
+
+// Check if a replacement move is valid for supermove
+// A replacement is valid if:
+// 1. The player is currently blocked
+// 2. The replacement would unblock them
+// 3. The new tile being placed at the replacement position is valid
+export function isValidReplacementMove(
+  board: Map<string, PlacedTile>,
+  replacementPosition: HexPosition,
+  newTileType: TileType,
+  newRotation: Rotation,
+  currentPlayer: Player,
+  players: Player[],
+  teams: Team[],
+  boardRadius = 3
+): boolean {
+  const posKey = positionToKey(replacementPosition);
+  
+  // Position must be occupied
+  if (!board.has(posKey)) {
+    return false;
+  }
+  
+  // Player must be blocked
+  if (!isPlayerBlocked(board, currentPlayer, players, teams, boardRadius)) {
+    return false;
+  }
+  
+  // Create the new tile
+  const newTile: PlacedTile = {
+    type: newTileType,
+    rotation: newRotation,
+    position: replacementPosition,
+  };
+  
+  // Check if this replacement would unblock the player
+  return wouldReplacementUnblock(board, replacementPosition, newTile, currentPlayer, players, teams, boardRadius);
 }
