@@ -66,6 +66,8 @@ interface PathFindingResult {
   hasPath: boolean;
   visitedPositions?: Set<HexPosition>;
   pathToTarget?: HexPosition[];
+  visitedEdges?: EdgeNode[];
+  pathEdges?: EdgeNode[];
 }
 
 // Check if a player/team still has a viable path to victory
@@ -212,13 +214,21 @@ function hasViablePath(
   
   // Reconstruct path and get visited positions
   const visitedPositions = new Set<HexPosition>();
+  const visitedEdges: EdgeNode[] = [];
+  
   for (const key of visited) {
-    const [rowStr, colStr] = key.split(',');
+    const [rowStr, colStr, dirStr] = key.split(',');
     const pos: HexPosition = { row: parseInt(rowStr), col: parseInt(colStr) };
     visitedPositions.add(pos);
+    visitedEdges.push({
+      position: pos,
+      direction: parseInt(dirStr) as Direction,
+    });
   }
   
   const pathToTarget: HexPosition[] = [];
+  const pathEdges: EdgeNode[] = [];
+  
   if (hasPath && foundTargetKey) {
     // Reconstruct path from target back to start
     let current: string | undefined = foundTargetKey;
@@ -229,11 +239,16 @@ function hasViablePath(
       current = parent.get(current);
     }
     
-    // Convert to positions (reverse to get start-to-end order)
+    // Convert to positions and edges (reverse to get start-to-end order)
     pathKeys.reverse();
     for (const key of pathKeys) {
-      const [rowStr, colStr] = key.split(',');
+      const [rowStr, colStr, dirStr] = key.split(',');
       const pos: HexPosition = { row: parseInt(rowStr), col: parseInt(colStr) };
+      const dir = parseInt(dirStr) as Direction;
+      
+      // Add edge node
+      pathEdges.push({ position: pos, direction: dir });
+      
       // Only add unique positions
       if (pathToTarget.length === 0 || 
           pathToTarget[pathToTarget.length - 1].row !== pos.row ||
@@ -247,6 +262,8 @@ function hasViablePath(
     hasPath,
     visitedPositions,
     pathToTarget,
+    visitedEdges,
+    pathEdges,
   };
 }
 
@@ -426,8 +443,16 @@ export interface PlayerPathDebugInfo {
   hasPath: boolean;
   visitedPositions: HexPosition[];
   pathToTarget: HexPosition[];
+  visitedEdges: EdgeNode[];
+  pathEdges: EdgeNode[];
   startEdge: number;
   targetEdge: number;
+}
+
+// Export EdgeNode for use in rendering
+export interface EdgeNodeInfo {
+  position: HexPosition;
+  direction: Direction;
 }
 
 export function getDebugPathInfo(
@@ -452,6 +477,8 @@ export function getDebugPathInfo(
           hasPath: result1.hasPath,
           visitedPositions: Array.from(result1.visitedPositions || []),
           pathToTarget: result1.pathToTarget || [],
+          visitedEdges: result1.visitedEdges || [],
+          pathEdges: result1.pathEdges || [],
           startEdge: player1.edgePosition,
           targetEdge: player2.edgePosition,
         });
@@ -464,6 +491,8 @@ export function getDebugPathInfo(
           hasPath: result2.hasPath,
           visitedPositions: Array.from(result2.visitedPositions || []),
           pathToTarget: result2.pathToTarget || [],
+          visitedEdges: result2.visitedEdges || [],
+          pathEdges: result2.pathEdges || [],
           startEdge: player2.edgePosition,
           targetEdge: player1.edgePosition,
         });
@@ -481,6 +510,8 @@ export function getDebugPathInfo(
         hasPath: result.hasPath,
         visitedPositions: Array.from(result.visitedPositions || []),
         pathToTarget: result.pathToTarget || [],
+        visitedEdges: result.visitedEdges || [],
+        pathEdges: result.pathEdges || [],
         startEdge: player.edgePosition,
         targetEdge,
       });
