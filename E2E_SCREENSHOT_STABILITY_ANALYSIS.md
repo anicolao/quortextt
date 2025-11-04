@@ -190,15 +190,39 @@ Accept that screenshots vary by environment and:
 ### Immediate (This PR)
 ✅ **Regenerate all screenshots** with current environment - DONE
 
-### Short Term
-1. **Implement Solution 1 (Web Fonts)**: Bundle a web font for consistent text rendering
-2. **Add pixel tolerance**: Configure Playwright to accept minor differences
-3. **Document environment**: Add CI environment details to test output
+### Important Note on Additional Browser Flags
+Testing showed that adding additional GPU-related flags (`--disable-gpu`, `--use-gl=swiftshader`, etc.) causes MORE rendering differences rather than improving stability. The current flags are optimal:
+- `--font-render-hinting=none`
+- `--disable-font-subpixel-positioning`
+- `--disable-lcd-text`
 
-### Long Term
-1. **Consider Solution 3 (Docker)**: For complete environment consistency
-2. **Minimize text in screenshots**: Focus visual tests on actual game rendering
-3. **Monitor Chrome versions**: Track when Chrome updates affect rendering
+### Short Term (Recommended)
+1. **Accept regenerated screenshots**: The current screenshots are stable within the environment
+2. **Establish baseline**: Consider these the new baseline for this environment
+3. **Document environment**: Record Chrome/Playwright versions used
+
+### Medium Term (If cross-environment stability is needed)
+1. **Implement Solution 1 (Web Fonts)**: Bundle a web font for consistent text rendering across environments
+2. **Or implement Solution 2**: Remove text overlays from visual tests, move to assertions
+3. **Add pixel tolerance in CI**: Configure Playwright to accept minor differences (threshold ~15,000 pixels for text-heavy screenshots)
+
+### Long Term (If perfect reproducibility is required)
+1. **Implement Solution 3 (Docker)**: Run all e2e tests in containerized environment
+2. **Minimize text in screenshots**: Focus visual tests on actual game rendering only
+3. **Monitor Chrome versions**: Document when Chrome updates require screenshot regeneration
+
+## Experimentation Results
+
+### Testing Additional Browser Flags
+We tested adding the following flags to improve stability:
+- `--disable-skia-runtime-opts`
+- `--disable-accelerated-2d-canvas`
+- `--disable-gpu`
+- `--use-gl=swiftshader`
+
+**Result**: These flags caused MORE rendering differences (13,751+ pixels changed per screenshot) rather than improving stability. This is because they fundamentally change the rendering pipeline from hardware-accelerated to software rendering, which produces visibly different output.
+
+**Conclusion**: The current browser flags in playwright.config.ts are optimal and should not be modified.
 
 ## Files Modified
 
