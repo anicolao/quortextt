@@ -25,11 +25,8 @@ function wouldCauseVictory(
   const testBoard = new Map(board);
   testBoard.set(positionToKey(tile.position), tile);
   
-  // Calculate flows with the new tile
-  const { flows, flowEdges } = calculateFlows(testBoard, players);
-  
   // Check if this causes a victory
-  const victory = checkFlowVictory(flows, flowEdges, players, teams);
+  const victory = checkFlowVictory(testBoard, players, teams);
   
   return victory.winner !== null;
 }
@@ -72,11 +69,13 @@ interface PathFindingResult {
 
 // Check if a player/team still has a viable path to victory
 // Uses edge-based graph BFS: creates nodes for each tile edge and checks flow connectivity
-function hasViablePath(
+// allowEmptyHexes: if true, empty hexes are wildcards (for blocking detection); if false, empty hexes are dead ends (for victory detection)
+export function hasViablePath(
   board: Map<string, PlacedTile>,
   player: Player,
   targetEdge: number,
-  returnDebugInfo = false
+  returnDebugInfo = false,
+  allowEmptyHexes = true
 ): boolean | PathFindingResult {
   const startEdge = player.edgePosition;
   
@@ -129,8 +128,9 @@ function hasViablePath(
           addEdge(oppositeEdge, edge);
         }
       }
-    } else {
+    } else if (allowEmptyHexes) {
       // Empty tile: all edges can connect to each other (any tile could be placed)
+      // This is only used for blocking detection (allowEmptyHexes=true)
       // Connect all pairs of edges on this tile
       for (let dir1 = 0; dir1 < 6; dir1++) {
         for (let dir2 = dir1 + 1; dir2 < 6; dir2++) {
@@ -152,6 +152,7 @@ function hasViablePath(
         }
       }
     }
+    // else: Empty tile with allowEmptyHexes=false: don't connect any edges (dead end for victory detection)
   }
   
   // Now perform BFS from all start edge nodes to see if we can reach any target edge node
@@ -287,8 +288,8 @@ function allPlayersHaveViablePath(
       if (!player1 || !player2) continue;
       
       // Check if team has a viable path (either player can complete it)
-      const path1 = hasViablePath(board, player1, player2.edgePosition);
-      const path2 = hasViablePath(board, player2, player1.edgePosition);
+      const path1 = hasViablePath(board, player1, player2.edgePosition, false, true);
+      const path2 = hasViablePath(board, player2, player1.edgePosition, false, true);
       
       if (!path1 && !path2) {
         return false;
@@ -298,7 +299,7 @@ function allPlayersHaveViablePath(
     // For individual games
     for (const player of players) {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      if (!hasViablePath(board, player, targetEdge)) {
+      if (!hasViablePath(board, player, targetEdge, false, true)) {
         return false;
       }
     }
@@ -371,8 +372,8 @@ export function getBlockedPlayers(
       if (!player1 || !player2) continue;
       
       // Check if team has a viable path (either player can complete it)
-      const path1 = hasViablePath(testBoard, player1, player2.edgePosition);
-      const path2 = hasViablePath(testBoard, player2, player1.edgePosition);
+      const path1 = hasViablePath(testBoard, player1, player2.edgePosition, false, true);
+      const path2 = hasViablePath(testBoard, player2, player1.edgePosition, false, true);
       
       if (!path1 && !path2) {
         // Team is blocked - add both players
@@ -384,7 +385,7 @@ export function getBlockedPlayers(
     // Individual games - check each player
     for (const player of players) {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      if (!hasViablePath(testBoard, player, targetEdge)) {
+      if (!hasViablePath(testBoard, player, targetEdge, false, true)) {
         blockedPlayerIds.push(player.id);
       }
     }
