@@ -1,7 +1,7 @@
 // Victory condition checking for Quortex/Flows
 
 import { PlacedTile, Player, Team, TileType, Direction } from './types';
-import { getEdgePositions, getOppositeEdge, positionToKey, getNeighborInDirection, isValidPosition } from './board';
+import { getEdgePositions, getOppositeEdge, positionToKey, getNeighborInDirection, isValidPosition, getEdgePositionsWithDirections } from './board';
 import { canTileBePlacedAnywhere } from './legality';
 
 export type WinType = 'flow' | 'constraint' | 'tie';
@@ -12,6 +12,8 @@ export interface VictoryResult {
 }
 
 // Check if a player's flow connects their edges (for 2-3 player games)
+// A flow is victorious if it enters from the start edge (inward-facing directions)
+// and exits through the target edge (outward-facing directions)
 export function checkPlayerFlowVictory(
   flows: Map<string, Set<string>>,
   flowEdges: Map<string, Map<Direction, string>>,
@@ -20,57 +22,53 @@ export function checkPlayerFlowVictory(
   const playerEdge = player.edgePosition;
   const targetEdge = getOppositeEdge(playerEdge);
   
-  const startPositions = getEdgePositions(playerEdge);
-  
-  // We need to check if the flow connects start to target
   const playerFlow = flows.get(player.id);
   if (!playerFlow) {
     return false;
   }
   
-  // Check if any start position is in the flow
-  const hasStart = startPositions.some((pos) => playerFlow.has(positionToKey(pos)));
-  if (!hasStart) {
+  // Check if the flow enters from the start edge (inward-facing directions)
+  // getEdgePositionsWithDirections returns the specific inward-facing edges
+  const startEdgeNodes = getEdgePositionsWithDirections(playerEdge);
+  const hasStartEdge = startEdgeNodes.some(({ pos, dir }) => {
+    const posKey = positionToKey(pos);
+    if (!playerFlow.has(posKey)) {
+      return false;
+    }
+    const edgeMap = flowEdges.get(posKey);
+    if (!edgeMap) {
+      return false;
+    }
+    // Check if the player's flow uses this specific inward-facing edge
+    return edgeMap.get(dir) === player.id;
+  });
+  
+  if (!hasStartEdge) {
     return false;
   }
   
-  // Check if flow exits off the board through any position on the target edge
-  const targetPositions = getEdgePositions(targetEdge);
-  
-  for (const pos of targetPositions) {
+  // Check if the flow exits through the target edge (outward-facing directions)
+  // The outward-facing directions at the target edge are the same as the inward-facing
+  // directions returned by getEdgePositionsWithDirections for that edge
+  const targetEdgeNodes = getEdgePositionsWithDirections(targetEdge);
+  const exitsTargetEdge = targetEdgeNodes.some(({ pos, dir }) => {
     const posKey = positionToKey(pos);
-    
-    // First check if the player's flow includes this position
     if (!playerFlow.has(posKey)) {
-      continue;
+      return false;
     }
-    
-    // Check if player has a flow edge in any direction that leads off the board
     const edgeMap = flowEdges.get(posKey);
     if (!edgeMap) {
-      continue;
+      return false;
     }
-    
-    // Check all 6 directions to see if any lead off the board
-    for (let dir = 0; dir < 6; dir++) {
-      // Check if player has a flow edge in this direction
-      if (!edgeMap.has(dir as Direction)) {
-        continue;
-      }
-      
-      // Check if this direction leads off the board
-      const neighbor = getNeighborInDirection(pos, dir as Direction);
-      if (!isValidPosition(neighbor)) {
-        // Flow exits off the board in this direction - victory!
-        return true;
-      }
-    }
-  }
+    // Check if the player's flow uses this specific outward-facing edge
+    return edgeMap.get(dir) === player.id;
+  });
   
-  return false;
+  return exitsTargetEdge;
 }
 
 // Check if a team's flows connect their two edges (for 4-6 player games)
+// A team flow is victorious if one player's flow enters from their edge and exits through their teammate's edge
 export function checkTeamFlowVictory(
   flows: Map<string, Set<string>>,
   flowEdges: Map<string, Map<Direction, string>>,
@@ -84,37 +82,35 @@ export function checkTeamFlowVictory(
     return false;
   }
   
-  // Get edge positions for both players
-  const edge1Positions = getEdgePositions(player1.edgePosition);
-  const edge2Positions = getEdgePositions(player2.edgePosition);
-  
-  // Check if player1's flow exits off the board through player2's edge
+  // Check if player1's flow connects from edge1 to edge2
   const flow1 = flows.get(player1.id);
   if (flow1) {
-    const hasEdge1 = edge1Positions.some((pos) => flow1.has(positionToKey(pos)));
-    
-    // Check if flow exits off the board from any position on player2's edge
-    const exitsEdge2 = edge2Positions.some((pos) => {
+    // Check if flow enters from player1's edge (inward-facing directions)
+    const edge1Nodes = getEdgePositionsWithDirections(player1.edgePosition);
+    const hasEdge1 = edge1Nodes.some(({ pos, dir }) => {
       const posKey = positionToKey(pos);
       if (!flow1.has(posKey)) {
         return false;
       }
-      
       const edgeMap = flowEdges.get(posKey);
       if (!edgeMap) {
         return false;
       }
-      
-      // Check all directions to see if any lead off the board
-      for (let dir = 0; dir < 6; dir++) {
-        if (edgeMap.has(dir as Direction)) {
-          const neighbor = getNeighborInDirection(pos, dir as Direction);
-          if (!isValidPosition(neighbor)) {
-            return true;
-          }
-        }
+      return edgeMap.get(dir) === player1.id;
+    });
+    
+    // Check if flow exits through player2's edge (outward-facing directions)
+    const edge2Nodes = getEdgePositionsWithDirections(player2.edgePosition);
+    const exitsEdge2 = edge2Nodes.some(({ pos, dir }) => {
+      const posKey = positionToKey(pos);
+      if (!flow1.has(posKey)) {
+        return false;
       }
-      return false;
+      const edgeMap = flowEdges.get(posKey);
+      if (!edgeMap) {
+        return false;
+      }
+      return edgeMap.get(dir) === player1.id;
     });
     
     if (hasEdge1 && exitsEdge2) {
@@ -122,33 +118,35 @@ export function checkTeamFlowVictory(
     }
   }
   
-  // Check if player2's flow exits off the board through player1's edge
+  // Check if player2's flow connects from edge2 to edge1
   const flow2 = flows.get(player2.id);
   if (flow2) {
-    const hasEdge2 = edge2Positions.some((pos) => flow2.has(positionToKey(pos)));
-    
-    // Check if flow exits off the board from any position on player1's edge
-    const exitsEdge1 = edge1Positions.some((pos) => {
+    // Check if flow enters from player2's edge (inward-facing directions)
+    const edge2Nodes = getEdgePositionsWithDirections(player2.edgePosition);
+    const hasEdge2 = edge2Nodes.some(({ pos, dir }) => {
       const posKey = positionToKey(pos);
       if (!flow2.has(posKey)) {
         return false;
       }
-      
       const edgeMap = flowEdges.get(posKey);
       if (!edgeMap) {
         return false;
       }
-      
-      // Check all directions to see if any lead off the board
-      for (let dir = 0; dir < 6; dir++) {
-        if (edgeMap.has(dir as Direction)) {
-          const neighbor = getNeighborInDirection(pos, dir as Direction);
-          if (!isValidPosition(neighbor)) {
-            return true;
-          }
-        }
+      return edgeMap.get(dir) === player2.id;
+    });
+    
+    // Check if flow exits through player1's edge (outward-facing directions)
+    const edge1Nodes = getEdgePositionsWithDirections(player1.edgePosition);
+    const exitsEdge1 = edge1Nodes.some(({ pos, dir }) => {
+      const posKey = positionToKey(pos);
+      if (!flow2.has(posKey)) {
+        return false;
       }
-      return false;
+      const edgeMap = flowEdges.get(posKey);
+      if (!edgeMap) {
+        return false;
+      }
+      return edgeMap.get(dir) === player2.id;
     });
     
     if (hasEdge2 && exitsEdge1) {
