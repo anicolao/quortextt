@@ -142,7 +142,7 @@ export class GameplayRenderer {
     // Collect all the edge vertices that form the zig-zag pattern
     // Build an ordered list of edge segments (pairs of vertices)
     const zigzagEdges: Array<[Point, Point]> = [];
-    
+
     // Map direction to vertex pairs for pointy-top hexagons
     const vertexPairs = [
       [4, 5], // SouthWest (240°)
@@ -152,7 +152,7 @@ export class GameplayRenderer {
       [0, 1], // East (0°)
       [5, 0], // SouthEast (300°)
     ];
-    
+
     sourceEdges.forEach(({ pos, dir }) => {
       const hexCenter = hexToPixel(pos, this.layout);
       const vertices = getHexVertices(hexCenter, this.layout.size);
@@ -160,7 +160,7 @@ export class GameplayRenderer {
       const [v1Index, v2Index] = vertexPairs[dir];
       const v1 = vertices[v1Index];
       const v2 = vertices[v2Index];
-      
+
       zigzagEdges.push([v1, v2]);
     });
 
@@ -168,25 +168,26 @@ export class GameplayRenderer {
     // Determine the correct orientation of the first edge by checking which vertex
     // would connect to the second edge (if there is one)
     const [firstV1, firstV2] = zigzagEdges[0];
-    
+
     let zigzagVertices: Point[];
-    
+
     if (zigzagEdges.length > 1) {
       // Check which vertex of the first edge connects to the second edge
       const [secondV1, secondV2] = zigzagEdges[1];
-      
+
       // Check distances from firstV2 to second edge vertices
       const distFirstV2ToSecondV1 = this.distance(firstV2, secondV1);
       const distFirstV2ToSecondV2 = this.distance(firstV2, secondV2);
-      
+
       // Check distances from firstV1 to second edge vertices
       const distFirstV1ToSecondV1 = this.distance(firstV1, secondV1);
       const distFirstV1ToSecondV2 = this.distance(firstV1, secondV2);
-      
+
       // Determine which end of first edge connects to second edge
-      const firstV2ConnectsToSecond = Math.min(distFirstV2ToSecondV1, distFirstV2ToSecondV2) < 
-                                       Math.min(distFirstV1ToSecondV1, distFirstV1ToSecondV2);
-      
+      const firstV2ConnectsToSecond =
+        Math.min(distFirstV2ToSecondV1, distFirstV2ToSecondV2) <
+        Math.min(distFirstV1ToSecondV1, distFirstV1ToSecondV2);
+
       // If firstV2 connects to second edge, start with [firstV1, firstV2]
       // If firstV1 connects to second edge, start with [firstV2, firstV1]
       zigzagVertices = firstV2ConnectsToSecond
@@ -196,16 +197,16 @@ export class GameplayRenderer {
       // Only one edge, use default order
       zigzagVertices = [firstV1, firstV2];
     }
-    
+
     // Connect subsequent edges
     for (let i = 1; i < zigzagEdges.length; i++) {
       const [v1, v2] = zigzagEdges[i];
       const lastVertex = zigzagVertices[zigzagVertices.length - 1];
-      
+
       // Check which vertex of this edge is closer to the last vertex
       const distToV1 = this.distance(lastVertex, v1);
       const distToV2 = this.distance(lastVertex, v2);
-      
+
       if (distToV1 < distToV2) {
         // v1 is closer, so the edge goes v1 -> v2
         if (distToV1 > 0.1) {
@@ -336,12 +337,11 @@ export class GameplayRenderer {
 
     // Fill and stroke
     this.ctx.fillStyle = color;
-    this.ctx.globalAlpha = 0.3;
-    this.ctx.fill();
     this.ctx.globalAlpha = 1.0;
+    this.ctx.fill();
 
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = this.layout.size * 0.15;
+    this.ctx.strokeStyle = "black";
+    this.ctx.lineWidth = 4;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
     this.ctx.stroke();
