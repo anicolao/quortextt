@@ -159,15 +159,12 @@ function hasViablePath(
   const parent = new Map<string, string>(); // For path reconstruction
   const queue: string[] = [];
   
-  // Add only the specific outward-facing edges from the start edge as starting points
-  // These are the hex edges that face outward toward the board edge (where flow enters)
-  // getEdgePositionsWithDirections returns inward-facing edges, so we need the opposite
-  const startEdgeNodesInward = getEdgePositionsWithDirections(startEdge);
+  // Add only the specific inward-facing edges from the start edge as starting points
+  // These are the hex edges that face inward from the board edge
+  const startEdgeNodes = getEdgePositionsWithDirections(startEdge);
   
-  for (const { pos, dir } of startEdgeNodesInward) {
-    // Use the opposite direction to get the outward-facing edge
-    const outwardDir = getOppositeDirection(dir);
-    const edgeNode: EdgeNode = { position: pos, direction: outwardDir };
+  for (const { pos, dir } of startEdgeNodes) {
+    const edgeNode: EdgeNode = { position: pos, direction: dir };
     const key = edgeNodeKey(edgeNode);
     
     if (!visited.has(key)) {
@@ -180,14 +177,9 @@ function hasViablePath(
   let foundTargetKey: string | null = null;
   
   // Get the specific outward-facing edges on the target edge
-  // We want edges facing outward (toward the target board edge where flow exits)
-  // getEdgePositionsWithDirections returns inward-facing edges, so we need the opposite
-  const targetEdgeNodesInward = getEdgePositionsWithDirections(targetEdge);
+  const targetEdgeNodes = getEdgePositionsWithDirections(targetEdge);
   const targetEdgeKeys = new Set(
-    targetEdgeNodesInward.map(({ pos, dir }) => {
-      const outwardDir = getOppositeDirection(dir);
-      return edgeNodeKey({ position: pos, direction: outwardDir });
-    })
+    targetEdgeNodes.map(({ pos, dir }) => edgeNodeKey({ position: pos, direction: dir }))
   );
   
   // BFS
@@ -245,6 +237,11 @@ function hasViablePath(
     while (current && parent.get(current) !== '') {
       pathKeys.push(current);
       current = parent.get(current);
+    }
+    
+    // Add the starting node (which has parent === '')
+    if (current) {
+      pathKeys.push(current);
     }
     
     // Convert to positions and edges (reverse to get start-to-end order)
