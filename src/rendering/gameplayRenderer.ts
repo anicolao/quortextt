@@ -16,10 +16,11 @@ import {
   getEdgePositionsWithDirections,
   getOppositeEdge,
 } from "../game/board";
-import { TileType, PlacedTile } from "../game/types";
+import { TileType, PlacedTile, Direction } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 import { getFlowPreviewData } from "../animation/flowPreview";
 import { victoryAnimationState } from "../animation/victoryAnimations";
+import { isConnectionInWinningPath } from "../game/victory";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -366,7 +367,6 @@ export class GameplayRenderer {
     // Check if we should add victory glow
     const isGameOver = state.game.screen === 'game-over';
     const winnerId = state.game.winner;
-    let shouldGlow = false;
 
     connections.forEach(([dir1, dir2]) => {
       // Check both possible direction orderings for animation data
@@ -380,8 +380,17 @@ export class GameplayRenderer {
         const playerId = animData.playerId;
         const player = state.game.players.find((p) => p.id === playerId);
         if (player) {
-          // Check if this flow belongs to the winner
-          shouldGlow = isGameOver && winnerId !== null && this.isWinningFlow(winnerId, playerId, state);
+          // Check if this specific connection is part of the winning path
+          const shouldGlow = isGameOver && winnerId !== null && 
+            this.isWinningFlow(winnerId, playerId, state) &&
+            isConnectionInWinningPath(
+              tile.position,
+              animData.direction1 as Direction,
+              animData.direction2 as Direction,
+              playerId,
+              state.game.flows,
+              state.game.flowEdges
+            );
           
           // Use the actual flow direction from animation data
           this.drawFlowConnection(center, animData.direction1, animData.direction2, player.color, 1.0, false, shouldGlow);
@@ -395,8 +404,17 @@ export class GameplayRenderer {
           if (player1 && player1 === player2) {
             const player = state.game.players.find((p) => p.id === player1);
             if (player) {
-              // Check if this flow belongs to the winner
-              shouldGlow = isGameOver && winnerId !== null && this.isWinningFlow(winnerId, player1, state);
+              // Check if this specific connection is part of the winning path
+              const shouldGlow = isGameOver && winnerId !== null && 
+                this.isWinningFlow(winnerId, player1, state) &&
+                isConnectionInWinningPath(
+                  tile.position,
+                  dir1 as Direction,
+                  dir2 as Direction,
+                  player1,
+                  state.game.flows,
+                  state.game.flowEdges
+                );
               
               this.drawFlowConnection(center, dir1, dir2, player.color, 1.0, false, shouldGlow);
             }
