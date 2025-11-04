@@ -31,10 +31,6 @@ const TILE_BG = "#2a2a2a"; // Dark gray
 const TILE_BORDER = "#444444"; // Slightly lighter gray
 const BUTTON_ICON = "#ffffff"; // White
 
-// Player edge rendering constants
-const PLAYER_EDGE_FILL_OPACITY = 0.3; // Semi-transparent fill for player edge polygon
-const PERPENDICULAR_EXTENSION_FACTOR = 2; // How far perpendiculars extend inward (in hex sizes)
-
 // Debug configuration
 const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on each hexagon
 const DEBUG_SHOW_VICTORY_EDGES = false; // Highlight victory condition edges for each player
@@ -133,21 +129,39 @@ export class GameplayRenderer {
     edgePosition: number,
     color: string,
   ): void {
-    // Create a polygon that includes:
-    // 1. All outward-facing edges from source hexagons (zig-zag pattern)
-    // 2. Perpendicular lines at each end (perpendicular to board edge)
-    // 3. Board boundary segment to close the polygon
-
-    // Get all edge positions with their inward-facing directions
-    // (these are the edges where player flow enters the board)
-    const edgePositionsWithDirections = getEdgePositionsWithDirections(edgePosition);
+    // Create a polygon from the zig-zag of source edges plus perpendiculars to board boundary
     
-    if (edgePositionsWithDirections.length === 0) return;
-
-    // Get the board hexagon vertices
+    // Get all source edge positions and their vertices (the zig-zag)
+    const sourceEdges = getEdgePositionsWithDirections(edgePosition);
+    if (sourceEdges.length === 0) return;
+    
+    // Collect all the edge vertices that form the zig-zag pattern
+    const zigzagVertices: Point[] = [];
+    sourceEdges.forEach(({ pos, dir }) => {
+      const hexCenter = hexToPixel(pos, this.layout);
+      const vertices = getHexVertices(hexCenter, this.layout.size);
+      
+      // Map direction to vertex pairs for pointy-top hexagons
+      const vertexPairs = [
+        [4, 5], // SouthWest (240°)
+        [3, 4], // West (180°)
+        [2, 3], // NorthWest (120°)
+        [1, 2], // NorthEast (60°)
+        [0, 1], // East (0°)
+        [5, 0], // SouthEast (300°)
+      ];
+      
+      const [v1Index, v2Index] = vertexPairs[dir];
+      zigzagVertices.push(vertices[v1Index]);
+      zigzagVertices.push(vertices[v2Index]);
+    });
+    
+    // Get endpoints of the zig-zag (first and last vertices)
+    const firstEndpoint = zigzagVertices[0];
+    const lastEndpoint = zigzagVertices[zigzagVertices.length - 1];
+    
+    // Get the board hexagon vertices and edge
     const boardVertices = this.getFlatTopHexVertices(center, radius);
-    
-    // Map edge positions to board vertex indices (for flat-top hexagon)
     const vertexMap = [
       [4, 5], // Edge 0: Bottom
       [5, 0], // Edge 1: Bottom-right
@@ -156,84 +170,140 @@ export class GameplayRenderer {
       [2, 3], // Edge 4: Top-left
       [3, 4], // Edge 5: Bottom-left
     ];
-
-    const [boardV1Index, boardV2Index] = vertexMap[edgePosition];
-    const boardV1 = boardVertices[boardV1Index];
-    const boardV2 = boardVertices[boardV2Index];
-
-    // Calculate the board edge direction vector (from v1 to v2)
-    const boardEdgeVec = {
-      x: boardV2.x - boardV1.x,
-      y: boardV2.y - boardV1.y
-    };
-    const boardEdgeLength = Math.sqrt(boardEdgeVec.x * boardEdgeVec.x + boardEdgeVec.y * boardEdgeVec.y);
-    const boardEdgeUnit = {
-      x: boardEdgeVec.x / boardEdgeLength,
-      y: boardEdgeVec.y / boardEdgeLength
-    };
     
-    // Perpendicular to board edge (rotate 90 degrees inward)
-    const perpVec = {
-      x: -boardEdgeUnit.y,
-      y: boardEdgeUnit.x
-    };
-
-    // Build the polygon path
-    this.ctx.beginPath();
+    const [v1Index, v2Index] = vertexMap[edgePosition];
+    const boardV1 = boardVertices[v1Index];
+    const boardV2 = boardVertices[v2Index];
     
-    // Start at the first board vertex
-    this.ctx.moveTo(boardV1.x, boardV1.y);
+    // Find closest point on board edge to each endpoint
+    const closestToFirst = this.closestPointOnLineSegment(firstEndpoint, boardV1, boardV2);
+    const closestToLast = this.closestPointOnLineSegment(lastEndpoint, boardV1, boardV2);
     
-    // Draw perpendicular from first board vertex to first source edge
-    const firstEdge = edgePositionsWithDirections[0];
-    const firstHexCenter = hexToPixel(firstEdge.pos, this.layout);
-    const firstEdgeMidpoint = getEdgeMidpoint(firstHexCenter, this.layout.size, firstEdge.dir);
+    // Determine which endpoint is closer to the boundary
+    const distFirstToBoard = this.distance(firstEndpoint, closestToFirst);
+    const distLastToBoard = this.distance(lastEndpoint, closestToLast);
     
-    // Find intersection of perpendicular line from boardV1 with line through firstEdgeMidpoint
-    // Extend perpendicular inward by a fixed distance
-    const perpLength = this.layout.size * PERPENDICULAR_EXTENSION_FACTOR;
-    const perpEndpoint1 = {
-      x: boardV1.x + perpVec.x * perpLength,
-      y: boardV1.y + perpVec.y * perpLength
-    };
-    this.ctx.lineTo(perpEndpoint1.x, perpEndpoint1.y);
+    // The closer endpoint connects to its closest point, then to the further corner
+    // The farther endpoint connects to a 60° rotated version of the closest point
+    let closerEndpoint: Point;
+    let closestPoint: Point;
+    let fartherCorner: Point, nearerCorner: Point;
     
-    // Now draw to the first edge midpoint
-    this.ctx.lineTo(firstEdgeMidpoint.x, firstEdgeMidpoint.y);
-    
-    // Draw all the edge midpoints in sequence (creating zig-zag)
-    for (let i = 1; i < edgePositionsWithDirections.length; i++) {
-      const edge = edgePositionsWithDirections[i];
-      const hexCenter = hexToPixel(edge.pos, this.layout);
-      const edgeMidpoint = getEdgeMidpoint(hexCenter, this.layout.size, edge.dir);
-      this.ctx.lineTo(edgeMidpoint.x, edgeMidpoint.y);
+    if (distFirstToBoard < distLastToBoard) {
+      closerEndpoint = firstEndpoint;
+      closestPoint = closestToFirst;
+      
+      // Determine which corner is farther from the closest point
+      const distToV1 = this.distance(closestPoint, boardV1);
+      const distToV2 = this.distance(closestPoint, boardV2);
+      if (distToV1 > distToV2) {
+        fartherCorner = boardV1;
+        nearerCorner = boardV2;
+      } else {
+        fartherCorner = boardV2;
+        nearerCorner = boardV1;
+      }
+    } else {
+      closerEndpoint = lastEndpoint;
+      closestPoint = closestToLast;
+      
+      const distToV1 = this.distance(closestPoint, boardV1);
+      const distToV2 = this.distance(closestPoint, boardV2);
+      if (distToV1 > distToV2) {
+        fartherCorner = boardV1;
+        nearerCorner = boardV2;
+      } else {
+        fartherCorner = boardV2;
+        nearerCorner = boardV1;
+      }
     }
     
-    // Draw perpendicular from last edge position to board edge
-    const perpEndpoint2 = {
-      x: boardV2.x + perpVec.x * perpLength,
-      y: boardV2.y + perpVec.y * perpLength
-    };
-    this.ctx.lineTo(perpEndpoint2.x, perpEndpoint2.y);
+    // Calculate the 60° rotated point for the farther endpoint
+    // Rotate the closest point 60° around the board center
+    const rotatedPoint = this.rotatePointAround(closestPoint, center, Math.PI / 3); // 60° in radians
     
-    // Draw perpendicular to second board vertex
-    this.ctx.lineTo(boardV2.x, boardV2.y);
+    // Build the polygon
+    this.ctx.beginPath();
     
-    // Close the polygon along the board boundary (back to boardV1)
+    // Start from the farther corner
+    this.ctx.moveTo(fartherCorner.x, fartherCorner.y);
+    
+    // Go to the closest point
+    this.ctx.lineTo(closestPoint.x, closestPoint.y);
+    
+    // Connect to the closer endpoint
+    this.ctx.lineTo(closerEndpoint.x, closerEndpoint.y);
+    
+    // Draw all the zig-zag vertices
+    if (closerEndpoint === firstEndpoint) {
+      // Draw forward through the zig-zag
+      for (let i = 1; i < zigzagVertices.length; i++) {
+        this.ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
+      }
+    } else {
+      // Draw backward through the zig-zag
+      for (let i = zigzagVertices.length - 2; i >= 0; i--) {
+        this.ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
+      }
+    }
+    
+    // Connect to the rotated point
+    this.ctx.lineTo(rotatedPoint.x, rotatedPoint.y);
+    
+    // Go to the nearer corner
+    this.ctx.lineTo(nearerCorner.x, nearerCorner.y);
+    
+    // Close the polygon (back to farther corner)
     this.ctx.closePath();
     
-    // Fill the polygon with player color (semi-transparent)
+    // Fill and stroke
     this.ctx.fillStyle = color;
-    this.ctx.globalAlpha = PLAYER_EDGE_FILL_OPACITY;
+    this.ctx.globalAlpha = 0.3;
     this.ctx.fill();
     this.ctx.globalAlpha = 1.0;
     
-    // Stroke the polygon border for emphasis
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = this.layout.size * 0.15;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
     this.ctx.stroke();
+  }
+  
+  // Helper: Find closest point on a line segment to a given point
+  private closestPointOnLineSegment(point: Point, lineStart: Point, lineEnd: Point): Point {
+    const dx = lineEnd.x - lineStart.x;
+    const dy = lineEnd.y - lineStart.y;
+    const lengthSquared = dx * dx + dy * dy;
+    
+    if (lengthSquared === 0) return lineStart;
+    
+    let t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / lengthSquared;
+    t = Math.max(0, Math.min(1, t));
+    
+    return {
+      x: lineStart.x + t * dx,
+      y: lineStart.y + t * dy
+    };
+  }
+  
+  // Helper: Calculate distance between two points
+  private distance(p1: Point, p2: Point): number {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  
+  // Helper: Rotate a point around a center by an angle
+  private rotatePointAround(point: Point, center: Point, angle: number): Point {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    
+    return {
+      x: center.x + dx * cos - dy * sin,
+      y: center.y + dx * sin + dy * cos
+    };
   }
 
   private renderHexPositions(): void {
