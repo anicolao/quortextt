@@ -45,7 +45,7 @@ test.describe('Victory Animation', () => {
       store.dispatch({
         type: 'END_GAME',
         payload: {
-          winner,
+          winners: [winner],
           winType: 'flow'
         }
       });
@@ -57,9 +57,9 @@ test.describe('Victory Animation', () => {
     // Verify we're on the game-over screen
     state = await getReduxState(page);
     expect(state.game.screen).toBe('game-over');
-    expect(state.game.winner).not.toBeNull();
+    expect(state.game.winners.length).toBeGreaterThan(0);
     
-    console.log(`Winner: ${state.game.winner}, Win type: ${state.game.winType}`);
+    console.log(`Winners: ${state.game.winners}, Win type: ${state.game.winType}`);
     
     // Wait for initial animation to start (modal fade-in)
     await page.waitForTimeout(200);
@@ -121,21 +121,21 @@ test.describe('Victory Animation', () => {
     // Get team information and trigger victory
     let state = await getReduxState(page);
     const team = state.game.teams[0];
-    const teamWinner = `team-${team.player1Id}-${team.player2Id}`;
+    const winners = [team.player1Id, team.player2Id];
     
-    console.log(`Triggering team victory for: ${teamWinner}`);
+    console.log(`Triggering team victory for players: ${winners}`);
     
     // Trigger END_GAME action for team victory
-    await page.evaluate((winner) => {
+    await page.evaluate((winnerIds) => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({
         type: 'END_GAME',
         payload: {
-          winner,
+          winners: winnerIds,
           winType: 'flow'
         }
       });
-    }, teamWinner);
+    }, winners);
     
     await page.waitForTimeout(1000);
     
