@@ -234,3 +234,46 @@ export function checkVictory(
   
   return { winner: null, winType: null };
 }
+
+// Check if a specific flow connection is part of the winning path
+// A connection is part of the winning path if both directions lead to/from valid neighbors in the flow
+export function isConnectionInWinningPath(
+  position: { row: number; col: number },
+  dir1: Direction,
+  dir2: Direction,
+  playerId: string,
+  flows: Map<string, Set<string>>,
+  flowEdges: Map<string, Map<Direction, string>>
+): boolean {
+  const posKey = positionToKey(position);
+  const edgeMap = flowEdges.get(posKey);
+  
+  if (!edgeMap) return false;
+  
+  // Check if both directions belong to this player
+  if (edgeMap.get(dir1) !== playerId || edgeMap.get(dir2) !== playerId) {
+    return false;
+  }
+  
+  const playerFlow = flows.get(playerId);
+  if (!playerFlow) return false;
+  
+  // Check if at least one of the directions connects to another tile in the flow
+  // or exits off the board (for edge tiles)
+  const neighbor1 = getNeighborInDirection(position, dir1);
+  const neighbor2 = getNeighborInDirection(position, dir2);
+  
+  const neighbor1Valid = isValidPosition(neighbor1);
+  const neighbor2Valid = isValidPosition(neighbor2);
+  
+  // If neighbor1 is off-board but dir1 has the player's flow, it's part of the path
+  const dir1ConnectsToFlow = !neighbor1Valid || 
+    (neighbor1Valid && playerFlow.has(positionToKey(neighbor1)));
+  
+  // If neighbor2 is off-board but dir2 has the player's flow, it's part of the path  
+  const dir2ConnectsToFlow = !neighbor2Valid || 
+    (neighbor2Valid && playerFlow.has(positionToKey(neighbor2)));
+  
+  // The connection is in the winning path if both directions connect to the flow
+  return dir1ConnectsToFlow && dir2ConnectsToFlow;
+}
