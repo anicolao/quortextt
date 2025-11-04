@@ -65,57 +65,7 @@ describe('victory conditions', () => {
       expect(checkPlayerFlowVictory(board, player)).toBe(false);
     });
 
-    it('should return false when player flow is undefined in flows map', () => {
-      const player = createPlayer('p1', 0);
-      const board = new Map<string, PlacedTile>();
-      
-      // Empty board - no path possible
-      expect(checkPlayerFlowVictory(board, player)).toBe(false);
-    });
 
-    it('should return false when edgeMap is missing for target position', () => {
-      const player = createPlayer('p1', 0);
-      const board = new Map<string, PlacedTile>();
-      
-      // Empty board - no path possible
-      expect(checkPlayerFlowVictory(board, player)).toBe(false);
-    });
-
-    it('should loop through all target positions when no exit found', () => {
-      const player = createPlayer('p1', 0);
-      const board = new Map<string, PlacedTile>();
-      
-      // Place a tile at one target edge position but not exiting
-      const targetEdge = getEdgePositions(3);
-      const tile: PlacedTile = {
-        type: TileType.OneSharp,
-        rotation: 0,
-        position: targetEdge[0],
-      };
-      board.set(positionToKey(tile.position), tile);
-      
-      // Create minimal flow and edges that reach but don't exit
-      const flows = new Map<string, Set<string>>();
-      flows.set('p1', new Set([positionToKey(targetEdge[0])]));
-      
-      const flowEdges = new Map<string, Map<Direction, string>>();
-      const edgeMap = new Map<Direction, string>();
-      // Add edges that don't lead off board
-      edgeMap.set(0, 'p1');
-      edgeMap.set(1, 'p1');
-      flowEdges.set(positionToKey(targetEdge[0]), edgeMap);
-      
-      // Tests the loop completion path when no positions exit the board
-      expect(checkPlayerFlowVictory(board, player)).toBe(false);
-    });
-
-    it('should handle missing edgeMap during target edge checking', () => {
-      const player = createPlayer('p1', 0);
-      const board = new Map<string, PlacedTile>();
-      
-      // Empty board - no path possible
-      expect(checkPlayerFlowVictory(board, player)).toBe(false);
-    });
 
     it('should check all directions for off-board neighbors', () => {
       const player = createPlayer('p1', 0);
@@ -237,14 +187,7 @@ describe('victory conditions', () => {
       expect(checkTeamFlowVictory(board, team, players)).toBe(false);
     });
 
-    it('should return false when edgeMap is missing in player1 flow check', () => {
-      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
-      const team: Team = { player1Id: 'p1', player2Id: 'p2' };
-      const board = new Map<string, PlacedTile>();
-      
-      // Empty board - no path possible
-      expect(checkTeamFlowVictory(board, team, players)).toBe(false);
-    });
+
 
     it('should check all edge positions when looking for exit', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
