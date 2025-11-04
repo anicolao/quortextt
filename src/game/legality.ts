@@ -4,11 +4,11 @@ import { PlacedTile, Player, Team, HexPosition, TileType, Rotation, Direction } 
 import {
   getAllBoardPositions,
   positionToKey,
-  getEdgePositions,
   getOppositeEdge,
   getNeighborInDirection,
   getOppositeDirection,
   isValidPosition,
+  getEdgePositionsWithDirections,
 } from './board';
 import { calculateFlows } from './flows';
 import { checkFlowVictory } from './victory';
@@ -77,8 +77,6 @@ function hasViablePath(
   returnDebugInfo = false
 ): boolean | PathFindingResult {
   const startEdge = player.edgePosition;
-  const startPositions = getEdgePositions(startEdge);
-  const targetPositions = getEdgePositions(targetEdge);
   
   // Build edge connectivity graph
   // For each tile position, we create nodes for each of its 6 edges
@@ -159,42 +157,35 @@ function hasViablePath(
   const parent = new Map<string, string>(); // For path reconstruction
   const queue: string[] = [];
   
-  // Add all edges from start positions as starting points
-  // For edge positions, we need to consider the inward-facing edges
-  for (const pos of startPositions) {
-    for (let dir = 0; dir < 6; dir++) {
-      const direction = dir as Direction;
-      const edgeNode: EdgeNode = { position: pos, direction };
-      const key = edgeNodeKey(edgeNode);
-      
-      if (!visited.has(key)) {
-        queue.push(key);
-        visited.add(key);
-        parent.set(key, ''); // Mark as starting node
-      }
+  // Add only the specific inward-facing edges from the start edge as starting points
+  // These are the hex edges that face inward from the board edge
+  const startEdgeNodes = getEdgePositionsWithDirections(startEdge);
+  
+  for (const { pos, dir } of startEdgeNodes) {
+    const edgeNode: EdgeNode = { position: pos, direction: dir };
+    const key = edgeNodeKey(edgeNode);
+    
+    if (!visited.has(key)) {
+      queue.push(key);
+      visited.add(key);
+      parent.set(key, ''); // Mark as starting node
     }
   }
   
   let foundTargetKey: string | null = null;
   
+  // Get the specific outward-facing edges on the target edge
+  const targetEdgeNodes = getEdgePositionsWithDirections(targetEdge);
+  const targetEdgeKeys = new Set(
+    targetEdgeNodes.map(({ pos, dir }) => edgeNodeKey({ position: pos, direction: dir }))
+  );
+  
   // BFS
   while (queue.length > 0) {
     const currentKey = queue.shift()!;
     
-    // Parse current node
-    const [rowStr, colStr, dirStr] = currentKey.split(',');
-    const currentNode: EdgeNode = {
-      position: { row: parseInt(rowStr), col: parseInt(colStr) },
-      direction: parseInt(dirStr) as Direction,
-    };
-    
-    // Check if we've reached any target position
-    const isTarget = targetPositions.some(targetPos => 
-      targetPos.row === currentNode.position.row && 
-      targetPos.col === currentNode.position.col
-    );
-    
-    if (isTarget) {
+    // Check if we've reached any target edge node
+    if (targetEdgeKeys.has(currentKey)) {
       foundTargetKey = currentKey;
       break;
     }
