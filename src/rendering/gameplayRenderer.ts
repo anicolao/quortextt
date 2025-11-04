@@ -403,48 +403,7 @@ export class GameplayRenderer {
     });
   }
 
-  private renderSourceHexagonEdges(state: RootState): void {
-    // For each player, color the edges of their source hexagons
-    if (state.game.players.length === 0) return;
 
-    state.game.players.forEach((player) => {
-      // Get all source edge positions and directions for this player
-      const sourceEdges = getEdgePositionsWithDirections(player.edgePosition);
-
-      // For each source edge, draw a colored line on the hexagon edge
-      sourceEdges.forEach(({ pos, dir }) => {
-        const center = hexToPixel(pos, this.layout);
-
-        // Get the two vertices that define this edge
-        const vertices = getHexVertices(center, this.layout.size);
-
-        // Map direction to vertex pairs for pointy-top hexagons
-        // Direction enum: SouthWest=0, West=1, NorthWest=2, NorthEast=3, East=4, SouthEast=5
-        const vertexPairs = [
-          [4, 5], // SouthWest (240°)
-          [3, 4], // West (180°)
-          [2, 3], // NorthWest (120°)
-          [1, 2], // NorthEast (60°)
-          [0, 1], // East (0°)
-          [5, 0], // SouthEast (300°)
-        ];
-
-        const [v1Index, v2Index] = vertexPairs[dir];
-        const v1 = vertices[v1Index];
-        const v2 = vertices[v2Index];
-
-        // Draw a thick colored line for this edge
-        this.ctx.strokeStyle = player.color;
-        this.ctx.lineWidth = this.layout.size * 0.2; // Thick edge
-        this.ctx.lineCap = "round";
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(v1.x, v1.y);
-        this.ctx.lineTo(v2.x, v2.y);
-        this.ctx.stroke();
-      });
-    });
-  }
 
   private renderVictoryConditionEdges(state: RootState): void {
     // Debug rendering: Highlight the victory condition edges
@@ -600,7 +559,7 @@ export class GameplayRenderer {
 
     // Check if we should add victory glow
     const isGameOver = state.game.screen === "game-over";
-    const winnerId = state.game.winner;
+    const winnerIds = state.game.winners;
 
     connections.forEach(([dir1, dir2]) => {
       // Check both possible direction orderings for animation data
@@ -617,8 +576,7 @@ export class GameplayRenderer {
           // Check if this specific connection is part of the winning path
           const shouldGlow =
             isGameOver &&
-            winnerId !== null &&
-            this.isWinningFlow(winnerId, playerId, state) &&
+            winnerIds.includes(playerId) &&
             isConnectionInWinningPath(
               tile.position,
               animData.direction1 as Direction,
@@ -651,8 +609,7 @@ export class GameplayRenderer {
               // Check if this specific connection is part of the winning path
               const shouldGlow =
                 isGameOver &&
-                winnerId !== null &&
-                this.isWinningFlow(winnerId, player1, state) &&
+                winnerIds.includes(player1) &&
                 isConnectionInWinningPath(
                   tile.position,
                   dir1 as Direction,
@@ -678,27 +635,7 @@ export class GameplayRenderer {
     });
   }
 
-  private isWinningFlow(
-    winnerId: string,
-    playerId: string,
-    state: RootState,
-  ): boolean {
-    // Check if the flow belongs to the winning player or team
-    if (winnerId === playerId) {
-      return true;
-    }
 
-    // Check if it's a team victory
-    const team = state.game.teams.find(
-      (t) => `team-${t.player1Id}-${t.player2Id}` === winnerId,
-    );
-
-    if (team && (team.player1Id === playerId || team.player2Id === playerId)) {
-      return true;
-    }
-
-    return false;
-  }
 
   private renderAnimatingFlows(tile: PlacedTile, state: RootState): void {
     const center = hexToPixel(tile.position, this.layout);

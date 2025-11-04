@@ -12,7 +12,7 @@ import { canTileBePlacedAnywhere, hasViablePath } from './legality';
 export type WinType = 'flow' | 'constraint' | 'tie';
 
 export interface VictoryResult {
-  readonly winner: string | null; // Player ID or Team ID
+  readonly winners: string[]; // Array of player IDs who won
   readonly winType: WinType | null;
 }
 
@@ -65,7 +65,9 @@ export function checkFlowVictory(
   if (teams.length > 0) {
     for (const team of teams) {
       if (checkTeamFlowVictory(board, team, players)) {
-        winners.push(`team-${team.player1Id}-${team.player2Id}`);
+        // Credit both players individually instead of the team
+        winners.push(team.player1Id);
+        winners.push(team.player2Id);
       }
     }
   } else {
@@ -78,15 +80,11 @@ export function checkFlowVictory(
   }
   
   if (winners.length === 0) {
-    return { winner: null, winType: null };
+    return { winners: [], winType: null };
   }
   
-  if (winners.length === 1) {
-    return { winner: winners[0], winType: 'flow' };
-  }
-  
-  // Multiple winners = tie
-  return { winner: winners.join(','), winType: 'tie' };
+  // Return all winning players
+  return { winners, winType: winners.length > players.length / 2 ? 'tie' : 'flow' };
 }
 
 // Check if current tile cannot be placed legally anywhere
@@ -108,7 +106,7 @@ export function checkVictory(
 ): VictoryResult {
   // First check for flow victory
   const flowVictory = checkFlowVictory(board, players, teams);
-  if (flowVictory.winner) {
+  if (flowVictory.winners.length > 0) {
     return flowVictory;
   }
   
@@ -119,11 +117,11 @@ export function checkVictory(
       // In constraint victory, the current player wins
       // We'll need to pass current player info for this to work properly
       // For now, return a placeholder
-      return { winner: 'constraint', winType: 'constraint' };
+      return { winners: ['constraint'], winType: 'constraint' };
     }
   }
   
-  return { winner: null, winType: null };
+  return { winners: [], winType: null };
 }
 
 // Check if a specific flow connection is part of the winning path

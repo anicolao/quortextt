@@ -81,11 +81,11 @@ export const selectIsPositionHovered = (state: RootState, position: HexPosition)
 
 // Get game status information
 export const selectGameStatus = (state: RootState) => {
-  const { phase, winner, winType, players, currentPlayerIndex } = state.game;
+  const { phase, winners, winType, players, currentPlayerIndex } = state.game;
   
   return {
     phase,
-    winner,
+    winners,
     winType,
     currentPlayer: players[currentPlayerIndex] || null,
     isGameOver: phase === 'finished',

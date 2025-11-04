@@ -44,7 +44,7 @@ export const initialState: GameState = {
   flows: new Map(),
   flowEdges: new Map(),
   phase: 'setup',
-  winner: null,
+  winners: [],
   winType: null,
   moveHistory: [],
 };
@@ -280,7 +280,7 @@ export function gameReducer(
         currentTile: null,
         flows: new Map(),
         flowEdges: new Map(),
-        winner: null,
+        winners: [],
         winType: null,
         moveHistory: [],
       };
@@ -400,7 +400,7 @@ export function gameReducer(
           currentTile,
           flows: new Map(),
           flowEdges: new Map(),
-          winner: null,
+          winners: [],
           winType: null,
           moveHistory: [],
           seatingPhase: {
@@ -494,11 +494,11 @@ export function gameReducer(
       };
 
       // If there's a winner, update game state
-      if (victoryResult.winner !== null) {
+      if (victoryResult.winners.length > 0) {
         return {
           ...newState,
           phase: 'finished',
-          winner: victoryResult.winner,
+          winners: victoryResult.winners,
           winType: victoryResult.winType,
           screen: 'game-over',
         };
@@ -515,12 +515,12 @@ export function gameReducer(
     }
 
     case END_GAME: {
-      const { winner, winType } = action.payload;
+      const { winners, winType } = action.payload;
       
       return {
         ...state,
         phase: 'finished',
-        winner,
+        winners,
         winType,
         screen: 'game-over',
       };

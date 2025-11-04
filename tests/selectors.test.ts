@@ -172,7 +172,7 @@ describe('Redux Selectors', () => {
       const status = selectGameStatus(state);
 
       expect(status.phase).toBe('setup');
-      expect(status.winner).toBeNull();
+      expect(status.winners).toEqual([]);
       expect(status.winType).toBeNull();
       expect(status.currentPlayer).toBeNull();
       expect(status.isGameOver).toBe(false);
@@ -183,14 +183,14 @@ describe('Redux Selectors', () => {
         game: {
           ...initialGameState,
           phase: 'finished',
-          winner: 'p1',
+          winners: ['p1'],
           winType: 'flow',
         },
       });
 
       const status = selectGameStatus(state);
       expect(status.isGameOver).toBe(true);
-      expect(status.winner).toBe('p1');
+      expect(status.winners).toEqual(['p1']);
       expect(status.winType).toBe('flow');
     });
   });

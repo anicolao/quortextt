@@ -27,7 +27,7 @@ function wouldCauseVictory(
   // Check if this causes a victory
   const victory = checkFlowVictory(testBoard, players, teams);
   
-  return victory.winner !== null;
+  return victory.winners.length > 0;
 }
 
 // Represents a node in the edge graph: a specific edge of a specific hex tile

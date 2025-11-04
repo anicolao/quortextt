@@ -66,7 +66,7 @@ export interface GameState {
   
   // Game status
   phase: GamePhase;
-  winner: string | null;  // Player ID or Team ID
+  winners: string[];  // Array of player IDs who won
   winType: WinType | null;
   
   // Move history
