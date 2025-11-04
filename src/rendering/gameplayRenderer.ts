@@ -394,27 +394,40 @@ export class GameplayRenderer {
       const v2 = boardVertices[v2Index];
       
       // Calculate midpoint of the edge
-      const midpoint = {
+      const edgeMidpoint = {
         x: (v1.x + v2.x) / 2,
         y: (v1.y + v2.y) / 2,
       };
 
+      // Move star outward from center so it's fully visible beyond the edge
+      // Calculate direction vector from board center to edge midpoint
+      const dx = edgeMidpoint.x - center.x;
+      const dy = edgeMidpoint.y - center.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const offsetDistance = this.layout.size * 0.8; // Move star outward
+      
+      const starPosition = {
+        x: edgeMidpoint.x + (dx / distance) * offsetDistance,
+        y: edgeMidpoint.y + (dy / distance) * offsetDistance,
+      };
+
       // If multiple winners on same edge, alternate colors with pulse timing
       if (playerIds.length > 1) {
-        // Use pulse to determine which color to show
-        // Threshold for alternating between colors (0.5 = halfway through pulse)
-        const COLOR_ALTERNATION_THRESHOLD = 0.75;
-        const activePlayerIndex = glowIntensity < COLOR_ALTERNATION_THRESHOLD ? 0 : 1;
+        // Use pulse intensity to alternate: when intensity is increasing (> 0.75), show first player
+        // when decreasing (< 0.75), show second player. This creates a clear alternation.
+        // Since glowIntensity oscillates 0.5 -> 1.0 -> 0.5, we use 0.75 as the midpoint
+        // to switch colors cleanly
+        const activePlayerIndex = glowIntensity > 0.75 ? 0 : 1;
         const activePlayerId = playerIds[activePlayerIndex % playerIds.length];
         const player = players.find((p) => p.id === activePlayerId);
         if (player) {
-          this.drawStar(midpoint, this.layout.size * 0.4, player.color, glowIntensity);
+          this.drawStar(starPosition, this.layout.size * 0.4, player.color, glowIntensity);
         }
       } else {
         // Single winner on this edge
         const player = players.find((p) => p.id === playerIds[0]);
         if (player) {
-          this.drawStar(midpoint, this.layout.size * 0.4, player.color, glowIntensity);
+          this.drawStar(starPosition, this.layout.size * 0.4, player.color, glowIntensity);
         }
       }
     });
