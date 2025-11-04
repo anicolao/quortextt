@@ -1,11 +1,10 @@
 // End-to-end test for flow propagation from player edges
 // This test verifies that flows only enter from hex edges that belong to the player's board edge
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
 // Helper to setup a game with two players
 async function setupTwoPlayerGame(page: any) {
-  await enableDeterministicPlayerIds(page);
   
   const canvas = page.locator('canvas#game-canvas');
   const box = await canvas.boundingBox();

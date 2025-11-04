@@ -1,7 +1,7 @@
 // E2E test for a complete 2-player game user story
 // This test demonstrates a full game from setup to victory
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
 
 test.describe('Complete 2-Player Game', () => {
   // Test configuration constants
@@ -12,7 +12,6 @@ test.describe('Complete 2-Player Game', () => {
   test('should play through multiple turns and verify flow edge data matches rendered flows', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
-    await enableDeterministicPlayerIds(page);
     
     // === STEP 1: Initial configuration screen ===
     await pauseAnimations(page);

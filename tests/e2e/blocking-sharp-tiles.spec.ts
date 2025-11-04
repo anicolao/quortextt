@@ -1,13 +1,12 @@
 // E2E test for blocking detection with three-sharp tiles
 // Tests that blocking moves are properly prevented in the UI
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
 test.describe('Blocking Detection with Three-Sharp Tiles', () => {
   test('should prevent blocking moves when using only three-sharp tiles', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
-    await enableDeterministicPlayerIds(page);
     
     // Add two players
     await page.evaluate(() => {
