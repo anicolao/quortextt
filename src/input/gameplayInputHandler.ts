@@ -1,12 +1,12 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, placeTile, nextPlayer, drawTile, resetGame } from '../redux/actions';
+import { setRotation, setSelectedPosition, placeTile, replaceTile, nextPlayer, drawTile, resetGame } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
-import { isValidPosition } from '../game/board';
-import { isLegalMove } from '../game/legality';
+import { isValidPosition, positionToKey } from '../game/board';
+import { isLegalMove, isValidReplacementMove } from '../game/legality';
 
 export class GameplayInputHandler {
   private renderer: GameplayRenderer;
@@ -39,15 +39,47 @@ export class GameplayInputHandler {
         Math.pow(canvasX - checkPos.x, 2) + Math.pow(canvasY - checkPos.y, 2)
       );
       if (distToCheck < buttonSize / 2) {
-        // Checkmark clicked - place the tile
-        // Check if placement is legal first
+        // Checkmark clicked - place or replace the tile
+        const posKey = positionToKey(state.ui.selectedPosition);
+        const isOccupied = state.game.board.has(posKey);
+        const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+        
+        // Check if this is a replacement move (for supermove)
+        if (isOccupied && state.ui.settings.supermove && currentPlayer) {
+          // Validate replacement move
+          if (!isValidReplacementMove(
+            state.game.board,
+            state.ui.selectedPosition,
+            state.game.currentTile,
+            state.ui.currentRotation,
+            currentPlayer,
+            state.game.players,
+            state.game.teams,
+            state.game.boardRadius
+          )) {
+            // Replacement is not valid
+            return;
+          }
+          
+          // Perform replacement
+          store.dispatch(replaceTile(
+            state.ui.selectedPosition,
+            state.ui.currentRotation
+          ));
+          store.dispatch(setSelectedPosition(null));
+          store.dispatch(setRotation(0));
+          // Don't advance to next player - they get to place the replaced tile
+          return;
+        }
+        
+        // Normal placement (not a replacement)
         const placedTile = {
           type: state.game.currentTile,
           rotation: state.ui.currentRotation,
           position: state.ui.selectedPosition,
         };
         
-        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams, state.game.boardRadius)) {
+        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams, state.game.boardRadius, state.ui.settings.supermove)) {
           // Move is illegal - don't allow placement
           // The UI should already show the button as disabled
           return;
@@ -60,9 +92,11 @@ export class GameplayInputHandler {
         store.dispatch(setSelectedPosition(null));
         store.dispatch(setRotation(0));
         
-        // Advance to next player and draw tile for them
-        store.dispatch(nextPlayer());
-        store.dispatch(drawTile());
+        // Only advance to next player if not in supermove
+        if (!state.game.supermoveInProgress) {
+          store.dispatch(nextPlayer());
+          store.dispatch(drawTile());
+        }
         return;
       }
       
@@ -99,6 +133,15 @@ export class GameplayInputHandler {
     
     // Verify this is a valid board position
     if (isValidPosition(hexPos)) {
+      const posKey = positionToKey(hexPos);
+      const isOccupied = state.game.board.has(posKey);
+      
+      // Allow selecting occupied positions only if supermove is enabled and player is blocked
+      if (isOccupied && !state.ui.settings.supermove) {
+        // Can't select occupied positions in standard mode
+        return;
+      }
+      
       // Set the selected position
       store.dispatch(setSelectedPosition(hexPos));
       return;

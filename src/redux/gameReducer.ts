@@ -15,6 +15,7 @@ import {
   COMPLETE_SEATING_PHASE,
   DRAW_TILE,
   PLACE_TILE,
+  REPLACE_TILE,
   NEXT_PLAYER,
   END_GAME,
   RESET_GAME,
@@ -48,6 +49,7 @@ export const initialState: GameState = {
   winners: [],
   winType: null,
   moveHistory: [],
+  supermoveInProgress: false,
 };
 
 // Helper function to generate unique player ID
@@ -493,12 +495,77 @@ export function gameReducer(
         flows: newFlows,
         flowEdges: newFlowEdges,
         moveHistory: [...state.moveHistory, move],
+        supermoveInProgress: false, // Clear supermove flag after placing tile
       };
 
       // If there's a winner, update game state
       if (victoryResult.winners.length > 0) {
         return {
           ...newState,
+          phase: 'finished',
+          winners: victoryResult.winners,
+          winType: victoryResult.winType,
+          screen: 'game-over',
+        };
+      }
+
+      return newState;
+    }
+
+    case REPLACE_TILE: {
+      // Handle supermove tile replacement
+      if (state.currentTile === null) {
+        return state;
+      }
+
+      const { position, rotation } = action.payload;
+      const posKey = positionToKey(position);
+
+      // Position must be occupied for replacement
+      const oldTile = state.board.get(posKey);
+      if (!oldTile) {
+        return state;
+      }
+
+      // Create new placed tile from current tile in hand
+      const newPlacedTile = {
+        type: state.currentTile,
+        rotation,
+        position,
+      };
+
+      // Update board with replacement
+      const newBoard = new Map(state.board);
+      newBoard.set(posKey, newPlacedTile);
+
+      // Calculate new flows
+      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players, state.boardRadius);
+
+      // Check for victory
+      const victoryResult = checkVictory(newBoard, state.players, state.teams, undefined, state.boardRadius);
+
+      // Add to move history (replacement move)
+      const move = {
+        playerId: state.players[state.currentPlayerIndex].id,
+        tile: newPlacedTile,
+        timestamp: Date.now(),
+      };
+
+      const newState: GameState = {
+        ...state,
+        board: newBoard,
+        currentTile: oldTile.type, // The replaced tile is now in hand
+        flows: newFlows,
+        flowEdges: newFlowEdges,
+        moveHistory: [...state.moveHistory, move],
+        supermoveInProgress: true, // Mark that we're in the middle of a supermove
+      };
+
+      // If there's a winner, update game state
+      if (victoryResult.winners.length > 0) {
+        return {
+          ...newState,
+          supermoveInProgress: false,
           phase: 'finished',
           winners: victoryResult.winners,
           winType: victoryResult.winType,

@@ -61,6 +61,9 @@ export interface GameState {
   availableTiles: TileType[];      // Shuffled deck
   currentTile: TileType | null;    // Tile in hand
   
+  // Supermove state
+  supermoveInProgress: boolean;    // True when player has replaced a tile and needs to place it
+  
   // Flow tracking
   flows: Map<string, Set<string>>; // Player ID -> set of hex positions
   flowEdges: Map<string, Map<number, string>>; // position key -> direction -> player ID
