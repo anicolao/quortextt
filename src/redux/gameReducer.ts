@@ -474,7 +474,7 @@ export function gameReducer(
       const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players);
 
       // Check for victory
-      const victoryResult = checkVictory(newBoard, newFlows, newFlowEdges, state.players, state.teams);
+      const victoryResult = checkVictory(newBoard, state.players, state.teams);
 
       // Add to move history
       const move = {
