@@ -10,3 +10,4 @@ coverage/
 *.js.map
 !playwright.config.ts
 !vitest.config.ts
+victory-animation-*.png
