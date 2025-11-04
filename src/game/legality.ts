@@ -10,7 +10,6 @@ import {
   isValidPosition,
   getEdgePositionsWithDirections,
 } from './board';
-import { calculateFlows } from './flows';
 import { checkFlowVictory } from './victory';
 import { getFlowConnections } from './tiles';
 
