@@ -46,6 +46,7 @@ export interface GameState {
   
   // Configuration
   configPlayers: ConfigPlayer[];
+  boardRadius: number;  // Board size (default 3 for 37 tiles)
   
   // Seating phase
   seatingPhase: SeatingPhaseState;

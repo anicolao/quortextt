@@ -46,12 +46,31 @@ export interface PlayerListEntry {
   };
 }
 
+export interface SettingsControl {
+  type: 'checkbox' | 'number' | 'close';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  settingKey?: keyof import('../redux/types').GameSettings;
+  label?: string;
+}
+
+export interface SettingsDialogLayout {
+  controls: SettingsControl[];
+  dialogX: number;
+  dialogY: number;
+  dialogWidth: number;
+  dialogHeight: number;
+}
+
 export interface LobbyLayout {
   edgeButtons: EdgeButton[];
   startButton: StartButton;
   exitButtons: ExitButton[];
   settingsButton: SettingsButton;
   playerLists: PlayerListEntry[][]; // One list per edge [bottom, right, top, left]
+  settingsDialog: SettingsDialogLayout | null;
 }
 
 // Calculate which colors are available (not yet taken by players)
@@ -284,6 +303,7 @@ export function calculateLobbyLayout(
     exitButtons,
     settingsButton,
     playerLists,
+    settingsDialog: null,
   };
 }
 

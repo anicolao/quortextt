@@ -114,8 +114,8 @@ function init() {
       return;
     }
     
-    // Apply debug slowdown if set
-    const slowdown = window.ANIMATIONS_DEBUG_SLOWDOWN || 1;
+    // Apply debug slowdown from settings or window override
+    const slowdown = window.ANIMATIONS_DEBUG_SLOWDOWN || state.ui.settings.debugAnimationSlowdown;
     frameSkipCounter++;
     
     // Only process animations every Nth frame based on slowdown

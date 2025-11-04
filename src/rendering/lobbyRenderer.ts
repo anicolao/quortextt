@@ -41,7 +41,9 @@ export class LobbyRenderer {
 
     // Render settings dialog if open
     if (showSettings && settings) {
-      this.renderSettingsDialog(canvasWidth, canvasHeight, settings);
+      this.layout.settingsDialog = this.renderSettingsDialog(canvasWidth, canvasHeight, settings);
+    } else {
+      this.layout.settingsDialog = null;
     }
 
     return this.layout;
@@ -326,14 +328,16 @@ export class LobbyRenderer {
     canvasWidth: number,
     canvasHeight: number,
     settings: import("../redux/types").GameSettings,
-  ): void {
+  ): import("./lobbyLayout").SettingsDialogLayout {
+    const controls: import("./lobbyLayout").SettingsControl[] = [];
+
     // Semi-transparent overlay
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Dialog box
     const dialogWidth = Math.min(500, canvasWidth * 0.8);
-    const dialogHeight = Math.min(600, canvasHeight * 0.8);
+    const dialogHeight = Math.min(650, canvasHeight * 0.85);
     const dialogX = (canvasWidth - dialogWidth) / 2;
     const dialogY = (canvasHeight - dialogHeight) / 2;
 
@@ -354,25 +358,49 @@ export class LobbyRenderer {
     // Settings content
     const contentX = dialogX + 30;
     let contentY = dialogY + 70;
-    const lineHeight = 50;
+    const lineHeight = 45;
+    const checkboxSize = 25;
+    const buttonHeight = 30;
 
     this.ctx.font = "18px sans-serif";
     this.ctx.textAlign = "left";
+    this.ctx.textBaseline = "middle";
 
     // Board Radius
-    this.ctx.fillText(
-      `Board Radius: ${settings.boardRadius}`,
-      contentX,
-      contentY,
-    );
+    this.ctx.fillText("Board Radius:", contentX, contentY + buttonHeight / 2);
+    const radiusX = contentX + 200;
+    this.renderNumberControl(radiusX, contentY, settings.boardRadius, 2, 6);
+    controls.push({
+      type: 'number',
+      x: radiusX - 25,
+      y: contentY,
+      width: 30,
+      height: buttonHeight,
+      settingKey: 'boardRadius',
+      label: '-',
+    });
+    controls.push({
+      type: 'number',
+      x: radiusX + 40,
+      y: contentY,
+      width: 30,
+      height: buttonHeight,
+      settingKey: 'boardRadius',
+      label: '+',
+    });
     contentY += lineHeight;
 
     // Supermove
-    this.ctx.fillText(
-      `Supermove: ${settings.supermove ? "ON" : "OFF"}`,
-      contentX,
-      contentY,
-    );
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.supermove);
+    this.ctx.fillText("Supermove", contentX, contentY + checkboxSize / 2);
+    controls.push({
+      type: 'checkbox',
+      x: contentX + dialogWidth - 80,
+      y: contentY,
+      width: checkboxSize,
+      height: checkboxSize,
+      settingKey: 'supermove',
+    });
     contentY += lineHeight;
 
     // Debug section
@@ -382,32 +410,68 @@ export class LobbyRenderer {
     contentY += lineHeight;
 
     this.ctx.font = "18px sans-serif";
-    this.ctx.fillText(
-      `Show Edge Labels: ${settings.debugShowEdgeLabels ? "ON" : "OFF"}`,
-      contentX,
-      contentY,
-    );
+
+    // Debug Show Edge Labels
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugShowEdgeLabels);
+    this.ctx.fillText("Show Edge Labels", contentX, contentY + checkboxSize / 2);
+    controls.push({
+      type: 'checkbox',
+      x: contentX + dialogWidth - 80,
+      y: contentY,
+      width: checkboxSize,
+      height: checkboxSize,
+      settingKey: 'debugShowEdgeLabels',
+    });
     contentY += lineHeight;
 
-    this.ctx.fillText(
-      `Show Victory Edges: ${settings.debugShowVictoryEdges ? "ON" : "OFF"}`,
-      contentX,
-      contentY,
-    );
+    // Debug Show Victory Edges
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugShowVictoryEdges);
+    this.ctx.fillText("Show Victory Edges", contentX, contentY + checkboxSize / 2);
+    controls.push({
+      type: 'checkbox',
+      x: contentX + dialogWidth - 80,
+      y: contentY,
+      width: checkboxSize,
+      height: checkboxSize,
+      settingKey: 'debugShowVictoryEdges',
+    });
     contentY += lineHeight;
 
-    this.ctx.fillText(
-      `Legality Test: ${settings.debugLegalityTest ? "ON" : "OFF"}`,
-      contentX,
-      contentY,
-    );
+    // Debug Legality Test
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugLegalityTest);
+    this.ctx.fillText("Legality Test", contentX, contentY + checkboxSize / 2);
+    controls.push({
+      type: 'checkbox',
+      x: contentX + dialogWidth - 80,
+      y: contentY,
+      width: checkboxSize,
+      height: checkboxSize,
+      settingKey: 'debugLegalityTest',
+    });
     contentY += lineHeight;
 
-    this.ctx.fillText(
-      `Animation Slowdown: ${settings.debugAnimationSlowdown}x`,
-      contentX,
-      contentY,
-    );
+    // Animation Slowdown
+    this.ctx.fillText("Animation Slowdown:", contentX, contentY + buttonHeight / 2);
+    const slowdownX = contentX + 240;
+    this.renderNumberControl(slowdownX, contentY, settings.debugAnimationSlowdown, 1, 10);
+    controls.push({
+      type: 'number',
+      x: slowdownX - 25,
+      y: contentY,
+      width: 30,
+      height: buttonHeight,
+      settingKey: 'debugAnimationSlowdown',
+      label: '-',
+    });
+    controls.push({
+      type: 'number',
+      x: slowdownX + 40,
+      y: contentY,
+      width: 30,
+      height: buttonHeight,
+      settingKey: 'debugAnimationSlowdown',
+      label: '+',
+    });
     contentY += lineHeight;
 
     // Close button
@@ -441,5 +505,79 @@ export class LobbyRenderer {
       closeButtonX + closeButtonWidth / 2,
       closeButtonY + closeButtonHeight / 2,
     );
+
+    controls.push({
+      type: 'close',
+      x: closeButtonX,
+      y: closeButtonY,
+      width: closeButtonWidth,
+      height: closeButtonHeight,
+    });
+
+    return {
+      controls,
+      dialogX,
+      dialogY,
+      dialogWidth,
+      dialogHeight,
+    };
+  }
+
+  private renderCheckbox(x: number, y: number, size: number, checked: boolean): void {
+    // Checkbox background
+    this.ctx.fillStyle = "#1a1a2e";
+    this.ctx.fillRect(x, y, size, size);
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, size, size);
+
+    // Checkmark if checked
+    if (checked) {
+      this.ctx.strokeStyle = "#4CAF50";
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x + size * 0.2, y + size * 0.5);
+      this.ctx.lineTo(x + size * 0.4, y + size * 0.7);
+      this.ctx.lineTo(x + size * 0.8, y + size * 0.3);
+      this.ctx.stroke();
+    }
+  }
+
+  private renderNumberControl(x: number, y: number, value: number, min: number, max: number): void {
+    const buttonWidth = 30;
+    const buttonHeight = 30;
+    const valueWidth = 40;
+
+    // Minus button
+    this.ctx.fillStyle = value > min ? "#555555" : "#333333";
+    this.ctx.fillRect(x - 25, y, buttonWidth, buttonHeight);
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x - 25, y, buttonWidth, buttonHeight);
+    this.ctx.fillStyle = value > min ? "#ffffff" : "#666666";
+    this.ctx.font = "bold 20px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText("-", x - 10, y + buttonHeight / 2);
+
+    // Value display
+    this.ctx.fillStyle = "#1a1a2e";
+    this.ctx.fillRect(x + 5, y, valueWidth, buttonHeight);
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 5, y, valueWidth, buttonHeight);
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "18px sans-serif";
+    this.ctx.fillText(value.toString(), x + 25, y + buttonHeight / 2);
+
+    // Plus button
+    this.ctx.fillStyle = value < max ? "#555555" : "#333333";
+    this.ctx.fillRect(x + 45, y, buttonWidth, buttonHeight);
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 45, y, buttonWidth, buttonHeight);
+    this.ctx.fillStyle = value < max ? "#ffffff" : "#666666";
+    this.ctx.font = "bold 20px sans-serif";
+    this.ctx.fillText("+", x + 60, y + buttonHeight / 2);
   }
 }

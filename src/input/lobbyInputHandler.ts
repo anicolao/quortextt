@@ -1,12 +1,73 @@
 // Input handler for the redesigned lobby
 
 import { store } from '../redux/store';
-import { addPlayer, removePlayer, startGame, toggleSettings } from '../redux/actions';
+import { addPlayer, removePlayer, startGame, toggleSettings, updateSettings } from '../redux/actions';
 import { LobbyLayout, isPointInButton, isPointInCircle } from '../rendering/lobbyLayout';
 
 export class LobbyInputHandler {
   handleClick(x: number, y: number, layout: LobbyLayout | null): void {
     if (!layout) return;
+
+    // If settings dialog is open, check for clicks on dialog controls
+    if (layout.settingsDialog) {
+      const state = store.getState();
+      const currentSettings = state.ui.settings;
+
+      for (const control of layout.settingsDialog.controls) {
+        if (x >= control.x && x <= control.x + control.width &&
+            y >= control.y && y <= control.y + control.height) {
+          
+          if (control.type === 'close') {
+            store.dispatch(toggleSettings());
+            return;
+          }
+          
+          if (control.type === 'checkbox' && control.settingKey) {
+            const key = control.settingKey;
+            store.dispatch(updateSettings({
+              [key]: !currentSettings[key]
+            }));
+            return;
+          }
+          
+          if (control.type === 'number' && control.settingKey) {
+            const key = control.settingKey;
+            const currentValue = currentSettings[key] as number;
+            let newValue = currentValue;
+            
+            if (control.label === '+') {
+              if (key === 'boardRadius') {
+                newValue = Math.min(6, currentValue + 1);
+              } else if (key === 'debugAnimationSlowdown') {
+                newValue = Math.min(10, currentValue + 1);
+              }
+            } else if (control.label === '-') {
+              if (key === 'boardRadius') {
+                newValue = Math.max(2, currentValue - 1);
+              } else if (key === 'debugAnimationSlowdown') {
+                newValue = Math.max(1, currentValue - 1);
+              }
+            }
+            
+            store.dispatch(updateSettings({
+              [key]: newValue
+            }));
+            return;
+          }
+        }
+      }
+
+      // Click outside dialog closes it
+      const dialog = layout.settingsDialog;
+      if (x < dialog.dialogX || x > dialog.dialogX + dialog.dialogWidth ||
+          y < dialog.dialogY || y > dialog.dialogY + dialog.dialogHeight) {
+        store.dispatch(toggleSettings());
+        return;
+      }
+
+      // Click was on dialog, don't process other buttons
+      return;
+    }
 
     // Check settings button
     const settingsCenterX = layout.settingsButton.x + layout.settingsButton.size / 2;
@@ -25,7 +86,8 @@ export class LobbyInputHandler {
       const radius = layout.startButton.size / 2;
       
       if (isPointInCircle(x, y, centerX, centerY, radius)) {
-        store.dispatch(startGame());
+        const state = store.getState();
+        store.dispatch(startGame(state.ui.settings.boardRadius));
         return;
       }
     }

@@ -14,17 +14,17 @@ export function keyToPosition(key: string): HexPosition {
   return { row, col };
 }
 
-// Get all valid hex positions on the 37-tile diamond board
-// The board is diamond-shaped with rows from -3 to +3
-export function getAllBoardPositions(): HexPosition[] {
+// Get all valid hex positions on the board
+// The board is diamond-shaped with rows from -radius to +radius
+export function getAllBoardPositions(radius: number = 3): HexPosition[] {
   const positions: HexPosition[] = [];
 
-  // For each row from -3 to 3
-  for (let row = -3; row <= 3; row++) {
+  // For each row from -radius to +radius
+  for (let row = -radius; row <= radius; row++) {
     // Calculate column range for this row
     // The diamond shape means columns are constrained based on row
-    const colStart = Math.max(-3, -3 - row);
-    const colEnd = Math.min(3, 3 - row);
+    const colStart = Math.max(-radius, -radius - row);
+    const colEnd = Math.min(radius, radius - row);
 
     for (let col = colStart; col <= colEnd; col++) {
       positions.push({ row, col });
@@ -35,13 +35,13 @@ export function getAllBoardPositions(): HexPosition[] {
 }
 
 // Check if a position is valid on the board
-export function isValidPosition(pos: HexPosition): boolean {
+export function isValidPosition(pos: HexPosition, radius: number = 3): boolean {
   // Check if within diamond bounds
   const absRow = Math.abs(pos.row);
   const absCol = Math.abs(pos.col);
   const absSum = Math.abs(pos.row + pos.col);
 
-  return absRow <= 3 && absCol <= 3 && absSum <= 3;
+  return absRow <= radius && absCol <= radius && absSum <= radius;
 }
 
 // Direction vectors in axial coordinates
@@ -117,39 +117,39 @@ export function rotateDirection(
 
 // Get edge positions for a player based on their edge number (0-5)
 // Edge 0 is top-left (NorthWest), going clockwise
-export function getEdgePositions(edgeNumber: number): HexPosition[] {
+export function getEdgePositions(edgeNumber: number, radius: number = 3): HexPosition[] {
   const edge = edgeNumber % 6;
   const positions: HexPosition[] = [];
 
   switch (edge) {
-    case 0: // NorthWest edge (top-left) - row = -3
-      for (let col = 0; col <= 3; col++) {
-        positions.push({ row: -3, col });
+    case 0: // NorthWest edge (top-left) - row = -radius
+      for (let col = 0; col <= radius; col++) {
+        positions.push({ row: -radius, col });
       }
       break;
-    case 1: // NorthEast edge (top-right) - col = 3
-      for (let row = -3; row <= 0; row++) {
-        positions.push({ row, col: 3 });
+    case 1: // NorthEast edge (top-right) - col = radius
+      for (let row = -radius; row <= 0; row++) {
+        positions.push({ row, col: radius });
       }
       break;
-    case 2: // East edge (right) - row + col = 3
-      for (let row = 0; row <= 3; row++) {
-        positions.push({ row, col: 3 - row });
+    case 2: // East edge (right) - row + col = radius
+      for (let row = 0; row <= radius; row++) {
+        positions.push({ row, col: radius - row });
       }
       break;
-    case 3: // SouthEast edge (bottom-right) - row = 3
-      for (let col = -3; col <= 0; col++) {
-        positions.push({ row: 3, col });
+    case 3: // SouthEast edge (bottom-right) - row = radius
+      for (let col = -radius; col <= 0; col++) {
+        positions.push({ row: radius, col });
       }
       break;
-    case 4: // SouthWest edge (bottom-left) - col = -3
-      for (let row = 0; row <= 3; row++) {
-        positions.push({ row, col: -3 });
+    case 4: // SouthWest edge (bottom-left) - col = -radius
+      for (let row = 0; row <= radius; row++) {
+        positions.push({ row, col: -radius });
       }
       break;
-    case 5: // West edge (left) - row + col = -3
-      for (let row = -3; row <= 0; row++) {
-        positions.push({ row, col: -3 - row });
+    case 5: // West edge (left) - row + col = -radius
+      for (let row = -radius; row <= 0; row++) {
+        positions.push({ row, col: -radius - row });
       }
       break;
   }
@@ -167,10 +167,11 @@ export function getOppositeEdge(edgeNumber: number): number {
 // which hex edge faces the board edge and can accept flow from the player's edge
 export function getEdgePositionsWithDirections(
   edgeNumber: number,
+  radius: number = 3,
 ): Array<{ pos: HexPosition; dir: Direction }> {
   const edge = edgeNumber % 6;
   const result: Array<{ pos: HexPosition; dir: Direction }> = [];
-  const edgePositions = getEdgePositions(edge);
+  const edgePositions = getEdgePositions(edge, radius);
 
   // For each edge, define the two inward-facing directions for all hexes on that edge.
   // These pairs are ordered to match the clockwise enumeration of edges starting from edge 0 (NW).
