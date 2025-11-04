@@ -456,7 +456,6 @@ describe('victory conditions', () => {
       
       tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
       
-      const { flows, flowEdges } = calculateFlows(board, players);
       const result = checkFlowVictory(board, players, teams);
 
       expect(result.winner).toBe('team-p1-p3');
@@ -509,7 +508,6 @@ describe('victory conditions', () => {
       
       tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
       
-      const { flows, flowEdges } = calculateFlows(board, players);
       const result = checkVictory(board, players, teams);
 
       expect(result.winner).toBe('p1');
@@ -521,7 +519,6 @@ describe('victory conditions', () => {
       const board = new Map<string, PlacedTile>();
       const teams: Team[] = [];
       
-      const { flows, flowEdges } = calculateFlows(board, players);
       const result = checkVictory(board, players, teams);
 
       expect(result.winner).toBe(null);
@@ -533,8 +530,6 @@ describe('victory conditions', () => {
       const board = new Map<string, PlacedTile>();
       const teams: Team[] = [];
       
-      const { flows, flowEdges } = calculateFlows(board, players);
-
       // Test with a tile that CAN be placed (empty board)
       const result = checkVictory(board, players, teams, TileType.NoSharps);
 
@@ -600,8 +595,6 @@ describe('victory conditions', () => {
           position: pos,
         });
       });
-      
-      const { flows, flowEdges } = calculateFlows(board, players);
       
       // With a completely full board, no tile can be placed anywhere
       // This should trigger constraint victory (flows shouldn't connect for either player)
