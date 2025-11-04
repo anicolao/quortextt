@@ -53,7 +53,18 @@ export function processAnimations(
     if (t < 1) {
       activeAnimations.push(animation);
     } else {
+      // Animation completed
       hasCompletedAnimations = true;
+      
+      // If animation should loop, restart it
+      if (animation.loop) {
+        const duration = animation.endFrame - animation.startFrame;
+        activeAnimations.push({
+          ...animation,
+          startFrame: currentFrame,
+          endFrame: currentFrame + duration,
+        });
+      }
     }
   }
 

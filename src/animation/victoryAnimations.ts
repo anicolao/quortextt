@@ -1,26 +1,38 @@
 // Victory animation definitions using the animation framework
 
 import { defineAnimation } from './registry';
-import { registerAnimation } from './actions';
+import { registerAnimation, cancelAnimationsByName } from './actions';
 
 // State for victory animation rendering (not in Redux)
 export const victoryAnimationState = {
-  glowIntensity: 0,
+  glowIntensity: 0.5, // Start at 0.5 (minimum intensity)
 };
+
+/**
+ * Ease-in-out function for smooth breathing effect
+ */
+function easeInOut(t: number): number {
+  return t < 0.5
+    ? 2 * t * t
+    : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
 
 /**
  * Initialize victory animations when game over screen is shown
  */
 export function initVictoryAnimations(): void {
-  // Reset animation state
-  victoryAnimationState.glowIntensity = 0;
+  // Reset animation state to start of breathing cycle
+  victoryAnimationState.glowIntensity = 0.5;
 
-  // Define pulsing glow animation for winning flow
-  // Pulsing effect: sine wave for continuous animation
-  defineAnimation('victory-flow-pulse', (t: number) => {
-    // Pulse between 0.5 and 1.0 intensity
-    const pulseValue = 0.5 + 0.5 * Math.sin(t * Math.PI * 4);
-    victoryAnimationState.glowIntensity = pulseValue;
+  // Define breathing glow animation for winning flow
+  // Breathing effect: smooth ease-in-out from 0.5 to 1.0 and back to 0.5
+  defineAnimation('victory-flow-glow', (t: number) => {
+    // Apply ease-in-out for smooth breathing
+    const eased = easeInOut(t);
+    // Breathe from 0.5 to 1.0 and back to 0.5
+    // At t=0: intensity=0.5, at t=0.5: intensity=1.0, at t=1: intensity=0.5
+    const intensity = 0.5 + 0.5 * Math.sin(eased * Math.PI);
+    victoryAnimationState.glowIntensity = intensity;
   });
 
   // Get Redux store from window (it's exposed for testing)
@@ -30,27 +42,22 @@ export function initVictoryAnimations(): void {
     return;
   }
 
-  // Register flow pulse animation: 120 frames (~2 seconds) - will loop by re-registering
-  store.dispatch(registerAnimation('victory-flow-pulse', 120, 0));
+  // Register breathing animation: 120 frames (~2 seconds) with loop enabled
+  store.dispatch(registerAnimation('victory-flow-glow', 120, 0, true));
 }
 
 /**
- * Continue pulsing animation indefinitely
- * Call this after the pulse animation completes to keep it going
+ * Cancel victory animations when navigating away from victory screen
  */
-export function continuePulseAnimation(): void {
+export function cancelVictoryAnimations(): void {
   const store = (window as any).__REDUX_STORE__;
   if (!store) {
     return;
   }
 
-  // Check if we're still on game-over screen
-  const state = store.getState();
-  if (state.game.screen === 'game-over') {
-    // Re-register the pulse animation to continue
-    store.dispatch(registerAnimation('victory-flow-pulse', 120, 0));
-    
-    // Schedule next continuation
-    setTimeout(() => continuePulseAnimation(), 2000);
-  }
+  // Cancel all victory glow animations
+  store.dispatch(cancelAnimationsByName('victory-flow-glow'));
+  
+  // Reset glow intensity
+  victoryAnimationState.glowIntensity = 0;
 }

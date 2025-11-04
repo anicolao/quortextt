@@ -66,13 +66,20 @@ function init() {
     
     // Check if we transitioned to game-over screen
     if (state.game.screen === 'game-over' && prevScreen !== 'game-over') {
-      // Initialize victory pulse animation
-      import('./animation/victoryAnimations').then(({ initVictoryAnimations, continuePulseAnimation }) => {
+      // Initialize victory breathing animation
+      import('./animation/victoryAnimations').then(({ initVictoryAnimations }) => {
         initVictoryAnimations();
-        // Start continuous pulse after initial animation completes (~2 seconds)
-        setTimeout(() => continuePulseAnimation(), 2000);
       });
     }
+    
+    // Check if we transitioned away from game-over screen
+    if (state.game.screen !== 'game-over' && prevScreen === 'game-over') {
+      // Cancel victory animations
+      import('./animation/victoryAnimations').then(({ cancelVictoryAnimations }) => {
+        cancelVictoryAnimations();
+      });
+    }
+    
     prevScreen = state.game.screen;
     
     // Check if we should update flow preview

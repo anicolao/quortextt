@@ -11,6 +11,7 @@ export interface ActiveAnimation {
   animationName: string;          // Name of registered animation function
   startFrame: number;             // Frame when animation starts
   endFrame: number;               // Frame when animation ends
+  loop?: boolean;                 // If true, restart animation when it completes
 }
 
 // Type for animation functions (takes normalized time 0-1)
