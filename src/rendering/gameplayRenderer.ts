@@ -108,7 +108,9 @@ export class GameplayRenderer {
 
   private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
-    const boardRadius = this.layout.size * 7.2;
+    // Calculate board radius based on the game's board radius setting
+    // The board background should be 2.4 times the hex size per unit of radius
+    const boardRadius = this.layout.size * (state.game.boardRadius * 2.4);
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
@@ -123,6 +125,7 @@ export class GameplayRenderer {
           boardRadius,
           player.edgePosition,
           player.color,
+          state.game.boardRadius,
         );
       });
     }
@@ -133,11 +136,12 @@ export class GameplayRenderer {
     radius: number,
     edgePosition: number,
     color: string,
+    boardRadius: number,
   ): void {
     // Create a polygon from the zig-zag of source edges plus perpendiculars to board boundary
 
     // Get all source edge positions and their vertices (the zig-zag)
-    const sourceEdges = getEdgePositionsWithDirections(edgePosition);
+    const sourceEdges = getEdgePositionsWithDirections(edgePosition, boardRadius);
     if (sourceEdges.length === 0) return;
 
     // Collect all the edge vertices that form the zig-zag pattern
@@ -534,7 +538,7 @@ export class GameplayRenderer {
 
     state.game.players.forEach((player) => {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      const targetEdgeData = getEdgePositionsWithDirections(targetEdge);
+      const targetEdgeData = getEdgePositionsWithDirections(targetEdge, state.game.boardRadius);
 
       // Draw the same edges as start edges, but for the opposite side
       // These are the edges where flow must exit to win

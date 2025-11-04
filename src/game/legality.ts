@@ -163,7 +163,7 @@ export function hasViablePath(
   
   // Add only the specific inward-facing edges from the start edge as starting points
   // These are the hex edges that face inward from the board edge
-  const startEdgeNodes = getEdgePositionsWithDirections(startEdge);
+  const startEdgeNodes = getEdgePositionsWithDirections(startEdge, boardRadius);
   
   for (const { pos, dir } of startEdgeNodes) {
     const edgeNode: EdgeNode = { position: pos, direction: dir };
@@ -179,7 +179,7 @@ export function hasViablePath(
   let foundTargetKey: string | null = null;
   
   // Get the specific outward-facing edges on the target edge
-  const targetEdgeNodes = getEdgePositionsWithDirections(targetEdge);
+  const targetEdgeNodes = getEdgePositionsWithDirections(targetEdge, boardRadius);
   const targetEdgeKeys = new Set(
     targetEdgeNodes.map(({ pos, dir }) => edgeNodeKey({ position: pos, direction: dir }))
   );

@@ -474,7 +474,7 @@ export function gameReducer(
       newBoard.set(posKey, placedTile);
 
       // Calculate new flows
-      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players);
+      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players, state.boardRadius);
 
       // Check for victory
       const victoryResult = checkVictory(newBoard, state.players, state.teams, undefined, state.boardRadius);

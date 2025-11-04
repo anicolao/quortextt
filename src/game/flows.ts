@@ -82,6 +82,7 @@ export function traceFlow(
 export function calculateFlows(
   board: Map<string, PlacedTile>,
   players: Player[],
+  boardRadius = 3,
 ): {
   flows: Map<string, Set<string>>;
   flowEdges: Map<string, Map<Direction, string>>; // position key -> direction -> player ID
@@ -93,7 +94,7 @@ export function calculateFlows(
     const playerFlow = new Set<string>();
 
     // Get all edge positions with their specific hex edge directions for this player
-    const edgeData = getEdgePositionsWithDirections(player.edgePosition);
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition, boardRadius);
 
     // For each edge position and direction pair, trace the flow
     for (const { pos, dir } of edgeData) {

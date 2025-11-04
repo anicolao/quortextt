@@ -75,14 +75,15 @@ export function calculateNewFlowPaths(
   previewBoard: Map<string, PlacedTile>,
   actualBoard: Map<string, PlacedTile>,
   players: Player[],
-  previewPosition: HexPosition
+  previewPosition: HexPosition,
+  boardRadius: number
 ): OrderedFlowPath[] {
   const newPaths: OrderedFlowPath[] = [];
-  const actualFlows = calculateFlows(actualBoard, players);
+  const actualFlows = calculateFlows(actualBoard, players, boardRadius);
 
   // For each player, trace their flows from edge positions
   for (const player of players) {
-    const edgeData = getEdgePositionsWithDirections(player.edgePosition);
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition, boardRadius);
 
     for (const { pos, dir } of edgeData) {
       const posKey = positionToKey(pos);
@@ -173,7 +174,7 @@ export function updateFlowPreview(
   }
 
   const state = store.getState();
-  const { board, players } = state.game;
+  const { board, players, boardRadius } = state.game;
 
   // Create temporary board with preview tile
   const previewBoard = new Map(board);
@@ -185,7 +186,7 @@ export function updateFlowPreview(
   previewBoard.set(positionToKey(previewPosition), previewTile);
 
   // Calculate new flow paths with ordered segments
-  const newPaths = calculateNewFlowPaths(previewBoard, board, players, previewPosition);
+  const newPaths = calculateNewFlowPaths(previewBoard, board, players, previewPosition, boardRadius);
   
   // Flatten all segments for tracking
   const allSegments: FlowSegment[] = [];
