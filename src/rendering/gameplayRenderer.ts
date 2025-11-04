@@ -70,7 +70,7 @@ export class GameplayRenderer {
     this.renderHexPositions();
 
     // Layer 2.6: Color source hexagon edges with player colors
-    this.renderSourceHexagonEdges(state);
+    //this.renderSourceHexagonEdges(state);
 
     // Layer 2.7: Debug - Draw edge direction labels (0-5) inside each hexagon
     if (DEBUG_SHOW_EDGE_LABELS) {
@@ -340,8 +340,8 @@ export class GameplayRenderer {
     this.ctx.globalAlpha = 1.0;
     this.ctx.fill();
 
-    this.ctx.strokeStyle = "black";
-    this.ctx.lineWidth = 4;
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 1;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
     this.ctx.stroke();
