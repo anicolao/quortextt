@@ -1,45 +1,12 @@
 // End-to-end tests for the exit buttons in gameplay screen
-import { test, expect, Page } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
+import { test, expect } from '@playwright/test';
+import { getReduxState, setupTwoPlayerGame } from './helpers';
 
-// Helper to setup a game with two players
-async function setupTwoPlayerGame(page: Page) {
-  await page.goto('/');
-  await page.waitForSelector('canvas#game-canvas');
-  
-  const canvas = page.locator('canvas#game-canvas');
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('Canvas not found');
-  
-  // Add two players
-  await page.evaluate(() => {
-    const store = (window as any).__REDUX_STORE__;
-    store.dispatch({ type: 'ADD_PLAYER' });
-    store.dispatch({ type: 'ADD_PLAYER' });
-  });
-  
-  await page.waitForTimeout(100);
-  
-  // Start the game (transitions to seating)
-  await page.evaluate(() => {
-    const store = (window as any).__REDUX_STORE__;
-    store.dispatch({ type: 'START_GAME' });
-  });
-  
-  await page.waitForTimeout(100);
-  
-  // Complete seating phase
-  await completeSeatingPhase(page, canvas, box);
-  
-  // Shuffle with deterministic seed and draw a tile
-  await page.evaluate(() => {
-    const store = (window as any).__REDUX_STORE__;
-    store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
-    store.dispatch({ type: 'DRAW_TILE' });
-  });
-  
-  await page.waitForTimeout(100);
-}
+// Exit button dimensions (from gameplayRenderer.ts)
+const EXIT_BUTTON_SIZE = 50;
+const EXIT_BUTTON_MARGIN = 10;
+// Click position is at the center of the button
+const EXIT_BUTTON_CLICK_OFFSET = EXIT_BUTTON_MARGIN + EXIT_BUTTON_SIZE / 2;
 
 test.describe('Exit Buttons in Gameplay Screen', () => {
   test('should return to lobby when clicking top-left exit button', async ({ page }) => {
@@ -53,10 +20,9 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     let state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
     
-    // Click top-left exit button (margin + half of button size)
-    // Exit buttons are 50x50 with 10px margin
+    // Click top-left exit button
     await canvas.click({
-      position: { x: 35, y: 35 }
+      position: { x: EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
     
     await page.waitForTimeout(100);
@@ -79,7 +45,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     
     // Click top-right exit button
     await canvas.click({
-      position: { x: box.width - 35, y: 35 }
+      position: { x: box.width - EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
     
     await page.waitForTimeout(100);
@@ -102,7 +68,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     
     // Click bottom-left exit button
     await canvas.click({
-      position: { x: 35, y: box.height - 35 }
+      position: { x: EXIT_BUTTON_CLICK_OFFSET, y: box.height - EXIT_BUTTON_CLICK_OFFSET }
     });
     
     await page.waitForTimeout(100);
@@ -125,7 +91,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     
     // Click bottom-right exit button
     await canvas.click({
-      position: { x: box.width - 35, y: box.height - 35 }
+      position: { x: box.width - EXIT_BUTTON_CLICK_OFFSET, y: box.height - EXIT_BUTTON_CLICK_OFFSET }
     });
     
     await page.waitForTimeout(100);

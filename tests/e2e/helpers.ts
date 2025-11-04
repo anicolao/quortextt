@@ -96,3 +96,45 @@ export async function pauseAnimations(page: any) {
   // Wait a bit for animations to stop
   await page.waitForTimeout(100);
 }
+
+/**
+ * Helper to setup a game with two players
+ * @param page - Playwright page object
+ */
+export async function setupTwoPlayerGame(page: any) {
+  await page.goto('/');
+  await page.waitForSelector('canvas#game-canvas');
+  
+  const canvas = page.locator('canvas#game-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas not found');
+  
+  // Add two players
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'ADD_PLAYER' });
+    store.dispatch({ type: 'ADD_PLAYER' });
+  });
+  
+  await page.waitForTimeout(100);
+  
+  // Start the game (transitions to seating)
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'START_GAME' });
+  });
+  
+  await page.waitForTimeout(100);
+  
+  // Complete seating phase
+  await completeSeatingPhase(page, canvas, box);
+  
+  // Shuffle with deterministic seed and draw a tile
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+    store.dispatch({ type: 'DRAW_TILE' });
+  });
+  
+  await page.waitForTimeout(100);
+}
