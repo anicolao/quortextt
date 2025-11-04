@@ -1,6 +1,6 @@
 // End-to-end tests for the gameplay screen rendering
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
 // Helper to setup a game with two players
 async function setupTwoPlayerGame(page: any) {
@@ -71,6 +71,7 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(player2Edge).toBeLessThan(6);
     
     // Take a screenshot of the gameplay screen
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/001-two-players.png',
       fullPage: false
@@ -118,6 +119,7 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(player1Color).not.toBe(player2Color);
     
     // Take screenshot
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/002-board-edges.png',
       fullPage: false
@@ -133,6 +135,7 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(state.ui.selectedPosition).toBeNull();
     
     // Take screenshot showing preview tile
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/003-preview-tile.png',
       fullPage: false
@@ -160,6 +163,7 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(hexSize.minDimension).toBeGreaterThan(0);
     
     // Take screenshot for visual verification
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/004-hex-sizing.png',
       fullPage: false

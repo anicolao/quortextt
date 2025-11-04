@@ -1,7 +1,7 @@
 // E2E test for victory animation
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
 test.describe('Victory Animation', () => {
   test('should display animated victory modals in all corners with pulsing flow', async ({ page }) => {
@@ -65,6 +65,7 @@ test.describe('Victory Animation', () => {
     await page.waitForTimeout(200);
     
     // Take a screenshot during early animation
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: '/tmp/victory-animation-early.png',
       fullPage: false
@@ -72,6 +73,7 @@ test.describe('Victory Animation', () => {
     
     // Wait for modal to fully appear
     await page.waitForTimeout(500);
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: '/tmp/victory-animation-modal.png',
       fullPage: false
@@ -79,6 +81,7 @@ test.describe('Victory Animation', () => {
     
     // Wait for pulse animation
     await page.waitForTimeout(2000);
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: '/tmp/victory-animation-pulse.png',
       fullPage: false
@@ -141,6 +144,7 @@ test.describe('Victory Animation', () => {
     expect(state.game.screen).toBe('game-over');
     
     // Take screenshot of team victory with two color squares
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: '/tmp/victory-animation-team.png',
       fullPage: false

@@ -83,3 +83,16 @@ export async function completeSeatingPhase(page: any, canvas: any, box: any) {
   // Wait for transition to gameplay
   await page.waitForTimeout(200);
 }
+
+/**
+ * Helper to pause animations to prevent canvas redraws during screenshots
+ * @param page - Playwright page object
+ */
+export async function pauseAnimations(page: any) {
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'PAUSE_ANIMATIONS' });
+  });
+  // Wait a bit for animations to stop
+  await page.waitForTimeout(100);
+}
