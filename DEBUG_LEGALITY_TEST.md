@@ -16,10 +16,10 @@ Then the UI will show an overlay with the winning paths.
 
 ### Visual Indicators
 
-- **Light colored circles** (20% opacity): All positions visited during the BFS search
-- **Dark colored circles** (50% opacity): Positions that are part of the winning path
-- **Dashed colored lines**: The actual winning path from start edge to target edge
-- **Legend (top-right corner)**: Shows each player with their path status
+- **Light lines with small dots** (15% opacity): All edges visited during the BFS search - shows lines from hex centers to edge midpoints
+- **Thick dashed colored lines** (70% opacity): The actual winning path through specific hex edges
+- **Large colored dots** (80% opacity): Specific hex edges (position + direction) on the winning path
+- **Legend (top-right corner)**: Shows each player with their path status and edge count
 
 ### Legend Information
 
@@ -28,7 +28,7 @@ For each player:
 - **Status**: 
   - Green "PATH FOUND" if a winning path exists
   - Red "NO PATH" if the player is blocked
-- **Path length**: Number of tiles in the winning path (if found)
+- **Path length**: Number of edges in the winning path (if found)
 
 ## How to Use
 
@@ -41,12 +41,13 @@ For each player:
 ## Understanding the Path
 
 The path shows:
-- Which hexes can be traversed to create a winning flow
-- Whether empty hexes are being considered correctly
-- Whether tile flow patterns are being respected
+- **Specific hex edges** (not just hex positions) that can be traversed to create a winning flow
+- Each edge is visualized as a line from the hex center to the edge midpoint
+- Whether empty hexes are being considered correctly (all edges connected)
+- Whether tile flow patterns are being respected (only specific edges connected)
 
-For occupied tiles, the path should only go through hexes where the tile's flow pattern allows.
-For empty tiles, the path can go through any hex since any tile could potentially be placed there.
+For occupied tiles, the path should only go through the specific edges that the tile's flow pattern connects.
+For empty tiles, the path can go through any edges since any tile could potentially be placed there.
 
 ## Disabling
 
