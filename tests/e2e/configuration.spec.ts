@@ -1,7 +1,7 @@
 // End-to-end tests for the game configuration screen (redesigned edge-based lobby)
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
 
 // Helper to get edge button coordinates for the new lobby
 // colorIndex: 0=blue, 1=orange, 2=green, 3=yellow, 4=purple, 5=red
@@ -89,6 +89,7 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers.length).toBe(0);
     
     // Take a screenshot of the initial state
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/001-initial-state.png' });
   });
 
@@ -111,6 +112,7 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers[0].edge).toBe(0); // Bottom edge
     expect(state.game.configPlayers[0].id).toBeDefined();
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
   });
 
@@ -140,6 +142,7 @@ test.describe('Configuration Screen', () => {
     const colors = state.game.configPlayers.map((p: any) => p.color);
     expect(new Set(colors).size).toBe(3); // All different colors
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/003-multiple-players.png' });
   });
 
@@ -161,6 +164,7 @@ test.describe('Configuration Screen', () => {
     const state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(6);
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/004-max-players.png' });
   });
 
@@ -245,6 +249,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-player-removed.png' });
   });
 
@@ -292,6 +297,7 @@ test.describe('Configuration Screen', () => {
     const newState = await getReduxState(page);
     expect(newState.game.configPlayers[0].color).toBe('#DE8F05'); // Orange
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/007-color-changed.png' });
   });
 
@@ -327,6 +333,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/009-game-started.png' });
   });
 
@@ -355,6 +362,7 @@ test.describe('Configuration Screen', () => {
     expect(player1Color).not.toBe(player2Color);
     expect(state.game.configPlayers.length).toBe(2);
 
+    await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/010-no-duplicate-colors.png' });
   });
 });

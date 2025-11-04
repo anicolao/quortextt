@@ -1,7 +1,7 @@
 // End-to-end test for flow propagation from player edges
 // This test verifies that flows only enter from hex edges that belong to the player's board edge
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
 // Helper to setup a game with two players
 async function setupTwoPlayerGame(page: any) {
@@ -48,6 +48,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     const player2 = state.game.players[1];
     
     // Take screenshot of initial state with colored player edges
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/003-flow-propagation/001-initial-state.png',
       fullPage: false
@@ -66,6 +67,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     state = await getReduxState(page);
     
     // Screenshot showing tile without flows (grey, not colored)
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/003-flow-propagation/002-no-connection.png',
       fullPage: false
@@ -104,6 +106,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     state = await getReduxState(page);
     
     // Screenshot showing tile WITH colored flows (blue for player 1)
+    await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/003-flow-propagation/003-with-connection.png',
       fullPage: false
