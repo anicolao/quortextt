@@ -180,20 +180,20 @@ export class GameplayRenderer {
     const boardV2 = boardVertices[v2Index];
     
     // Build a continuous path through the edges
-    // Determine the correct orientation of the first edge by checking which vertex
-    // is closer to the board corners
+    // Determine the correct orientation of the first edge by projecting vertices
+    // onto the board edge and checking which is closer to boardV1
     const [firstV1, firstV2] = zigzagEdges[0];
-    const distFirstV1ToCorner = Math.min(
-      this.distance(firstV1, boardV1),
-      this.distance(firstV1, boardV2)
-    );
-    const distFirstV2ToCorner = Math.min(
-      this.distance(firstV2, boardV1),
-      this.distance(firstV2, boardV2)
-    );
     
-    // Start with the vertex that's closer to a board corner
-    const zigzagVertices: Point[] = distFirstV1ToCorner < distFirstV2ToCorner
+    // Project both vertices onto the board edge line
+    const projV1 = this.closestPointOnLineSegment(firstV1, boardV1, boardV2);
+    const projV2 = this.closestPointOnLineSegment(firstV2, boardV1, boardV2);
+    
+    // Determine which projected point is closer to boardV1
+    const distProjV1ToBoardV1 = this.distance(projV1, boardV1);
+    const distProjV2ToBoardV1 = this.distance(projV2, boardV1);
+    
+    // Start with the vertex whose projection is closer to boardV1
+    const zigzagVertices: Point[] = distProjV1ToBoardV1 < distProjV2ToBoardV1
       ? [firstV1, firstV2]
       : [firstV2, firstV1];
     
