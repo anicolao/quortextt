@@ -108,6 +108,14 @@ test.describe('Tile Rendering Tests', () => {
         
         await page.waitForTimeout(500);
         
+        // Pause animations to prevent canvas from being redrawn
+        await page.evaluate(() => {
+          const store = (window as any).__REDUX_STORE__;
+          store.dispatch({ type: 'PAUSE_ANIMATIONS' });
+        });
+        
+        await page.waitForTimeout(100);
+        
         // Add edge labels using canvas text overlay
         await page.evaluate(({ directionNames, tileTypeName, rotation, connections }) => {
           const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
