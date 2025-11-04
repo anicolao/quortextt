@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { gameReducer, initialState } from '../src/redux/gameReducer';
-import { addPlayer, startGame, selectEdge } from '../src/redux/actions';
+import { addPlayer, startGame, selectEdge, startSeatingPhase, completeSeatingPhase, drawTile } from '../src/redux/actions';
 import { PLAYER_COLORS } from '../src/redux/types';
 
 describe('Seating Phase', () => {
@@ -359,6 +359,118 @@ describe('Seating Phase', () => {
 
       state = gameReducer(state, selectEdge(player3Id, 0));
       expect(state.seatingPhase.availableEdges).toEqual([2, 3, 5]);
+    });
+
+    it('should handle selectEdge for unavailable edge', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
+      state = gameReducer(state, startGame());
+
+      const player1Id = state.seatingPhase.seatingOrder[0];
+      
+      // First player selects edge 1
+      state = gameReducer(state, selectEdge(player1Id, 1));
+      expect(state.seatingPhase.availableEdges).not.toContain(1);
+
+      const player2Id = state.seatingPhase.seatingOrder[1];
+      const prevState = { ...state };
+      
+      // Try to select the same edge that's already taken
+      state = gameReducer(state, selectEdge(player2Id, 1));
+      
+      // State should not change (edge is unavailable)
+      expect(state).toEqual(prevState);
+    });
+
+    it('should handle selectEdge when configPlayer is not found', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
+      
+      // Manually create seating phase with a player that's not in configPlayers
+      // This is an edge case that shouldn't happen in normal operation
+      state = {
+        ...state,
+        seatingPhase: {
+          active: true,
+          seatingOrder: ['non-existent-player'],
+          seatingIndex: 0,
+          availableEdges: [0, 1, 2, 3, 4, 5],
+          edgeAssignments: new Map(),
+        },
+        phase: 'seating',
+      };
+
+      const prevState = { ...state };
+      
+      // Try to select edge for player not in configPlayers
+      state = gameReducer(state, selectEdge('non-existent-player', 0));
+      
+      // State should not change
+      expect(state).toEqual(prevState);
+    });
+  });
+
+  describe('Action creators', () => {
+    it('should create startSeatingPhase action', () => {
+      const action = startSeatingPhase(['p1', 'p2', 'p3']);
+      
+      expect(action.type).toBe('START_SEATING_PHASE');
+      expect(action.payload.seatingOrder).toEqual(['p1', 'p2', 'p3']);
+    });
+
+    it('should create completeSeatingPhase action', () => {
+      const action = completeSeatingPhase();
+      
+      expect(action.type).toBe('COMPLETE_SEATING_PHASE');
+    });
+
+    it('should handle START_SEATING_PHASE reducer action', () => {
+      let state = initialState;
+      const seatingOrder = ['p1', 'p2', 'p3'];
+      
+      state = gameReducer(state, startSeatingPhase(seatingOrder));
+      
+      expect(state.screen).toBe('seating');
+      expect(state.phase).toBe('seating');
+      expect(state.seatingPhase.active).toBe(true);
+      expect(state.seatingPhase.seatingOrder).toEqual(seatingOrder);
+      expect(state.seatingPhase.seatingIndex).toBe(0);
+      expect(state.seatingPhase.availableEdges).toEqual([0, 1, 2, 3, 4, 5]);
+    });
+  });
+
+  describe('Reducer edge cases', () => {
+    it('should handle COMPLETE_SEATING_PHASE action', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
+      state = gameReducer(state, startGame());
+
+      const prevState = { ...state };
+      
+      // Complete seating phase
+      state = gameReducer(state, completeSeatingPhase());
+      
+      // For now, this action doesn't change state
+      expect(state).toEqual(prevState);
+    });
+
+    it('should handle DRAW_TILE with empty deck', () => {
+      let state = initialState;
+      state = {
+        ...state,
+        availableTiles: [], // Empty deck
+      };
+
+      const prevState = { ...state };
+      
+      // Try to draw tile from empty deck
+      state = gameReducer(state, drawTile());
+      
+      // State should not change
+      expect(state).toEqual(prevState);
     });
   });
 });

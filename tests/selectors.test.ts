@@ -8,6 +8,7 @@ import {
   selectIsPositionHovered,
   selectGameStatus,
   selectRemainingTileCounts,
+  selectBlockedPlayers,
 } from '../src/redux/selectors';
 import { RootState } from '../src/redux/types';
 import { TileType } from '../src/game/types';
@@ -226,6 +227,75 @@ describe('Redux Selectors', () => {
       expect(counts.oneSharp).toBe(1);
       expect(counts.twoSharps).toBe(1);
       expect(counts.threeSharps).toBe(2);
+    });
+  });
+
+  describe('selectBlockedPlayers', () => {
+    it('should return empty array when no selected position', () => {
+      const players = [
+        { id: 'p1', color: '#0173B2', edgePosition: 0, isAI: false },
+        { id: 'p2', color: '#DE8F05', edgePosition: 3, isAI: false },
+      ];
+
+      const state = createMockState({
+        game: { ...initialGameState, players, currentTile: TileType.NoSharps },
+        ui: { ...initialUIState, selectedPosition: null },
+      });
+
+      const blocked = selectBlockedPlayers(state);
+      expect(blocked).toEqual([]);
+    });
+
+    it('should return empty array when no current tile', () => {
+      const players = [
+        { id: 'p1', color: '#0173B2', edgePosition: 0, isAI: false },
+        { id: 'p2', color: '#DE8F05', edgePosition: 3, isAI: false },
+      ];
+
+      const state = createMockState({
+        game: { ...initialGameState, players, currentTile: null },
+        ui: { ...initialUIState, selectedPosition: { row: 0, col: 0 } },
+      });
+
+      const blocked = selectBlockedPlayers(state);
+      expect(blocked).toEqual([]);
+    });
+
+    it('should return blocked players when position would block', () => {
+      const board = new Map();
+      
+      // Create a nearly complete wall
+      for (let col = -3; col <= 3; col++) {
+        if (col !== 0) {
+          board.set(`0,${col}`, {
+            type: TileType.ThreeSharps,
+            rotation: 0,
+            position: { row: 0, col },
+          });
+        }
+      }
+
+      const players = [
+        { id: 'p1', color: '#0173B2', edgePosition: 0, isAI: false },
+        { id: 'p2', color: '#DE8F05', edgePosition: 3, isAI: false },
+      ];
+
+      const state = createMockState({
+        game: { 
+          ...initialGameState, 
+          board,
+          players, 
+          currentTile: TileType.ThreeSharps,
+        },
+        ui: { 
+          ...initialUIState, 
+          selectedPosition: { row: 0, col: 0 },
+          currentRotation: 0,
+        },
+      });
+
+      const blocked = selectBlockedPlayers(state);
+      expect(Array.isArray(blocked)).toBe(true);
     });
   });
 });

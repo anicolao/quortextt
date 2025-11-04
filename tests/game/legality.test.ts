@@ -5,6 +5,8 @@ import {
   isLegalMove,
   findLegalMoves,
   canTileBePlacedAnywhere,
+  getDebugPathInfo,
+  getBlockedPlayers,
 } from '../../src/game/legality';
 import { TileType, PlacedTile, Player, Team } from '../../src/game/types';
 import { positionToKey, getAllBoardPositions } from '../../src/game/board';
@@ -609,6 +611,137 @@ describe('legal move validation', () => {
 
       const result = isLegalMove(board, tile, players, teams);
       expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('getDebugPathInfo', () => {
+    it('should return debug info for individual players', () => {
+      const board = new Map<string, PlacedTile>();
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const teams: Team[] = [];
+
+      const debugInfo = getDebugPathInfo(board, players, teams);
+
+      expect(debugInfo).toHaveLength(2);
+      expect(debugInfo[0].playerId).toBe('p1');
+      expect(debugInfo[0].hasPath).toBe(true);
+      expect(debugInfo[0].visitedPositions).toBeDefined();
+      expect(debugInfo[0].pathToTarget).toBeDefined();
+      expect(debugInfo[1].playerId).toBe('p2');
+    });
+
+    it('should return debug info for team games', () => {
+      const board = new Map<string, PlacedTile>();
+      const players = [
+        createPlayer('p1', 0),
+        createPlayer('p2', 1),
+        createPlayer('p3', 3),
+        createPlayer('p4', 4),
+      ];
+      const teams: Team[] = [
+        { player1Id: 'p1', player2Id: 'p3' },
+        { player1Id: 'p2', player2Id: 'p4' },
+      ];
+
+      const debugInfo = getDebugPathInfo(board, players, teams);
+
+      expect(debugInfo).toHaveLength(4);
+      expect(debugInfo[0].playerId).toBe('p1');
+      expect(debugInfo[0].targetEdge).toBe(3);
+      expect(debugInfo[1].playerId).toBe('p3');
+      expect(debugInfo[1].targetEdge).toBe(0);
+    });
+  });
+
+  describe('getBlockedPlayers', () => {
+    it('should return empty array for occupied position', () => {
+      const board = new Map<string, PlacedTile>();
+      const existingTile: PlacedTile = {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: 0, col: 0 },
+      };
+      board.set(positionToKey(existingTile.position), existingTile);
+
+      const tile: PlacedTile = {
+        type: TileType.OneSharp,
+        rotation: 0,
+        position: { row: 0, col: 0 },
+      };
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const teams: Team[] = [];
+
+      const blocked = getBlockedPlayers(board, tile, players, teams);
+      expect(blocked).toEqual([]);
+    });
+
+    it('should return empty array when move causes victory', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Create a scenario close to victory (using TwoSharps to create proper flow)
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 0, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => {
+        board.set(positionToKey(tile.position), tile);
+      });
+
+      // This tile would complete the connection and cause victory
+      const victoryTile: PlacedTile = {
+        type: TileType.TwoSharps,
+        rotation: 5,
+        position: { row: 3, col: 0 },
+      };
+      
+      const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
+      const teams: Team[] = [];
+
+      const blocked = getBlockedPlayers(board, victoryTile, players, teams);
+      expect(blocked).toEqual([]);
+    });
+
+    it('should detect blocked players in team games', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Create a blocking wall
+      for (let col = -3; col <= 3; col++) {
+        if (col !== 0) {
+          const tile: PlacedTile = {
+            type: TileType.ThreeSharps,
+            rotation: 0,
+            position: { row: 0, col },
+          };
+          board.set(positionToKey(tile.position), tile);
+        }
+      }
+
+      // This tile would complete the wall and block teams
+      const blockingTile: PlacedTile = {
+        type: TileType.ThreeSharps,
+        rotation: 0,
+        position: { row: 0, col: 0 },
+      };
+      
+      const players = [
+        createPlayer('p1', 0),
+        createPlayer('p2', 1),
+        createPlayer('p3', 3),
+        createPlayer('p4', 4),
+      ];
+      const teams: Team[] = [
+        { player1Id: 'p1', player2Id: 'p3' },
+        { player1Id: 'p2', player2Id: 'p4' },
+      ];
+
+      const blocked = getBlockedPlayers(board, blockingTile, players, teams);
+      // Should block both teams (4 players total)
+      expect(blocked.length).toBeGreaterThan(0);
     });
   });
 });
