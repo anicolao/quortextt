@@ -140,25 +140,65 @@ export class GameplayRenderer {
     if (sourceEdges.length === 0) return;
 
     // Collect all the edge vertices that form the zig-zag pattern
-    const zigzagVertices: Point[] = [];
+    // Build an ordered list of edge segments (pairs of vertices)
+    const zigzagEdges: Array<[Point, Point]> = [];
+    
+    // Map direction to vertex pairs for pointy-top hexagons
+    const vertexPairs = [
+      [4, 5], // SouthWest (240°)
+      [3, 4], // West (180°)
+      [2, 3], // NorthWest (120°)
+      [1, 2], // NorthEast (60°)
+      [0, 1], // East (0°)
+      [5, 0], // SouthEast (300°)
+    ];
+    
     sourceEdges.forEach(({ pos, dir }) => {
       const hexCenter = hexToPixel(pos, this.layout);
       const vertices = getHexVertices(hexCenter, this.layout.size);
 
-      // Map direction to vertex pairs for pointy-top hexagons
-      const vertexPairs = [
-        [4, 5], // SouthWest (240°)
-        [3, 4], // West (180°)
-        [2, 3], // NorthWest (120°)
-        [1, 2], // NorthEast (60°)
-        [0, 1], // East (0°)
-        [5, 0], // SouthEast (300°)
-      ];
-
       const [v1Index, v2Index] = vertexPairs[dir];
-      zigzagVertices.push(vertices[v1Index]);
-      zigzagVertices.push(vertices[v2Index]);
+      const v1 = vertices[v1Index];
+      const v2 = vertices[v2Index];
+      
+      zigzagEdges.push([v1, v2]);
     });
+
+    // Build a continuous path through the edges
+    // Start with the first edge
+    const zigzagVertices: Point[] = [zigzagEdges[0][0], zigzagEdges[0][1]];
+    
+    // Connect subsequent edges
+    for (let i = 1; i < zigzagEdges.length; i++) {
+      const [v1, v2] = zigzagEdges[i];
+      const lastVertex = zigzagVertices[zigzagVertices.length - 1];
+      
+      // Check which vertex of this edge is closer to the last vertex
+      const distToV1 = this.distance(lastVertex, v1);
+      const distToV2 = this.distance(lastVertex, v2);
+      
+      if (distToV1 < distToV2) {
+        // v1 is closer, so the edge goes v1 -> v2
+        if (distToV1 > 0.1) {
+          // Not the same point, add both
+          zigzagVertices.push(v1);
+          zigzagVertices.push(v2);
+        } else {
+          // Same point (shared vertex), just add v2
+          zigzagVertices.push(v2);
+        }
+      } else {
+        // v2 is closer, so the edge goes v2 -> v1
+        if (distToV2 > 0.1) {
+          // Not the same point, add both
+          zigzagVertices.push(v2);
+          zigzagVertices.push(v1);
+        } else {
+          // Same point (shared vertex), just add v1
+          zigzagVertices.push(v1);
+        }
+      }
+    }
 
     // Get endpoints of the zig-zag (first and last vertices)
     const firstEndpoint = zigzagVertices[0];
@@ -199,7 +239,7 @@ export class GameplayRenderer {
     // The farther endpoint connects to a 60° rotated version of the closest point
     let closerEndpoint: Point;
     let closestPoint: Point;
-    let fartherCorner: Point, nearerCorner: Point;
+    let fartherCorner: Point;
 
     if (distFirstToBoard < distLastToBoard) {
       closerEndpoint = firstEndpoint;
@@ -210,10 +250,8 @@ export class GameplayRenderer {
       const distToV2 = this.distance(closestPoint, boardV2);
       if (distToV1 > distToV2) {
         fartherCorner = boardV1;
-        nearerCorner = boardV2;
       } else {
         fartherCorner = boardV2;
-        nearerCorner = boardV1;
       }
     } else {
       closerEndpoint = lastEndpoint;
@@ -223,10 +261,8 @@ export class GameplayRenderer {
       const distToV2 = this.distance(closestPoint, boardV2);
       if (distToV1 > distToV2) {
         fartherCorner = boardV1;
-        nearerCorner = boardV2;
       } else {
         fartherCorner = boardV2;
-        nearerCorner = boardV1;
       }
     }
 
