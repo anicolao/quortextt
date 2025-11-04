@@ -31,6 +31,10 @@ const TILE_BG = "#2a2a2a"; // Dark gray
 const TILE_BORDER = "#444444"; // Slightly lighter gray
 const BUTTON_ICON = "#ffffff"; // White
 
+// Player edge rendering constants
+const PLAYER_EDGE_FILL_OPACITY = 0.3; // Semi-transparent fill for player edge polygon
+const PERPENDICULAR_EXTENSION_FACTOR = 2; // How far perpendiculars extend inward (in hex sizes)
+
 // Debug configuration
 const DEBUG_SHOW_EDGE_LABELS = false; // Show edge direction labels (0-5) on each hexagon
 const DEBUG_SHOW_VICTORY_EDGES = false; // Highlight victory condition edges for each player
@@ -134,10 +138,11 @@ export class GameplayRenderer {
     // 2. Perpendicular lines at each end (perpendicular to board edge)
     // 3. Board boundary segment to close the polygon
 
-    // Get all source edge positions and their inward-facing directions
-    const sourceEdges = getEdgePositionsWithDirections(edgePosition);
+    // Get all edge positions with their inward-facing directions
+    // (these are the edges where player flow enters the board)
+    const edgePositionsWithDirections = getEdgePositionsWithDirections(edgePosition);
     
-    if (sourceEdges.length === 0) return;
+    if (edgePositionsWithDirections.length === 0) return;
 
     // Get the board hexagon vertices
     const boardVertices = this.getFlatTopHexVertices(center, radius);
@@ -180,13 +185,13 @@ export class GameplayRenderer {
     this.ctx.moveTo(boardV1.x, boardV1.y);
     
     // Draw perpendicular from first board vertex to first source edge
-    const firstEdge = sourceEdges[0];
+    const firstEdge = edgePositionsWithDirections[0];
     const firstHexCenter = hexToPixel(firstEdge.pos, this.layout);
     const firstEdgeMidpoint = getEdgeMidpoint(firstHexCenter, this.layout.size, firstEdge.dir);
     
     // Find intersection of perpendicular line from boardV1 with line through firstEdgeMidpoint
-    // For simplicity, we'll just draw from boardV1 perpendicular until we reach the vicinity of firstEdgeMidpoint
-    const perpLength = this.layout.size * 2; // Extend perpendicular inward
+    // Extend perpendicular inward by a fixed distance
+    const perpLength = this.layout.size * PERPENDICULAR_EXTENSION_FACTOR;
     const perpEndpoint1 = {
       x: boardV1.x + perpVec.x * perpLength,
       y: boardV1.y + perpVec.y * perpLength
@@ -197,8 +202,8 @@ export class GameplayRenderer {
     this.ctx.lineTo(firstEdgeMidpoint.x, firstEdgeMidpoint.y);
     
     // Draw all the edge midpoints in sequence (creating zig-zag)
-    for (let i = 1; i < sourceEdges.length; i++) {
-      const edge = sourceEdges[i];
+    for (let i = 1; i < edgePositionsWithDirections.length; i++) {
+      const edge = edgePositionsWithDirections[i];
       const hexCenter = hexToPixel(edge.pos, this.layout);
       const edgeMidpoint = getEdgeMidpoint(hexCenter, this.layout.size, edge.dir);
       this.ctx.lineTo(edgeMidpoint.x, edgeMidpoint.y);
@@ -219,7 +224,7 @@ export class GameplayRenderer {
     
     // Fill the polygon with player color (semi-transparent)
     this.ctx.fillStyle = color;
-    this.ctx.globalAlpha = 0.3;
+    this.ctx.globalAlpha = PLAYER_EDGE_FILL_OPACITY;
     this.ctx.fill();
     this.ctx.globalAlpha = 1.0;
     
