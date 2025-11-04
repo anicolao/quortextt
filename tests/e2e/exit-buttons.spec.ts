@@ -1,9 +1,9 @@
 // End-to-end tests for the exit buttons in gameplay screen
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
 
 // Helper to setup a game with two players
-async function setupTwoPlayerGame(page: any) {
+async function setupTwoPlayerGame(page: Page) {
   await page.goto('/');
   await page.waitForSelector('canvas#game-canvas');
   
@@ -53,13 +53,6 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     let state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
     
-    // Take screenshot showing the exit buttons in corners
-    await pauseAnimations(page);
-    await page.screenshot({ 
-      path: '/tmp/gameplay-screen-with-exit-buttons.png',
-      fullPage: false
-    });
-    
     // Click top-left exit button (margin + half of button size)
     // Exit buttons are 50x50 with 10px margin
     await canvas.click({
@@ -71,12 +64,6 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     // Verify we're back in configuration screen
     state = await getReduxState(page);
     expect(state.game.screen).toBe('configuration');
-    
-    // Take screenshot showing we're back in lobby
-    await page.screenshot({ 
-      path: '/tmp/lobby-screen-after-exit.png',
-      fullPage: false
-    });
   });
 
   test('should return to lobby when clicking top-right exit button', async ({ page }) => {
