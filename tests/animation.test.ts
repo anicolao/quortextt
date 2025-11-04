@@ -9,6 +9,7 @@ import {
   pauseAnimations,
   resumeAnimations,
   stepFrame,
+  cancelAnimationsByName,
 } from '../src/animation/actions';
 import {
   defineAnimation,
@@ -207,6 +208,77 @@ describe('Animation Framework', () => {
       // Simulate completion by updating animations list
       state = animationReducer(state, updateAnimations([]));
       expect(state.animations).toHaveLength(0);
+    });
+
+    it('should support looping animations', () => {
+      // Setup mock store
+      (global as any).window = {
+        __REDUX_STORE__: {
+          getState: () => ({
+            animation: { frameCounter: 0 }
+          })
+        }
+      };
+
+      let state = initialAnimationState;
+      
+      // Register looping animation
+      const action = {
+        type: 'REGISTER_ANIMATION' as const,
+        payload: {
+          id: 'loop-test',
+          animationName: 'test-loop',
+          startFrame: 0,
+          endFrame: 10,
+          loop: true,
+        }
+      };
+      state = animationReducer(state, action);
+      expect(state.animations).toHaveLength(1);
+      expect(state.animations[0].loop).toBe(true);
+    });
+
+    it('should cancel animations by name', () => {
+      let state = initialAnimationState;
+      
+      // Add multiple animations
+      state = animationReducer(state, {
+        type: 'REGISTER_ANIMATION',
+        payload: {
+          id: 'anim1',
+          animationName: 'test-anim',
+          startFrame: 0,
+          endFrame: 10,
+        }
+      });
+      
+      state = animationReducer(state, {
+        type: 'REGISTER_ANIMATION',
+        payload: {
+          id: 'anim2',
+          animationName: 'other-anim',
+          startFrame: 0,
+          endFrame: 10,
+        }
+      });
+      
+      state = animationReducer(state, {
+        type: 'REGISTER_ANIMATION',
+        payload: {
+          id: 'anim3',
+          animationName: 'test-anim',
+          startFrame: 5,
+          endFrame: 15,
+        }
+      });
+      
+      expect(state.animations).toHaveLength(3);
+      
+      // Cancel all 'test-anim' animations
+      state = animationReducer(state, cancelAnimationsByName('test-anim'));
+      
+      expect(state.animations).toHaveLength(1);
+      expect(state.animations[0].animationName).toBe('other-anim');
     });
   });
 });

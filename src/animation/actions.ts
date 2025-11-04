@@ -9,6 +9,7 @@ export const UPDATE_ANIMATIONS = 'UPDATE_ANIMATIONS';
 export const PAUSE_ANIMATIONS = 'PAUSE_ANIMATIONS';
 export const RESUME_ANIMATIONS = 'RESUME_ANIMATIONS';
 export const STEP_FRAME = 'STEP_FRAME';
+export const CANCEL_ANIMATIONS_BY_NAME = 'CANCEL_ANIMATIONS_BY_NAME';
 
 // Action interfaces
 export interface IncrementFrameAction {
@@ -39,6 +40,13 @@ export interface StepFrameAction {
   type: typeof STEP_FRAME;
 }
 
+export interface CancelAnimationsByNameAction {
+  type: typeof CANCEL_ANIMATIONS_BY_NAME;
+  payload: {
+    animationName: string;
+  };
+}
+
 // Combined animation action type
 export type AnimationAction =
   | IncrementFrameAction
@@ -46,7 +54,8 @@ export type AnimationAction =
   | UpdateAnimationsAction
   | PauseAnimationsAction
   | ResumeAnimationsAction
-  | StepFrameAction;
+  | StepFrameAction
+  | CancelAnimationsByNameAction;
 
 // Action creators
 export const incrementFrame = (): IncrementFrameAction => ({
@@ -56,7 +65,8 @@ export const incrementFrame = (): IncrementFrameAction => ({
 export const registerAnimation = (
   animationName: string,
   duration: number,
-  delay: number = 0
+  delay: number = 0,
+  loop: boolean = false
 ): RegisterAnimationAction => {
   // Get current frame from store
   const state = (window as any).__REDUX_STORE__.getState();
@@ -74,6 +84,7 @@ export const registerAnimation = (
       animationName,
       startFrame: currentFrame + adjustedDelay,
       endFrame: currentFrame + adjustedDelay + adjustedDuration,
+      loop,
     },
   };
 };
@@ -93,4 +104,9 @@ export const resumeAnimations = (): ResumeAnimationsAction => ({
 
 export const stepFrame = (): StepFrameAction => ({
   type: STEP_FRAME,
+});
+
+export const cancelAnimationsByName = (animationName: string): CancelAnimationsByNameAction => ({
+  type: CANCEL_ANIMATIONS_BY_NAME,
+  payload: { animationName },
 });

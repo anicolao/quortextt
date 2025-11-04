@@ -9,6 +9,7 @@ import {
   PAUSE_ANIMATIONS,
   RESUME_ANIMATIONS,
   STEP_FRAME,
+  CANCEL_ANIMATIONS_BY_NAME,
 } from './actions';
 
 // Initial animation state
@@ -78,6 +79,14 @@ export function animationReducer(
         };
       }
       return state;
+
+    case CANCEL_ANIMATIONS_BY_NAME:
+      return {
+        ...state,
+        animations: state.animations.filter(
+          anim => anim.animationName !== action.payload.animationName
+        ),
+      };
 
     default:
       return state;
