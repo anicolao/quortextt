@@ -133,7 +133,7 @@ describe('victory conditions', () => {
       flows.set('p1', flow);
       
       // Don't add flowEdges for any of these positions
-      // This will test lines 51-52 (continue when edgeMap is missing)
+      // This will test the path when edgeMap is missing
       // and the relevant code path (return false after checking all positions)
       expect(checkPlayerFlowVictory(flows, flowEdges, player)).toBe(false);
     });
@@ -160,7 +160,7 @@ describe('victory conditions', () => {
       
       const { flows, flowEdges } = calculateFlows(board, players);
       
-      // This exercises the loop through directions (lines 55-67)
+      // This exercises the loop through directions checking for off-board neighbors
       const result = checkPlayerFlowVictory(flows, flowEdges, player);
       expect(typeof result).toBe('boolean');
     });
@@ -345,7 +345,7 @@ describe('victory conditions', () => {
       edgeMap2.set(2, 'p2'); // Internal direction
       flowEdges.set(positionToKey(edge0Positions[1]), edgeMap2);
       
-      // This tests lines 117 and 151 - exitsEdge checking logic
+      // This tests the exitsEdge checking logic for team victories
       const result = checkTeamFlowVictory(flows, flowEdges, team, players);
       expect(typeof result).toBe('boolean');
     });
@@ -1038,7 +1038,7 @@ describe('victory conditions', () => {
         }
         flowEdges.get(posKey)!.set(dir, 'p1');
       });
-      // Don't add flowEdges for edge3 - tests lines 110-111
+      // Don't add flowEdges for edge3 - tests missing edgeMap at target edge
       
       flows.set('p2', new Set());
       
@@ -1065,7 +1065,7 @@ describe('victory conditions', () => {
       edge0Nodes.forEach(({ pos }) => flow2.add(positionToKey(pos)));
       flows.set('p2', flow2);
       
-      // Don't add flowEdges for player2's start edge - tests lines 132-133
+      // Don't add flowEdges for player2's start edge - tests missing edgeMap at start edge
       // Only add for target edge
       edge0Nodes.forEach(({ pos, dir }) => {
         const posKey = positionToKey(pos);
@@ -1106,7 +1106,7 @@ describe('victory conditions', () => {
         }
         flowEdges.get(posKey)!.set(dir, 'p2');
       });
-      // Don't add flowEdges for player2's target edge (edge 0) - tests lines 146-147
+      // Don't add flowEdges for player2's target edge (edge 0) - tests missing edgeMap at target edge for player2
       
       const result = checkTeamFlowVictory(flows, flowEdges, team, players);
       expect(result).toBe(false);
@@ -1157,7 +1157,7 @@ describe('victory conditions', () => {
       const result = checkFlowVictory(flows, flowEdges, players, teams);
 
       // Both teams might win simultaneously depending on the board state
-      // This tests line 194-195
+      // This tests the tie detection when multiple winners exist
       if (result.winType === 'tie') {
         expect(result.winner).toContain('team-');
       }
@@ -1186,7 +1186,7 @@ describe('victory conditions', () => {
       
       const { flows, flowEdges } = calculateFlows(board, players);
       
-      // Check if player1's flow wins (covers lines 116-118)
+      // Check if player1's flow wins (specifically tests player1 path in team victory)
       const result = checkTeamFlowVictory(flows, flowEdges, team, players);
       expect(result).toBe(true);
     });
@@ -1283,7 +1283,7 @@ describe('victory conditions', () => {
         }
         flowEdges.get(posKey)!.set(dir, 'p1');
       });
-      // Don't add flowEdges for edge3 - tests lines 61-62
+      // Don't add flowEdges for edge3 - tests missing edgeMap at target edge for player victory
       
       const result = checkPlayerFlowVictory(flows, flowEdges, player);
       expect(result).toBe(false);
