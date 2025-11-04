@@ -44,7 +44,7 @@ describe('Coverage Tests', () => {
       // Mock checkVictory to force it to return a winner
       const checkVictorySpy = vi.spyOn(victory, 'checkVictory');
       checkVictorySpy.mockReturnValue({
-        winner: 'p1',
+        winners: ['p1'],
         winType: 'flow',
       });
       
@@ -61,7 +61,7 @@ describe('Coverage Tests', () => {
       state = gameReducer(state, placeTile({ row: 0, col: 0 }, 0));
       
       // Lines 265-272 should have been executed
-      expect(state.winner).toBe('p1');
+      expect(state.winners).toEqual(['p1']);
       expect(state.phase).toBe('finished');
       expect(state.screen).toBe('game-over');
       expect(state.winType).toBe('flow');

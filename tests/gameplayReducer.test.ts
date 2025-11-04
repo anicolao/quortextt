@@ -30,7 +30,7 @@ describe('gameReducer - Gameplay Actions', () => {
       expect(state.currentPlayerIndex).toBe(0);
       expect(state.phase).toBe('playing');
       expect(state.board.size).toBe(0);
-      expect(state.winner).toBeNull();
+      expect(state.winners).toEqual([]);
     });
 
     it('should reset game state when setting up', () => {
@@ -237,19 +237,19 @@ describe('gameReducer - Gameplay Actions', () => {
 
   describe('END_GAME', () => {
     it('should set winner and end game', () => {
-      const state = gameReducer(initialState, endGame('p1', 'flow'));
+      const state = gameReducer(initialState, endGame(['p1'], 'flow'));
 
       expect(state.phase).toBe('finished');
-      expect(state.winner).toBe('p1');
+      expect(state.winners).toEqual(['p1']);
       expect(state.winType).toBe('flow');
       expect(state.screen).toBe('game-over');
     });
 
     it('should support different win types', () => {
-      const state1 = gameReducer(initialState, endGame('p1', 'constraint'));
+      const state1 = gameReducer(initialState, endGame(['p1'], 'constraint'));
       expect(state1.winType).toBe('constraint');
 
-      const state2 = gameReducer(initialState, endGame('p2', 'tie'));
+      const state2 = gameReducer(initialState, endGame(['p2'], 'tie'));
       expect(state2.winType).toBe('tie');
     });
   });

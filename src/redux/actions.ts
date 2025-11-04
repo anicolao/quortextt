@@ -125,7 +125,7 @@ export interface NextPlayerAction {
 export interface EndGameAction {
   type: typeof END_GAME;
   payload: {
-    winner: string;
+    winners: string[];
     winType: 'flow' | 'constraint' | 'tie';
   };
 }
@@ -246,9 +246,9 @@ export const nextPlayer = (): NextPlayerAction => ({
   type: NEXT_PLAYER,
 });
 
-export const endGame = (winner: string, winType: 'flow' | 'constraint' | 'tie'): EndGameAction => ({
+export const endGame = (winners: string[], winType: 'flow' | 'constraint' | 'tie'): EndGameAction => ({
   type: END_GAME,
-  payload: { winner, winType },
+  payload: { winners, winType },
 });
 
 export const resetGame = (): ResetGameAction => ({

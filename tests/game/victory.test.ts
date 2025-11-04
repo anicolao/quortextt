@@ -343,7 +343,7 @@ describe('victory conditions', () => {
 
       const result = checkFlowVictory(board, players, teams);
 
-      expect(result.winner).toBe(null);
+      expect(result.winners).toEqual([]);
       expect(result.winType).toBe(null);
     });
 
@@ -369,7 +369,7 @@ describe('victory conditions', () => {
       const { flows, flowEdges } = calculateFlows(board, players);
       const result = checkFlowVictory(board, players, teams);
 
-      expect(result.winner).toBe('p1');
+      expect(result.winners).toEqual(['p1']);
       expect(result.winType).toBe('flow');
     });
 
@@ -401,7 +401,8 @@ describe('victory conditions', () => {
       
       const result = checkFlowVictory(board, players, teams);
 
-      expect(result.winner).toBe('team-p1-p3');
+      // Both team members should be credited individually
+      expect(result.winners).toEqual(['p1', 'p3']);
       expect(result.winType).toBe('flow');
     });
 
@@ -427,7 +428,7 @@ describe('victory conditions', () => {
       const result = checkFlowVictory(board, players, teams);
 
       // Both players have a viable path with the new implementation
-      expect(result.winner).not.toBe(null);
+      expect(result.winners.length).toBeGreaterThan(0);
       expect(result.winType).toBe('tie');
     });
   });
@@ -453,7 +454,7 @@ describe('victory conditions', () => {
       
       const result = checkVictory(board, players, teams);
 
-      expect(result.winner).toBe('p1');
+      expect(result.winners).toEqual(['p1']);
       expect(result.winType).toBe('flow');
     });
 
@@ -464,7 +465,7 @@ describe('victory conditions', () => {
       
       const result = checkVictory(board, players, teams);
 
-      expect(result.winner).toBe(null);
+      expect(result.winners).toEqual([]);
       expect(result.winType).toBe(null);
     });
 
@@ -477,7 +478,7 @@ describe('victory conditions', () => {
       const result = checkVictory(board, players, teams, TileType.NoSharps);
 
       // Should not trigger constraint victory on empty board
-      expect(result.winner).toBe(null);
+      expect(result.winners).toEqual([]);
       expect(result.winType).toBe(null);
     });
 
@@ -520,7 +521,7 @@ describe('victory conditions', () => {
       // The result may or may not be constraint victory depending on board state
       // But this exercises the constraint victory code path
       expect(result).toBeDefined();
-      expect(result.winner !== null || result.winner === null).toBe(true);
+      expect(Array.isArray(result.winners)).toBe(true);
     });
 
     it('should trigger constraint victory with blocked board', () => {
@@ -544,7 +545,7 @@ describe('victory conditions', () => {
       const result = checkVictory(board, players, teams, TileType.ThreeSharps);
       
       // Should detect constraint victory
-      expect(result.winner).toBe('constraint');
+      expect(result.winners).toEqual(['constraint']);
       expect(result.winType).toBe('constraint');
     });
   });
@@ -904,7 +905,8 @@ describe('victory conditions', () => {
       // Both teams might win simultaneously depending on the board state
       // This tests the tie detection when multiple winners exist
       if (result.winType === 'tie') {
-        expect(result.winner).toContain('team-');
+        // Should credit individual players, not teams
+        expect(result.winners.length).toBeGreaterThan(0);
       }
       expect(result).toBeDefined();
     });
@@ -963,8 +965,8 @@ describe('victory conditions', () => {
       
       // This should result in a tie since both players have winning paths
       expect(result.winType).toBe('tie');
-      expect(result.winner).toContain('p1');
-      expect(result.winner).toContain('p2');
+      expect(result.winners).toContain('p1');
+      expect(result.winners).toContain('p2');
     });
   });
 
