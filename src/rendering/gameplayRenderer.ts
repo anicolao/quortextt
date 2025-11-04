@@ -86,6 +86,11 @@ export class GameplayRenderer {
 
     // Layer 6: Exit buttons in corners
     this.renderExitButtons();
+
+    // Layer 7: Debug legality test - show winning paths
+    if ((window as any).DEBUG_LEGALITY_TEST) {
+      this.renderDebugLegalityPaths(state);
+    }
   }
 
   private renderBackground(): void {
@@ -894,6 +899,131 @@ export class GameplayRenderer {
       });
     }
     return vertices;
+  }
+
+  private renderDebugLegalityPaths(state: RootState): void {
+    // Import the debug function
+    const { getDebugPathInfo } = require('../game/legality');
+    
+    // Log debug mode status once
+    if (!(window as any).__debugLegalityLogged) {
+      console.log('%c[DEBUG_LEGALITY_TEST] Debug mode enabled', 'color: #00ff00; font-weight: bold');
+      console.log('Showing winning paths for all players');
+      console.log('- Light circles: all visited positions during BFS');
+      console.log('- Dark circles: positions on the found path');
+      console.log('- Dashed line: the winning path from start to target');
+      (window as any).__debugLegalityLogged = true;
+    }
+    
+    // Get debug path information for all players
+    const debugInfo = getDebugPathInfo(
+      state.game.board,
+      state.game.players,
+      state.game.teams
+    );
+    
+    // Render each player's path information
+    debugInfo.forEach((info: any) => {
+      // Skip if no path
+      if (!info.hasPath) {
+        return;
+      }
+      
+      // Draw the path
+      if (info.pathToTarget.length > 1) {
+        this.ctx.strokeStyle = info.playerColor;
+        this.ctx.lineWidth = 4;
+        this.ctx.globalAlpha = 0.6;
+        this.ctx.setLineDash([8, 4]);
+        
+        this.ctx.beginPath();
+        const startPos = hexToPixel(info.pathToTarget[0], this.layout);
+        this.ctx.moveTo(startPos.x, startPos.y);
+        
+        for (let i = 1; i < info.pathToTarget.length; i++) {
+          const pos = hexToPixel(info.pathToTarget[i], this.layout);
+          this.ctx.lineTo(pos.x, pos.y);
+        }
+        
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        this.ctx.globalAlpha = 1.0;
+      }
+      
+      // Draw visited positions (lighter)
+      this.ctx.fillStyle = info.playerColor;
+      this.ctx.globalAlpha = 0.2;
+      
+      for (const pos of info.visitedPositions) {
+        const center = hexToPixel(pos, this.layout);
+        this.ctx.beginPath();
+        this.ctx.arc(center.x, center.y, this.layout.size * 0.8, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
+      this.ctx.globalAlpha = 1.0;
+      
+      // Draw path positions (darker circles)
+      this.ctx.fillStyle = info.playerColor;
+      this.ctx.globalAlpha = 0.5;
+      
+      for (const pos of info.pathToTarget) {
+        const center = hexToPixel(pos, this.layout);
+        this.ctx.beginPath();
+        this.ctx.arc(center.x, center.y, this.layout.size * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
+      this.ctx.globalAlpha = 1.0;
+    });
+    
+    // Draw legend in top-right corner
+    const legendX = this.layout.canvasWidth - 250;
+    const legendY = 80;
+    const lineHeight = 25;
+    
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(legendX - 10, legendY - 10, 240, debugInfo.length * lineHeight + 40);
+    
+    // Title
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 14px sans-serif';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText('DEBUG: Winning Paths', legendX, legendY + 10);
+    
+    // Player info
+    this.ctx.font = '12px sans-serif';
+    debugInfo.forEach((info: any, index: number) => {
+      const y = legendY + 30 + index * lineHeight;
+      
+      // Color indicator
+      this.ctx.fillStyle = info.playerColor;
+      this.ctx.beginPath();
+      this.ctx.arc(legendX + 10, y, 6, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Player text
+      this.ctx.fillStyle = info.hasPath ? '#00ff00' : '#ff0000';
+      this.ctx.fillText(
+        `${info.playerId}: ${info.hasPath ? 'PATH FOUND' : 'NO PATH'}`,
+        legendX + 25,
+        y + 4
+      );
+      
+      // Path length
+      if (info.hasPath) {
+        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.fillText(
+          `(${info.pathToTarget.length} tiles)`,
+          legendX + 25,
+          y + 16
+        );
+      }
+    });
+    
+    // Reset text alignment
+    this.ctx.textAlign = 'left';
   }
 
   getLayout(): HexLayout {

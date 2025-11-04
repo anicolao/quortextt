@@ -6,7 +6,6 @@ import {
   positionToKey,
   getEdgePositions,
   getOppositeEdge,
-  getNeighbors,
   getNeighborInDirection,
   getOppositeDirection,
   isValidPosition,
@@ -62,13 +61,21 @@ function getOppositeEdgeNode(node: EdgeNode): EdgeNode | null {
   };
 }
 
+// Result of path finding with debug information
+interface PathFindingResult {
+  hasPath: boolean;
+  visitedPositions?: Set<HexPosition>;
+  pathToTarget?: HexPosition[];
+}
+
 // Check if a player/team still has a viable path to victory
 // Uses edge-based graph BFS: creates nodes for each tile edge and checks flow connectivity
 function hasViablePath(
   board: Map<string, PlacedTile>,
   player: Player,
-  targetEdge: number
-): boolean {
+  targetEdge: number,
+  returnDebugInfo = false
+): boolean | PathFindingResult {
   const startEdge = player.edgePosition;
   const startPositions = getEdgePositions(startEdge);
   const targetPositions = getEdgePositions(targetEdge);
@@ -149,6 +156,7 @@ function hasViablePath(
   
   // Now perform BFS from all start edge nodes to see if we can reach any target edge node
   const visited = new Set<string>();
+  const parent = new Map<string, string>(); // For path reconstruction
   const queue: string[] = [];
   
   // Add all edges from start positions as starting points
@@ -162,9 +170,12 @@ function hasViablePath(
       if (!visited.has(key)) {
         queue.push(key);
         visited.add(key);
+        parent.set(key, ''); // Mark as starting node
       }
     }
   }
+  
+  let foundTargetKey: string | null = null;
   
   // BFS
   while (queue.length > 0) {
@@ -184,7 +195,8 @@ function hasViablePath(
     );
     
     if (isTarget) {
-      return true;
+      foundTargetKey = currentKey;
+      break;
     }
     
     // Explore neighbors
@@ -193,14 +205,58 @@ function hasViablePath(
       for (const neighborKey of neighbors) {
         if (!visited.has(neighborKey)) {
           visited.add(neighborKey);
+          parent.set(neighborKey, currentKey);
           queue.push(neighborKey);
         }
       }
     }
   }
   
-  // No path found
-  return false;
+  const hasPath = foundTargetKey !== null;
+  
+  // If not returning debug info, just return boolean
+  if (!returnDebugInfo) {
+    return hasPath;
+  }
+  
+  // Reconstruct path and get visited positions
+  const visitedPositions = new Set<HexPosition>();
+  for (const key of visited) {
+    const [rowStr, colStr] = key.split(',');
+    const pos: HexPosition = { row: parseInt(rowStr), col: parseInt(colStr) };
+    visitedPositions.add(pos);
+  }
+  
+  const pathToTarget: HexPosition[] = [];
+  if (hasPath && foundTargetKey) {
+    // Reconstruct path from target back to start
+    let current: string | undefined = foundTargetKey;
+    const pathKeys: string[] = [];
+    
+    while (current && parent.get(current) !== '') {
+      pathKeys.push(current);
+      current = parent.get(current);
+    }
+    
+    // Convert to positions (reverse to get start-to-end order)
+    pathKeys.reverse();
+    for (const key of pathKeys) {
+      const [rowStr, colStr] = key.split(',');
+      const pos: HexPosition = { row: parseInt(rowStr), col: parseInt(colStr) };
+      // Only add unique positions
+      if (pathToTarget.length === 0 || 
+          pathToTarget[pathToTarget.length - 1].row !== pos.row ||
+          pathToTarget[pathToTarget.length - 1].col !== pos.col) {
+        pathToTarget.push(pos);
+      }
+    }
+  }
+  
+  return {
+    hasPath,
+    visitedPositions,
+    pathToTarget,
+  };
 }
 
 // Check if all players/teams have a viable path after placing a tile
@@ -369,4 +425,76 @@ export function canTileBePlacedAnywhere(
   }
   
   return false;
+}
+
+// Debug function to get path information for all players
+// This is used by the debug UI visualization
+export interface PlayerPathDebugInfo {
+  playerId: string;
+  playerColor: string;
+  hasPath: boolean;
+  visitedPositions: HexPosition[];
+  pathToTarget: HexPosition[];
+  startEdge: number;
+  targetEdge: number;
+}
+
+export function getDebugPathInfo(
+  board: Map<string, PlacedTile>,
+  players: Player[],
+  teams: Team[]
+): PlayerPathDebugInfo[] {
+  const debugInfo: PlayerPathDebugInfo[] = [];
+  
+  if (teams.length > 0) {
+    // Team games - check paths for each player in teams
+    for (const team of teams) {
+      const player1 = players.find((p) => p.id === team.player1Id);
+      const player2 = players.find((p) => p.id === team.player2Id);
+      
+      if (player1 && player2) {
+        // Player 1 trying to reach player 2's edge
+        const result1 = hasViablePath(board, player1, player2.edgePosition, true) as PathFindingResult;
+        debugInfo.push({
+          playerId: player1.id,
+          playerColor: player1.color,
+          hasPath: result1.hasPath,
+          visitedPositions: Array.from(result1.visitedPositions || []),
+          pathToTarget: result1.pathToTarget || [],
+          startEdge: player1.edgePosition,
+          targetEdge: player2.edgePosition,
+        });
+        
+        // Player 2 trying to reach player 1's edge
+        const result2 = hasViablePath(board, player2, player1.edgePosition, true) as PathFindingResult;
+        debugInfo.push({
+          playerId: player2.id,
+          playerColor: player2.color,
+          hasPath: result2.hasPath,
+          visitedPositions: Array.from(result2.visitedPositions || []),
+          pathToTarget: result2.pathToTarget || [],
+          startEdge: player2.edgePosition,
+          targetEdge: player1.edgePosition,
+        });
+      }
+    }
+  } else {
+    // Individual games - each player to opposite edge
+    for (const player of players) {
+      const targetEdge = getOppositeEdge(player.edgePosition);
+      const result = hasViablePath(board, player, targetEdge, true) as PathFindingResult;
+      
+      debugInfo.push({
+        playerId: player.id,
+        playerColor: player.color,
+        hasPath: result.hasPath,
+        visitedPositions: Array.from(result.visitedPositions || []),
+        pathToTarget: result.pathToTarget || [],
+        startEdge: player.edgePosition,
+        targetEdge,
+      });
+    }
+  }
+  
+  return debugInfo;
 }
