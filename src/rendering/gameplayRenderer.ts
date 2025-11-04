@@ -19,7 +19,7 @@ import {
 import { TileType, PlacedTile } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
 import { getFlowPreviewData } from "../animation/flowPreview";
-import { isLegalMove, getBlockedPlayers } from "../game/legality";
+import { isLegalMove, getBlockedPlayers, getDebugPathInfo } from "../game/legality";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -902,9 +902,6 @@ export class GameplayRenderer {
   }
 
   private renderDebugLegalityPaths(state: RootState): void {
-    // Import the debug function
-    const { getDebugPathInfo } = require('../game/legality');
-    
     // Log debug mode status once
     if (!(window as any).__debugLegalityLogged) {
       console.log('%c[DEBUG_LEGALITY_TEST] Debug mode enabled', 'color: #00ff00; font-weight: bold');
