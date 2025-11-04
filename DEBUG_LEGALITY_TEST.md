@@ -34,9 +34,10 @@ For each player:
 
 1. Enable debug mode in the console
 2. Play the game normally
-3. When you place or preview a tile, you'll see the winning paths
-4. If a player shows "NO PATH" when you expect a path, this indicates a bug in the blocking detection
-5. If a player shows "PATH FOUND" when they should be blocked, this also indicates a bug
+3. When you preview a tile (place it on the board before clicking the checkmark), the visualization shows the winning paths **including that previewed tile**
+4. This shows the legality proof for the previewed tile placement, not the existing board state
+5. If a player shows "NO PATH" when you expect a path, this indicates a bug in the blocking detection
+6. If a player shows "PATH FOUND" when they should be blocked, this also indicates a bug
 
 ## Understanding the Path
 

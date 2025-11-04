@@ -15,6 +15,7 @@ import {
   getAllBoardPositions,
   getEdgePositionsWithDirections,
   getOppositeEdge,
+  positionToKey,
 } from "../game/board";
 import { victoryAnimationState } from "../animation/victoryAnimations";
 import { isConnectionInWinningPath } from "../game/victory";
@@ -1002,9 +1003,22 @@ export class GameplayRenderer {
       (window as any).__debugLegalityLogged = true;
     }
     
-    // Get debug path information for all players
+    // Include the previewed tile in the board state if one exists
+    let boardToUse = state.game.board;
+    if (state.ui.selectedPosition && state.game.currentTile !== null) {
+      // Create a new board with the previewed tile placement
+      boardToUse = new Map(state.game.board);
+      const previewedTile: PlacedTile = {
+        type: state.game.currentTile,
+        rotation: state.ui.currentRotation,
+        position: state.ui.selectedPosition,
+      };
+      boardToUse.set(positionToKey(state.ui.selectedPosition), previewedTile);
+    }
+    
+    // Get debug path information for all players with the previewed tile
     const debugInfo = getDebugPathInfo(
-      state.game.board,
+      boardToUse,
       state.game.players,
       state.game.teams
     );
