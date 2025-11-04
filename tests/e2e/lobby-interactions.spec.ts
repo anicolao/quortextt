@@ -2,7 +2,7 @@
 // Tests the rotated player labels and remove button functionality
 
 import { test, expect } from '@playwright/test';
-import { getReduxState , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState , pauseAnimations } from './helpers';
 
 // Helper to get edge button coordinates
 async function getEdgeButtonCoordinates(page: any, colorIndex: number, edge: 0 | 1 | 2 | 3) {
@@ -151,7 +151,6 @@ test.describe('Lobby Mouse Interactions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
-    await enableDeterministicPlayerIds(page);
   });
 
   test('should add players from all four edges using mouse clicks', async ({ page }) => {

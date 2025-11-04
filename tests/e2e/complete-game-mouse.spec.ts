@@ -1,7 +1,7 @@
 // E2E test for a complete 2-player game using mouse clicks
 // This test demonstrates a full game from setup to victory using only mouse interactions
 import { test, expect } from '@playwright/test';
-import { getReduxState , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState , pauseAnimations } from './helpers';
 import { HexPosition } from '../../src/game/types';
 
 // Helper to calculate pixel coordinates for a hex position
@@ -207,7 +207,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
-    await enableDeterministicPlayerIds(page);
     
     // Get canvas bounding box for mouse clicks
     const canvas = page.locator('canvas#game-canvas');

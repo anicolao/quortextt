@@ -1,7 +1,7 @@
 // End-to-end tests for the game configuration screen (redesigned edge-based lobby)
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
 
 // Helper to get edge button coordinates for the new lobby
 // colorIndex: 0=blue, 1=orange, 2=green, 3=yellow, 4=purple, 5=red
@@ -76,7 +76,6 @@ test.describe('Configuration Screen', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
-    await enableDeterministicPlayerIds(page);
   });
 
   test('should display the edge-based lobby with color buttons', async ({ page }) => {

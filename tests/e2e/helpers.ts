@@ -85,16 +85,6 @@ export async function completeSeatingPhase(page: any, canvas: any, box: any) {
 }
 
 /**
- * Helper to enable deterministic player IDs for stable screenshots
- * @param page - Playwright page object
- */
-export async function enableDeterministicPlayerIds(page: any) {
-  await page.evaluate(() => {
-    (window as any).__TEST_PLAYER_ID_COUNTER__ = 0;
-  });
-}
-
-/**
  * Helper to pause animations to prevent canvas redraws during screenshots
  * @param page - Playwright page object
  */

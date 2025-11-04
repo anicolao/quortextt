@@ -50,14 +50,9 @@ export const initialState: GameState = {
 };
 
 // Helper function to generate unique player ID
-// In test mode (when window.__TEST_PLAYER_ID_COUNTER__ is set), generates deterministic IDs
-let testPlayerIdCounter = 0;
+let playerIdCounter = 0;
 function generatePlayerId(): string {
-  const win = typeof window !== 'undefined' ? window as any : undefined;
-  if (win && typeof win.__TEST_PLAYER_ID_COUNTER__ === 'number') {
-    return `player-${++testPlayerIdCounter}`;
-  }
-  return `player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `P${++playerIdCounter}`;
 }
 
 // Helper function to create a shuffled tile deck

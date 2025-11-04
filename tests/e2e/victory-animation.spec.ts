@@ -1,7 +1,7 @@
 // E2E test for victory animation
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations, enableDeterministicPlayerIds } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
 test.describe('Victory Animation', () => {
   test('should display animated victory modals in all corners with pulsing flow', async ({ page }) => {
@@ -9,7 +9,6 @@ test.describe('Victory Animation', () => {
     
     // Wait for the page to load
     await page.waitForSelector('canvas#game-canvas');
-    await enableDeterministicPlayerIds(page);
     
     // Set up a 2-player game
     await page.evaluate(() => {
