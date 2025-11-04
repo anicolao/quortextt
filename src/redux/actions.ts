@@ -1,6 +1,7 @@
 // Redux action types and action creators
 
 import { HexPosition, Rotation, Player, Team } from '../game/types';
+import { GameSettings } from './types';
 
 // Configuration actions
 export const ADD_PLAYER = 'ADD_PLAYER';
@@ -32,6 +33,8 @@ export const SET_HOVERED_POSITION = 'SET_HOVERED_POSITION';
 export const SET_SELECTED_POSITION = 'SET_SELECTED_POSITION';
 export const SET_ROTATION = 'SET_ROTATION';
 export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
+export const TOGGLE_SETTINGS = 'TOGGLE_SETTINGS';
+export const UPDATE_SETTINGS = 'UPDATE_SETTINGS';
 
 // Configuration action types
 export interface AddPlayerAction {
@@ -154,6 +157,15 @@ export interface ToggleLegalMovesAction {
   type: typeof TOGGLE_LEGAL_MOVES;
 }
 
+export interface ToggleSettingsAction {
+  type: typeof TOGGLE_SETTINGS;
+}
+
+export interface UpdateSettingsAction {
+  type: typeof UPDATE_SETTINGS;
+  payload: Partial<GameSettings>;
+}
+
 // Combined action type
 export type GameAction =
   | AddPlayerAction
@@ -176,7 +188,9 @@ export type UIAction =
   | SetHoveredPositionAction
   | SetSelectedPositionAction
   | SetRotationAction
-  | ToggleLegalMovesAction;
+  | ToggleLegalMovesAction
+  | ToggleSettingsAction
+  | UpdateSettingsAction;
 
 // Configuration action creators
 export const addPlayer = (color: string, edge: number): AddPlayerAction => ({
@@ -273,4 +287,13 @@ export const setRotation = (rotation: Rotation): SetRotationAction => ({
 
 export const toggleLegalMoves = (): ToggleLegalMovesAction => ({
   type: TOGGLE_LEGAL_MOVES,
+});
+
+export const toggleSettings = (): ToggleSettingsAction => ({
+  type: TOGGLE_SETTINGS,
+});
+
+export const updateSettings = (settings: Partial<GameSettings>): UpdateSettingsAction => ({
+  type: UPDATE_SETTINGS,
+  payload: settings,
 });

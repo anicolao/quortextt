@@ -7,6 +7,8 @@ import {
   SET_SELECTED_POSITION,
   SET_ROTATION,
   TOGGLE_LEGAL_MOVES,
+  TOGGLE_SETTINGS,
+  UPDATE_SETTINGS,
 } from './actions';
 
 // Initial UI state
@@ -19,6 +21,15 @@ export const initialUIState: UIState = {
   animationSpeed: 1.0,
   zoom: 1.0,
   panOffset: { x: 0, y: 0 },
+  showSettings: false,
+  settings: {
+    boardRadius: 3,
+    supermove: false,
+    debugShowEdgeLabels: false,
+    debugShowVictoryEdges: false,
+    debugLegalityTest: false,
+    debugAnimationSlowdown: 1,
+  },
 };
 
 // UI Reducer function
@@ -52,6 +63,23 @@ export function uiReducer(
       return {
         ...state,
         showLegalMoves: !state.showLegalMoves,
+      };
+    }
+
+    case TOGGLE_SETTINGS: {
+      return {
+        ...state,
+        showSettings: !state.showSettings,
+      };
+    }
+
+    case UPDATE_SETTINGS: {
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          ...action.payload,
+        },
       };
     }
 

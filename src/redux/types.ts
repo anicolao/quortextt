@@ -73,6 +73,16 @@ export interface GameState {
   moveHistory: Move[];
 }
 
+// Game settings
+export interface GameSettings {
+  boardRadius: number;
+  supermove: boolean;
+  debugShowEdgeLabels: boolean;
+  debugShowVictoryEdges: boolean;
+  debugLegalityTest: boolean;
+  debugAnimationSlowdown: number;
+}
+
 // UI state for interaction
 export interface UIState {
   // Interaction state
@@ -88,6 +98,10 @@ export interface UIState {
   // Canvas/viewport
   zoom: number;
   panOffset: { x: number; y: number };
+  
+  // Settings dialog
+  showSettings: boolean;
+  settings: GameSettings;
 }
 
 // Root state combining all state slices
