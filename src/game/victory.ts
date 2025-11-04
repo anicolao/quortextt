@@ -2,10 +2,8 @@
 
 import { PlacedTile, Player, Team, TileType, Direction } from './types';
 import {
-  getEdgePositions,
   getOppositeEdge,
   positionToKey,
-  getEdgePositionsWithDirections,
   getNeighborInDirection,
   isValidPosition,
 } from './board';
