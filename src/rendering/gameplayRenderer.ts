@@ -164,9 +164,38 @@ export class GameplayRenderer {
       zigzagEdges.push([v1, v2]);
     });
 
+    // Get the board hexagon vertices and edge (needed to determine first edge orientation)
+    const boardVertices = this.getFlatTopHexVertices(center, radius);
+    const vertexMap = [
+      [4, 5], // Edge 0: Bottom
+      [5, 0], // Edge 1: Bottom-right
+      [0, 1], // Edge 2: Top-right
+      [1, 2], // Edge 3: Top
+      [2, 3], // Edge 4: Top-left
+      [3, 4], // Edge 5: Bottom-left
+    ];
+
+    const [v1Index, v2Index] = vertexMap[edgePosition];
+    const boardV1 = boardVertices[v1Index];
+    const boardV2 = boardVertices[v2Index];
+    
     // Build a continuous path through the edges
-    // Start with the first edge
-    const zigzagVertices: Point[] = [zigzagEdges[0][0], zigzagEdges[0][1]];
+    // Determine the correct orientation of the first edge by checking which vertex
+    // is closer to the board corners
+    const [firstV1, firstV2] = zigzagEdges[0];
+    const distFirstV1ToCorner = Math.min(
+      this.distance(firstV1, boardV1),
+      this.distance(firstV1, boardV2)
+    );
+    const distFirstV2ToCorner = Math.min(
+      this.distance(firstV2, boardV1),
+      this.distance(firstV2, boardV2)
+    );
+    
+    // Start with the vertex that's closer to a board corner
+    const zigzagVertices: Point[] = distFirstV1ToCorner < distFirstV2ToCorner
+      ? [firstV1, firstV2]
+      : [firstV2, firstV1];
     
     // Connect subsequent edges
     for (let i = 1; i < zigzagEdges.length; i++) {
@@ -203,21 +232,6 @@ export class GameplayRenderer {
     // Get endpoints of the zig-zag (first and last vertices)
     const firstEndpoint = zigzagVertices[0];
     const lastEndpoint = zigzagVertices[zigzagVertices.length - 1];
-
-    // Get the board hexagon vertices and edge
-    const boardVertices = this.getFlatTopHexVertices(center, radius);
-    const vertexMap = [
-      [4, 5], // Edge 0: Bottom
-      [5, 0], // Edge 1: Bottom-right
-      [0, 1], // Edge 2: Top-right
-      [1, 2], // Edge 3: Top
-      [2, 3], // Edge 4: Top-left
-      [3, 4], // Edge 5: Bottom-left
-    ];
-
-    const [v1Index, v2Index] = vertexMap[edgePosition];
-    const boardV1 = boardVertices[v1Index];
-    const boardV2 = boardVertices[v2Index];
 
     // Find closest point on board edge to each endpoint
     const closestToFirst = this.closestPointOnLineSegment(
