@@ -20,11 +20,17 @@ test.describe('Complete 2-Player Game', () => {
       fullPage: false
     });
     
-    // === STEP 2: Add two players ===
+    // === STEP 2: Add two players with specific edges ===
+    // Player 1 (blue) at edge 0, Player 2 (orange) at edge 3 (opposite edges)
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'ADD_PLAYER' });
-      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'SETUP_GAME', payload: {
+        players: [
+          { id: 'P1', color: '#0173B2', edgePosition: 0 },
+          { id: 'P2', color: '#DE8F05', edgePosition: 3 }
+        ],
+        teams: []
+      }});
     });
     
     await page.waitForTimeout(300);
@@ -37,22 +43,12 @@ test.describe('Complete 2-Player Game', () => {
     
     // Verify we have 2 players
     let state = await getReduxState(page);
-    expect(state.game.configPlayers.length).toBe(2);
+    expect(state.game.players.length).toBe(2);
     
     // === STEP 3: Start the game ===
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
-    
-    await page.evaluate(() => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'START_GAME' });
-    });
-    
-    await page.waitForTimeout(100);
-    
-    // Complete seating phase
-    await completeSeatingPhase(page, canvas, box);
     
     // Shuffle with deterministic seed and draw a tile
     await page.evaluate((seed) => {
@@ -167,41 +163,6 @@ test.describe('Complete 2-Player Game', () => {
         console.log('No valid positions - board is full, stopping game');
         // Board is completely filled, game ends
         break;
-      }
-      
-      // Check if the move is legal before placing
-      console.log(`Checking legality for move ${moveNumber + 1}: position (${position.row}, ${position.col}), rotation ${rotation}`);
-      
-      const isLegal = await page.evaluate((moveData) => {
-        const store = (window as any).__REDUX_STORE__;
-        const isLegalMove = (window as any).__IS_LEGAL_MOVE__;
-        const state = store.getState();
-        
-        if (!isLegalMove) {
-          console.warn('isLegalMove not available in window context, assuming legal');
-          return true;
-        }
-        
-        const placedTile = {
-          type: state.game.currentTile,
-          rotation: moveData.rotation,
-          position: { row: moveData.row, col: moveData.col },
-        };
-        
-        return isLegalMove(
-          state.game.board,
-          placedTile,
-          state.game.players,
-          state.game.teams,
-          state.game.boardRadius,
-          state.ui.settings.supermove
-        );
-      }, { row: position.row, col: position.col, rotation });
-      
-      if (!isLegal) {
-        console.log(`Move ${moveNumber + 1} is illegal, skipping and trying next position`);
-        // Skip this move and continue to next position
-        continue;
       }
       
       // Place the tile

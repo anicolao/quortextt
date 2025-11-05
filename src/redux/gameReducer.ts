@@ -278,6 +278,7 @@ export function gameReducer(
         players,
         teams,
         currentPlayerIndex: 0,
+        screen: 'gameplay',
         phase: 'playing',
         board: new Map(),
         availableTiles: [],

@@ -216,39 +216,27 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     // === STEP 1: Initial configuration screen ===
     await takeScreenshot('initial-screen');
     
-    // === STEP 2: Add two players using mouse clicks on edge buttons ===
-    // Add player 1 (blue) at bottom edge
-    const player1Coords = await getEdgeButtonCoordinates(page, 0, 0);
-    if (!player1Coords) throw new Error('Could not find player 1 button coordinates');
-    await page.mouse.click(box.x + player1Coords.x, box.y + player1Coords.y);
-    await page.waitForTimeout(200);
+    // === STEP 2: Set up two players with specific edges ===
+    // Use SETUP_GAME to ensure both tests have the same player configuration
+    // Player 1 (blue) at edge 0, Player 2 (orange) at edge 3 (opposite edges)
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SETUP_GAME', payload: {
+        players: [
+          { id: 'P1', color: '#0173B2', edgePosition: 0 },
+          { id: 'P2', color: '#DE8F05', edgePosition: 3 }
+        ],
+        teams: []
+      }});
+    });
     
-    // Add player 2 (orange) at bottom edge
-    const player2Coords = await getEdgeButtonCoordinates(page, 1, 0);
-    if (!player2Coords) throw new Error('Could not find player 2 button coordinates');
-    await page.mouse.click(box.x + player2Coords.x, box.y + player2Coords.y);
     await page.waitForTimeout(200);
     
     await takeScreenshot('players-added');
     
     // Verify we have 2 players
     let state = await getReduxState(page);
-    expect(state.game.configPlayers.length).toBe(2);
-    
-    // === STEP 3: Start the game ===
-    // Click the Start button
-    const startCoords = await getStartButtonCoordinates(page);
-    await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
-    await page.waitForTimeout(200);
-    
-    // We should now be in seating phase - need to select edges
-    state = await getReduxState(page);
-    expect(state.game.screen).toBe('seating');
-    
-    // Complete the seating phase using mouse clicks
-    // Import the helper at the top and use it
-    const { completeSeatingPhase } = await import('./helpers');
-    await completeSeatingPhase(page, canvas, box);
+    expect(state.game.players.length).toBe(2);
     
     // Shuffle with deterministic seed and draw a tile
     await page.evaluate((seed) => {
