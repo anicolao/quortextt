@@ -85,9 +85,6 @@ export class GameplayInputHandler {
           return;
         }
         
-        // Check if we're completing a supermove
-        const completingSupermove = state.game.supermoveInProgress;
-        
         store.dispatch(placeTile(
           state.ui.selectedPosition,
           state.ui.currentRotation
@@ -134,7 +131,7 @@ export class GameplayInputHandler {
     const hexPos = pixelToHex({ x: canvasX, y: canvasY }, layout);
     
     // Verify this is a valid board position
-    if (isValidPosition(hexPos)) {
+    if (isValidPosition(hexPos, state.game.boardRadius)) {
       const posKey = positionToKey(hexPos);
       const isOccupied = state.game.board.has(posKey);
       

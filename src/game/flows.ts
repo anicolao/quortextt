@@ -25,6 +25,7 @@ export function traceFlow(
   startPos: HexPosition,
   startDirection: Direction,
   playerId: string,
+  boardRadius: number = 3,
 ): { positions: Set<string>; edges: FlowEdgeData[] } {
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
@@ -65,7 +66,7 @@ export function traceFlow(
 
     // Move to the next position
     const nextPos = getNeighborInDirection(currentPos, exitDir);
-    if (!isValidPosition(nextPos)) {
+    if (!isValidPosition(nextPos, boardRadius)) {
       break;
     }
 
@@ -106,7 +107,7 @@ export function calculateFlows(
       }
 
       // Trace flow starting from this specific hex edge direction
-      const { positions, edges } = traceFlow(board, pos, dir, player.id);
+      const { positions, edges } = traceFlow(board, pos, dir, player.id, boardRadius);
 
       // Merge this flow into the player's total flow
       for (const flowPos of positions) {

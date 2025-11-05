@@ -43,11 +43,11 @@ function edgeNodeKey(node: EdgeNode): string {
 }
 
 // Get the opposite edge node (the edge on the neighboring tile that this edge connects to)
-function getOppositeEdgeNode(node: EdgeNode): EdgeNode | null {
+function getOppositeEdgeNode(node: EdgeNode, boardRadius: number): EdgeNode | null {
   const { position, direction } = node;
   const neighborPos = getNeighborInDirection(position, direction);
   
-  if (!isValidPosition(neighborPos)) {
+  if (!isValidPosition(neighborPos, boardRadius)) {
     return null;
   }
   
@@ -122,7 +122,7 @@ export function hasViablePath(
       for (let dir = 0; dir < 6; dir++) {
         const direction = dir as Direction;
         const edge: EdgeNode = { position: pos, direction };
-        const oppositeEdge = getOppositeEdgeNode(edge);
+        const oppositeEdge = getOppositeEdgeNode(edge, boardRadius);
         
         if (oppositeEdge) {
           addEdge(edge, oppositeEdge);
@@ -145,7 +145,7 @@ export function hasViablePath(
         // Also connect to opposite edges on neighboring tiles
         const direction = dir1 as Direction;
         const edge: EdgeNode = { position: pos, direction };
-        const oppositeEdge = getOppositeEdgeNode(edge);
+        const oppositeEdge = getOppositeEdgeNode(edge, boardRadius);
         
         if (oppositeEdge) {
           addEdge(edge, oppositeEdge);

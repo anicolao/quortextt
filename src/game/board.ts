@@ -68,12 +68,12 @@ export function getNeighborInDirection(
 }
 
 // Get all neighboring positions for a hex
-export function getNeighbors(pos: HexPosition): HexPosition[] {
+export function getNeighbors(pos: HexPosition, radius: number = 3): HexPosition[] {
   const neighbors: HexPosition[] = [];
 
   for (let dir = 0; dir < 6; dir++) {
     const neighbor = getNeighborInDirection(pos, dir as Direction);
-    if (isValidPosition(neighbor)) {
+    if (isValidPosition(neighbor, radius)) {
       neighbors.push(neighbor);
     }
   }
