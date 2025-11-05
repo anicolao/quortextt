@@ -40,17 +40,21 @@ user-stories/
 ### 001-player-configuration
 **As a user, I want to configure players before starting a game**
 
-This is a **continuous user story** where each screenshot shows the next step from the previous state:
+This is a **continuous user story** where each screenshot shows the result of a SINGLE user action:
 1. Initial configuration screen (0 players)
-2. Adding first player (1 player - Blue)
-3. Adding multiple players (3 players - Blue, Orange, Green)
-4. Reaching max players (6 players)
-5. Removing a player (5 players - Blue removed)
-6. Re-adding a player (5 players - with reused color)
-7. Reducing to two players (2 players ready)
-8. Starting the game (transition to gameplay)
+2. Add Blue player (1 player)
+3. Add Orange player (2 players)
+4. Add Green player (3 players)
+5. Add Yellow player (4 players)
+6. Add Purple player (5 players)
+7. Add Red player - max reached (6 players)
+8. Remove first player (5 players)
+9. Remove first player again (4 players)
+10. Remove first player again (3 players)
+11. Remove first player again (2 players ready)
+12. Start the game (transition to gameplay)
 
-The test verifies Redux state at each step to ensure the story matches implementation.
+Every step is reachable from the previous one with a single click. The test verifies Redux state at each step to ensure the story matches implementation.
 
 ### 002-gameplay-rendering
 **As a user, I want to see the game board properly rendered**
