@@ -681,7 +681,7 @@ it('should swap colors when selecting used color', () => {
    ```
    Then run with Node debugger:
    ```bash
-   node --inspect-brk node_modules/vitest/vitest.mjs
+   npx vitest --inspect-brk
    ```
 
 ### Debugging E2E Tests
@@ -727,9 +727,10 @@ it('should swap colors when selecting used color', () => {
    - Look for infinite loops
 
 2. **Flaky E2E Tests**
-   - Add explicit waits: `await page.waitForTimeout(100)`
+   - Use explicit waits with conditions: `await page.waitForSelector('.element')`
+   - Wait for load states: `await page.waitForLoadState('networkidle')`
    - Use stable selectors
-   - Ensure animations complete
+   - Ensure animations complete with `pauseAnimations(page)`
    - Check for timing-dependent code
 
 3. **Coverage Not 100%**
