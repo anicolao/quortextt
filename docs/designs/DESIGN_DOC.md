@@ -6,7 +6,7 @@ This document outlines the implementation plan for a web-based version of Flows 
 
 **Related Documents:**
 - **[UI_DESIGN.md](UI_DESIGN.md)** - Detailed UI specifications for Phase 3 (Rendering) and Phase 4 (Input & Interaction), including touch and mouse interaction patterns, visual design, and E2E test specifications
-- **[RULES.md](RULES.md)** - Complete game rules and mechanics
+- **[RULES.md](../RULES.md)** - Complete game rules and mechanics
 
 ### Technology Stack
 - **Language:** TypeScript
