@@ -4,7 +4,7 @@
 
 ## Flow Description
 
-This story demonstrates the complete player configuration flow, from the initial state through adding/removing players, customizing colors, and starting the game.
+This story demonstrates a complete, continuous user journey through player configuration. Each screenshot shows the next step from the previous one, telling a cohesive story of setting up players and starting a game.
 
 ## Screenshots
 
@@ -13,85 +13,96 @@ This story demonstrates the complete player configuration flow, from the initial
 ![001-initial-state](./001-initial-state.png)
 
 - **Action**: User loads the application
-- **State**: Configuration screen with "Add Player" and "Start Game" buttons
-- **What to verify**: Title is visible, no players shown, buttons are present
+- **State**: Configuration screen with color buttons around the edges and a START button in the center
+- **Redux State**: `configPlayers.length = 0`, `screen = 'configuration'`
+- **What to verify**: No players listed, all 6 color buttons visible
 
 ### 002-player-added.png
 
 ![002-player-added](./002-player-added.png)
 
-- **Action**: User clicks "Add Player" button
-- **State**: One player entry appears with default color
-- **What to verify**: Player has a color icon, player name/ID, remove button (X)
+- **Action**: User clicks the Blue color button at the bottom edge
+- **State**: One player entry appears with blue color
+- **Redux State**: `configPlayers.length = 1`, first player has color `#0173B2` (Blue)
+- **What to verify**: Player entry visible with blue color indicator and remove button (X)
 
 ### 003-multiple-players.png
 
 ![003-multiple-players](./003-multiple-players.png)
 
-- **Action**: User clicks "Add Player" two more times
-- **State**: Three players listed with different colors
-- **What to verify**: Each player has unique color, all have remove buttons
+- **Action**: User clicks Orange button (right edge) then Green button (top edge)
+- **State**: Three players listed with Blue, Orange, and Green colors
+- **Redux State**: `configPlayers.length = 3`, colors are unique
+- **What to verify**: Three distinct player entries, each with different color
 
 ### 004-max-players.png
 
 ![004-max-players](./004-max-players.png)
 
-- **Action**: User continues adding players until maximum reached
-- **State**: Six players shown (MAX_PLAYERS = 6)
-- **What to verify**: "Add Player" button disabled or not clickable beyond 6
+- **Action**: User continues clicking available color buttons (Yellow, Purple, Red)
+- **State**: Six players shown (MAX_PLAYERS = 6), no color buttons visible
+- **Redux State**: `configPlayers.length = 6`, all colors in use
+- **What to verify**: All 6 players listed, no available color buttons to add more
 
 ### 005-player-removed.png
 
 ![005-player-removed](./005-player-removed.png)
 
-- **Action**: User clicks X button on first player (after adding 4 players)
-- **State**: One player removed, now showing 3 remaining players
-- **What to verify**: Remaining players still have correct colors and positions, demonstrating removal from a multi-player configuration
+- **Action**: User clicks X button on the first player (Blue)
+- **State**: Five players remaining, Blue color now available again
+- **Redux State**: `configPlayers.length = 5`, first player's color is no longer Blue
+- **What to verify**: Five player entries visible, first player now has Orange color (shifted up)
 
-### 007-color-changed.png
+### 006-player-re-added.png
 
-![007-color-changed](./007-color-changed.png)
+![006-player-re-added](./006-player-re-added.png)
 
-- **Action**: User removes a player and adds a new player with a different color
-- **State**: Player's color changed by removing and re-adding
-- **What to verify**: Player has new color after removal and re-addition
+- **Action**: User removes another player, then adds a player with a previously removed color
+- **State**: Five players with a newly added player
+- **Redux State**: `configPlayers.length = 5`, demonstrates color reuse
+- **What to verify**: Player list shows the color change through remove/re-add workflow
 
-### 009-game-started.png
+### 007-two-players-ready.png
 
-![009-game-started](./009-game-started.png)
+![007-two-players-ready](./007-two-players-ready.png)
 
-- **Action**: User clicks "Start Game" button with players configured
-- **State**: Transitioned to gameplay screen
-- **What to verify**: Screen changed to gameplay, board visible, players assigned edges
+- **Action**: User removes players until only 2 remain
+- **State**: Two players ready to start a game
+- **Redux State**: `configPlayers.length = 2`
+- **What to verify**: Exactly 2 players shown, START button should be enabled
 
-### 010-two-players-before-swap.png
+### 008-game-started.png
 
-![010-two-players-before-swap](./010-two-players-before-swap.png)
+![008-game-started](./008-game-started.png)
 
-- **Action**: Two players configured with different colors
-- **State**: Ready to demonstrate color swap behavior
-- **What to verify**: Two distinct player colors shown
+- **Action**: User clicks the START button in the center
+- **State**: Transitioned to gameplay screen with hexagonal board
+- **Redux State**: `screen = 'gameplay'`, seating phase completed
+- **What to verify**: Game board visible, player edges assigned, tiles ready for placement
 
-### 011-colors-swapped.png
+## Continuous Flow
 
-![011-colors-swapped](./011-colors-swapped.png)
+This user story is generated by a **single continuous test** that:
+1. Starts from the initial state (0 players)
+2. Progressively adds players one by one
+3. Demonstrates removal and re-adding
+4. Reduces to 2 players for starting a game
+5. Transitions to the gameplay screen
 
-- **Action**: User selects color already used by another player
-- **State**: Colors swapped between the two players
-- **What to verify**: Player 1 now has Player 2's original color and vice versa
+Each step builds on the previous state, with **no restarts or hidden steps**. The test verifies Redux state at each step to ensure the documented behavior matches the actual implementation.
 
 ## Test Coverage
 
 This story validates:
 - Initial configuration screen rendering
-- Adding players (up to maximum)
-- Removing players
-- Color selection by removing and re-adding players
-- Color swapping when selecting in-use color
+- Progressive player addition (1 → 3 → 6 players)
+- Removing players with Redux state verification
+- Color availability after removal
+- Re-adding players with different colors
 - Starting game with valid configuration
-- Screen transition to gameplay
+- Screen transition from configuration → seating → gameplay
 
 ## Related Files
-- Test: `tests/e2e/configuration.spec.ts`
+- Test: `tests/e2e/configuration.spec.ts` (User Story: Complete player configuration flow)
 - Redux: `src/redux/gameReducer.ts`
-- Rendering: `src/rendering/configurationScreen.ts`
+- Rendering: `src/rendering/lobbyRenderer.ts`, `src/rendering/lobbyLayout.ts`
