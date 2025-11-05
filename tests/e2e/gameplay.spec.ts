@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
-// Helper to setup a game with two players
+// Helper to setup a game with Purple and Red players (matching end of 001-player-configuration)
 async function setupTwoPlayerGame(page: any) {
   await page.goto('/');
   await page.waitForSelector('canvas#game-canvas');
@@ -11,11 +11,14 @@ async function setupTwoPlayerGame(page: any) {
   const box = await canvas.boundingBox();
   if (!box) throw new Error('Canvas not found');
   
-  // Add two players
+  // Add two players with Purple and Red colors (matching the end of 001-player-configuration)
+  // Purple: #CC78BC (index 4), Red: #CA5127 (index 5)
   await page.evaluate(() => {
     const store = (window as any).__REDUX_STORE__;
-    store.dispatch({ type: 'ADD_PLAYER' });
-    store.dispatch({ type: 'ADD_PLAYER' });
+    // Add Purple player
+    store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CC78BC', edge: 0 } });
+    // Add Red player
+    store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CA5127', edge: 1 } });
   });
   
   await page.waitForTimeout(100);
@@ -168,5 +171,213 @@ test.describe('Gameplay Screen Rendering', () => {
       path: 'tests/e2e/user-stories/002-gameplay-rendering/004-hex-sizing.png',
       fullPage: false
     });
+  });
+
+  // Comprehensive user story test that demonstrates complete tile placement workflow
+  test('User Story: Demonstrate gameplay with tile placement, rotation, and confirmation', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('canvas#game-canvas');
+    
+    const canvas = page.locator('canvas#game-canvas');
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('Canvas not found');
+    
+    // Add two players with Purple and Red colors (matching end of 001-player-configuration)
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CC78BC', edge: 0 } });
+      store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CA5127', edge: 1 } });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    // Verify we have Purple and Red players
+    let state = await getReduxState(page);
+    expect(state.game.configPlayers[0].color).toBe('#CC78BC'); // Purple
+    expect(state.game.configPlayers[1].color).toBe('#CA5127'); // Red
+    
+    // Start the game
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'START_GAME' });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    // Complete seating phase
+    await completeSeatingPhase(page, canvas, box);
+    
+    // Shuffle with deterministic seed and draw a tile
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
+      store.dispatch({ type: 'DRAW_TILE' });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.game.screen).toBe('gameplay');
+    expect(state.game.phase).toBe('playing');
+    expect(state.game.players.length).toBe(2);
+    expect(state.game.currentTile).toBeDefined();
+    
+    // STEP 1: Initial gameplay screen with Purple and Red players
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/001-two-players.png',
+      fullPage: false
+    });
+    
+    // STEP 2: Player 1 (Purple) - Select a position for tile placement
+    // Select position (0, 0) - center of the board
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SET_SELECTED_POSITION', payload: { row: 0, col: 0 } });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.ui.selectedPosition).toEqual({ row: 0, col: 0 });
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/002-player1-position-selected.png',
+      fullPage: false
+    });
+    
+    // STEP 3: Player 1 - Rotate the tile
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SET_ROTATION', payload: 2 }); // Rotate to position 2
+    });
+    
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.ui.currentRotation).toBe(2);
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/003-player1-tile-rotated.png',
+      fullPage: false
+    });
+    
+    // STEP 4: Player 1 - Confirm placement
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'PLACE_TILE', payload: { position: { row: 0, col: 0 }, rotation: 2 } });
+    });
+    
+    await page.waitForTimeout(200);
+    
+    state = await getReduxState(page);
+    expect(state.game.board['0,0']).toBeDefined();
+    expect(state.game.board['0,0'].rotation).toBe(2);
+    
+    // Clear the selection manually for cleaner screenshot
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
+    });
+    await page.waitForTimeout(100);
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/004-player1-tile-placed.png',
+      fullPage: false
+    });
+    
+    // STEP 5: Move to next player
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'NEXT_PLAYER' });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    // Draw tile for next player
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'DRAW_TILE' });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    // Verify we moved to next player (should be player index 1)
+    expect(state.game.currentPlayerIndex).toBe(1);
+    expect(state.game.currentTile).toBeDefined();
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/005-player2-turn.png',
+      fullPage: false
+    });
+    
+    // STEP 6: Player 2 (Red) - Select a position for tile placement
+    // Select position (1, 0) - adjacent to first tile
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SET_SELECTED_POSITION', payload: { row: 1, col: 0 } });
+    });
+    
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.ui.selectedPosition).toEqual({ row: 1, col: 0 });
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/006-player2-position-selected.png',
+      fullPage: false
+    });
+    
+    // STEP 7: Player 2 - Rotate the tile
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SET_ROTATION', payload: 4 }); // Rotate to position 4
+    });
+    
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.ui.currentRotation).toBe(4);
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/007-player2-tile-rotated.png',
+      fullPage: false
+    });
+    
+    // STEP 8: Player 2 - Confirm placement
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'PLACE_TILE', payload: { position: { row: 1, col: 0 }, rotation: 4 } });
+    });
+    
+    await page.waitForTimeout(200);
+    
+    state = await getReduxState(page);
+    expect(state.game.board['1,0']).toBeDefined();
+    expect(state.game.board['1,0'].rotation).toBe(4);
+    
+    // Clear the selection manually for cleaner screenshot
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
+    });
+    await page.waitForTimeout(100);
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/002-gameplay-rendering/008-player2-tile-placed.png',
+      fullPage: false
+    });
+    
+    // Verify both tiles are on the board
+    expect(Object.keys(state.game.board).length).toBe(2);
+    console.log('✓ User story complete: Two players (Purple and Red) each placed a tile with rotation');
   });
 });
