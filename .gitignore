@@ -11,3 +11,4 @@ coverage/
 !playwright.config.ts
 !vitest.config.ts
 victory-animation-*.png
+tests/e2e/user-stories/
