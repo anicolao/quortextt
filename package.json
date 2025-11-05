@@ -11,7 +11,8 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "postinstall": "node scripts/patch-playwright.cjs"
+    "postinstall": "node scripts/patch-playwright.cjs",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +23,7 @@
     "@types/node": "^24.9.1",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "husky": "^9.1.7",
     "typescript": "^5.9.3",
     "vite": "^7.1.11",
     "vitest": "^3.2.4"
