@@ -86,6 +86,48 @@ describe('board utilities', () => {
       expect(isValidPosition({ row: 3, col: 3 })).toBe(false);
       expect(isValidPosition({ row: -3, col: -1 })).toBe(false);
     });
+
+    it('should respect custom board radius (radius=1)', () => {
+      // Radius 1 should only have 7 tiles
+      expect(isValidPosition({ row: 0, col: 0 }, 1)).toBe(true);
+      expect(isValidPosition({ row: -1, col: 0 }, 1)).toBe(true);
+      expect(isValidPosition({ row: 0, col: 1 }, 1)).toBe(true);
+      expect(isValidPosition({ row: 1, col: 0 }, 1)).toBe(true);
+      expect(isValidPosition({ row: 0, col: -1 }, 1)).toBe(true);
+      expect(isValidPosition({ row: -1, col: 1 }, 1)).toBe(true);
+      expect(isValidPosition({ row: 1, col: -1 }, 1)).toBe(true);
+      
+      // These should be invalid for radius 1
+      expect(isValidPosition({ row: -2, col: 0 }, 1)).toBe(false);
+      expect(isValidPosition({ row: 0, col: 2 }, 1)).toBe(false);
+      expect(isValidPosition({ row: 2, col: 0 }, 1)).toBe(false);
+    });
+
+    it('should respect custom board radius (radius=2)', () => {
+      // Radius 2 should allow positions at distance 2
+      expect(isValidPosition({ row: 0, col: 0 }, 2)).toBe(true);
+      expect(isValidPosition({ row: -2, col: 0 }, 2)).toBe(true);
+      expect(isValidPosition({ row: 0, col: 2 }, 2)).toBe(true);
+      expect(isValidPosition({ row: 2, col: 0 }, 2)).toBe(true);
+      
+      // These should be invalid for radius 2
+      expect(isValidPosition({ row: -3, col: 0 }, 2)).toBe(false);
+      expect(isValidPosition({ row: 0, col: 3 }, 2)).toBe(false);
+      expect(isValidPosition({ row: 3, col: 0 }, 2)).toBe(false);
+    });
+
+    it('should respect custom board radius (radius=4)', () => {
+      // Radius 4 should allow positions at distance 4
+      expect(isValidPosition({ row: 0, col: 0 }, 4)).toBe(true);
+      expect(isValidPosition({ row: -4, col: 0 }, 4)).toBe(true);
+      expect(isValidPosition({ row: 0, col: 4 }, 4)).toBe(true);
+      expect(isValidPosition({ row: 4, col: 0 }, 4)).toBe(true);
+      
+      // These should be invalid for radius 4
+      expect(isValidPosition({ row: -5, col: 0 }, 4)).toBe(false);
+      expect(isValidPosition({ row: 0, col: 5 }, 4)).toBe(false);
+      expect(isValidPosition({ row: 5, col: 0 }, 4)).toBe(false);
+    });
   });
 
   describe('getNeighborInDirection', () => {
@@ -131,6 +173,32 @@ describe('board utilities', () => {
     it('should return 3 neighbors for corner position', () => {
       const neighbors = getNeighbors({ row: -3, col: 0 });
       expect(neighbors.length).toBe(3);
+    });
+
+    it('should respect custom board radius (radius=1)', () => {
+      // Center should have 6 neighbors
+      const centerNeighbors = getNeighbors({ row: 0, col: 0 }, 1);
+      expect(centerNeighbors.length).toBe(6);
+      
+      // Edge position in radius 1 should have fewer neighbors
+      const edgeNeighbors = getNeighbors({ row: -1, col: 0 }, 1);
+      expect(edgeNeighbors.length).toBe(3);
+      
+      // All neighbors should be valid for radius 1
+      centerNeighbors.forEach((neighbor) => {
+        expect(isValidPosition(neighbor, 1)).toBe(true);
+      });
+    });
+
+    it('should respect custom board radius (radius=2)', () => {
+      // Position at edge of radius 2 board
+      const neighbors = getNeighbors({ row: -2, col: 0 }, 2);
+      expect(neighbors.length).toBe(3);
+      
+      // All neighbors should be valid for radius 2
+      neighbors.forEach((neighbor) => {
+        expect(isValidPosition(neighbor, 2)).toBe(true);
+      });
     });
   });
 
