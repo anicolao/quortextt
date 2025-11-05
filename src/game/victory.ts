@@ -142,7 +142,8 @@ export function isConnectionInWinningPath(
   dir2: Direction,
   playerId: string,
   flows: Map<string, Set<string>>,
-  flowEdges: Map<string, Map<Direction, string>>
+  flowEdges: Map<string, Map<Direction, string>>,
+  boardRadius: number = 3
 ): boolean {
   const posKey = positionToKey(position);
   const edgeMap = flowEdges.get(posKey);
@@ -162,8 +163,8 @@ export function isConnectionInWinningPath(
   const neighbor1 = getNeighborInDirection(position, dir1);
   const neighbor2 = getNeighborInDirection(position, dir2);
   
-  const neighbor1Valid = isValidPosition(neighbor1);
-  const neighbor2Valid = isValidPosition(neighbor2);
+  const neighbor1Valid = isValidPosition(neighbor1, boardRadius);
+  const neighbor2Valid = isValidPosition(neighbor2, boardRadius);
   
   // If neighbor1 is off-board but dir1 has the player's flow, it's part of the path
   const dir1ConnectsToFlow = !neighbor1Valid || 

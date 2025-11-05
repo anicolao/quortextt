@@ -710,6 +710,7 @@ export class GameplayRenderer {
               playerId,
               state.game.flows,
               state.game.flowEdges,
+              state.game.boardRadius,
             );
 
           // Use the actual flow direction from animation data
@@ -743,6 +744,7 @@ export class GameplayRenderer {
                   player1,
                   state.game.flows,
                   state.game.flowEdges,
+                  state.game.boardRadius,
                 );
 
               this.drawFlowConnection(

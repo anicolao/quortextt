@@ -369,7 +369,7 @@ export class LobbyRenderer {
     // Board Radius
     this.ctx.fillText("Board Radius:", contentX, contentY + buttonHeight / 2);
     const radiusX = contentX + 200;
-    this.renderNumberControl(radiusX, contentY, settings.boardRadius, 2, 6);
+    this.renderNumberControl(radiusX, contentY, settings.boardRadius, 1, 4);
     controls.push({
       type: 'number',
       x: radiusX - 25,
