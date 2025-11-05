@@ -44,33 +44,17 @@ This story demonstrates the complete player configuration flow, from the initial
 
 ![005-player-removed](./005-player-removed.png)
 
-- **Action**: User clicks X button on first player
-- **State**: One player removed, now showing fewer players
-- **What to verify**: Remaining players still have correct colors and positions
-
-### 006-color-picker-open.png
-
-![006-color-picker-open](./006-color-picker-open.png)
-
-- **Action**: User clicks on a player's color icon
-- **State**: Color picker modal/overlay appears
-- **What to verify**: Picker shows all available colors in grid, current color highlighted
+- **Action**: User clicks X button on first player (after adding 4 players)
+- **State**: One player removed, now showing 3 remaining players
+- **What to verify**: Remaining players still have correct colors and positions, demonstrating removal from a multi-player configuration
 
 ### 007-color-changed.png
 
 ![007-color-changed](./007-color-changed.png)
 
-- **Action**: User selects a different color from picker
-- **State**: Player's color updated, picker closed
-- **What to verify**: Player has new color, picker dismissed
-
-### 008-picker-closed.png
-
-![008-picker-closed](./008-picker-closed.png)
-
-- **Action**: User clicks outside color picker
-- **State**: Picker dismissed without color change
-- **What to verify**: Player retains original color, picker not visible
+- **Action**: User removes a player and adds a new player with a different color
+- **State**: Player's color changed by removing and re-adding
+- **What to verify**: Player has new color after removal and re-addition
 
 ### 009-game-started.png
 
@@ -102,8 +86,7 @@ This story validates:
 - Initial configuration screen rendering
 - Adding players (up to maximum)
 - Removing players
-- Color picker UI and interaction
-- Color selection and changes
+- Color selection by removing and re-adding players
 - Color swapping when selecting in-use color
 - Starting game with valid configuration
 - Screen transition to gameplay

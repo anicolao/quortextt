@@ -173,10 +173,12 @@ test.describe('Configuration Screen', () => {
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
 
-    // Add 2 players
+    // Add 4 players to better demonstrate removal functionality
     const playersToAdd = [
       { colorIndex: 0, edge: 0 as const },
       { colorIndex: 1, edge: 0 as const },
+      { colorIndex: 2, edge: 0 as const },
+      { colorIndex: 3, edge: 0 as const },
     ];
     
     for (const player of playersToAdd) {
@@ -187,7 +189,7 @@ test.describe('Configuration Screen', () => {
     }
     
     let state = await getReduxState(page);
-    expect(state.game.configPlayers.length).toBe(2);
+    expect(state.game.configPlayers.length).toBe(4);
 
     // Click remove button for first player at bottom edge
     // Calculate the actual remove button position using the same logic as lobbyLayout
@@ -245,9 +247,9 @@ test.describe('Configuration Screen', () => {
     await page.mouse.click(box.x + removeButtonCoords.x, box.y + removeButtonCoords.y);
     await page.waitForTimeout(100);
     
-    // Verify one player was removed
+    // Verify one player was removed (3 remaining out of 4)
     state = await getReduxState(page);
-    expect(state.game.configPlayers.length).toBe(1);
+    expect(state.game.configPlayers.length).toBe(3);
 
     await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-player-removed.png' });
