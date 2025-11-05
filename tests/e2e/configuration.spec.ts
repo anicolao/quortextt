@@ -554,7 +554,7 @@ test.describe('Configuration Screen', () => {
     await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/011-two-players-ready.png' });
 
-    // STEP 12: Start the game
+    // STEP 12: Click Start Game button
     const startCoords = await getStartButtonCoordinates(page);
     await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
     await page.waitForTimeout(100);
@@ -562,14 +562,60 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.screen).toBe('seating');
     expect(state.game.seatingPhase.active).toBe(true);
+    expect(state.game.seatingPhase.seatingOrder.length).toBe(2);
+    await pauseAnimations(page);
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/012-seating-screen.png' });
 
-    // Complete the seating phase
-    await completeSeatingPhase(page, canvas, box);
+    // STEP 13: Player 1 selects their seat (edge 0)
+    let seatingCoords = await page.evaluate(() => {
+      const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const minDimension = Math.min(canvasWidth, canvasHeight);
+      const size = minDimension / 17;
+      const originX = canvasWidth / 2;
+      const originY = canvasHeight / 2;
+      const boardRadius = size * 7.2 + size * 0.8;
+      const edgeAngles = [270, 330, 30, 90, 150, 210];
+      const angle = edgeAngles[0]; // Edge 0
+      const angleRad = (angle * Math.PI) / 180;
+      const x = originX + boardRadius * Math.cos(angleRad);
+      const y = originY + boardRadius * Math.sin(angleRad);
+      return { x, y };
+    });
+    await page.mouse.click(box.x + seatingCoords.x, box.y + seatingCoords.y);
+    await page.waitForTimeout(100);
+    
+    state = await getReduxState(page);
+    expect(state.game.screen).toBe('seating');
+    expect(state.game.seatingPhase.seatingIndex).toBe(1); // One player has selected
+    await pauseAnimations(page);
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/013-player1-seated.png' });
+
+    // STEP 14: Player 2 selects their seat (edge 1)
+    seatingCoords = await page.evaluate(() => {
+      const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const minDimension = Math.min(canvasWidth, canvasHeight);
+      const size = minDimension / 17;
+      const originX = canvasWidth / 2;
+      const originY = canvasHeight / 2;
+      const boardRadius = size * 7.2 + size * 0.8;
+      const edgeAngles = [270, 330, 30, 90, 150, 210];
+      const angle = edgeAngles[1]; // Edge 1
+      const angleRad = (angle * Math.PI) / 180;
+      const x = originX + boardRadius * Math.cos(angleRad);
+      const y = originY + boardRadius * Math.sin(angleRad);
+      return { x, y };
+    });
+    await page.mouse.click(box.x + seatingCoords.x, box.y + seatingCoords.y);
+    await page.waitForTimeout(200); // Wait for transition to gameplay
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/012-game-started.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/014-gameplay-started.png' });
   });
 });
 
