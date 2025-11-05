@@ -135,4 +135,107 @@ describe('Supermove Reducer', () => {
     // Check that supermoveInProgress remains false
     expect(newState.supermoveInProgress).toBe(false);
   });
+
+  it('should return state unchanged when replacing with null currentTile', () => {
+    // Setup state with no tile in hand
+    const state = {
+      ...initialState,
+      players: [
+        { id: 'p1', color: 'blue', edgePosition: 0, isAI: false },
+        { id: 'p2', color: 'red', edgePosition: 3, isAI: false },
+      ],
+      currentPlayerIndex: 0,
+      currentTile: null,
+      phase: 'playing' as const,
+      supermoveInProgress: false,
+    };
+
+    // Add a tile on the board
+    const posToReplace = { row: 0, col: 0 };
+    state.board.set(positionToKey(posToReplace), {
+      type: TileType.OneSharp,
+      rotation: 0,
+      position: posToReplace,
+    });
+
+    // Try to replace without a tile in hand
+    const action = replaceTile(posToReplace, 0);
+    const newState = gameReducer(state, action);
+
+    // State should be unchanged
+    expect(newState).toEqual(state);
+  });
+
+  it('should return state unchanged when trying to replace non-existent tile', () => {
+    // Setup state with a tile in hand but empty board
+    const state = {
+      ...initialState,
+      board: new Map(), // Explicitly set empty board
+      players: [
+        { id: 'p1', color: 'blue', edgePosition: 0, isAI: false },
+        { id: 'p2', color: 'red', edgePosition: 3, isAI: false },
+      ],
+      currentPlayerIndex: 0,
+      currentTile: TileType.NoSharps,
+      phase: 'playing' as const,
+      supermoveInProgress: false,
+    };
+
+    // Try to replace at an empty position
+    const emptyPos = { row: 0, col: 0 };
+    const action = replaceTile(emptyPos, 0);
+    const newState = gameReducer(state, action);
+
+    // State should be unchanged (no tile was at that position)
+    expect(newState).toBe(state);
+    expect(newState.currentTile).toBe(TileType.NoSharps);
+    expect(newState.board.size).toBe(0);
+  });
+
+  it('should handle victory during tile replacement', () => {
+    // Setup a near-victory state with a path from edge 0 to edges 1,2,3
+    const state = {
+      ...initialState,
+      board: new Map(),
+      players: [
+        { id: 'p1', color: 'blue', edgePosition: 0, isAI: false },
+        { id: 'p2', color: 'red', edgePosition: 2, isAI: false },
+      ],
+      teams: [],
+      currentPlayerIndex: 0,
+      currentTile: TileType.TwoSharps,
+      phase: 'playing' as const,
+      supermoveInProgress: false,
+      boardRadius: 3,
+    };
+
+    // Create a winning path from edge 0 to edge 3 using TwoSharps tiles
+    // but with one tile (at center) being OneSharp which we'll replace to trigger victory
+    const tiles = [
+      { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+      { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+      { type: TileType.TwoSharps, rotation: 5, position: { row: -1, col: 0 } },
+      { type: TileType.OneSharp, rotation: 0, position: { row: 0, col: 0 } }, // This breaks the path
+      { type: TileType.TwoSharps, rotation: 5, position: { row: 1, col: 0 } },
+      { type: TileType.TwoSharps, rotation: 5, position: { row: 2, col: 0 } },
+      { type: TileType.TwoSharps, rotation: 5, position: { row: 3, col: 0 } },
+    ];
+
+    tiles.forEach(tile => {
+      state.board.set(positionToKey(tile.position), tile);
+    });
+
+    // Replace the OneSharp tile with TwoSharps to complete the victory path
+    const posToReplace = { row: 0, col: 0 };
+    const action = replaceTile(posToReplace, 5); // rotation 5 to match others
+    const newState = gameReducer(state, action);
+
+    // Check that game ended with victory
+    expect(newState.phase).toBe('finished');
+    expect(newState.winners.length).toBeGreaterThan(0);
+    expect(newState.winners).toContain('p1');
+    expect(newState.winType).toBe('flow');
+    expect(newState.screen).toBe('game-over');
+    expect(newState.supermoveInProgress).toBe(false);
+  });
 });
