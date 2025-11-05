@@ -52,7 +52,9 @@ This is a **continuous user story** where each screenshot shows the result of a 
 9. Remove first player again (4 players)
 10. Remove first player again (3 players)
 11. Remove first player again (2 players ready)
-12. Start the game (transition to gameplay)
+12. Click Start button (seating screen appears)
+13. Player 1 selects seat (1 seated)
+14. Player 2 selects seat (both seated, gameplay begins)
 
 Every step is reachable from the previous one with a single click. The test verifies Redux state at each step to ensure the story matches implementation.
 
