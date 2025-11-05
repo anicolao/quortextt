@@ -86,7 +86,7 @@ export class InputHandler {
     // Game over screen handling
     if (state.game.screen === 'game-over') {
       const gameOverLayout = this.renderer.getGameOverLayout();
-      this.gameOverInputHandler.handleClick(x, y, gameOverLayout);
+      this.gameOverInputHandler.handleClick(x, y, gameOverLayout, canvas.width, canvas.height);
       return;
     }
 
