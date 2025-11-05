@@ -110,6 +110,61 @@ it('should handle player seating and game start', () => {
 
 E2E tests verify complete user workflows through the browser UI. They are located in `tests/e2e/*.spec.ts`.
 
+**Two Types of E2E Tests:**
+
+The project uses two complementary approaches for E2E testing. Both types should be written for each user story to ensure comprehensive coverage:
+
+1. **Action-Based Tests** - Dispatch Redux actions directly to test underlying state logic
+   - Verify that user stories are possible given the Redux actions
+   - Faster execution (no need to locate/click UI elements)
+   - Test state transitions and business logic
+   - Example: `blocking-sharp-tiles.spec.ts`
+   
+   ```typescript
+   test('action-based test', async ({ page }) => {
+     await page.goto('/');
+     
+     // Dispatch actions directly to Redux store
+     await page.evaluate(() => {
+       const store = (window as any).__REDUX_STORE__;
+       store.dispatch({ type: 'ADD_PLAYER' });
+       store.dispatch({ type: 'START_GAME' });
+     });
+     
+     // Verify state changes
+     const state = await getReduxState(page);
+     expect(state.game.phase).toBe('seating');
+   });
+   ```
+
+2. **Interaction-Based Tests** - Click buttons and interact with UI elements
+   - Verify that user stories are possible via the UI
+   - Test the complete user experience
+   - Ensure buttons trigger correct actions
+   - Example: `complete-game-mouse.spec.ts`, `lobby-interactions.spec.ts`
+   
+   ```typescript
+   test('interaction-based test', async ({ page }) => {
+     await page.goto('/');
+     
+     // Click UI elements
+     const addPlayerButton = await getAddPlayerButtonCoords(page);
+     await page.mouse.click(addPlayerButton.x, addPlayerButton.y);
+     
+     const startButton = await getStartButtonCoords(page);
+     await page.mouse.click(startButton.x, startButton.y);
+     
+     // Verify UI state
+     const state = await getReduxState(page);
+     expect(state.game.phase).toBe('seating');
+   });
+   ```
+
+**Why Both Types?**
+- Action-based tests verify the underlying Redux logic is correct
+- Interaction-based tests verify the UI correctly triggers those actions
+- Together they ensure both the logic and UI work properly
+
 **Test Categories:**
 
 1. **Configuration Tests** (`configuration.spec.ts`)
@@ -117,7 +172,7 @@ E2E tests verify complete user workflows through the browser UI. They are locate
    - Changing player colors
    - Color picker interactions
 
-2. **Gameplay Tests** (`gameplay.spec.ts`, `complete-game.spec.ts`)
+2. **Gameplay Tests** (`gameplay.spec.ts`, `complete-game.spec.ts`, `complete-game-mouse.spec.ts`)
    - Board rendering
    - Tile placement
    - Turn progression
@@ -143,21 +198,6 @@ E2E tests verify complete user workflows through the browser UI. They are locate
 - Generate screenshot documentation
 - Use deterministic seeds for reproducibility
 - Organized as user stories
-
-**Example:**
-```typescript
-test('should add and configure players', async ({ page }) => {
-  await page.goto('/');
-  
-  // Add first player
-  await page.click(/* coordinates */);
-  const state = await getReduxState(page);
-  expect(state.game.configPlayers).toHaveLength(1);
-  
-  // Take screenshot for documentation
-  await page.screenshot({ path: 'user-stories/001-player-configuration/001-initial.png' });
-});
-```
 
 ## Running Tests
 
@@ -241,25 +281,62 @@ describe('Module Name', () => {
 });
 ```
 
-### E2E Test Template
+### E2E Test Templates
+
+For each user story, write both action-based and interaction-based tests.
+
+#### Action-Based E2E Test Template
 
 ```typescript
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState } from './helpers';
 
-test.describe('Feature Name', () => {
-  test('should complete user workflow', async ({ page }) => {
+test.describe('Feature Name - Action-Based', () => {
+  test('should complete workflow via Redux actions', async ({ page }) => {
     await page.goto('/');
+    await page.waitForSelector('canvas#game-canvas');
     
-    // Setup - get to the state you want to test
-    await completeSeatingPhase(page, 2);
+    // Dispatch Redux actions to set up state
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'START_GAME' });
+    });
     
-    // Action - perform the user interaction
-    await page.click(/* coordinates */);
+    await page.waitForTimeout(100);
     
-    // Assert - verify the result
+    // Verify state changes
     const state = await getReduxState(page);
-    expect(state.game.phase).toBe('gameplay');
+    expect(state.game.phase).toBe('seating');
+    expect(state.game.players).toHaveLength(1);
+  });
+});
+```
+
+#### Interaction-Based E2E Test Template
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { getReduxState } from './helpers';
+
+test.describe('Feature Name - Interaction-Based', () => {
+  test('should complete workflow via UI interactions', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('canvas#game-canvas');
+    
+    // Get button coordinates and click
+    const addPlayerCoords = await getAddPlayerButtonCoords(page);
+    await page.mouse.click(addPlayerCoords.x, addPlayerCoords.y);
+    await page.waitForTimeout(100);
+    
+    const startCoords = await getStartButtonCoords(page);
+    await page.mouse.click(startCoords.x, startCoords.y);
+    await page.waitForTimeout(100);
+    
+    // Verify state changes
+    const state = await getReduxState(page);
+    expect(state.game.phase).toBe('seating');
+    expect(state.game.players).toHaveLength(1);
     
     // Screenshot for documentation (optional)
     await page.screenshot({ 
@@ -527,20 +604,38 @@ it('should add player to configPlayers', () => {
 
 #### Testing E2E Flows
 
+For each user story, write both action-based and interaction-based tests:
+
 ```typescript
-// Good: Complete user story with screenshots
-test('complete game flow', async ({ page }) => {
-  // 1. Setup
+// Good: Action-based test (tests Redux logic)
+test('player configuration - action-based', async ({ page }) => {
+  await page.goto('/');
+  
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'ADD_PLAYER' });
+    store.dispatch({ type: 'ADD_PLAYER' });
+  });
+  
+  const state = await getReduxState(page);
+  expect(state.game.configPlayers).toHaveLength(2);
+});
+
+// Good: Interaction-based test (tests UI triggers actions)
+test('player configuration - interaction-based', async ({ page }) => {
   await page.goto('/');
   await page.screenshot({ path: 'user-stories/001-initial.png' });
   
-  // 2. Add players
-  await addPlayers(page, 2);
-  await page.screenshot({ path: 'user-stories/002-players-added.png' });
+  // Click add player button twice
+  const coords = await getAddPlayerButtonCoords(page);
+  await page.mouse.click(coords.x, coords.y);
+  await page.screenshot({ path: 'user-stories/002-first-player.png' });
   
-  // 3. Complete game
-  await completeGame(page);
-  await page.screenshot({ path: 'user-stories/003-game-complete.png' });
+  await page.mouse.click(coords.x, coords.y);
+  await page.screenshot({ path: 'user-stories/003-second-player.png' });
+  
+  const state = await getReduxState(page);
+  expect(state.game.configPlayers).toHaveLength(2);
 });
 ```
 
@@ -608,21 +703,36 @@ it('should detect flow victory when opposite edges connected', () => {
 });
 ```
 
-### Testing E2E with Screenshots
+### Testing E2E with Both Approaches
+
+For comprehensive testing, write both action-based and interaction-based tests:
 
 ```typescript
-test('player configuration flow', async ({ page }) => {
+// Action-based: Fast, tests Redux logic
+test('player configuration - actions', async ({ page }) => {
+  await page.goto('/');
+  
+  await page.evaluate(() => {
+    const store = (window as any).__REDUX_STORE__;
+    store.dispatch({ type: 'ADD_PLAYER' });
+  });
+  
+  const state = await getReduxState(page);
+  expect(state.game.configPlayers).toHaveLength(1);
+});
+
+// Interaction-based: Tests UI + screenshots
+test('player configuration - interactions', async ({ page }) => {
   const storyDir = 'tests/e2e/user-stories/001-player-configuration';
   let step = 1;
   
   await page.goto('/');
   await page.screenshot({ path: `${storyDir}/${pad(step++)}-initial.png` });
   
-  // Add first player
+  // Click add player button
   await clickAddPlayer(page, 0);
   await page.screenshot({ path: `${storyDir}/${pad(step++)}-first-player.png` });
   
-  // Verify state
   const state = await getReduxState(page);
   expect(state.game.configPlayers).toHaveLength(1);
 });
