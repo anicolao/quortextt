@@ -207,5 +207,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Acknowledgments
 
-Quortex/Flows is a strategic board game. This is an independent web implementation created for educational purposes and to make the game accessible online.
+Quortex/Flows game design is Copyright 2025 Alexander Nicolaou. All rights reserved.
+
+This is a web implementation created to make the game accessible online.
 
