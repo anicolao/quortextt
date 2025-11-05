@@ -228,4 +228,4 @@ A: No, flows extend automatically when pathways connect. This is not optional.
 
 ---
 
-*This is a web-based implementation of the Flows/Quortex game. For implementation details, see [DESIGN_DOC.md](DESIGN_DOC.md).*
+*This is a web-based implementation of the Flows/Quortex game. For implementation details, see [designs/DESIGN_DOC.md](designs/DESIGN_DOC.md).*

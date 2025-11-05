@@ -94,12 +94,25 @@ quortextt/
 ├── tests/
 │   ├── e2e/           # End-to-end tests
 │   └── reducer.test.ts # Unit tests
+├── docs/
+│   ├── RULES.md       # Game rules
+│   ├── designs/       # Design documents
+│   ├── dev/          # Development guides
+│   └── testing/      # Testing documentation
 ├── index.html
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts
 └── playwright.config.ts
 ```
+
+## Documentation
+
+- **[docs/RULES.md](docs/RULES.md)** - Complete game rules and mechanics
+- **[docs/designs/](docs/designs/)** - Design documents and specifications
+- **[docs/dev/](docs/dev/)** - Development guides and debugging information
+- **[docs/testing/](docs/testing/)** - Testing strategies and documentation
+- **[AGENTS.md](AGENTS.md)** - Guidelines for AI agents working on this codebase
 
 ## License
 

@@ -1,6 +1,6 @@
 # Victory Animation Implementation
 
-This directory contains screenshots demonstrating the victory animation feature implemented according to the UI_DESIGN.md specifications.
+This directory contains screenshots demonstrating the victory animation feature implemented according to the ../designs/UI_DESIGN.md specifications.
 
 ## Overview
 
@@ -65,7 +65,7 @@ The victory animation uses the game's animation framework with:
 ## Specifications Followed
 
 This implementation follows the specifications in:
-- `UI_DESIGN.md` - Section "Victory Animation"
-- `ANIMATION_FRAMEWORK.md` - Frame-based animation system
+- `../designs/UI_DESIGN.md` - Section "Victory Animation"
+- `../designs/ANIMATION_FRAMEWORK.md` - Frame-based animation system
 
 All animations are implemented using the standard animation framework with proper frame timing and easing.

@@ -121,8 +121,10 @@ quortextt/
 │   │   └── victory.test.ts
 │   ├── e2e/           # End-to-end tests
 │   └── reducer.test.ts
-├── DESIGN_DOC.md      # Implementation design
-├── RULES.md           # Game rules
+├── docs/
+│   ├── RULES.md           # Game rules
+│   ├── designs/           # Design documents
+│   └── dev/              # Development documentation
 └── package.json
 ```
 
@@ -224,7 +226,7 @@ The v8 coverage reporter may show 0% coverage for TypeScript files due to source
 
 ## Additional Resources
 
-- [DESIGN_DOC.md](./DESIGN_DOC.md) - Detailed implementation design
-- [RULES.md](./RULES.md) - Game rules
+- [DESIGN_DOC.md](../designs/DESIGN_DOC.md) - Detailed implementation design
+- [RULES.md](../RULES.md) - Game rules
 - [Vitest Documentation](https://vitest.dev/)
 - [Vite Documentation](https://vitejs.dev/)
