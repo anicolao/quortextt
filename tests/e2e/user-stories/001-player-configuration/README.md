@@ -4,7 +4,7 @@
 
 ## Flow Description
 
-This story demonstrates a complete, continuous user journey through player configuration. Each screenshot shows the next step from the previous one, telling a cohesive story of setting up players and starting a game.
+This story demonstrates a complete, continuous user journey through player configuration. Each screenshot shows the result of a SINGLE user action from the previous state, with no hidden steps.
 
 ## Screenshots
 
@@ -23,57 +23,93 @@ This story demonstrates a complete, continuous user journey through player confi
 
 - **Action**: User clicks the Blue color button at the bottom edge
 - **State**: One player entry appears with blue color
-- **Redux State**: `configPlayers.length = 1`, first player has color `#0173B2` (Blue)
+- **Redux State**: `configPlayers.length = 1`, player color = `#0173B2` (Blue)
 - **What to verify**: Player entry visible with blue color indicator and remove button (X)
 
-### 003-multiple-players.png
+### 003-second-player-added.png
 
-![003-multiple-players](./003-multiple-players.png)
+![003-second-player-added](./003-second-player-added.png)
 
-- **Action**: User clicks Orange button (right edge) then Green button (top edge)
+- **Action**: User clicks Orange color button at the right edge
+- **State**: Two players listed with Blue and Orange colors
+- **Redux State**: `configPlayers.length = 2`, second player color = `#DE8F05` (Orange)
+- **What to verify**: Two distinct player entries, each with different color
+
+### 004-third-player-added.png
+
+![004-third-player-added](./004-third-player-added.png)
+
+- **Action**: User clicks Green color button at the top edge
 - **State**: Three players listed with Blue, Orange, and Green colors
-- **Redux State**: `configPlayers.length = 3`, colors are unique
-- **What to verify**: Three distinct player entries, each with different color
+- **Redux State**: `configPlayers.length = 3`, third player color = `#029E73` (Green)
+- **What to verify**: Three player entries, all with unique colors
 
-### 004-max-players.png
+### 005-fourth-player-added.png
 
-![004-max-players](./004-max-players.png)
+![005-fourth-player-added](./005-fourth-player-added.png)
 
-- **Action**: User continues clicking available color buttons (Yellow, Purple, Red)
+- **Action**: User clicks Yellow color button
+- **State**: Four players listed
+- **Redux State**: `configPlayers.length = 4`, fourth player color = `#ECE133` (Yellow)
+- **What to verify**: Four player entries visible
+
+### 006-fifth-player-added.png
+
+![006-fifth-player-added](./006-fifth-player-added.png)
+
+- **Action**: User clicks Purple color button
+- **State**: Five players listed
+- **Redux State**: `configPlayers.length = 5`, fifth player color = `#CC78BC` (Purple)
+- **What to verify**: Five player entries visible
+
+### 007-max-players.png
+
+![007-max-players](./007-max-players.png)
+
+- **Action**: User clicks Red color button (last available color)
 - **State**: Six players shown (MAX_PLAYERS = 6), no color buttons visible
-- **Redux State**: `configPlayers.length = 6`, all colors in use
+- **Redux State**: `configPlayers.length = 6`, sixth player color = `#CA5127` (Red)
 - **What to verify**: All 6 players listed, no available color buttons to add more
 
-### 005-player-removed.png
+### 008-player-removed.png
 
-![005-player-removed](./005-player-removed.png)
+![008-player-removed](./008-player-removed.png)
 
 - **Action**: User clicks X button on the first player (Blue)
 - **State**: Five players remaining, Blue color now available again
-- **Redux State**: `configPlayers.length = 5`, first player's color is no longer Blue
-- **What to verify**: Five player entries visible, first player now has Orange color (shifted up)
+- **Redux State**: `configPlayers.length = 5`, first player's color changed (was Blue)
+- **What to verify**: Five player entries visible, Blue button available again
 
-### 006-player-re-added.png
+### 009-second-player-removed.png
 
-![006-player-re-added](./006-player-re-added.png)
+![009-second-player-removed](./009-second-player-removed.png)
 
-- **Action**: User removes another player, then adds a player with a previously removed color
-- **State**: Five players with a newly added player
-- **Redux State**: `configPlayers.length = 5`, demonstrates color reuse
-- **What to verify**: Player list shows the color change through remove/re-add workflow
+- **Action**: User clicks X button on the first player again
+- **State**: Four players remaining
+- **Redux State**: `configPlayers.length = 4`
+- **What to verify**: Four player entries visible
 
-### 007-two-players-ready.png
+### 010-third-player-removed.png
 
-![007-two-players-ready](./007-two-players-ready.png)
+![010-third-player-removed](./010-third-player-removed.png)
 
-- **Action**: User removes players until only 2 remain
-- **State**: Two players ready to start a game
+- **Action**: User clicks X button on the first player again
+- **State**: Three players remaining
+- **Redux State**: `configPlayers.length = 3`
+- **What to verify**: Three player entries visible
+
+### 011-two-players-ready.png
+
+![011-two-players-ready](./011-two-players-ready.png)
+
+- **Action**: User clicks X button on the first player again
+- **State**: Two players remaining, ready to start game
 - **Redux State**: `configPlayers.length = 2`
 - **What to verify**: Exactly 2 players shown, START button should be enabled
 
-### 008-game-started.png
+### 012-game-started.png
 
-![008-game-started](./008-game-started.png)
+![012-game-started](./012-game-started.png)
 
 - **Action**: User clicks the START button in the center
 - **State**: Transitioned to gameplay screen with hexagonal board
@@ -82,14 +118,13 @@ This story demonstrates a complete, continuous user journey through player confi
 
 ## Continuous Flow
 
-This user story is generated by a **single continuous test** that:
+This user story is generated by a **single continuous test** that captures a screenshot after EVERY user action:
 1. Starts from the initial state (0 players)
-2. Progressively adds players one by one
-3. Demonstrates removal and re-adding
-4. Reduces to 2 players for starting a game
-5. Transitions to the gameplay screen
+2. Adds players one by one (screenshots after each: 1, 2, 3, 4, 5, 6 players)
+3. Removes players one by one (screenshots after each: 5, 4, 3, 2 players)
+4. Starts the game (transition to gameplay)
 
-Each step builds on the previous state, with **no restarts or hidden steps**. The test verifies Redux state at each step to ensure the documented behavior matches the actual implementation.
+Each step builds on the previous state with **exactly one user action** between screenshots. No hidden steps, no restarts. The test verifies Redux state at each step to ensure the documented behavior matches the actual implementation.
 
 ## Test Coverage
 

@@ -442,12 +442,19 @@ test.describe('Configuration Screen', () => {
     await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
 
-    // STEP 3: Add two more players (3 players - Blue, Orange, Green)
+    // STEP 3: Add second player (2 players - Blue, Orange)
     coords = await getEdgeButtonCoordinates(page, 1, 1); // Orange from right
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
     await page.waitForTimeout(100);
     
+    state = await getReduxState(page);
+    expect(state.game.configPlayers.length).toBe(2);
+    expect(state.game.configPlayers[1].color).toBe('#DE8F05'); // Orange
+    await pauseAnimations(page);
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/003-second-player-added.png' });
+
+    // STEP 4: Add third player (3 players - Blue, Orange, Green)
     coords = await getEdgeButtonCoordinates(page, 2, 2); // Green from top
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
@@ -455,20 +462,35 @@ test.describe('Configuration Screen', () => {
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
+    expect(state.game.configPlayers[2].color).toBe('#029E73'); // Green
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/003-multiple-players.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/004-third-player-added.png' });
 
-    // STEP 4: Add three more players to reach max (6 players)
+    // STEP 5: Add fourth player (4 players)
     coords = await getEdgeButtonCoordinates(page, 3, 0); // Yellow
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
     await page.waitForTimeout(100);
     
+    state = await getReduxState(page);
+    expect(state.game.configPlayers.length).toBe(4);
+    expect(state.game.configPlayers[3].color).toBe('#ECE133'); // Yellow
+    await pauseAnimations(page);
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-fourth-player-added.png' });
+
+    // STEP 6: Add fifth player (5 players)
     coords = await getEdgeButtonCoordinates(page, 4, 0); // Purple
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
     await page.waitForTimeout(100);
     
+    state = await getReduxState(page);
+    expect(state.game.configPlayers.length).toBe(5);
+    expect(state.game.configPlayers[4].color).toBe('#CC78BC'); // Purple
+    await pauseAnimations(page);
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/006-fifth-player-added.png' });
+
+    // STEP 7: Add sixth player - max players (6 players)
     coords = await getEdgeButtonCoordinates(page, 5, 0); // Red
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
@@ -476,69 +498,63 @@ test.describe('Configuration Screen', () => {
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(6);
+    expect(state.game.configPlayers[5].color).toBe('#CA5127'); // Red
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/004-max-players.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/007-max-players.png' });
 
-    // STEP 5: Remove first player (5 players remaining)
+    // STEP 8: Remove first player (5 players remaining)
     const firstPlayerColor = state.game.configPlayers[0].color;
-    const removeCoords = await getRemoveButtonCoordinates(page, 0);
+    let removeCoords = await getRemoveButtonCoordinates(page, 0);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
     await page.waitForTimeout(100);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(5);
-    // Verify the first player was removed by checking the color changed
     expect(state.game.configPlayers[0].color).not.toBe(firstPlayerColor);
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-player-removed.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/008-player-removed.png' });
 
-    // STEP 6: Remove another player (4 players remaining)
+    // STEP 9: Remove second player (4 players remaining)
     const secondPlayerColor = state.game.configPlayers[0].color;
-    const removeCoords2 = await getRemoveButtonCoordinates(page, 0);
-    if (!removeCoords2) throw new Error('Remove button not found');
-    await page.mouse.click(box.x + removeCoords2.x, box.y + removeCoords2.y);
+    removeCoords = await getRemoveButtonCoordinates(page, 0);
+    if (!removeCoords) throw new Error('Remove button not found');
+    await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
     await page.waitForTimeout(100);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(4);
     expect(state.game.configPlayers[0].color).not.toBe(secondPlayerColor);
-    
-    // STEP 7: Add the removed player back with a different color (still 4 players, but color changed)
-    // The first color we removed should now be available again
-    const PLAYER_COLORS = ['#0173B2', '#DE8F05', '#029E73', '#ECE133', '#CC78BC', '#CA5127'];
-    const usedColors = state.game.configPlayers.map((p: any) => p.color);
-    const availableColors = PLAYER_COLORS.filter(c => !usedColors.includes(c));
-    
-    // Add a player with the first available color (which should be one we removed)
-    const colorToAddIndex = PLAYER_COLORS.indexOf(availableColors[0]);
-    coords = await getEdgeButtonCoordinates(page, colorToAddIndex, 0);
-    if (!coords) throw new Error('Button not found');
-    await page.mouse.click(box.x + coords.x, box.y + coords.y);
+    await pauseAnimations(page);
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/009-second-player-removed.png' });
+
+    // STEP 10: Remove third player (3 players remaining)
+    const thirdPlayerColor = state.game.configPlayers[0].color;
+    removeCoords = await getRemoveButtonCoordinates(page, 0);
+    if (!removeCoords) throw new Error('Remove button not found');
+    await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
     await page.waitForTimeout(100);
     
     state = await getReduxState(page);
-    expect(state.game.configPlayers.length).toBe(5);
-    // Verify the new player has a different color than what we had before
+    expect(state.game.configPlayers.length).toBe(3);
+    expect(state.game.configPlayers[0].color).not.toBe(thirdPlayerColor);
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/006-player-re-added.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/010-third-player-removed.png' });
 
-    // STEP 8: Remove all but 2 players for the next part of the story
-    while (state.game.configPlayers.length > 2) {
-      const removeCoords = await getRemoveButtonCoordinates(page, 0);
-      if (!removeCoords) break;
-      await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-      await page.waitForTimeout(100);
-      state = await getReduxState(page);
-    }
+    // STEP 11: Remove fourth player (2 players remaining)
+    const fourthPlayerColor = state.game.configPlayers[0].color;
+    removeCoords = await getRemoveButtonCoordinates(page, 0);
+    if (!removeCoords) throw new Error('Remove button not found');
+    await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
+    await page.waitForTimeout(100);
     
+    state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
-    const player1InitialColor = state.game.configPlayers[0].color;
-    const player2InitialColor = state.game.configPlayers[1].color;
+    expect(state.game.configPlayers[0].color).not.toBe(fourthPlayerColor);
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/007-two-players-ready.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/011-two-players-ready.png' });
 
-    // STEP 9: Start the game
+    // STEP 12: Start the game
     const startCoords = await getStartButtonCoordinates(page);
     await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
     await page.waitForTimeout(100);
@@ -553,7 +569,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/008-game-started.png' });
+    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/012-game-started.png' });
   });
 });
 
