@@ -8,15 +8,18 @@ import { incrementFrame } from './animation/actions';
 import { processAnimations } from './animation/processor';
 import { updateFlowPreview } from './animation/flowPreview';
 import { HexPosition, Rotation } from './game/types';
+import { isLegalMove } from './game/legality';
 
-// Expose store to window for testing
+// Expose store and game logic to window for testing
 declare global {
   interface Window {
     __REDUX_STORE__: typeof store;
+    __IS_LEGAL_MOVE__: typeof isLegalMove;
     ANIMATIONS_DEBUG_SLOWDOWN?: number;
   }
 }
 window.__REDUX_STORE__ = store;
+window.__IS_LEGAL_MOVE__ = isLegalMove;
 
 // Initialize the application
 function init() {

@@ -130,7 +130,7 @@ test.describe('Complete 2-Player Game', () => {
       // Check if game already ended after drawing (e.g., constraint victory)
       if (state.game.phase === 'finished') {
         console.log('🎉 Game ended after drawing tile!');
-        console.log('  Winner:', state.game.winner);
+        console.log('  Winners:', state.game.winners);
         console.log('  Win type:', state.game.winType);
         
         gameEnded = true;
@@ -167,6 +167,41 @@ test.describe('Complete 2-Player Game', () => {
         console.log('No valid positions - board is full, stopping game');
         // Board is completely filled, game ends
         break;
+      }
+      
+      // Check if the move is legal before placing
+      console.log(`Checking legality for move ${moveNumber + 1}: position (${position.row}, ${position.col}), rotation ${rotation}`);
+      
+      const isLegal = await page.evaluate((moveData) => {
+        const store = (window as any).__REDUX_STORE__;
+        const isLegalMove = (window as any).__IS_LEGAL_MOVE__;
+        const state = store.getState();
+        
+        if (!isLegalMove) {
+          console.warn('isLegalMove not available in window context, assuming legal');
+          return true;
+        }
+        
+        const placedTile = {
+          type: state.game.currentTile,
+          rotation: moveData.rotation,
+          position: { row: moveData.row, col: moveData.col },
+        };
+        
+        return isLegalMove(
+          state.game.board,
+          placedTile,
+          state.game.players,
+          state.game.teams,
+          state.game.boardRadius,
+          state.ui.settings.supermove
+        );
+      }, { row: position.row, col: position.col, rotation });
+      
+      if (!isLegal) {
+        console.log(`Move ${moveNumber + 1} is illegal, skipping and trying next position`);
+        // Skip this move and continue to next position
+        continue;
       }
       
       // Place the tile
@@ -283,7 +318,7 @@ test.describe('Complete 2-Player Game', () => {
       // Check if game ended
       if (state.game.phase === 'finished') {
         console.log('🎉 Game ended with victory!');
-        console.log('  Winner:', state.game.winner);
+        console.log('  Winners:', state.game.winners);
         console.log('  Win type:', state.game.winType);
         
         gameEnded = true;
@@ -318,8 +353,9 @@ test.describe('Complete 2-Player Game', () => {
     
     if (gameEnded) {
       expect(state.game.phase).toBe('finished');
-      expect(state.game.winner).toBeDefined();
-      console.log(`  - Winner: ${state.game.winner}`);
+      expect(state.game.winners).toBeDefined();
+      expect(state.game.winners.length).toBeGreaterThan(0);
+      console.log(`  - Winners: ${state.game.winners.join(', ')}`);
       console.log(`  - Victory type: ${state.game.winType}`);
     } else {
       expect(state.game.phase).toBe('playing');
