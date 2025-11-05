@@ -7,6 +7,8 @@ import {
   setSelectedPosition,
   setRotation,
   toggleLegalMoves,
+  toggleSettings,
+  updateSettings,
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
@@ -84,6 +86,53 @@ describe('uiReducer', () => {
       expect(initialUIState.animationSpeed).toBe(1.0);
       expect(initialUIState.zoom).toBe(1.0);
       expect(initialUIState.panOffset).toEqual({ x: 0, y: 0 });
+    });
+  });
+
+  describe('TOGGLE_SETTINGS', () => {
+    it('should toggle showSettings from false to true', () => {
+      const state = uiReducer(initialUIState, toggleSettings());
+
+      expect(state.showSettings).toBe(true);
+    });
+
+    it('should toggle showSettings from true to false', () => {
+      let state = uiReducer(initialUIState, toggleSettings());
+      state = uiReducer(state, toggleSettings());
+
+      expect(state.showSettings).toBe(false);
+    });
+  });
+
+  describe('UPDATE_SETTINGS', () => {
+    it('should update boardRadius setting', () => {
+      const state = uiReducer(initialUIState, updateSettings({ boardRadius: 5 }));
+
+      expect(state.settings.boardRadius).toBe(5);
+    });
+
+    it('should update supermove setting', () => {
+      const state = uiReducer(initialUIState, updateSettings({ supermove: true }));
+
+      expect(state.settings.supermove).toBe(true);
+    });
+
+    it('should update multiple settings at once', () => {
+      const state = uiReducer(
+        initialUIState,
+        updateSettings({ boardRadius: 4, supermove: true, debugShowEdgeLabels: true })
+      );
+
+      expect(state.settings.boardRadius).toBe(4);
+      expect(state.settings.supermove).toBe(true);
+      expect(state.settings.debugShowEdgeLabels).toBe(true);
+    });
+
+    it('should preserve other settings when updating', () => {
+      const state = uiReducer(initialUIState, updateSettings({ boardRadius: 6 }));
+
+      expect(state.settings.supermove).toBe(false); // Should remain unchanged
+      expect(state.settings.debugShowEdgeLabels).toBe(false); // Should remain unchanged
     });
   });
 

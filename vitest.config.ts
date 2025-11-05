@@ -12,6 +12,12 @@ export default defineConfig({
       include: ['src/game/**/*.ts', 'src/redux/**/*.ts'],
       exclude: ['src/game/index.ts', 'src/redux/types.ts'],
       clean: true,
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 95,
+        statements: 100,
+      },
     },
   },
 });
