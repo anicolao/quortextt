@@ -9,9 +9,9 @@ This story demonstrates a full game experience from initial configuration throug
 ## Test Scenario
 
 - **Seed**: 999
-- **Players**: 2 (assigned to opposite edges 0 and 3)
-- **Moves**: 35 tiles placed
-- **Outcome**: Tie between both players
+- **Players**: 2 (assigned to adjacent edges 1 and 2)
+- **Moves**: Tiles placed until victory or board full
+- **Outcome**: Victory determined by flow connections
 
 ## Screenshots
 
@@ -42,8 +42,8 @@ This story demonstrates a full game experience from initial configuration throug
 - **State**: Gameplay screen with empty board
 - **What to verify**:
   - Hexagonal game board visible
-  - Player 1 edge (blue) at position 0
-  - Player 2 edge (orange) at position 3
+  - Player 1 edge (blue) at position 1 (right side)
+  - Player 2 edge (orange) at position 2 (top side)
   - Preview tile shown
   - Board ready for first move
 
@@ -57,8 +57,8 @@ This story demonstrates a full game experience from initial configuration throug
   - Players alternate turns correctly
   - Tiles placed systematically across the board
   - Flows propagate from player edges through connected tiles
-  - Blue flows (Player 1) extend from edge 0
-  - Orange flows (Player 2) extend from edge 3
+  - Blue flows (Player 1) extend from edge 1 (right side)
+  - Orange flows (Player 2) extend from edge 2 (top side)
   - Flow coloring updates correctly after each placement
   - Board state consistent throughout the game
   - Strategic positioning creates flow networks

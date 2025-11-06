@@ -21,13 +21,13 @@ test.describe('Complete 2-Player Game', () => {
     });
     
     // === STEP 2: Add two players with specific edges ===
-    // Player 1 (blue) at edge 0, Player 2 (orange) at edge 3 (opposite edges)
+    // Player 1 (blue) at edge 1, Player 2 (orange) at edge 2 (adjacent edges)
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'SETUP_GAME', payload: {
         players: [
-          { id: 'P1', color: '#0173B2', edgePosition: 0 },
-          { id: 'P2', color: '#DE8F05', edgePosition: 3 }
+          { id: 'P1', color: '#0173B2', edgePosition: 1 },
+          { id: 'P2', color: '#DE8F05', edgePosition: 2 }
         ],
         teams: []
       }});
