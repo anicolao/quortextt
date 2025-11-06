@@ -13,7 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateRandomGameWithState, saveActionsToFile } from '../tests/utils/gameGenerator';
-import { actionsToClicks, generateExpectationsWithPrefixes, saveClicksToFile } from '../tests/utils/actionConverter';
+import { actionsToClicks, generateExpectationsWithPrefixes, generateReadme, saveClicksToFile } from '../tests/utils/actionConverter';
 
 function main() {
   const args = process.argv.slice(2);
@@ -65,8 +65,18 @@ function main() {
   fs.writeFileSync(expectationsFile, expectations, 'utf-8');
   console.log(`  ✓ Saved ${expectationsFile}`);
   
+  // Generate and save README file
+  console.log('  Generating README...');
+  const readme = generateReadme(seed, actions, finalState, movePrefixes);
+  const readmeFile = path.join(outputDir, 'README.md');
+  fs.writeFileSync(readmeFile, readme, 'utf-8');
+  console.log(`  ✓ Saved ${readmeFile}`);
+  
   console.log('');
   console.log('✓ Successfully generated all test files');
+  console.log('');
+  console.log('To generate screenshots:');
+  console.log(`  npm run test:e2e -- --grep "seed ${seed}"`);
 }
 
 main();
