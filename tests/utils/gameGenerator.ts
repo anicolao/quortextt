@@ -120,9 +120,18 @@ function findFlowAdjacentMoves(
 }
 
 /**
- * Generate a complete game from a seed
+ * Result of game generation including actions and final state
  */
-export function generateRandomGame(seed: number, maxMoves = 50): GameAction[] {
+export interface GeneratedGame {
+  actions: GameAction[];
+  finalState: GameState;
+}
+
+/**
+ * Generate a complete game from a seed
+ * Returns both the actions and the final game state
+ */
+export function generateRandomGameWithState(seed: number, maxMoves = 50): GeneratedGame {
   const actions: GameAction[] = [];
   const rng = new SeededRandom(seed);
   
@@ -223,7 +232,14 @@ export function generateRandomGame(seed: number, maxMoves = 50): GameAction[] {
     state = gameReducer(state, actions[actions.length - 1]);
   }
   
-  return actions;
+  return { actions, finalState: state };
+}
+
+/**
+ * Generate a complete game from a seed (returns only actions for compatibility)
+ */
+export function generateRandomGame(seed: number, maxMoves = 50): GameAction[] {
+  return generateRandomGameWithState(seed, maxMoves).actions;
 }
 
 /**
