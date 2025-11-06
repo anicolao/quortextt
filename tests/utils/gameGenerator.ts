@@ -8,7 +8,7 @@
 import { GameAction } from '../../src/redux/actions';
 import { gameReducer, initialState } from '../../src/redux/gameReducer';
 import { GameState } from '../../src/redux/types';
-import { getAllBoardPositions, positionToKey } from '../../src/game/board';
+import { getAllBoardPositions, positionToKey, getEdgePositions } from '../../src/game/board';
 import { HexPosition, Rotation } from '../../src/game/types';
 import { isLegalMove } from '../../src/game/legality';
 import { traceFlow } from '../../src/game/flows';
@@ -95,8 +95,29 @@ function findFlowAdjacentMoves(
   const playerFlows = state.flows.get(currentPlayer.id);
   
   if (!playerFlows || playerFlows.size === 0) {
-    // No flows yet, return all legal moves
-    return legalMoves;
+    // No flows yet, choose a position adjacent to the player's starting edge
+    // Get positions adjacent to player's edge using getNeighborInDirection
+    const edgePositions = getEdgePositions(currentPlayer.edgePosition, 3);
+    const adjacentToEdge = legalMoves.filter(move => {
+      // Check if move position is adjacent to any edge position
+      return edgePositions.some(edgePos => {
+        const deltaRow = move.position.row - edgePos.row;
+        const deltaCol = move.position.col - edgePos.col;
+        
+        // Check if adjacent using hex grid vectors
+        const isAdjacent = 
+          (deltaRow === -1 && deltaCol === 0) ||   // SouthWest
+          (deltaRow === 0 && deltaCol === -1) ||   // West
+          (deltaRow === 1 && deltaCol === -1) ||   // NorthWest
+          (deltaRow === 1 && deltaCol === 0) ||    // NorthEast
+          (deltaRow === 0 && deltaCol === 1) ||    // East
+          (deltaRow === -1 && deltaCol === 1);     // SouthEast
+        
+        return isAdjacent;
+      });
+    });
+    
+    return adjacentToEdge.length > 0 ? adjacentToEdge : legalMoves;
   }
   
   // Filter moves that would extend the player's flows

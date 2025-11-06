@@ -13,7 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateRandomGameWithState, saveActionsToFile } from '../tests/utils/gameGenerator';
-import { actionsToClicks, generateExpectations, saveClicksToFile } from '../tests/utils/actionConverter';
+import { actionsToClicks, actionsToExpectations, saveClicksToFile } from '../tests/utils/actionConverter';
 
 function main() {
   const args = process.argv.slice(2);
@@ -58,9 +58,9 @@ function main() {
   fs.writeFileSync(clicksFile, clicksContent, 'utf-8');
   console.log(`  ✓ Saved ${clicksFile}`);
   
-  // Generate and save expectations file
+  // Generate and save expectations file (includes move prefixes)
   console.log('  Generating expectations...');
-  const expectations = generateExpectations(finalState);
+  const expectations = actionsToExpectations(actions);
   const expectationsFile = path.join(outputDir, `${seed}.expectations`);
   fs.writeFileSync(expectationsFile, expectations, 'utf-8');
   console.log(`  ✓ Saved ${expectationsFile}`);
