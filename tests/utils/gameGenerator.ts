@@ -151,11 +151,21 @@ function findFlowAdjacentMoves(
 }
 
 /**
+ * Move prefix data for validation
+ */
+export interface MovePrefix {
+  move: number;
+  p1FlowLengths: Record<number, number>;
+  p2FlowLengths: Record<number, number>;
+}
+
+/**
  * Result of game generation including actions and final state
  */
 export interface GeneratedGame {
   actions: GameAction[];
   finalState: GameState;
+  movePrefixes: MovePrefix[];
 }
 
 /**
@@ -218,6 +228,8 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
   
   // Step 6: Play the game
   let moveCount = 0;
+  const movePrefixes: MovePrefix[] = [];
+  
   while (moveCount < maxMoves && state.phase === 'playing') {
     // Check we have a tile to place
     if (state.currentTile === null) {
@@ -254,6 +266,10 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     moveCount++;
     
+    // After placing tile, record flow lengths for move prefix tracking
+    const movePrefix = generateMovePrefix(state, moveCount, player1Id, player2Id);
+    movePrefixes.push(movePrefix);
+    
     // Check if game ended
     if (state.phase === 'finished') {
       break;
@@ -268,7 +284,52 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     state = gameReducer(state, actions[actions.length - 1]);
   }
   
-  return { actions, finalState: state };
+  return { actions, finalState: state, movePrefixes };
+}
+
+/**
+ * Generate move prefix data for a given game state after a PLACE_TILE action
+ */
+function generateMovePrefix(
+  state: GameState,
+  moveNumber: number,
+  player1Id: string,
+  player2Id: string
+): MovePrefix {
+  const p1FlowLengths: Record<number, number> = {};
+  const p2FlowLengths: Record<number, number> = {};
+  
+  // Trace flows for each player from their edge
+  for (const player of state.players) {
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition);
+    let flowIndex = 0;
+    
+    for (const { pos, dir } of edgeData) {
+      const posKey = positionToKey(pos);
+      const tile = state.board.get(posKey);
+      
+      if (!tile) {
+        continue;
+      }
+      
+      const { edges } = traceFlow(state.board, pos, dir, player.id);
+      
+      if (edges.length > 0) {
+        if (player.id === player1Id) {
+          p1FlowLengths[flowIndex] = edges.length;
+        } else if (player.id === player2Id) {
+          p2FlowLengths[flowIndex] = edges.length;
+        }
+        flowIndex++;
+      }
+    }
+  }
+  
+  return {
+    move: moveNumber,
+    p1FlowLengths,
+    p2FlowLengths,
+  };
 }
 
 /**
