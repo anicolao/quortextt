@@ -553,7 +553,7 @@ export function generateReadme(
   
   // Document each action
   for (const action of actions) {
-    const screenshot = `${screenshotCounter.toString().padStart(3, '0')}-${action.type.toLowerCase().replace(/_/g, '_')}.png`;
+    const screenshot = `${screenshotCounter.toString().padStart(3, '0')}-${action.type.toLowerCase()}.png`;
     
     lines.push(`### Step ${stepCounter++}: ${action.type}`);
     lines.push(`![${action.type}](screenshots/${screenshot})`);
