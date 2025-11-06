@@ -4,18 +4,16 @@
 
 ## Flow Description
 
-This story demonstrates a full game experience from initial configuration through multiple turns, using only mouse interactions. Unlike test 005 which uses Redux actions directly, this test validates that the UI correctly handles all user interactions including tile rotation, placement, and confirmation through mouse clicks.
+This story demonstrates a full game experience from initial setup through multiple turns, using **only mouse interactions**. Unlike test 005 which uses Redux actions directly, this test validates that the UI correctly handles all user interactions: tile rotation via clicks, position selection via clicks, and confirmation/cancellation through UI buttons.
 
-## Test Scenario
+## Test Configuration
 
-- **Seed**: 999
-- **Players**: 2 (assigned to adjacent edges 1 and 2)
-- **Input Method**: Mouse clicks only (no Redux action cheating)
-- **Interactions**:
-  - Click to rotate tiles
-  - Click to select hex positions
-  - Click checkmark to confirm placement
-  - Click X to cancel placement
+- **Seed**: 999 (same as test 005 for consistency)
+- **Players**: 2 players
+  - Player 1 (Blue, #0173B2) at edge 1 (NE - top-right)
+  - Player 2 (Orange, #DE8F05) at edge 3 (SE - bottom-right)
+- **Method**: Mouse clicks only (no Redux action "cheating")
+- **Screenshot granularity**: Multiple screenshots per move showing rotation steps, placement, confirmation
 - **Outcome**: Victory determined by flow connections
 
 ## Screenshots
@@ -26,139 +24,250 @@ This story demonstrates a full game experience from initial configuration throug
 
 - **Action**: User loads the application
 - **State**: Configuration screen ready for player setup
-- **What to verify**: Clean configuration interface, ready for player addition
+- **Redux State**: `screen = 'configuration'`, `configPlayers.length = 0`
+- **What to verify**: 
+  - Clean configuration interface visible
+  - Color buttons arranged around the board edges
+  - START button visible in center
+  - No players listed yet
 
 ### 0002-players-added.png
 
 ![0002-players-added](./0002-players-added.png)
 
-- **Action**: Two players added to the game
-- **State**: Configuration screen with two players
+- **Action**: Two players set up via SETUP_GAME action (setup only, not gameplay)
+- **State**: Game configured with Blue and Orange players
+- **Redux State**: `players.length = 2`, `screen = 'gameplay'`, `phase = 'playing'`
 - **What to verify**: 
-  - Two player entries displayed
-  - Each player has a unique color
-  - "Start Game" button available
+  - Gameplay screen now visible
+  - Board is empty, ready for tiles
+  - Two player edges visible: Blue at NE (edge 1), Orange at SE (edge 3)
+  - No tiles placed yet
 
 ### 0003-game-started.png
 
 ![0003-game-started](./0003-game-started.png)
 
-- **Action**: Game started with two players
-- **State**: Gameplay screen with empty board
+- **Action**: Tiles shuffled with seed 999, first tile drawn (via Redux for deterministic setup)
+- **State**: Ready to place first tile
+- **Redux State**: `currentTile` is set, `currentRotation = 0`, `selectedPosition = null`
 - **What to verify**:
   - Hexagonal game board visible
-  - Player 1 edge (blue) at position 1 (right side)
-  - Player 2 edge (orange) at position 2 (top side)
-  - Preview tile shown at player's edge position
-  - Board ready for first move
+  - Player 1 edge (Blue) at NE position (top-right)
+  - Player 2 edge (Orange) at SE position (bottom-right)
+  - Preview tile visible at Blue player's edge position
+  - Board is empty (no tiles placed yet)
+  - Current tile ready for Player 1
 
-### Move Sequences (0004-* onwards)
+## Move Pattern (Repeated for Each Move)
 
-Each move consists of multiple screenshots showing the complete interaction:
+Each move follows this interaction pattern with multiple screenshots:
 
-#### Before Move Screenshots
-- **0004-before-move-1.png**, **0008-before-move-2.png**, etc.
-- Shows the game state before the player makes their move
-- Current tile is displayed at the player's edge position
+### Before Move Screenshot (e.g., 0004-before-move-1.png)
 
-#### Rotation Screenshots
-- **0005-move-1-rotation-1.png**, **0006-move-1-rotation-2.png**, etc.
-- Shows the tile being rotated by clicking on it
-- Each click rotates the tile 60 degrees clockwise
-- Demonstrates that rotation is achieved through mouse interaction
+![0004-before-move-1](./0004-before-move-1.png)
 
-#### Tile Placed Screenshots
-- **0007-move-1-tile-placed.png**, etc.
-- Shows the tile after clicking on a hex position
-- Tile is now at the selected position with confirmation buttons visible
-- Checkmark (✓) and X buttons appear for confirming or canceling
+- **Action**: New tile available for current player
+- **State**: Waiting for player to interact with tile
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**:
+  - Current tile preview visible at player's edge position
+  - No tile selected on board yet
+  - Previous moves' tiles visible on board
+  - Correct player's turn indicator
 
-#### Move Complete Screenshots
-- **0008-move-1-complete.png**, etc.
-- Shows the board after clicking the checkmark to confirm
-- Tile is committed to the board
-- Flows update to show connections
-- Turn advances to next player automatically
+### Rotation Screenshots (e.g., 0005-move-1-rotation-1.png)
 
-### What to Verify Across All Moves
+![0005-move-1-rotation-1](./0005-move-1-rotation-1.png)
 
-- **Mouse-only interaction**: All actions performed via mouse clicks
-- **Rotation mechanism**: Tile rotates when clicked, no Redux ROTATE action
-- **Placement mechanism**: Tile moves to hex when position is clicked
-- **Confirmation mechanism**: Checkmark commits, X cancels
-- **Automatic progression**: Next player's tile appears automatically after confirm
-- **Flow propagation**: Flows update correctly after each placement
-- **Legal move enforcement**: UI prevents illegal moves (doesn't show checkmark for illegal placements)
-- **Turn management**: Players alternate correctly
-- **Board state**: Consistent throughout the game
+- **Action**: Player clicks on tile preview to rotate it
+- **State**: Tile rotated to rotation 1 (60 degrees clockwise)
+- **Redux State**: `currentRotation = 1`
+- **What to verify**:
+  - Tile preview shows new orientation
+  - Flow paths on tile visually rotated
+  - Tile still at player's edge position (not placed yet)
+  - Rotation achieved through mouse click (not Redux action)
+
+*Note: Multiple rotation screenshots may appear (rotation-1, rotation-2, etc.) as player clicks repeatedly to reach desired rotation*
+
+### Tile Placed Screenshot (e.g., 0006-move-1-tile-placed.png)
+
+![0006-move-1-tile-placed](./0006-move-1-tile-placed.png)
+
+- **Action**: Player clicks on hex position to place tile there
+- **State**: Tile tentatively placed at selected position with confirmation buttons visible
+- **Redux State**: `selectedPosition = {row: X, col: Y}`, tile shown at selected position
+- **What to verify**:
+  - Tile now appears at clicked hex position
+  - Checkmark (✓) button visible to the right of tile
+  - X button visible to the left of tile
+  - Tile not yet committed to board (can still cancel)
+  - Selected position highlighted
+
+### Move Complete Screenshot (e.g., 0007-move-1-complete.png)
+
+![0007-move-1-complete](./0007-move-1-complete.png)
+
+- **Action**: Player clicks checkmark (✓) button to confirm placement
+- **State**: Tile committed to board, turn advances to next player
+- **Redux State**: `board['X,Y']` contains tile, `selectedPosition = null`, `currentPlayerIndex` incremented
+- **What to verify**:
+  - Tile permanently placed on board
+  - Confirmation buttons disappeared
+  - Flows updated if tile connects to player edge
+  - Turn advanced to next player
+  - Next player's tile preview appears
+  - Move achieved entirely through mouse clicks
+
+## Example Moves
+
+### Move 1: Player 1 (Blue)
+
+- **0004-before-move-1.png**: Blue tile at NE edge, rotation 0
+- **0005-move-1-rotation-1.png**: After 1 click, rotation 1
+- **0006-move-1-tile-placed.png**: Clicked on position (-3, 0), checkmark visible
+- **0007-move-1-complete.png**: Confirmed, tile on board, P2's turn begins
+
+### Move 2: Player 2 (Orange)
+
+- **0008-before-move-2.png**: Orange tile at SE edge, rotation 0
+- **0009-move-2-rotation-1.png**: After 1 click, rotation 1
+- **0010-move-2-rotation-2.png**: After 2 clicks, rotation 2 (desired)
+- **0011-move-2-tile-placed.png**: Clicked on position (-3, 1), checkmark visible
+- **0012-move-2-complete.png**: Confirmed, tile on board, P1's turn begins
+
+### Move 3: Player 1 (Blue)
+
+- **0013-before-move-3.png**: Blue tile ready
+- **0014-move-3-rotation-1.png**: Rotation 1
+- **0015-move-3-rotation-2.png**: Rotation 2
+- **0016-move-3-rotation-3.png**: Rotation 3 (final)
+- **0017-move-3-tile-placed.png**: Placed at position
+- **0018-move-3-complete.png**: Confirmed
+
+*This pattern repeats for all subsequent moves...*
+
+## Key Screenshots to Verify
+
+### Mid-Game (Around Move 15-20)
+
+- **Flow propagation**: Both Blue and Orange flows visible extending from edges
+- **Board filling**: Approximately half the board filled with tiles
+- **Turn alternation**: Players alternating correctly throughout
+- **UI responsiveness**: All interactions via mouse clicks working correctly
+
+### Late Game (Around Move 25-30)
+
+- **Complex flows**: Flow networks extending across many tiles
+- **Board nearly full**: Most positions occupied
+- **Legal moves**: UI enforcing move legality (checkmark only for legal placements)
+- **Victory approach**: Game nearing conclusion
 
 ### victory-final.png
 
 ![victory-final](./victory-final.png)
 
-- **Action**: Final game state reached
-- **State**: Game concluded with victory condition met
+- **Action**: Game reaches conclusion (victory or constraint)
+- **State**: Game finished
+- **Redux State**: `phase = 'finished'`, `winners` array populated, `winType` set
 - **What to verify**:
-  - Game phase: finished
+  - Game phase is 'finished'
+  - Winners array contains player ID(s)
+  - Win type identified correctly
   - Victory screen displayed
-  - Winner(s) identified correctly
-  - Final board state shows complete game
+  - Final board state shows all placed tiles
+  - Final flow networks visible
 
-## Game Mechanics Demonstrated
+## Mouse Interaction Flow
 
-### Mouse Interaction Flow
+### 1. Tile Rotation
+- **Action**: Click on tile preview at player's edge
+- **Effect**: Tile rotates 60° clockwise
+- **Multiple clicks**: Continue clicking for more rotations
+- **Redux**: `currentRotation` updates
+- **Visual**: Tile preview shows new orientation
 
-1. **Rotation**: Click on tile preview to rotate (multiple clicks for multiple rotations)
-2. **Selection**: Click on hex position to place tile there (tentatively)
-3. **Confirmation**: Click checkmark (✓) to commit or X to cancel
-4. **Automatic progression**: After commit, next player's tile appears automatically
+### 2. Position Selection
+- **Action**: Click on hex position on board
+- **Effect**: Tile tentatively placed there
+- **Redux**: `selectedPosition` set
+- **Visual**: Tile appears at position, confirmation buttons appear
 
-### UI Validation
+### 3. Confirmation
+- **Action**: Click checkmark (✓) button
+- **Effect**: Tile committed to board, turn advances
+- **Redux**: Tile added to `board` Map, `currentPlayerIndex` increments
+- **Visual**: Tile permanent, next player's tile appears
 
-- Legal moves are enforced by the UI
-- Checkmark button only appears for legal placements
-- Illegal moves are rejected silently (no error messages, just no action)
-- Turn transitions happen automatically after confirmation
+### 4. Cancellation (if needed)
+- **Action**: Click X button
+- **Effect**: Selection cleared, tile returns to edge
+- **Redux**: `selectedPosition = null`
+- **Visual**: Tile back at player's edge, no confirmation buttons
+
+## UI Validation Demonstrated
+
+### Legal Move Enforcement
+
+- **Checkmark availability**: Only shown for legal moves
+- **Illegal moves**: Checkmark doesn't appear, preventing placement
+- **UI feedback**: Silent rejection of illegal moves (no error messages)
+- **Game integrity**: UI prevents rule violations
+
+### Turn Management
+
+- **Automatic advancement**: Turn changes after checkmark click
+- **No manual NEXT_PLAYER**: Turn advances automatically
+- **Visual feedback**: Current player indicator updates
+- **Tile drawing**: Next tile appears automatically
 
 ### Flow Propagation
 
-- Flows enter from player edges
-- Connected tiles propagate player colors
-- Disconnected tiles remain grey
-- Flow networks extend naturally
-- Multiple player flows coexist independently
+- **Real-time updates**: Flows update after each confirmation
+- **Color coding**: Blue and Orange flows distinct
+- **Edge connections**: Flows enter from correct player edges
+- **Path visualization**: Flow networks clearly visible
 
 ## Test Coverage
 
-This story validates:
-- Complete game flow using only mouse interactions
-- UI-based tile rotation (no Redux ROTATE action)
-- UI-based tile placement (clicking hex positions)
-- Confirmation/cancellation buttons work correctly
-- Legal move enforcement through UI
-- Automatic turn progression
-- Flow propagation with UI-placed tiles
-- Victory detection with mouse-driven gameplay
+This test validates:
+
+- **Mouse-only interaction**: All gameplay via mouse clicks
+- **UI rotation mechanism**: Clicking tile rotates it (no Redux ROTATE)
+- **UI placement mechanism**: Clicking hex positions works correctly
+- **Confirmation/cancellation**: Buttons function properly
+- **Legal move enforcement**: UI prevents illegal moves
+- **Automatic turn progression**: No manual turn advancement needed
+- **Flow propagation**: Works correctly with UI-placed tiles
+- **Victory detection**: Triggers appropriately during mouse-driven gameplay
+- **Complete user experience**: Full game playable via UI alone
 
 ## Differences from Test 005
 
-- **Input method**: Mouse clicks only vs Redux actions
-- **Legality**: UI enforces legality vs Redux accepts all moves
-- **Screenshot granularity**: Shows each rotation, placement, confirmation step
-- **Determinism**: Same seed and edge positions ensure comparable gameplay
+| Aspect | Test 005 | Test 006 (This Test) |
+|--------|----------|----------------------|
+| **Input method** | Direct Redux PLACE_TILE | Mouse clicks only |
+| **Rotation** | Direct Redux SET_ROTATION | Click on tile to rotate |
+| **Placement** | Redux action | Click on hex position |
+| **Confirmation** | Automatic | Click checkmark button |
+| **Legality** | Not enforced | UI enforces |
+| **Screenshots** | One per move (41 total) | Multiple per move (200+) |
+| **Purpose** | Test game logic | Test UI interactions |
+| **Turn advance** | Manual NEXT_PLAYER | Automatic after confirm |
 
 ## Related Files
 
 - Test: `tests/e2e/complete-game-mouse.spec.ts`
-- Redux: `src/redux/gameReducer.ts`
 - Input Handling: `src/input/gameplayInputHandler.ts`
-- Flow Logic: `src/game/flows.ts`
-- Legality Logic: `src/game/legality.ts`
+- Redux: `src/redux/gameReducer.ts`, `src/redux/uiReducer.ts`
+- Game Logic: `src/game/legality.ts`, `src/game/flows.ts`
+- Rendering: `src/rendering/gameplayRenderer.ts`
 
 ## Deterministic Testing
 
-- **Seed 999**: Ensures reproducible tile shuffle (same as test 005)
-- **Edge positions 1 and 2**: Matches test 005 for consistency
-- **Systematic positions**: Tiles placed in predictable pattern
+- **Same seed (999)**: Ensures same tiles as test 005
+- **Same edge positions**: Players at edges 1 and 3
+- **Systematic placement**: Tiles placed in predictable order
 - **Mouse coordinates**: Calculated deterministically from hex layout
-- Same game plays out identically on each test run
+- **Reproducible**: Same test run produces same screenshots every time

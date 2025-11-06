@@ -218,13 +218,13 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     // === STEP 2: Set up two players with specific edges ===
     // Use SETUP_GAME to ensure both tests have the same player configuration
-    // Player 1 (blue) at edge 1, Player 2 (orange) at edge 2 (adjacent edges)
+    // Player 1 (blue) at edge 1 (NE), Player 2 (orange) at edge 3 (SE)
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'SETUP_GAME', payload: {
         players: [
           { id: 'P1', color: '#0173B2', edgePosition: 1 },
-          { id: 'P2', color: '#DE8F05', edgePosition: 2 }
+          { id: 'P2', color: '#DE8F05', edgePosition: 3 }
         ],
         teams: []
       }});
