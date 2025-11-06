@@ -1,7 +1,5 @@
 {"type":"click","target":"edge-button","x":205,"y":540,"description":"Click to add player (#0173B2 at edge 0)"}
-{"type":"wait","delay":200,"description":"Wait for player addition"}
-{"type":"click","target":"edge-button","x":740,"y":183,"description":"Click to add player (#DE8F05 at edge 1)"}
-{"type":"wait","delay":200,"description":"Wait for player addition"}
+{"type":"click","target":"edge-button","x":740,"y":144,"description":"Click to add player (#DE8F05 at edge 1)"}
 {"type":"click","target":"start-button","x":400,"y":300,"description":"Click START button"}
 {"type":"wait","delay":200,"description":"Wait for game start"}
 {"type":"click","target":"edge-hex","x":399.99999999999994,"y":17.64705882352939,"description":"Select edge 0 for player P2"}

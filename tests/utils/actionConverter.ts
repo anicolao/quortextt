@@ -46,42 +46,52 @@ function getHexPixelCoords(
 }
 
 /**
- * Get coordinates for edge button in lobby
+ * Get coordinates for ADD_PLAYER button in lobby
+ * Buttons move as colors are used up, so we calculate based on available colors
  */
 function getEdgeButtonCoords(
-  colorIndex: number,
+  color: string,
   edge: number,
+  usedColors: string[],
   canvasWidth: number,
   canvasHeight: number
 ): { x: number; y: number } {
+  const PLAYER_COLORS = ['#0173B2', '#DE8F05', '#029E73', '#ECE133', '#CC78BC', '#CA5127'];
+  const availableColors = PLAYER_COLORS.filter(c => !usedColors.includes(c));
+  const targetColorIndex = availableColors.indexOf(color);
+  
+  if (targetColorIndex === -1) {
+    // Color not available, return center as fallback
+    return { x: canvasWidth / 2, y: canvasHeight / 2 };
+  }
+  
   const minDim = Math.min(canvasWidth, canvasHeight);
   const buttonSize = Math.max(60, minDim * 0.08);
   const edgeMargin = minDim * 0.05;
   const buttonSpacing = buttonSize * 0.3;
   
-  // Calculate position based on edge
   let x: number, y: number;
   
   if (edge === 0) { // Bottom
-    const totalWidth = 6 * buttonSize + 5 * buttonSpacing;
+    const totalWidth = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
     const startX = (canvasWidth - totalWidth) / 2;
-    x = startX + colorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+    x = startX + targetColorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
     y = canvasHeight - edgeMargin - buttonSize / 2;
   } else if (edge === 1) { // Right
-    const totalHeight = 6 * buttonSize + 5 * buttonSpacing;
+    const totalHeight = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
     const startY = (canvasHeight - totalHeight) / 2;
     x = canvasWidth - edgeMargin - buttonSize / 2;
-    y = startY + colorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+    y = startY + targetColorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
   } else if (edge === 2) { // Top
-    const totalWidth = 6 * buttonSize + 5 * buttonSpacing;
+    const totalWidth = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
     const startX = (canvasWidth - totalWidth) / 2;
-    x = startX + colorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+    x = startX + targetColorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
     y = edgeMargin + buttonSize / 2;
   } else { // Left (edge === 3)
-    const totalHeight = 6 * buttonSize + 5 * buttonSpacing;
+    const totalHeight = availableColors.length * buttonSize + (availableColors.length - 1) * buttonSpacing;
     const startY = (canvasHeight - totalHeight) / 2;
     x = edgeMargin + buttonSize / 2;
-    y = startY + colorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
+    y = startY + targetColorIndex * (buttonSize + buttonSpacing) + buttonSize / 2;
   }
   
   return { x, y };
@@ -172,32 +182,26 @@ export function actionsToClicks(
 ): ClickAction[] {
   const clicks: ClickAction[] = [];
   let currentRotation = 0;
-  
-  // Color mapping
-  const colorMap: Record<string, number> = {
-    '#0173B2': 0, // Blue
-    '#DE8F05': 1, // Orange
-    '#029E73': 2, // Green
-    '#ECE133': 3, // Yellow
-    '#CC78BC': 4, // Purple
-    '#CA5127': 5, // Red
-  };
+  const usedColors: string[] = []; // Track used colors for dynamic button positioning
   
   for (const action of actions) {
     switch (action.type) {
       case 'ADD_PLAYER': {
-        const colorIndex = colorMap[action.payload?.color || '#0173B2'];
+        const color = action.payload?.color || '#0173B2';
         const edge = action.payload?.edge || 0;
-        const coords = getEdgeButtonCoords(colorIndex, edge, canvasWidth, canvasHeight);
+        const coords = getEdgeButtonCoords(color, edge, usedColors, canvasWidth, canvasHeight);
         
         clicks.push({
           type: 'click',
           target: 'edge-button',
           x: coords.x,
           y: coords.y,
-          description: `Click to add player (${action.payload?.color} at edge ${edge})`
+          description: `Click to add player (${color} at edge ${edge})`
         });
-        clicks.push({ type: 'wait', delay: 200, description: 'Wait for player addition' });
+        
+        // Track this color as used for next iteration
+        usedColors.push(color);
+        break;
         break;
       }
       
