@@ -20,6 +20,8 @@ function loadActions(actionsFile: string) {
 
 test.describe('Complete Game from Actions - Seed 888', () => {
   test('should replay game from 888.actions file', async ({ page }) => {
+    test.setTimeout(120000); // Increase timeout to 2 minutes for long replay
+    
     const actionsFile = path.join(__dirname, 'user-stories/005-complete-game/888/888.actions');
     const screenshotDir = path.join(__dirname, 'user-stories/005-complete-game/888/screenshots');
     
@@ -53,8 +55,18 @@ test.describe('Complete Game from Actions - Seed 888', () => {
         store.dispatch(act);
       }, action);
       
-      // Wait for action to process
-      await page.waitForTimeout(200);
+      // Minimal wait for action to process
+      await page.waitForTimeout(50);
+      
+      // For SELECT_EDGE, check if screen transitioned to gameplay and wait for board render
+      if (action.type === 'SELECT_EDGE') {
+        // Check if this is the last edge selection (seating complete)
+        const state = await getReduxState(page);
+        if (state.game.screen === 'gameplay') {
+          // Wait for the board to render after transition
+          await page.waitForTimeout(1000);
+        }
+      }
       
       // Take screenshot after important actions
       if (['ADD_PLAYER', 'START_GAME', 'SELECT_EDGE', 'PLACE_TILE'].includes(action.type)) {
