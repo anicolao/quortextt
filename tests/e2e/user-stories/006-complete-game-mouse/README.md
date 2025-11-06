@@ -4,17 +4,16 @@
 
 ## Flow Description
 
-This story demonstrates a full game experience from initial setup through multiple turns, using **only mouse interactions**. Unlike test 005 which uses Redux actions directly, this test validates that the UI correctly handles all user interactions: tile rotation via clicks, position selection via clicks, and confirmation/cancellation through UI buttons.
+This story demonstrates a full game experience using **only mouse interactions**. Every tile rotation, position selection, and confirmation is performed via mouse clicks. The test validates that the UI correctly handles all user interactions from start to finish.
 
 ## Test Configuration
 
-- **Seed**: 999 (same as test 005 for consistency)
+- **Seed**: 999 (same as test 005)
 - **Players**: 2 players
   - Player 1 (Blue, #0173B2) at edge 1 (NE - top-right)
   - Player 2 (Orange, #DE8F05) at edge 3 (SE - bottom-right)
-- **Method**: Mouse clicks only (no Redux action "cheating")
-- **Screenshot granularity**: Multiple screenshots per move showing rotation steps, placement, confirmation
-- **Outcome**: Victory determined by flow connections
+- **Method**: Mouse clicks only (no Redux "cheating" during gameplay)
+- **Total Screenshots**: 199 (3 setup + 196 gameplay screenshots)
 
 ## Screenshots
 
@@ -23,251 +22,1793 @@ This story demonstrates a full game experience from initial setup through multip
 ![0001-initial-screen](./0001-initial-screen.png)
 
 - **Action**: User loads the application
-- **State**: Configuration screen ready for player setup
+- **State**: Configuration screen ready
 - **Redux State**: `screen = 'configuration'`, `configPlayers.length = 0`
-- **What to verify**: 
-  - Clean configuration interface visible
-  - Color buttons arranged around the board edges
-  - START button visible in center
-  - No players listed yet
+- **What to verify**: Clean interface, color buttons visible, START button in center
 
 ### 0002-players-added.png
 
 ![0002-players-added](./0002-players-added.png)
 
-- **Action**: Two players set up via SETUP_GAME action (setup only, not gameplay)
-- **State**: Game configured with Blue and Orange players
+- **Action**: Players set up via SETUP_GAME (setup only, not gameplay)
+- **State**: Game configured
 - **Redux State**: `players.length = 2`, `screen = 'gameplay'`, `phase = 'playing'`
-- **What to verify**: 
-  - Gameplay screen now visible
-  - Board is empty, ready for tiles
-  - Two player edges visible: Blue at NE (edge 1), Orange at SE (edge 3)
-  - No tiles placed yet
+- **What to verify**: Gameplay screen visible, Blue edge at NE (edge 1), Orange edge at SE (edge 3)
 
 ### 0003-game-started.png
 
 ![0003-game-started](./0003-game-started.png)
 
-- **Action**: Tiles shuffled with seed 999, first tile drawn (via Redux for deterministic setup)
-- **State**: Ready to place first tile
-- **Redux State**: `currentTile` is set, `currentRotation = 0`, `selectedPosition = null`
-- **What to verify**:
-  - Hexagonal game board visible
-  - Player 1 edge (Blue) at NE position (top-right)
-  - Player 2 edge (Orange) at SE position (bottom-right)
-  - Preview tile visible at Blue player's edge position
-  - Board is empty (no tiles placed yet)
-  - Current tile ready for Player 1
+- **Action**: Tiles shuffled, first tile drawn
+- **State**: Ready for first move
+- **Redux State**: `currentTile` set, `currentRotation = 0`
+- **What to verify**: Board empty, preview tile at Blue player's edge, ready for mouse interaction
 
-## Move Pattern (Repeated for Each Move)
+### 0004-before-move-1.png
 
-Each move follows this interaction pattern with multiple screenshots:
+![0004-before-move-1.png](./0004-before-move-1.png)
 
-### Before Move Screenshot (e.g., 0004-before-move-1.png)
-
-![0004-before-move-1](./0004-before-move-1.png)
-
-- **Action**: New tile available for current player
-- **State**: Waiting for player to interact with tile
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
 - **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
-- **What to verify**:
-  - Current tile preview visible at player's edge position
-  - No tile selected on board yet
-  - Previous moves' tiles visible on board
-  - Correct player's turn indicator
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
 
-### Rotation Screenshots (e.g., 0005-move-1-rotation-1.png)
+### 0005-move-1-rotation-1.png
 
-![0005-move-1-rotation-1](./0005-move-1-rotation-1.png)
+![0005-move-1-rotation-1.png](./0005-move-1-rotation-1.png)
 
-- **Action**: Player clicks on tile preview to rotate it
-- **State**: Tile rotated to rotation 1 (60 degrees clockwise)
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
 - **Redux State**: `currentRotation = 1`
-- **What to verify**:
-  - Tile preview shows new orientation
-  - Flow paths on tile visually rotated
-  - Tile still at player's edge position (not placed yet)
-  - Rotation achieved through mouse click (not Redux action)
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
 
-*Note: Multiple rotation screenshots may appear (rotation-1, rotation-2, etc.) as player clicks repeatedly to reach desired rotation*
+### 0006-move-1-tile-placed.png
 
-### Tile Placed Screenshot (e.g., 0006-move-1-tile-placed.png)
+![0006-move-1-tile-placed.png](./0006-move-1-tile-placed.png)
 
-![0006-move-1-tile-placed](./0006-move-1-tile-placed.png)
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
 
-- **Action**: Player clicks on hex position to place tile there
-- **State**: Tile tentatively placed at selected position with confirmation buttons visible
-- **Redux State**: `selectedPosition = {row: X, col: Y}`, tile shown at selected position
-- **What to verify**:
-  - Tile now appears at clicked hex position
-  - Checkmark (✓) button visible to the right of tile
-  - X button visible to the left of tile
-  - Tile not yet committed to board (can still cancel)
-  - Selected position highlighted
+### 0007-move-1-complete.png
 
-### Move Complete Screenshot (e.g., 0007-move-1-complete.png)
+![0007-move-1-complete.png](./0007-move-1-complete.png)
 
-![0007-move-1-complete](./0007-move-1-complete.png)
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
 
-- **Action**: Player clicks checkmark (✓) button to confirm placement
-- **State**: Tile committed to board, turn advances to next player
-- **Redux State**: `board['X,Y']` contains tile, `selectedPosition = null`, `currentPlayerIndex` incremented
-- **What to verify**:
-  - Tile permanently placed on board
-  - Confirmation buttons disappeared
-  - Flows updated if tile connects to player edge
-  - Turn advanced to next player
-  - Next player's tile preview appears
-  - Move achieved entirely through mouse clicks
+### 0008-before-move-2.png
 
-## Example Moves
+![0008-before-move-2.png](./0008-before-move-2.png)
 
-### Move 1: Player 1 (Blue)
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
 
-- **0004-before-move-1.png**: Blue tile at NE edge, rotation 0
-- **0005-move-1-rotation-1.png**: After 1 click, rotation 1
-- **0006-move-1-tile-placed.png**: Clicked on position (-3, 0), checkmark visible
-- **0007-move-1-complete.png**: Confirmed, tile on board, P2's turn begins
+### 0009-move-2-rotation-1.png
 
-### Move 2: Player 2 (Orange)
+![0009-move-2-rotation-1.png](./0009-move-2-rotation-1.png)
 
-- **0008-before-move-2.png**: Orange tile at SE edge, rotation 0
-- **0009-move-2-rotation-1.png**: After 1 click, rotation 1
-- **0010-move-2-rotation-2.png**: After 2 clicks, rotation 2 (desired)
-- **0011-move-2-tile-placed.png**: Clicked on position (-3, 1), checkmark visible
-- **0012-move-2-complete.png**: Confirmed, tile on board, P1's turn begins
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
 
-### Move 3: Player 1 (Blue)
+### 0010-move-2-rotation-2.png
 
-- **0013-before-move-3.png**: Blue tile ready
-- **0014-move-3-rotation-1.png**: Rotation 1
-- **0015-move-3-rotation-2.png**: Rotation 2
-- **0016-move-3-rotation-3.png**: Rotation 3 (final)
-- **0017-move-3-tile-placed.png**: Placed at position
-- **0018-move-3-complete.png**: Confirmed
+![0010-move-2-rotation-2.png](./0010-move-2-rotation-2.png)
 
-*This pattern repeats for all subsequent moves...*
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
 
-## Key Screenshots to Verify
+### 0011-move-2-tile-placed.png
 
-### Mid-Game (Around Move 15-20)
+![0011-move-2-tile-placed.png](./0011-move-2-tile-placed.png)
 
-- **Flow propagation**: Both Blue and Orange flows visible extending from edges
-- **Board filling**: Approximately half the board filled with tiles
-- **Turn alternation**: Players alternating correctly throughout
-- **UI responsiveness**: All interactions via mouse clicks working correctly
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
 
-### Late Game (Around Move 25-30)
+### 0012-move-2-complete.png
 
-- **Complex flows**: Flow networks extending across many tiles
-- **Board nearly full**: Most positions occupied
-- **Legal moves**: UI enforcing move legality (checkmark only for legal placements)
-- **Victory approach**: Game nearing conclusion
+![0012-move-2-complete.png](./0012-move-2-complete.png)
 
-### victory-final.png
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
 
-![victory-final](./victory-final.png)
+### 0013-before-move-3.png
 
-- **Action**: Game reaches conclusion (victory or constraint)
+![0013-before-move-3.png](./0013-before-move-3.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0014-move-3-rotation-1.png
+
+![0014-move-3-rotation-1.png](./0014-move-3-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0015-move-3-rotation-2.png
+
+![0015-move-3-rotation-2.png](./0015-move-3-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0016-move-3-rotation-3.png
+
+![0016-move-3-rotation-3.png](./0016-move-3-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0017-move-3-tile-placed.png
+
+![0017-move-3-tile-placed.png](./0017-move-3-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0018-move-3-complete.png
+
+![0018-move-3-complete.png](./0018-move-3-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0019-before-move-4.png
+
+![0019-before-move-4.png](./0019-before-move-4.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0020-move-4-rotation-1.png
+
+![0020-move-4-rotation-1.png](./0020-move-4-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0021-move-4-rotation-2.png
+
+![0021-move-4-rotation-2.png](./0021-move-4-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0022-move-4-rotation-3.png
+
+![0022-move-4-rotation-3.png](./0022-move-4-rotation-3.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0023-move-4-rotation-4.png
+
+![0023-move-4-rotation-4.png](./0023-move-4-rotation-4.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0024-move-4-tile-placed.png
+
+![0024-move-4-tile-placed.png](./0024-move-4-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0025-move-4-complete.png
+
+![0025-move-4-complete.png](./0025-move-4-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0026-before-move-5.png
+
+![0026-before-move-5.png](./0026-before-move-5.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0027-move-5-rotation-1.png
+
+![0027-move-5-rotation-1.png](./0027-move-5-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0028-move-5-rotation-2.png
+
+![0028-move-5-rotation-2.png](./0028-move-5-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0029-move-5-rotation-3.png
+
+![0029-move-5-rotation-3.png](./0029-move-5-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0030-move-5-rotation-4.png
+
+![0030-move-5-rotation-4.png](./0030-move-5-rotation-4.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0031-move-5-rotation-5.png
+
+![0031-move-5-rotation-5.png](./0031-move-5-rotation-5.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 5)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 5`
+- **What to verify**: Tile preview shows rotation 5, achieved by clicking tile
+
+### 0032-move-5-tile-placed.png
+
+![0032-move-5-tile-placed.png](./0032-move-5-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0033-move-5-complete.png
+
+![0033-move-5-complete.png](./0033-move-5-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0034-before-move-6.png
+
+![0034-before-move-6.png](./0034-before-move-6.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0035-move-6-tile-placed.png
+
+![0035-move-6-tile-placed.png](./0035-move-6-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0036-move-6-complete.png
+
+![0036-move-6-complete.png](./0036-move-6-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0037-before-move-7.png
+
+![0037-before-move-7.png](./0037-before-move-7.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0038-move-7-rotation-1.png
+
+![0038-move-7-rotation-1.png](./0038-move-7-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0039-move-7-tile-placed.png
+
+![0039-move-7-tile-placed.png](./0039-move-7-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0040-move-7-complete.png
+
+![0040-move-7-complete.png](./0040-move-7-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0041-before-move-8.png
+
+![0041-before-move-8.png](./0041-before-move-8.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0042-move-8-rotation-1.png
+
+![0042-move-8-rotation-1.png](./0042-move-8-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0043-move-8-rotation-2.png
+
+![0043-move-8-rotation-2.png](./0043-move-8-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0044-move-8-tile-placed.png
+
+![0044-move-8-tile-placed.png](./0044-move-8-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0045-move-8-complete.png
+
+![0045-move-8-complete.png](./0045-move-8-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0046-before-move-9.png
+
+![0046-before-move-9.png](./0046-before-move-9.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0047-move-9-rotation-1.png
+
+![0047-move-9-rotation-1.png](./0047-move-9-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0048-move-9-rotation-2.png
+
+![0048-move-9-rotation-2.png](./0048-move-9-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0049-move-9-rotation-3.png
+
+![0049-move-9-rotation-3.png](./0049-move-9-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0050-move-9-tile-placed.png
+
+![0050-move-9-tile-placed.png](./0050-move-9-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0051-move-9-complete.png
+
+![0051-move-9-complete.png](./0051-move-9-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0052-before-move-10.png
+
+![0052-before-move-10.png](./0052-before-move-10.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0053-move-10-rotation-1.png
+
+![0053-move-10-rotation-1.png](./0053-move-10-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0054-move-10-rotation-2.png
+
+![0054-move-10-rotation-2.png](./0054-move-10-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0055-move-10-rotation-3.png
+
+![0055-move-10-rotation-3.png](./0055-move-10-rotation-3.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0056-move-10-rotation-4.png
+
+![0056-move-10-rotation-4.png](./0056-move-10-rotation-4.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0057-move-10-tile-placed.png
+
+![0057-move-10-tile-placed.png](./0057-move-10-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0058-move-10-complete.png
+
+![0058-move-10-complete.png](./0058-move-10-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0059-before-move-11.png
+
+![0059-before-move-11.png](./0059-before-move-11.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0060-move-11-rotation-1.png
+
+![0060-move-11-rotation-1.png](./0060-move-11-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0061-move-11-rotation-2.png
+
+![0061-move-11-rotation-2.png](./0061-move-11-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0062-move-11-rotation-3.png
+
+![0062-move-11-rotation-3.png](./0062-move-11-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0063-move-11-rotation-4.png
+
+![0063-move-11-rotation-4.png](./0063-move-11-rotation-4.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0064-move-11-rotation-5.png
+
+![0064-move-11-rotation-5.png](./0064-move-11-rotation-5.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 5)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 5`
+- **What to verify**: Tile preview shows rotation 5, achieved by clicking tile
+
+### 0065-move-11-tile-placed.png
+
+![0065-move-11-tile-placed.png](./0065-move-11-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0066-move-11-complete.png
+
+![0066-move-11-complete.png](./0066-move-11-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0067-before-move-12.png
+
+![0067-before-move-12.png](./0067-before-move-12.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0068-move-12-tile-placed.png
+
+![0068-move-12-tile-placed.png](./0068-move-12-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0069-move-12-complete.png
+
+![0069-move-12-complete.png](./0069-move-12-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0070-before-move-13.png
+
+![0070-before-move-13.png](./0070-before-move-13.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0071-move-13-rotation-1.png
+
+![0071-move-13-rotation-1.png](./0071-move-13-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0072-move-13-tile-placed.png
+
+![0072-move-13-tile-placed.png](./0072-move-13-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0073-move-13-complete.png
+
+![0073-move-13-complete.png](./0073-move-13-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0074-before-move-14.png
+
+![0074-before-move-14.png](./0074-before-move-14.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0075-move-14-rotation-1.png
+
+![0075-move-14-rotation-1.png](./0075-move-14-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0076-move-14-rotation-2.png
+
+![0076-move-14-rotation-2.png](./0076-move-14-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0077-move-14-tile-placed.png
+
+![0077-move-14-tile-placed.png](./0077-move-14-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0078-move-14-complete.png
+
+![0078-move-14-complete.png](./0078-move-14-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0079-before-move-15.png
+
+![0079-before-move-15.png](./0079-before-move-15.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0080-move-15-rotation-1.png
+
+![0080-move-15-rotation-1.png](./0080-move-15-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0081-move-15-rotation-2.png
+
+![0081-move-15-rotation-2.png](./0081-move-15-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0082-move-15-rotation-3.png
+
+![0082-move-15-rotation-3.png](./0082-move-15-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0083-move-15-tile-placed.png
+
+![0083-move-15-tile-placed.png](./0083-move-15-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0084-move-15-complete.png
+
+![0084-move-15-complete.png](./0084-move-15-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0085-before-move-16.png
+
+![0085-before-move-16.png](./0085-before-move-16.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0086-move-16-rotation-1.png
+
+![0086-move-16-rotation-1.png](./0086-move-16-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0087-move-16-rotation-2.png
+
+![0087-move-16-rotation-2.png](./0087-move-16-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0088-move-16-rotation-3.png
+
+![0088-move-16-rotation-3.png](./0088-move-16-rotation-3.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0089-move-16-rotation-4.png
+
+![0089-move-16-rotation-4.png](./0089-move-16-rotation-4.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0090-move-16-tile-placed.png
+
+![0090-move-16-tile-placed.png](./0090-move-16-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0091-move-16-complete.png
+
+![0091-move-16-complete.png](./0091-move-16-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0092-before-move-17.png
+
+![0092-before-move-17.png](./0092-before-move-17.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0093-move-17-rotation-1.png
+
+![0093-move-17-rotation-1.png](./0093-move-17-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0094-move-17-rotation-2.png
+
+![0094-move-17-rotation-2.png](./0094-move-17-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0095-move-17-rotation-3.png
+
+![0095-move-17-rotation-3.png](./0095-move-17-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0096-move-17-rotation-4.png
+
+![0096-move-17-rotation-4.png](./0096-move-17-rotation-4.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0097-move-17-rotation-5.png
+
+![0097-move-17-rotation-5.png](./0097-move-17-rotation-5.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 5)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 5`
+- **What to verify**: Tile preview shows rotation 5, achieved by clicking tile
+
+### 0098-move-17-tile-placed.png
+
+![0098-move-17-tile-placed.png](./0098-move-17-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0099-move-17-complete.png
+
+![0099-move-17-complete.png](./0099-move-17-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0100-before-move-18.png
+
+![0100-before-move-18.png](./0100-before-move-18.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0101-move-18-tile-placed.png
+
+![0101-move-18-tile-placed.png](./0101-move-18-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0102-move-18-complete.png
+
+![0102-move-18-complete.png](./0102-move-18-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0103-before-move-19.png
+
+![0103-before-move-19.png](./0103-before-move-19.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0104-move-19-rotation-1.png
+
+![0104-move-19-rotation-1.png](./0104-move-19-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0105-move-19-tile-placed.png
+
+![0105-move-19-tile-placed.png](./0105-move-19-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0106-move-19-complete.png
+
+![0106-move-19-complete.png](./0106-move-19-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0107-before-move-20.png
+
+![0107-before-move-20.png](./0107-before-move-20.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0108-move-20-rotation-1.png
+
+![0108-move-20-rotation-1.png](./0108-move-20-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0109-move-20-rotation-2.png
+
+![0109-move-20-rotation-2.png](./0109-move-20-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0110-move-20-tile-placed.png
+
+![0110-move-20-tile-placed.png](./0110-move-20-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0111-move-20-complete.png
+
+![0111-move-20-complete.png](./0111-move-20-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0112-before-move-21.png
+
+![0112-before-move-21.png](./0112-before-move-21.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0113-move-21-rotation-1.png
+
+![0113-move-21-rotation-1.png](./0113-move-21-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0114-move-21-rotation-2.png
+
+![0114-move-21-rotation-2.png](./0114-move-21-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0115-move-21-rotation-3.png
+
+![0115-move-21-rotation-3.png](./0115-move-21-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0116-move-21-tile-placed.png
+
+![0116-move-21-tile-placed.png](./0116-move-21-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0117-move-21-complete.png
+
+![0117-move-21-complete.png](./0117-move-21-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0118-before-move-22.png
+
+![0118-before-move-22.png](./0118-before-move-22.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0119-move-22-rotation-1.png
+
+![0119-move-22-rotation-1.png](./0119-move-22-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0120-move-22-rotation-2.png
+
+![0120-move-22-rotation-2.png](./0120-move-22-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0121-move-22-rotation-3.png
+
+![0121-move-22-rotation-3.png](./0121-move-22-rotation-3.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0122-move-22-rotation-4.png
+
+![0122-move-22-rotation-4.png](./0122-move-22-rotation-4.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0123-move-22-tile-placed.png
+
+![0123-move-22-tile-placed.png](./0123-move-22-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0124-move-22-complete.png
+
+![0124-move-22-complete.png](./0124-move-22-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0125-before-move-23.png
+
+![0125-before-move-23.png](./0125-before-move-23.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0126-move-23-rotation-1.png
+
+![0126-move-23-rotation-1.png](./0126-move-23-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0127-move-23-rotation-2.png
+
+![0127-move-23-rotation-2.png](./0127-move-23-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0128-move-23-rotation-3.png
+
+![0128-move-23-rotation-3.png](./0128-move-23-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0129-move-23-rotation-4.png
+
+![0129-move-23-rotation-4.png](./0129-move-23-rotation-4.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0130-move-23-rotation-5.png
+
+![0130-move-23-rotation-5.png](./0130-move-23-rotation-5.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 5)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 5`
+- **What to verify**: Tile preview shows rotation 5, achieved by clicking tile
+
+### 0131-move-23-tile-placed.png
+
+![0131-move-23-tile-placed.png](./0131-move-23-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0132-move-23-complete.png
+
+![0132-move-23-complete.png](./0132-move-23-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0133-before-move-24.png
+
+![0133-before-move-24.png](./0133-before-move-24.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0134-move-24-tile-placed.png
+
+![0134-move-24-tile-placed.png](./0134-move-24-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0135-move-24-complete.png
+
+![0135-move-24-complete.png](./0135-move-24-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0136-before-move-25.png
+
+![0136-before-move-25.png](./0136-before-move-25.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0137-move-25-rotation-1.png
+
+![0137-move-25-rotation-1.png](./0137-move-25-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0138-move-25-tile-placed.png
+
+![0138-move-25-tile-placed.png](./0138-move-25-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0139-move-25-complete.png
+
+![0139-move-25-complete.png](./0139-move-25-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0140-before-move-26.png
+
+![0140-before-move-26.png](./0140-before-move-26.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0141-move-26-rotation-1.png
+
+![0141-move-26-rotation-1.png](./0141-move-26-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0142-move-26-rotation-2.png
+
+![0142-move-26-rotation-2.png](./0142-move-26-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0143-move-26-tile-placed.png
+
+![0143-move-26-tile-placed.png](./0143-move-26-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0144-move-26-complete.png
+
+![0144-move-26-complete.png](./0144-move-26-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0145-before-move-27.png
+
+![0145-before-move-27.png](./0145-before-move-27.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0146-move-27-rotation-1.png
+
+![0146-move-27-rotation-1.png](./0146-move-27-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0147-move-27-rotation-2.png
+
+![0147-move-27-rotation-2.png](./0147-move-27-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0148-move-27-rotation-3.png
+
+![0148-move-27-rotation-3.png](./0148-move-27-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0149-move-27-tile-placed.png
+
+![0149-move-27-tile-placed.png](./0149-move-27-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0150-move-27-complete.png
+
+![0150-move-27-complete.png](./0150-move-27-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0151-before-move-28.png
+
+![0151-before-move-28.png](./0151-before-move-28.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0152-move-28-rotation-1.png
+
+![0152-move-28-rotation-1.png](./0152-move-28-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0153-move-28-rotation-2.png
+
+![0153-move-28-rotation-2.png](./0153-move-28-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0154-move-28-rotation-3.png
+
+![0154-move-28-rotation-3.png](./0154-move-28-rotation-3.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0155-move-28-rotation-4.png
+
+![0155-move-28-rotation-4.png](./0155-move-28-rotation-4.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0156-move-28-tile-placed.png
+
+![0156-move-28-tile-placed.png](./0156-move-28-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0157-move-28-complete.png
+
+![0157-move-28-complete.png](./0157-move-28-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0158-before-move-29.png
+
+![0158-before-move-29.png](./0158-before-move-29.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0159-move-29-rotation-1.png
+
+![0159-move-29-rotation-1.png](./0159-move-29-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0160-move-29-rotation-2.png
+
+![0160-move-29-rotation-2.png](./0160-move-29-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0161-move-29-rotation-3.png
+
+![0161-move-29-rotation-3.png](./0161-move-29-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0162-move-29-rotation-4.png
+
+![0162-move-29-rotation-4.png](./0162-move-29-rotation-4.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0163-move-29-rotation-5.png
+
+![0163-move-29-rotation-5.png](./0163-move-29-rotation-5.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 5)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 5`
+- **What to verify**: Tile preview shows rotation 5, achieved by clicking tile
+
+### 0164-move-29-tile-placed.png
+
+![0164-move-29-tile-placed.png](./0164-move-29-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0165-move-29-complete.png
+
+![0165-move-29-complete.png](./0165-move-29-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0166-before-move-30.png
+
+![0166-before-move-30.png](./0166-before-move-30.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0167-move-30-tile-placed.png
+
+![0167-move-30-tile-placed.png](./0167-move-30-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0168-move-30-complete.png
+
+![0168-move-30-complete.png](./0168-move-30-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0169-before-move-31.png
+
+![0169-before-move-31.png](./0169-before-move-31.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0170-move-31-rotation-1.png
+
+![0170-move-31-rotation-1.png](./0170-move-31-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0171-move-31-tile-placed.png
+
+![0171-move-31-tile-placed.png](./0171-move-31-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0172-move-31-complete.png
+
+![0172-move-31-complete.png](./0172-move-31-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0173-before-move-32.png
+
+![0173-before-move-32.png](./0173-before-move-32.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0174-move-32-rotation-1.png
+
+![0174-move-32-rotation-1.png](./0174-move-32-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0175-move-32-rotation-2.png
+
+![0175-move-32-rotation-2.png](./0175-move-32-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0176-move-32-tile-placed.png
+
+![0176-move-32-tile-placed.png](./0176-move-32-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0177-move-32-complete.png
+
+![0177-move-32-complete.png](./0177-move-32-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0178-before-move-33.png
+
+![0178-before-move-33.png](./0178-before-move-33.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0179-move-33-rotation-1.png
+
+![0179-move-33-rotation-1.png](./0179-move-33-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0180-move-33-rotation-2.png
+
+![0180-move-33-rotation-2.png](./0180-move-33-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0181-move-33-rotation-3.png
+
+![0181-move-33-rotation-3.png](./0181-move-33-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0182-move-33-tile-placed.png
+
+![0182-move-33-tile-placed.png](./0182-move-33-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0183-move-33-complete.png
+
+![0183-move-33-complete.png](./0183-move-33-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0184-before-move-34.png
+
+![0184-before-move-34.png](./0184-before-move-34.png)
+
+- **Action**: New tile available for Player 2 (Orange)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0185-move-34-rotation-1.png
+
+![0185-move-34-rotation-1.png](./0185-move-34-rotation-1.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0186-move-34-rotation-2.png
+
+![0186-move-34-rotation-2.png](./0186-move-34-rotation-2.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0187-move-34-rotation-3.png
+
+![0187-move-34-rotation-3.png](./0187-move-34-rotation-3.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0188-move-34-rotation-4.png
+
+![0188-move-34-rotation-4.png](./0188-move-34-rotation-4.png)
+
+- **Action**: Player 2 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0189-move-34-tile-placed.png
+
+![0189-move-34-tile-placed.png](./0189-move-34-tile-placed.png)
+
+- **Action**: Player 2 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0190-move-34-complete.png
+
+![0190-move-34-complete.png](./0190-move-34-complete.png)
+
+- **Action**: Player 2 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0191-before-move-35.png
+
+![0191-before-move-35.png](./0191-before-move-35.png)
+
+- **Action**: New tile available for Player 1 (Blue)
+- **State**: Waiting for player interaction
+- **Redux State**: `currentTile` set, `currentRotation = 0`, `selectedPosition = null`
+- **What to verify**: Current tile preview at player's edge, previous tiles on board, correct turn
+
+### 0192-move-35-rotation-1.png
+
+![0192-move-35-rotation-1.png](./0192-move-35-rotation-1.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 1)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 1`
+- **What to verify**: Tile preview shows rotation 1, achieved by clicking tile
+
+### 0193-move-35-rotation-2.png
+
+![0193-move-35-rotation-2.png](./0193-move-35-rotation-2.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 2)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 2`
+- **What to verify**: Tile preview shows rotation 2, achieved by clicking tile
+
+### 0194-move-35-rotation-3.png
+
+![0194-move-35-rotation-3.png](./0194-move-35-rotation-3.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 3)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 3`
+- **What to verify**: Tile preview shows rotation 3, achieved by clicking tile
+
+### 0195-move-35-rotation-4.png
+
+![0195-move-35-rotation-4.png](./0195-move-35-rotation-4.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 4)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 4`
+- **What to verify**: Tile preview shows rotation 4, achieved by clicking tile
+
+### 0196-move-35-rotation-5.png
+
+![0196-move-35-rotation-5.png](./0196-move-35-rotation-5.png)
+
+- **Action**: Player 1 clicks tile to rotate (rotation 5)
+- **State**: Tile rotated via mouse click
+- **Redux State**: `currentRotation = 5`
+- **What to verify**: Tile preview shows rotation 5, achieved by clicking tile
+
+### 0197-move-35-tile-placed.png
+
+![0197-move-35-tile-placed.png](./0197-move-35-tile-placed.png)
+
+- **Action**: Player 1 clicks hex position to place tile
+- **State**: Tile tentatively placed, awaiting confirmation
+- **Redux State**: `selectedPosition` set to clicked position
+- **What to verify**: Tile at selected position, checkmark (✓) and X buttons visible
+
+### 0198-move-35-complete.png
+
+![0198-move-35-complete.png](./0198-move-35-complete.png)
+
+- **Action**: Player 1 clicks checkmark (✓) to confirm
+- **State**: Tile committed, turn advances
+- **Redux State**: Tile in `board` Map, `selectedPosition = null`, turn advanced
+- **What to verify**: Tile permanent on board, confirmation buttons gone, flows updated, next player's turn
+
+### 0199-victory-final.png
+
+![0199-victory-final.png](./0199-victory-final.png)
+
+- **Action**: Game reaches conclusion
 - **State**: Game finished
 - **Redux State**: `phase = 'finished'`, `winners` array populated, `winType` set
-- **What to verify**:
-  - Game phase is 'finished'
-  - Winners array contains player ID(s)
-  - Win type identified correctly
-  - Victory screen displayed
-  - Final board state shows all placed tiles
-  - Final flow networks visible
+- **What to verify**: Victory screen displayed, game phase 'finished', winners identified, final board state
 
-## Mouse Interaction Flow
 
-### 1. Tile Rotation
-- **Action**: Click on tile preview at player's edge
-- **Effect**: Tile rotates 60° clockwise
-- **Multiple clicks**: Continue clicking for more rotations
-- **Redux**: `currentRotation` updates
-- **Visual**: Tile preview shows new orientation
+## Summary
 
-### 2. Position Selection
-- **Action**: Click on hex position on board
-- **Effect**: Tile tentatively placed there
-- **Redux**: `selectedPosition` set
-- **Visual**: Tile appears at position, confirmation buttons appear
-
-### 3. Confirmation
-- **Action**: Click checkmark (✓) button
-- **Effect**: Tile committed to board, turn advances
-- **Redux**: Tile added to `board` Map, `currentPlayerIndex` increments
-- **Visual**: Tile permanent, next player's tile appears
-
-### 4. Cancellation (if needed)
-- **Action**: Click X button
-- **Effect**: Selection cleared, tile returns to edge
-- **Redux**: `selectedPosition = null`
-- **Visual**: Tile back at player's edge, no confirmation buttons
-
-## UI Validation Demonstrated
-
-### Legal Move Enforcement
-
-- **Checkmark availability**: Only shown for legal moves
-- **Illegal moves**: Checkmark doesn't appear, preventing placement
-- **UI feedback**: Silent rejection of illegal moves (no error messages)
-- **Game integrity**: UI prevents rule violations
-
-### Turn Management
-
-- **Automatic advancement**: Turn changes after checkmark click
-- **No manual NEXT_PLAYER**: Turn advances automatically
-- **Visual feedback**: Current player indicator updates
-- **Tile drawing**: Next tile appears automatically
-
-### Flow Propagation
-
-- **Real-time updates**: Flows update after each confirmation
-- **Color coding**: Blue and Orange flows distinct
-- **Edge connections**: Flows enter from correct player edges
-- **Path visualization**: Flow networks clearly visible
-
-## Test Coverage
-
-This test validates:
-
-- **Mouse-only interaction**: All gameplay via mouse clicks
-- **UI rotation mechanism**: Clicking tile rotates it (no Redux ROTATE)
-- **UI placement mechanism**: Clicking hex positions works correctly
-- **Confirmation/cancellation**: Buttons function properly
-- **Legal move enforcement**: UI prevents illegal moves
-- **Automatic turn progression**: No manual turn advancement needed
-- **Flow propagation**: Works correctly with UI-placed tiles
-- **Victory detection**: Triggers appropriately during mouse-driven gameplay
-- **Complete user experience**: Full game playable via UI alone
-
-## Differences from Test 005
-
-| Aspect | Test 005 | Test 006 (This Test) |
-|--------|----------|----------------------|
-| **Input method** | Direct Redux PLACE_TILE | Mouse clicks only |
-| **Rotation** | Direct Redux SET_ROTATION | Click on tile to rotate |
-| **Placement** | Redux action | Click on hex position |
-| **Confirmation** | Automatic | Click checkmark button |
-| **Legality** | Not enforced | UI enforces |
-| **Screenshots** | One per move (41 total) | Multiple per move (200+) |
-| **Purpose** | Test game logic | Test UI interactions |
-| **Turn advance** | Manual NEXT_PLAYER | Automatic after confirm |
-
-## Related Files
-
-- Test: `tests/e2e/complete-game-mouse.spec.ts`
-- Input Handling: `src/input/gameplayInputHandler.ts`
-- Redux: `src/redux/gameReducer.ts`, `src/redux/uiReducer.ts`
-- Game Logic: `src/game/legality.ts`, `src/game/flows.ts`
-- Rendering: `src/rendering/gameplayRenderer.ts`
-
-## Deterministic Testing
-
-- **Same seed (999)**: Ensures same tiles as test 005
-- **Same edge positions**: Players at edges 1 and 3
-- **Systematic placement**: Tiles placed in predictable order
-- **Mouse coordinates**: Calculated deterministically from hex layout
-- **Reproducible**: Same test run produces same screenshots every time
+This test documents a complete 2-player game using only mouse interactions. All 199 screenshots show every mouse click action from start to finish: rotating tiles by clicking, selecting positions by clicking hexes, and confirming with the checkmark button. Each screenshot validates that the UI correctly responds to mouse input and that game state updates appropriately. This proves the entire game is playable via UI alone without any Redux action "cheating" during gameplay.
