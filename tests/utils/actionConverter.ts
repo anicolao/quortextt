@@ -323,11 +323,25 @@ export function generateExpectations(finalState: GameState): string {
 }
 
 /**
- * Generate expectations with move prefixes from actions
+ * Move prefix data structure (matches gameGenerator.ts)
  */
-function generateExpectationsWithPrefixes(state: GameState, actions: GameAction[]): string {
+export interface MovePrefix {
+  move: number;
+  p1FlowLengths: Record<number, number>;
+  p2FlowLengths: Record<number, number>;
+}
+
+/**
+ * Generate expectations with move prefixes
+ * Use this instead of actionsToExpectations to avoid player ID replay issues.
+ * Takes the final state and move prefixes directly from game generation.
+ */
+export function generateExpectationsWithPrefixes(
+  state: GameState,
+  movePrefixes: MovePrefix[]
+): string {
   const baseExpectations = generateExpectations(state);
-  const prefixLines = generateMovePrefixes(actions);
+  const prefixLines = formatMovePrefixes(movePrefixes);
   
   // Replace the empty move prefixes section with actual data
   const lines = baseExpectations.split('\n');
@@ -341,6 +355,22 @@ function generateExpectationsWithPrefixes(state: GameState, actions: GameAction[
   }
   
   return lines.join('\n');
+}
+
+/**
+ * Format move prefixes into expectation file lines
+ */
+function formatMovePrefixes(movePrefixes: MovePrefix[]): string[] {
+  return movePrefixes.map(prefix => {
+    const p1Str = Object.entries(prefix.p1FlowLengths)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(',');
+    const p2Str = Object.entries(prefix.p2FlowLengths)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(',');
+    
+    return `${prefix.move} p1={${p1Str}} p2={${p2Str}}`;
+  });
 }
 
 /**
