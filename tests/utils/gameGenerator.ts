@@ -84,7 +84,8 @@ function findLegalMoves(
 }
 
 /**
- * Find legal moves adjacent to player's existing flows
+ * Find legal moves that will extend the current player's existing flows
+ * Checks if placing the tile will actually create a flow connection
  */
 function findFlowAdjacentMoves(
   state: GameState,
@@ -98,18 +99,27 @@ function findFlowAdjacentMoves(
     return legalMoves;
   }
   
-  // Filter moves adjacent to existing flows
+  // Filter moves that would extend the player's flows
+  // A move extends flows if the position is adjacent to an existing flow position
+  // This ensures the player builds connected paths rather than scattered tiles
   const adjacentMoves = legalMoves.filter(move => {
-    // Check if this position is adjacent to any flow position
+    // Check if this position is adjacent to any of the player's flow positions
     for (const flowPosKey of playerFlows) {
       const [flowRow, flowCol] = flowPosKey.split(',').map(Number);
-      const rowDiff = Math.abs(flowRow - move.position.row);
-      const colDiff = Math.abs(flowCol - move.position.col);
+      const deltaRow = move.position.row - flowRow;
+      const deltaCol = move.position.col - flowCol;
       
-      // Check if adjacent (one of the six neighbor positions)
-      if ((rowDiff === 1 && colDiff === 0) || 
-          (rowDiff === 0 && colDiff === 1) ||
-          (rowDiff === 1 && colDiff === 1)) {
+      // Check if adjacent (one of the six neighbor positions in hex grid)
+      // Valid hex neighbors: (-1,0), (0,-1), (1,-1), (1,0), (0,1), (-1,1)
+      const isAdjacent = 
+        (deltaRow === -1 && deltaCol === 0) ||   // SouthWest
+        (deltaRow === 0 && deltaCol === -1) ||   // West
+        (deltaRow === 1 && deltaCol === -1) ||   // NorthWest
+        (deltaRow === 1 && deltaCol === 0) ||    // NorthEast
+        (deltaRow === 0 && deltaCol === 1) ||    // East
+        (deltaRow === -1 && deltaCol === 1);     // SouthEast
+      
+      if (isAdjacent) {
         return true;
       }
     }
