@@ -8,11 +8,12 @@
 import { GameAction } from '../../src/redux/actions';
 import { gameReducer, initialState } from '../../src/redux/gameReducer';
 import { GameState } from '../../src/redux/types';
-import { getAllBoardPositions, positionToKey, getEdgePositions } from '../../src/game/board';
-import { HexPosition, Rotation } from '../../src/game/types';
+import { getAllBoardPositions, positionToKey, getEdgePositions, getNeighborInDirection, getOppositeDirection } from '../../src/game/board';
+import { HexPosition, Rotation, Direction } from '../../src/game/types';
 import { isLegalMove } from '../../src/game/legality';
 import { traceFlow } from '../../src/game/flows';
 import { getEdgePositionsWithDirections } from '../../src/game/board';
+import { getFlowExit } from '../../src/game/tiles';
 
 /**
  * Simple seeded random number generator (LCG)
@@ -87,6 +88,12 @@ function findLegalMoves(
  * Find legal moves that will extend the current player's existing flows
  * Checks if placing the tile will actually create a flow connection
  */
+/**
+ * Find moves that would actually extend the player's flows
+ * A move extends a flow if the placed tile connects to a flow edge:
+ * - The tile must be adjacent to a position with a flow
+ * - The tile must have a matching flow entry/exit that connects to the adjacent flow
+ */
 function findFlowAdjacentMoves(
   state: GameState,
   legalMoves: Array<{ position: HexPosition; rotation: Rotation }>
@@ -96,10 +103,8 @@ function findFlowAdjacentMoves(
   
   if (!playerFlows || playerFlows.size === 0) {
     // No flows yet, choose a position adjacent to the player's starting edge
-    // Get positions adjacent to player's edge using getNeighborInDirection
     const edgePositions = getEdgePositions(currentPlayer.edgePosition, 3);
     const adjacentToEdge = legalMoves.filter(move => {
-      // Check if move position is adjacent to any edge position
       return edgePositions.some(edgePos => {
         const deltaRow = move.position.row - edgePos.row;
         const deltaCol = move.position.col - edgePos.col;
@@ -120,34 +125,75 @@ function findFlowAdjacentMoves(
     return adjacentToEdge.length > 0 ? adjacentToEdge : legalMoves;
   }
   
-  // Filter moves that would extend the player's flows
-  // A move extends flows if the position is adjacent to an existing flow position
-  // This ensures the player builds connected paths rather than scattered tiles
-  const adjacentMoves = legalMoves.filter(move => {
-    // Check if this position is adjacent to any of the player's flow positions
-    for (const flowPosKey of playerFlows) {
-      const [flowRow, flowCol] = flowPosKey.split(',').map(Number);
-      const deltaRow = move.position.row - flowRow;
-      const deltaCol = move.position.col - flowCol;
+  // Build a map of flow edges: which direction a flow exits each position
+  const flowEdges = new Map<string, Set<Direction>>();
+  
+  for (const flowPosKey of playerFlows) {
+    const [flowRow, flowCol] = flowPosKey.split(',').map(Number);
+    const flowPos: HexPosition = { row: flowRow, col: flowCol };
+    const tile = state.board.get(flowPosKey);
+    
+    if (!tile) continue;
+    
+    if (!flowEdges.has(flowPosKey)) {
+      flowEdges.set(flowPosKey, new Set());
+    }
+    
+    // Check all 6 directions to see which ones have flow connections
+    for (let dir = 0; dir < 6; dir++) {
+      const direction = dir as Direction;
+      const exitDir = getFlowExit(tile, direction);
       
-      // Check if adjacent (one of the six neighbor positions in hex grid)
-      // Valid hex neighbors: (-1,0), (0,-1), (1,-1), (1,0), (0,1), (-1,1)
-      const isAdjacent = 
-        (deltaRow === -1 && deltaCol === 0) ||   // SouthWest
-        (deltaRow === 0 && deltaCol === -1) ||   // West
-        (deltaRow === 1 && deltaCol === -1) ||   // NorthWest
-        (deltaRow === 1 && deltaCol === 0) ||    // NorthEast
-        (deltaRow === 0 && deltaCol === 1) ||    // East
-        (deltaRow === -1 && deltaCol === 1);     // SouthEast
+      if (exitDir !== null) {
+        // Flow enters from this direction and exits somewhere
+        flowEdges.get(flowPosKey)!.add(direction);
+        flowEdges.get(flowPosKey)!.add(exitDir);
+      }
+    }
+  }
+  
+  // Filter moves that would connect to an existing flow edge
+  const flowExtendingMoves = legalMoves.filter(move => {
+    const { position, rotation } = move;
+    
+    // Get the tile type at current tile (we know it's legal, so there's a currentTile)
+    if (state.currentTile === null) return false;
+    
+    const proposedTile = { type: state.currentTile, rotation };
+    
+    // Check all 6 neighbors of this position
+    const directions: Direction[] = [0, 1, 2, 3, 4, 5];
+    
+    for (const dir of directions) {
+      const neighbor = getNeighborInDirection(position, dir);
+      const neighborKey = positionToKey(neighbor);
       
-      if (isAdjacent) {
+      // Is this neighbor part of the player's flow?
+      if (!playerFlows.has(neighborKey)) continue;
+      
+      // Get the flow edges at the neighbor
+      const neighborFlowDirs = flowEdges.get(neighborKey);
+      if (!neighborFlowDirs) continue;
+      
+      // What direction does the neighbor's flow point toward our position?
+      // If we're at direction `dir` from neighbor, neighbor sees us at opposite direction
+      const oppositeDir = getOppositeDirection(dir);
+      
+      // Does the neighbor have a flow edge pointing toward us?
+      if (!neighborFlowDirs.has(oppositeDir)) continue;
+      
+      // Does our proposed tile have a flow entry from direction `dir`?
+      const exitFromOurEntry = getFlowExit(proposedTile, dir);
+      if (exitFromOurEntry !== null) {
+        // Yes! This tile would connect to the flow
         return true;
       }
     }
+    
     return false;
   });
   
-  return adjacentMoves.length > 0 ? adjacentMoves : legalMoves;
+  return flowExtendingMoves.length > 0 ? flowExtendingMoves : legalMoves;
 }
 
 /**
