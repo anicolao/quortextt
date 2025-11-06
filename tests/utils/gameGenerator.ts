@@ -171,30 +171,30 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
   }
   
   // At this point, seating is complete and we're in gameplay mode
-  // The game has already drawn the first tile and shuffled the deck
+  // The game has already drawn the first tile from an auto-shuffled deck
   
-  // Step 4: Shuffle tiles with seed (need to do this before seating completes)
-  // Actually, let's reshuffle after seating to ensure deterministic behavior
+  // Step 4: Shuffle tiles with seed to ensure deterministic behavior
   actions.push({ type: 'SHUFFLE_TILES', payload: { seed } });
   state = gameReducer(state, actions[actions.length - 1]);
   
-  // Step 5: Draw initial tile (replace the auto-drawn one)
+  // Step 5: Draw initial tile (replace the auto-drawn one with one from our seeded deck)
   actions.push({ type: 'DRAW_TILE' });
   state = gameReducer(state, actions[actions.length - 1]);
+  
+  if (state.currentTile === null) {
+    throw new Error(`No current tile after DRAW_TILE - availableTiles: ${state.availableTiles.length}`);
+  }
   
   // Step 6: Play the game
   let moveCount = 0;
   while (moveCount < maxMoves && state.phase === 'playing') {
-    // Draw tile for next move
-    actions.push({ type: 'DRAW_TILE' });
-    state = gameReducer(state, actions[actions.length - 1]);
-    
-    if (!state.currentTile) {
+    // Check we have a tile to place
+    if (state.currentTile === null) {
       // No more tiles
       break;
     }
     
-    // Check if game ended after drawing
+    // Check if game ended
     if (state.phase === 'finished') {
       break;
     }
@@ -204,6 +204,7 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     if (legalMoves.length === 0) {
       // No legal moves, game ends
+      console.warn(`No legal moves found for tile type ${state.currentTile} at move ${moveCount + 1}`);
       break;
     }
     
@@ -229,6 +230,10 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     // Next player
     actions.push({ type: 'NEXT_PLAYER' });
+    state = gameReducer(state, actions[actions.length - 1]);
+    
+    // Draw tile for next move
+    actions.push({ type: 'DRAW_TILE' });
     state = gameReducer(state, actions[actions.length - 1]);
   }
   
