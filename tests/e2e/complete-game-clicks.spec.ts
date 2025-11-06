@@ -23,7 +23,7 @@ async function waitForNextFrame(page: any) {
 
 // Test function parameterized by seed
 async function testCompleteGameFromClicks(page: any, seed: string) {
-  const clicksFile = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/${seed}.clicks`);
+  const clicksFile = path.join(__dirname, `user-stories/005-complete-game/${seed}/${seed}.clicks`);
   const screenshotDir = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/screenshots`);
   
   // Create screenshot directory
@@ -37,6 +37,21 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   // Navigate to the game
   await page.goto('/');
   await page.waitForSelector('canvas#game-canvas');
+  
+  // Get canvas bounding box and actual canvas dimensions
+  const canvas = page.locator('canvas#game-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas not found');
+  
+  const canvasDims = await page.evaluate(() => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    return { width: canvas.width, height: canvas.height };
+  });
+  console.log(`Canvas dimensions: ${canvasDims.width}x${canvasDims.height}`);
+  
+  // Calculate scaling factors (clicks are generated for 800x600)
+  const scaleX = canvasDims.width / 800;
+  const scaleY = canvasDims.height / 600;
   
   // Pause animations once at the start
   await pauseAnimations(page);
@@ -53,22 +68,27 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   // Replay each click
   for (const click of clicks) {
     if (click.type === 'click' && click.x !== undefined && click.y !== undefined) {
-      // Perform the click at the specified coordinates
-      await page.mouse.click(click.x, click.y);
+      // Scale coordinates to actual canvas size
+      const scaledX = click.x * scaleX;
+      const scaledY = click.y * scaleY;
+      
+      // Perform the click at the scaled coordinates (add box offset)
+      await page.mouse.click(box.x + scaledX, box.y + scaledY);
       
       // Wait for next frame to ensure rendering is complete
       await waitForNextFrame(page);
       
       // Take screenshot after click
+      const actionName = click.description.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       await page.screenshot({
-        path: path.join(screenshotDir, `${screenshotCounter.toString().padStart(4, '0')}-${click.description.toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`),
+        path: path.join(screenshotDir, `${screenshotCounter.toString().padStart(4, '0')}-${actionName}.png`),
         fullPage: false
       });
       
       screenshotCounter++;
-    } else if (click.type === 'wait') {
-      // Replace arbitrary waits with frame wait
-      await waitForNextFrame(page);
+    } else if (click.type === 'wait' && click.delay) {
+      // Keep a minimal wait to allow state updates
+      await page.waitForTimeout(Math.min(click.delay, 100));
     }
   }
   
@@ -90,7 +110,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   expect(state.game).toBeDefined();
   
   // Count ADD_PLAYER actions by reading the actions file
-  const actionsFile = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/${seed}.actions`);
+  const actionsFile = path.join(__dirname, `user-stories/005-complete-game/${seed}/${seed}.actions`);
   const actionsContent = fs.readFileSync(actionsFile, 'utf-8');
   const actions = actionsContent
     .split('\n')
@@ -102,14 +122,6 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   console.log(`✓ Game completed with ${playerCount} players`);
 }
 
-// TODO: This test is not yet working correctly. The issue is that the .clicks file
-// contains generic click descriptions but not the actual button/UI element positions
-// for the lobby phase (ADD_PLAYER actions). The clicks need to be enhanced to include
-// actual canvas button coordinates for player addition in the lobby.
-// 
-// The test framework is in place and works for PLACE_TILE actions which have hex coordinates,
-// but needs additional work to handle UI button clicks in lobby/seating phases.
-
-test.skip('Complete game from clicks - seed 888', async ({ page }) => {
+test('Complete game from clicks - seed 888', async ({ page }) => {
   await testCompleteGameFromClicks(page, '888');
 });

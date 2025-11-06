@@ -131,6 +131,36 @@ function getCheckmarkCoords(
 }
 
 /**
+ * Get coordinates for seating edge button
+ */
+function getSeatingEdgeButtonCoords(
+  edgeNumber: number,
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number } {
+  const minDimension = Math.min(canvasWidth, canvasHeight);
+  const size = minDimension / 17;
+  const originX = canvasWidth / 2;
+  const originY = canvasHeight / 2;
+  
+  // Calculate edge button position
+  const boardRadius = size * 7.2 + size * 0.8; // Board radius plus offset for buttons
+  
+  // Edge midpoint angles for flat-topped hexagon (matching seatingRenderer.ts)
+  // Edge 0: Bottom (270°), Edge 1: Bottom-right (330°), Edge 2: Top-right (30°)
+  // Edge 3: Top (90°), Edge 4: Top-left (150°), Edge 5: Bottom-left (210°)
+  const edgeAngles = [270, 330, 30, 90, 150, 210];
+  
+  const angle = edgeAngles[edgeNumber];
+  const angleRad = (angle * Math.PI) / 180;
+  
+  const x = originX + boardRadius * Math.cos(angleRad);
+  const y = originY + boardRadius * Math.sin(angleRad);
+  
+  return { x, y };
+}
+
+/**
  * Convert actions to click sequence
  * Note: This does NOT replay the actions through the reducer to avoid player ID issues.
  * It converts each action independently.
@@ -184,11 +214,17 @@ export function actionsToClicks(
       }
       
       case 'SELECT_EDGE': {
-        // This requires clicking on an edge hexagon in the seating phase
-        // For simplicity, we'll note this as a programmatic action
+        // Click on an edge hexagon in the seating phase
+        const edgeCoords = getSeatingEdgeButtonCoords(
+          action.payload.edgeNumber,
+          canvasWidth,
+          canvasHeight
+        );
         clicks.push({
           type: 'click',
           target: 'edge-hex',
+          x: edgeCoords.x,
+          y: edgeCoords.y,
           description: `Select edge ${action.payload.edgeNumber} for player ${action.payload.playerId}`
         });
         clicks.push({ type: 'wait', delay: 200, description: 'Wait for edge selection' });
