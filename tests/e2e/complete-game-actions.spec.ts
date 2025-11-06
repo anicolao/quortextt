@@ -3,6 +3,11 @@ import { test, expect } from '@playwright/test';
 import { getReduxState, pauseAnimations } from './helpers';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load actions from a .actions file
 function loadActions(actionsFile: string) {
