@@ -4,9 +4,9 @@
 {"type":"wait","delay":200,"description":"Wait for player addition"}
 {"type":"click","target":"start-button","x":400,"y":300,"description":"Click START button"}
 {"type":"wait","delay":200,"description":"Wait for game start"}
-{"type":"click","target":"edge-hex","description":"Select edge 0 for player P2"}
+{"type":"click","target":"edge-hex","x":399.99999999999994,"y":17.64705882352939,"description":"Select edge 0 for player P2"}
 {"type":"wait","delay":200,"description":"Wait for edge selection"}
-{"type":"click","target":"edge-hex","description":"Select edge 3 for player P1"}
+{"type":"click","target":"edge-hex","x":400,"y":582.3529411764706,"description":"Select edge 3 for player P1"}
 {"type":"wait","delay":200,"description":"Wait for edge selection"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
