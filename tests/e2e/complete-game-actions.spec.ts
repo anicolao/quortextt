@@ -18,83 +18,96 @@ function loadActions(actionsFile: string) {
     .map(line => JSON.parse(line));
 }
 
+// Wait for next animation frame to ensure rendering is complete
+async function waitForNextFrame(page: any) {
+  await page.evaluate(() => {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+  });
+}
+
+// Test function parameterized by seed
+async function testCompleteGameFromActions(page: any, seed: string) {
+  const actionsFile = path.join(__dirname, `user-stories/005-complete-game/${seed}/${seed}.actions`);
+  const screenshotDir = path.join(__dirname, `user-stories/005-complete-game/${seed}/screenshots`);
+  
+  // Create screenshot directory
+  fs.mkdirSync(screenshotDir, { recursive: true });
+  
+  // Load actions
+  const actions = loadActions(actionsFile);
+  console.log(`Loaded ${actions.length} actions for seed ${seed}`);
+  
+  // Count ADD_PLAYER actions to determine expected player count
+  const playerCount = actions.filter(a => a.type === 'ADD_PLAYER').length;
+  
+  // Navigate to the game
+  await page.goto('/');
+  await page.waitForSelector('canvas#game-canvas');
+  
+  // Pause animations once at the start
+  await pauseAnimations(page);
+  
+  // Take initial screenshot
+  await page.screenshot({ 
+    path: path.join(screenshotDir, '001-initial-screen.png'),
+    fullPage: false
+  });
+  
+  let screenshotCounter = 2;
+  
+  // Replay each action
+  for (let i = 0; i < actions.length; i++) {
+    const action = actions[i];
+    console.log(`Action ${i + 1}/${actions.length}: ${action.type}`);
+    
+    await page.evaluate((act) => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch(act);
+    }, action);
+    
+    // Wait for next frame to ensure rendering is complete
+    await waitForNextFrame(page);
+    
+    // Take screenshot for every action
+    const filename = String(screenshotCounter).padStart(3, '0') + `-${action.type.toLowerCase()}.png`;
+    await page.screenshot({ 
+      path: path.join(screenshotDir, filename),
+      fullPage: false
+    });
+    screenshotCounter++;
+  }
+  
+  // Take final screenshot
+  await page.screenshot({ 
+    path: path.join(screenshotDir, 'final-state.png'),
+    fullPage: false
+  });
+  
+  // Get final state
+  const state = await getReduxState(page);
+  console.log('Final state:');
+  console.log(`  Screen: ${state.game.screen}`);
+  console.log(`  Phase: ${state.game.phase}`);
+  console.log(`  Players: ${state.game.players.length}`);
+  
+  // Verify we have the expected number of players
+  expect(state.game.configPlayers.length).toBe(playerCount);
+}
+
 test.describe('Complete Game from Actions - Seed 888', () => {
   test('should replay game from 888.actions file', async ({ page }) => {
-    test.setTimeout(120000); // Increase timeout to 2 minutes for long replay
+    // Time the test to set appropriate timeout
+    const startTime = Date.now();
+    await testCompleteGameFromActions(page, '888');
+    const duration = Date.now() - startTime;
+    console.log(`Test took ${duration}ms`);
     
-    const actionsFile = path.join(__dirname, 'user-stories/005-complete-game/888/888.actions');
-    const screenshotDir = path.join(__dirname, 'user-stories/005-complete-game/888/screenshots');
-    
-    // Create screenshot directory
-    fs.mkdirSync(screenshotDir, { recursive: true });
-    
-    // Load actions
-    const actions = loadActions(actionsFile);
-    console.log(`Loaded ${actions.length} actions`);
-    
-    // Navigate to the game
-    await page.goto('/');
-    await page.waitForSelector('canvas#game-canvas');
-    
-    // Take initial screenshot
-    await pauseAnimations(page);
-    await page.screenshot({ 
-      path: path.join(screenshotDir, '001-initial-screen.png'),
-      fullPage: false
-    });
-    
-    let screenshotCounter = 2;
-    
-    // Replay each action
-    for (let i = 0; i < actions.length; i++) {
-      const action = actions[i];
-      console.log(`Action ${i + 1}/${actions.length}: ${action.type}`);
-      
-      await page.evaluate((act) => {
-        const store = (window as any).__REDUX_STORE__;
-        store.dispatch(act);
-      }, action);
-      
-      // Minimal wait for action to process
-      await page.waitForTimeout(50);
-      
-      // For SELECT_EDGE, check if screen transitioned to gameplay and wait for board render
-      if (action.type === 'SELECT_EDGE') {
-        // Check if this is the last edge selection (seating complete)
-        const state = await getReduxState(page);
-        if (state.game.screen === 'gameplay') {
-          // Wait for the board to render after transition
-          await page.waitForTimeout(1000);
-        }
-      }
-      
-      // Take screenshot after important actions
-      if (['ADD_PLAYER', 'START_GAME', 'SELECT_EDGE', 'PLACE_TILE'].includes(action.type)) {
-        await pauseAnimations(page);
-        const filename = String(screenshotCounter).padStart(3, '0') + `-${action.type.toLowerCase()}.png`;
-        await page.screenshot({ 
-          path: path.join(screenshotDir, filename),
-          fullPage: false
-        });
-        screenshotCounter++;
-      }
-    }
-    
-    // Take final screenshot
-    await pauseAnimations(page);
-    await page.screenshot({ 
-      path: path.join(screenshotDir, 'final-state.png'),
-      fullPage: false
-    });
-    
-    // Get final state
-    const state = await getReduxState(page);
-    console.log('Final state:');
-    console.log(`  Screen: ${state.game.screen}`);
-    console.log(`  Phase: ${state.game.phase}`);
-    console.log(`  Players: ${state.game.players.length}`);
-    
-    // Verify we have players
-    expect(state.game.configPlayers.length).toBe(2);
+    // Set timeout to 1.5x measured time for future runs (min 10s)
+    const recommendedTimeout = Math.max(10000, Math.ceil(duration * 1.5));
+    console.log(`Recommended timeout: ${recommendedTimeout}ms`);
   });
 });

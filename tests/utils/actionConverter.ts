@@ -316,12 +316,118 @@ export function generateExpectations(finalState: GameState): string {
   });
   lines.push('');
   
-  // For move prefixes, we'd need to replay the game move-by-move
-  // For now, just include empty move prefixes section
+  // Add empty move prefixes section header (to be filled by generateExpectationsWithPrefixes)
   lines.push('[MOVE_PREFIXES]');
-  lines.push('# Move prefixes would require replaying the game');
   
   return lines.join('\n');
+}
+
+/**
+ * Generate expectations with move prefixes from actions
+ */
+function generateExpectationsWithPrefixes(state: GameState, actions: GameAction[]): string {
+  const baseExpectations = generateExpectations(state);
+  const prefixLines = generateMovePrefixes(actions);
+  
+  // Replace the empty move prefixes section with actual data
+  const lines = baseExpectations.split('\n');
+  const movePrefixIndex = lines.findIndex(line => line.includes('[MOVE_PREFIXES]'));
+  
+  if (movePrefixIndex >= 0) {
+    // Remove lines after [MOVE_PREFIXES]
+    lines.splice(movePrefixIndex + 1);
+    // Add the actual move prefix data
+    lines.push(...prefixLines);
+  }
+  
+  return lines.join('\n');
+}
+
+/**
+ * Generate move prefixes by replaying the game and tracking flow lengths after each PLACE_TILE
+ * This reuses the same logic as complete-game-flows.test.ts
+ */
+function generateMovePrefixes(actions: GameAction[]): string[] {
+  let state: GameState = initialState;
+  const prefixLines: string[] = [];
+  let moveNumber = 0;
+  let player1Id: string | null = null;
+  let player2Id: string | null = null;
+  
+  try {
+    for (const action of actions) {
+      state = gameReducer(state, action);
+      
+      // Track player IDs from seating phase
+      if (action.type === 'START_GAME' && state.seatingPhase.seatingOrder.length >= 2) {
+        player1Id = state.seatingPhase.seatingOrder[0];
+        player2Id = state.seatingPhase.seatingOrder[1];
+      }
+      
+      // After each PLACE_TILE, record flow lengths
+      if (action.type === 'PLACE_TILE' && player1Id && player2Id) {
+        moveNumber++;
+        
+        // Collect all flows for each player (same logic as complete-game-flows.test.ts)
+        const actualP1Flows: Array<Array<any>> = [];
+        const actualP2Flows: Array<Array<any>> = [];
+        
+        for (const player of state.players) {
+          const edgeData = getEdgePositionsWithDirections(player.edgePosition);
+          
+          for (const { pos, dir } of edgeData) {
+            const posKey = positionToKey(pos);
+            const tile = state.board.get(posKey);
+            
+            if (!tile) {
+              continue;
+            }
+            
+            const { edges } = traceFlow(state.board, pos, dir, player.id);
+            
+            if (edges.length > 0) {
+              const flowEdges = edges.map(e => ({
+                pos: e.position,
+                dir: e.direction
+              }));
+              
+              if (player.id === player1Id) {
+                actualP1Flows.push(flowEdges);
+              } else if (player.id === player2Id) {
+                actualP2Flows.push(flowEdges);
+              }
+            }
+          }
+        }
+        
+        // Build move prefix line: record the length of each flow
+        const p1FlowLengths: Record<number, number> = {};
+        actualP1Flows.forEach((flow, idx) => {
+          p1FlowLengths[idx] = flow.length;
+        });
+        
+        const p2FlowLengths: Record<number, number> = {};
+        actualP2Flows.forEach((flow, idx) => {
+          p2FlowLengths[idx] = flow.length;
+        });
+        
+        // Format: "1 p1={0:2,1:2} p2={}"
+        const p1Str = Object.entries(p1FlowLengths)
+          .map(([k, v]) => `${k}:${v}`)
+          .join(',');
+        const p2Str = Object.entries(p2FlowLengths)
+          .map(([k, v]) => `${k}:${v}`)
+          .join(',');
+        
+        prefixLines.push(`${moveNumber} p1={${p1Str}} p2={${p2Str}}`);
+      }
+    }
+  } catch (e) {
+    console.error('Error generating move prefixes:', e);
+    return ['# Error generating move prefixes: ' + (e as Error).message];
+  }
+  
+  return prefixLines;
 }
 
 /**
@@ -342,7 +448,7 @@ export function actionsToExpectations(actions: GameAction[]): string {
     return '# Replay failed\n[P1_FLOWS]\n[P2_FLOWS]\n[MOVE_PREFIXES]\n';
   }
   
-  return generateExpectations(state);
+  return generateExpectationsWithPrefixes(state, actions);
 }
 
 /**
