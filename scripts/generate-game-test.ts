@@ -65,12 +65,22 @@ function main() {
   fs.writeFileSync(expectationsFile, expectations, 'utf-8');
   console.log(`  ✓ Saved ${expectationsFile}`);
   
-  // Generate and save README file
-  console.log('  Generating README...');
+  // Generate and save README file for 005- (actions test)
+  console.log('  Generating README for 005-...');
   const readme = generateReadme(seed, actions, finalState, movePrefixes);
   const readmeFile = path.join(outputDir, 'README.md');
   fs.writeFileSync(readmeFile, readme, 'utf-8');
   console.log(`  ✓ Saved ${readmeFile}`);
+  
+  // Generate and save README file for 006- (clicks test) if it's a different directory
+  const dir006 = outputDir.replace('/005-complete-game/', '/006-complete-game-mouse/');
+  if (dir006 !== outputDir) {
+    console.log('  Generating README for 006-...');
+    fs.mkdirSync(dir006, { recursive: true });
+    const readme006File = path.join(dir006, 'README.md');
+    fs.writeFileSync(readme006File, readme, 'utf-8');
+    console.log(`  ✓ Saved ${readme006File}`);
+  }
   
   console.log('');
   console.log('✓ Successfully generated all test files');

@@ -235,7 +235,11 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
   actions.push({ type: 'START_GAME' });
   state = gameReducer(state, actions[actions.length - 1]);
   
-  // Step 3: Complete seating phase
+  // Step 3: Shuffle tiles with seed BEFORE edge selection to ensure deterministic behavior
+  actions.push({ type: 'SHUFFLE_TILES', payload: { seed } });
+  state = gameReducer(state, actions[actions.length - 1]);
+  
+  // Step 4: Complete seating phase
   // Note: seatingOrder is randomized, so we need to select edges in that order
   const player1Id = state.seatingPhase.seatingOrder[0];
   const player2Id = state.seatingPhase.seatingOrder[1];
@@ -258,13 +262,9 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
   }
   
   // At this point, seating is complete and we're in gameplay mode
-  // The game has already drawn the first tile from an auto-shuffled deck
+  // The game has already drawn the first tile from the seeded deck
   
-  // Step 4: Shuffle tiles with seed to ensure deterministic behavior
-  actions.push({ type: 'SHUFFLE_TILES', payload: { seed } });
-  state = gameReducer(state, actions[actions.length - 1]);
-  
-  // Step 5: Draw initial tile (replace the auto-drawn one with one from our seeded deck)
+  // Step 5: Draw initial tile (already seeded from SHUFFLE_TILES before edge selection)
   actions.push({ type: 'DRAW_TILE' });
   state = gameReducer(state, actions[actions.length - 1]);
   
