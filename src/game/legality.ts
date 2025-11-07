@@ -156,10 +156,11 @@ export function hasViablePath(
     // else: Empty tile with allowEmptyHexes=false: don't connect any edges (dead end for victory detection)
   }
   
-  // Now perform BFS from all start edge nodes to see if we can reach any target edge node
+  // Now perform 0-1 BFS from all start edge nodes to see if we can reach any target edge node
+  // This prioritizes paths through occupied tiles (cost 0) over empty tiles (cost 1)
   const visited = new Set<string>();
   const parent = new Map<string, string>(); // For path reconstruction
-  const queue: string[] = [];
+  const deque: string[] = []; // Deque for 0-1 BFS
   
   // Add only the specific inward-facing edges from the start edge as starting points
   // These are the hex edges that face inward from the board edge
@@ -170,7 +171,7 @@ export function hasViablePath(
     const key = edgeNodeKey(edgeNode);
     
     if (!visited.has(key)) {
-      queue.push(key);
+      deque.push(key);
       visited.add(key);
       parent.set(key, ''); // Mark as starting node
     }
@@ -184,9 +185,9 @@ export function hasViablePath(
     targetEdgeNodes.map(({ pos, dir }) => edgeNodeKey({ position: pos, direction: dir }))
   );
   
-  // BFS
-  while (queue.length > 0) {
-    const currentKey = queue.shift()!;
+  // 0-1 BFS: process nodes with cost 0 first (occupied tiles), then cost 1 (empty tiles)
+  while (deque.length > 0) {
+    const currentKey = deque.shift()!;
     
     // Check if we've reached any target edge node
     if (targetEdgeKeys.has(currentKey)) {
@@ -197,11 +198,25 @@ export function hasViablePath(
     // Explore neighbors
     const neighbors = adjacencyMap.get(currentKey);
     if (neighbors) {
-      for (const neighborKey of neighbors) {
+      // Sort neighbors for deterministic BFS traversal
+      const sortedNeighbors = Array.from(neighbors).sort();
+      for (const neighborKey of sortedNeighbors) {
         if (!visited.has(neighborKey)) {
           visited.add(neighborKey);
           parent.set(neighborKey, currentKey);
-          queue.push(neighborKey);
+          
+          // Parse neighbor position to check if tile is occupied
+          const [rowStr, colStr] = neighborKey.split(',');
+          const neighborPos: HexPosition = { row: parseInt(rowStr), col: parseInt(colStr) };
+          const neighborPosKey = positionToKey(neighborPos);
+          const isOccupied = board.has(neighborPosKey);
+          
+          // 0-1 BFS: add to front if occupied (cost 0), back if empty (cost 1)
+          if (isOccupied) {
+            deque.unshift(neighborKey); // Add to front - prioritize occupied tiles
+          } else {
+            deque.push(neighborKey); // Add to back - deprioritize empty tiles
+          }
         }
       }
     }
