@@ -65,6 +65,7 @@ export interface StartGameAction {
   type: typeof START_GAME;
   payload?: {
     boardRadius?: number;
+    seed?: number;
   };
 }
 

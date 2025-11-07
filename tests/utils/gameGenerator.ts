@@ -272,7 +272,7 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
   state = gameReducer(state, actions[actions.length - 1]);
   
   // Step 2: Start game (goes to seating phase)
-  actions.push({ type: 'START_GAME' });
+  actions.push({ type: 'START_GAME', payload: { seed } });
   state = gameReducer(state, actions[actions.length - 1]);
   
   // Step 3: Shuffle tiles with seed BEFORE edge selection to ensure deterministic behavior

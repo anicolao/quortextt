@@ -103,10 +103,13 @@ function seededRandom(seed: number): () => number {
 
 // Helper function to randomize player order for seating selection
 // Uses Fisher-Yates shuffle for uniform distribution
-function randomizePlayerOrder(playerIds: string[]): string[] {
+// If seed is provided, uses seeded random for deterministic behavior
+function randomizePlayerOrder(playerIds: string[], seed?: number): string[] {
   const shuffled = [...playerIds];
+  const random = seed !== undefined ? seededRandom(seed) : Math.random;
+  
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
@@ -250,7 +253,8 @@ export function gameReducer(
 
       // Randomize player order for seating selection
       const playerIds = state.configPlayers.map(cp => cp.id);
-      const seatingOrder = randomizePlayerOrder(playerIds);
+      const seed = action.payload?.seed;
+      const seatingOrder = randomizePlayerOrder(playerIds, seed);
 
       // Transition to seating phase
       return {
