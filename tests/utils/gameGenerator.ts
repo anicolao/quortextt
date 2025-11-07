@@ -17,6 +17,7 @@ import { getFlowExit } from '../../src/game/tiles';
 
 /**
  * Simple seeded random number generator (LCG)
+ * Uses same algorithm as gameReducer's seededRandom for consistency
  */
 class SeededRandom {
   private seed: number;
@@ -26,8 +27,8 @@ class SeededRandom {
   }
 
   next(): number {
-    this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
-    return this.seed / 0x7fffffff;
+    this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
+    return this.seed / 4294967296;
   }
 
   nextInt(max: number): number {

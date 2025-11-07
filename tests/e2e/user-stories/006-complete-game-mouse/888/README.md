@@ -97,8 +97,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/009-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-3, 2)
-- Rotation: 4
+- Position: (-2, 0)
+- Rotation: 1
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -126,7 +126,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/012-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (3, 0)
+- Position: (3, -1)
 - Rotation: 2
 
 **Expected State**: Tile placed on board, flows updated
@@ -156,7 +156,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 
 **Action**: `PLACE_TILE`
 - Position: (-2, 2)
-- Rotation: 5
+- Rotation: 4
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -184,8 +184,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/018-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (2, 0)
-- Rotation: 5
+- Position: (3, 0)
+- Rotation: 3
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -213,8 +213,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/021-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-3, 3)
-- Rotation: 5
+- Position: (-3, 1)
+- Rotation: 2
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -242,8 +242,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/024-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (1, 0)
-- Rotation: 2
+- Position: (2, 1)
+- Rotation: 3
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -271,8 +271,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/027-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-1, 2)
-- Rotation: 3
+- Position: (-3, 2)
+- Rotation: 1
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -301,7 +301,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 
 **Action**: `PLACE_TILE`
 - Position: (1, 1)
-- Rotation: 1
+- Rotation: 2
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -329,8 +329,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/033-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-2, 3)
-- Rotation: 4
+- Position: (-1, 1)
+- Rotation: 0
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -359,7 +359,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 
 **Action**: `PLACE_TILE`
 - Position: (0, 1)
-- Rotation: 2
+- Rotation: 5
 
 **Expected State**: Tile placed on board, flows updated
 
