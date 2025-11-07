@@ -331,6 +331,8 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     // Find legal moves
     const legalMoves = findLegalMoves(state, state.currentTile);
     
+    console.log(`Move ${moveCount + 1}: Found ${legalMoves.length} legal moves for tile type ${state.currentTile}`);
+    
     if (legalMoves.length === 0) {
       // No legal moves, game ends
       console.warn(`No legal moves found for tile type ${state.currentTile} at move ${moveCount + 1}`);
@@ -339,6 +341,8 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     // Prefer moves adjacent to player's flows
     const preferredMoves = findFlowAdjacentMoves(state, legalMoves);
+    
+    console.log(`Move ${moveCount + 1}: ${preferredMoves.length} preferred moves (adjacent to flows) out of ${legalMoves.length} legal moves`);
     
     // Choose a random move from preferred moves
     const move = preferredMoves[rng.nextInt(preferredMoves.length)];
@@ -358,6 +362,7 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     // Check if game ended
     if (state.phase === 'finished') {
+      console.log(`Game ended after move ${moveCount}. Winners: ${state.winners.join(', ')}, WinType: ${state.winType}`);
       break;
     }
     

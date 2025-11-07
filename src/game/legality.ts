@@ -160,7 +160,6 @@ export function hasViablePath(
   // This prioritizes paths through occupied tiles (cost 0) over empty tiles (cost 1)
   const visited = new Set<string>();
   const parent = new Map<string, string>(); // For path reconstruction
-  const cost = new Map<string, number>(); // Track cost (number of empty tiles)
   const deque: string[] = []; // Deque for 0-1 BFS
   
   // Add only the specific inward-facing edges from the start edge as starting points
@@ -175,7 +174,6 @@ export function hasViablePath(
       deque.push(key);
       visited.add(key);
       parent.set(key, ''); // Mark as starting node
-      cost.set(key, 0);
     }
   }
   
@@ -197,8 +195,6 @@ export function hasViablePath(
       break;
     }
     
-    const currentCost = cost.get(currentKey) ?? 0;
-    
     // Explore neighbors
     const neighbors = adjacencyMap.get(currentKey);
     if (neighbors) {
@@ -215,16 +211,11 @@ export function hasViablePath(
           const neighborPosKey = positionToKey(neighborPos);
           const isOccupied = board.has(neighborPosKey);
           
-          // Cost is 0 if tile is occupied, 1 if empty
-          const edgeCost = isOccupied ? 0 : 1;
-          const newCost = currentCost + edgeCost;
-          cost.set(neighborKey, newCost);
-          
-          // 0-1 BFS: add to front if cost 0, back if cost 1
-          if (edgeCost === 0) {
-            deque.unshift(neighborKey); // Add to front
+          // 0-1 BFS: add to front if occupied (cost 0), back if empty (cost 1)
+          if (isOccupied) {
+            deque.unshift(neighborKey); // Add to front - prioritize occupied tiles
           } else {
-            deque.push(neighborKey); // Add to back
+            deque.push(neighborKey); // Add to back - deprioritize empty tiles
           }
         }
       }
