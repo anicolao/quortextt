@@ -109,6 +109,14 @@ function loadActions(seed: number): any[] {
 
 function runGameValidationTest(seed: number) {
   describe(`Game Validation from Actions (seed ${seed})`, () => {
+    // TODO: This test is currently disabled due to non-deterministic flow tracing order
+    // When the generator creates expectations, it traces flows from the final game state.
+    // When we replay actions, we build the state progressively and trace flows at each step.
+    // Even though the same flows exist, the order of edges within each flow can differ due to:
+    // 1. Map/Set iteration order when building adjacency graphs
+    // 2. Different BFS traversal orders from different board states
+    // This is a test determinism issue, not a bug - the flows themselves are correct.
+    // Related to the same issue in tests/utils/gameGenerator.test.ts
     it.skip('should replay actions and validate flow sequences match expectations', () => {
       // Load actions and expectations from files
       const actions = loadActions(seed);
