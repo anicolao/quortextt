@@ -89,10 +89,12 @@ function findLegalMoves(
  * Checks if placing the tile will actually create a flow connection
  */
 /**
- * Find moves that would actually extend the player's flows
- * A move extends a flow if the placed tile connects to a flow edge:
- * - The tile must be adjacent to a position with a flow
- * - The tile must have a matching flow entry/exit that connects to the adjacent flow
+ * Find best moves using path-based scoring
+ * Strategy:
+ * 1. Identify legal moves adjacent to tiles where we have flows
+ * 2. For each rotation of each adjacent position, call hasViablePath with debug on
+ * 3. Score: +1 per occupied hex, -2 per empty hex in pathToTarget
+ * 4. Play the option with the highest score (random among ties)
  */
 function findFlowAdjacentMoves(
   state: GameState,
@@ -125,75 +127,90 @@ function findFlowAdjacentMoves(
     return adjacentToEdge.length > 0 ? adjacentToEdge : legalMoves;
   }
   
-  // Build a map of flow edges: which direction a flow exits each position
-  const flowEdges = new Map<string, Set<Direction>>();
-  
-  for (const flowPosKey of playerFlows) {
-    const [flowRow, flowCol] = flowPosKey.split(',').map(Number);
-    const flowPos: HexPosition = { row: flowRow, col: flowCol };
-    const tile = state.board.get(flowPosKey);
-    
-    if (!tile) continue;
-    
-    if (!flowEdges.has(flowPosKey)) {
-      flowEdges.set(flowPosKey, new Set());
-    }
-    
-    // Check all 6 directions to see which ones have flow connections
-    for (let dir = 0; dir < 6; dir++) {
-      const direction = dir as Direction;
-      const exitDir = getFlowExit(tile, direction);
-      
-      if (exitDir !== null) {
-        // Flow enters from this direction and exits somewhere
-        flowEdges.get(flowPosKey)!.add(direction);
-        flowEdges.get(flowPosKey)!.add(exitDir);
-      }
-    }
-  }
-  
-  // Filter moves that would connect to an existing flow edge
-  const flowExtendingMoves = legalMoves.filter(move => {
-    const { position, rotation } = move;
-    
-    // Get the tile type at current tile (we know it's legal, so there's a currentTile)
-    if (state.currentTile === null) return false;
-    
-    const proposedTile = { type: state.currentTile, rotation };
-    
-    // Check all 6 neighbors of this position
+  // Find legal moves adjacent to positions where we have flows
+  const adjacentMoves = legalMoves.filter(move => {
     const directions: Direction[] = [0, 1, 2, 3, 4, 5];
-    
-    for (const dir of directions) {
-      const neighbor = getNeighborInDirection(position, dir);
+    return directions.some(dir => {
+      const neighbor = getNeighborInDirection(move.position, dir);
       const neighborKey = positionToKey(neighbor);
-      
-      // Is this neighbor part of the player's flow?
-      if (!playerFlows.has(neighborKey)) continue;
-      
-      // Get the flow edges at the neighbor
-      const neighborFlowDirs = flowEdges.get(neighborKey);
-      if (!neighborFlowDirs) continue;
-      
-      // What direction does the neighbor's flow point toward our position?
-      // If we're at direction `dir` from neighbor, neighbor sees us at opposite direction
-      const oppositeDir = getOppositeDirection(dir);
-      
-      // Does the neighbor have a flow edge pointing toward us?
-      if (!neighborFlowDirs.has(oppositeDir)) continue;
-      
-      // Does our proposed tile have a flow entry from direction `dir`?
-      const exitFromOurEntry = getFlowExit(proposedTile, dir);
-      if (exitFromOurEntry !== null) {
-        // Yes! This tile would connect to the flow
-        return true;
-      }
-    }
-    
-    return false;
+      return playerFlows.has(neighborKey);
+    });
   });
   
-  return flowExtendingMoves.length > 0 ? flowExtendingMoves : legalMoves;
+  if (adjacentMoves.length === 0) {
+    // No adjacent moves, fall back to all legal moves
+    return legalMoves;
+  }
+  
+  // Score each move by testing with hasViablePath
+  interface ScoredMove {
+    position: HexPosition;
+    rotation: Rotation;
+    score: number;
+  }
+  
+  const scoredMoves: ScoredMove[] = [];
+  
+  for (const move of adjacentMoves) {
+    if (state.currentTile === null) continue;
+    
+    // Create a simulated board with this move placed
+    const simulatedBoard = new Map(state.board);
+    const posKey = positionToKey(move.position);
+    simulatedBoard.set(posKey, {
+      type: state.currentTile,
+      rotation: move.rotation,
+    });
+    
+    // Find the target edge (opposite of player's starting edge)
+    const targetEdge = (currentPlayer.edgePosition + 3) % 6;
+    
+    // Call hasViablePath with debug info
+    const result = hasViablePath(
+      simulatedBoard,
+      currentPlayer,
+      targetEdge,
+      true, // returnDebugInfo
+      true, // allowEmptyHexes
+      3 // boardRadius
+    );
+    
+    if (typeof result === 'boolean') {
+      // No debug info returned, skip
+      continue;
+    }
+    
+    // Score based on pathToTarget
+    let score = 0;
+    if (result.hasPath && result.pathToTarget) {
+      for (const pos of result.pathToTarget) {
+        const key = positionToKey(pos);
+        if (simulatedBoard.has(key)) {
+          score += 1; // +1 for occupied hex
+        } else {
+          score -= 2; // -2 for empty hex
+        }
+      }
+    }
+    
+    scoredMoves.push({
+      position: move.position,
+      rotation: move.rotation,
+      score,
+    });
+  }
+  
+  if (scoredMoves.length === 0) {
+    return legalMoves;
+  }
+  
+  // Find the highest score
+  const maxScore = Math.max(...scoredMoves.map(m => m.score));
+  
+  // Get all moves with the highest score
+  const bestMoves = scoredMoves.filter(m => m.score === maxScore);
+  
+  return bestMoves;
 }
 
 /**
