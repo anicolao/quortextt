@@ -111,3 +111,17 @@ test.describe('Complete Game from Actions - Seed 888', () => {
     console.log(`Recommended timeout: ${recommendedTimeout}ms`);
   });
 });
+
+test.describe('Complete Game from Actions - Seed 999', () => {
+  test('should replay game from 999.actions file', async ({ page }) => {
+    // Time the test to set appropriate timeout
+    const startTime = Date.now();
+    await testCompleteGameFromActions(page, '999');
+    const duration = Date.now() - startTime;
+    console.log(`Test took ${duration}ms`);
+    
+    // Set timeout to 1.5x measured time for future runs (min 10s)
+    const recommendedTimeout = Math.max(10000, Math.ceil(duration * 1.5));
+    console.log(`Recommended timeout: ${recommendedTimeout}ms`);
+  });
+});
