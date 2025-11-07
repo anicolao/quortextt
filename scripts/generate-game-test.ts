@@ -39,6 +39,25 @@ function main() {
   // Create output directory if it doesn't exist
   fs.mkdirSync(outputDir, { recursive: true });
   
+  // Clean up old screenshots to avoid leaving cruft from previous runs
+  const screenshotsDir = path.join(outputDir, 'screenshots');
+  if (fs.existsSync(screenshotsDir)) {
+    console.log('  Cleaning up old screenshots...');
+    fs.rmSync(screenshotsDir, { recursive: true, force: true });
+    console.log(`  ✓ Removed ${screenshotsDir}`);
+  }
+  
+  // Also clean up 006- screenshots if applicable
+  const dir006 = outputDir.replace('/005-complete-game/', '/006-complete-game-mouse/');
+  if (dir006 !== outputDir) {
+    const screenshots006Dir = path.join(dir006, 'screenshots');
+    if (fs.existsSync(screenshots006Dir)) {
+      console.log('  Cleaning up old 006- screenshots...');
+      fs.rmSync(screenshots006Dir, { recursive: true, force: true });
+      console.log(`  ✓ Removed ${screenshots006Dir}`);
+    }
+  }
+  
   // Generate game actions and final state
   console.log('  Generating random game...');
   const { actions, finalState, movePrefixes } = generateRandomGameWithState(seed, 50);
