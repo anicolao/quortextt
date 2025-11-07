@@ -109,7 +109,12 @@ export function hasViablePath(
       // Occupied tile: connect only the edges that the tile's flow pattern connects
       const connections = getFlowConnections(tile.type, tile.rotation);
       
+      // Track which edges are actually used by this tile's flow pattern
+      const usedEdges = new Set<Direction>();
       for (const [dir1, dir2] of connections) {
+        usedEdges.add(dir1);
+        usedEdges.add(dir2);
+        
         const edge1: EdgeNode = { position: pos, direction: dir1 };
         const edge2: EdgeNode = { position: pos, direction: dir2 };
         
@@ -118,22 +123,14 @@ export function hasViablePath(
         addEdge(edge2, edge1);
       }
       
-      // Also connect each edge to its opposite edge on the neighboring tile
-      // But only if the neighbor is occupied OR if allowEmptyHexes is true
-      for (let dir = 0; dir < 6; dir++) {
-        const direction = dir as Direction;
+      // Only connect edges that are used by the flow pattern to neighboring tiles
+      for (const direction of usedEdges) {
         const edge: EdgeNode = { position: pos, direction };
         const oppositeEdge = getOppositeEdgeNode(edge, boardRadius);
         
         if (oppositeEdge) {
-          // Check if neighbor tile is occupied (or if we allow empty hexes)
-          const neighborPosKey = positionToKey(oppositeEdge.position);
-          const neighborTile = board.get(neighborPosKey);
-          
-          if (neighborTile || allowEmptyHexes) {
-            addEdge(edge, oppositeEdge);
-            addEdge(oppositeEdge, edge);
-          }
+          addEdge(edge, oppositeEdge);
+          addEdge(oppositeEdge, edge);
         }
       }
     } else if (allowEmptyHexes) {
