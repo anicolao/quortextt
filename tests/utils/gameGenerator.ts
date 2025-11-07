@@ -10,7 +10,7 @@ import { gameReducer, initialState } from '../../src/redux/gameReducer';
 import { GameState } from '../../src/redux/types';
 import { getAllBoardPositions, positionToKey, getEdgePositions, getNeighborInDirection, getOppositeDirection } from '../../src/game/board';
 import { HexPosition, Rotation, Direction } from '../../src/game/types';
-import { isLegalMove } from '../../src/game/legality';
+import { isLegalMove, hasViablePath } from '../../src/game/legality';
 import { traceFlow } from '../../src/game/flows';
 import { getEdgePositionsWithDirections } from '../../src/game/board';
 import { getFlowExit } from '../../src/game/tiles';
@@ -80,6 +80,17 @@ function findLegalMoves(
       }
     }
   }
+  
+  // Sort for deterministic ordering
+  legalMoves.sort((a, b) => {
+    if (a.position.row !== b.position.row) {
+      return a.position.row - b.position.row;
+    }
+    if (a.position.col !== b.position.col) {
+      return a.position.col - b.position.col;
+    }
+    return a.rotation - b.rotation;
+  });
   
   return legalMoves;
 }
@@ -209,6 +220,18 @@ function findFlowAdjacentMoves(
   
   // Get all moves with the highest score
   const bestMoves = scoredMoves.filter(m => m.score === maxScore);
+  
+  // Sort moves for deterministic selection (when multiple have same score)
+  // Sort by row, then col, then rotation
+  bestMoves.sort((a, b) => {
+    if (a.position.row !== b.position.row) {
+      return a.position.row - b.position.row;
+    }
+    if (a.position.col !== b.position.col) {
+      return a.position.col - b.position.col;
+    }
+    return a.rotation - b.rotation;
+  });
   
   return bestMoves;
 }

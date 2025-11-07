@@ -1,7 +1,7 @@
 // Unit tests for Redux reducer
 
 import { describe, it, expect } from 'vitest';
-import { gameReducer, initialState } from '../src/redux/gameReducer';
+import { gameReducer, initialState, resetPlayerIdCounter } from '../src/redux/gameReducer';
 import {
   addPlayer,
   removePlayer,
@@ -330,6 +330,25 @@ describe('gameReducer', () => {
       state = gameReducer(state, returnToConfig());
 
       expect(state.screen).toBe('configuration');
+    });
+  });
+
+  describe('resetPlayerIdCounter', () => {
+    it('should reset player ID counter for deterministic testing', () => {
+      // Add some players to increment the counter
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 0));
+      const firstPlayerId = state.configPlayers[0].id;
+      
+      // Reset counter and add players again
+      resetPlayerIdCounter();
+      state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      const secondPlayerId = state.configPlayers[0].id;
+      
+      // After reset, player IDs should start from the beginning again
+      expect(secondPlayerId).toBe('P1');
     });
   });
 });

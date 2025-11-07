@@ -197,7 +197,9 @@ export function hasViablePath(
     // Explore neighbors
     const neighbors = adjacencyMap.get(currentKey);
     if (neighbors) {
-      for (const neighborKey of neighbors) {
+      // Sort neighbors for deterministic BFS traversal
+      const sortedNeighbors = Array.from(neighbors).sort();
+      for (const neighborKey of sortedNeighbors) {
         if (!visited.has(neighborKey)) {
           visited.add(neighborKey);
           parent.set(neighborKey, currentKey);

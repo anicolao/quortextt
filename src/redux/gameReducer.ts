@@ -58,6 +58,11 @@ function generatePlayerId(): string {
   return `P${++playerIdCounter}`;
 }
 
+// Helper function to reset player ID counter (for testing)
+export function resetPlayerIdCounter(): void {
+  playerIdCounter = 0;
+}
+
 // Helper function to create a shuffled tile deck
 // tileDistribution: [NoSharps, OneSharp, TwoSharps, ThreeSharps]
 // Defaults to [10, 10, 10, 10] if not specified
