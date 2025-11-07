@@ -22,17 +22,15 @@
 {"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 4)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"hex-position","x":461.1312049730192,"y":194.11764705882354,"description":"Click hex at (-2, 2)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
 {"type":"click","target":"checkmark","x":531.7194402671369,"y":194.11764705882354,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"hex-position","x":338.8687950269808,"y":405.88235294117646,"description":"Click hex at (2, -2)"}
+{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
+{"type":"wait","delay":200,"description":"Wait for rotation"}
+{"type":"click","target":"hex-position","x":400,"y":405.88235294117646,"description":"Click hex at (2, -1)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":409.4570303210985,"y":405.88235294117646,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":470.5882352941177,"y":405.88235294117646,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
@@ -50,43 +48,23 @@
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":369.4343975134904,"y":352.94117647058823,"description":"Click hex at (1, -1)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":440.02263280760803,"y":352.94117647058823,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":430.5656024865096,"y":247.05882352941177,"description":"Click hex at (-1, 1)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":501.1538377806272,"y":247.05882352941177,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 4)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"hex-position","x":430.5656024865096,"y":352.94117647058823,"description":"Click hex at (1, 0)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
 {"type":"click","target":"checkmark","x":501.1538377806272,"y":352.94117647058823,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":491.6968074595288,"y":247.05882352941177,"description":"Click hex at (-1, 2)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":562.2850427536465,"y":247.05882352941177,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 4)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":400,"y":300,"description":"Click hex at (0, 0)"}
+{"type":"click","target":"hex-position","x":461.1312049730192,"y":405.88235294117646,"description":"Click hex at (2, 0)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":470.5882352941177,"y":300,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":531.7194402671369,"y":405.88235294117646,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
@@ -104,11 +82,11 @@
 {"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":491.6968074595288,"y":247.05882352941177,"description":"Click hex at (-1, 2)"}
+{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
+{"type":"wait","delay":200,"description":"Wait for rotation"}
+{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 4)"}
+{"type":"wait","delay":200,"description":"Wait for rotation"}
+{"type":"click","target":"hex-position","x":369.4343975134904,"y":352.94117647058823,"description":"Click hex at (1, -1)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":562.2850427536465,"y":247.05882352941177,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"hex-position","x":400,"y":405.88235294117646,"description":"Click hex at (2, -1)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":470.5882352941177,"y":405.88235294117646,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":440.02263280760803,"y":352.94117647058823,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
