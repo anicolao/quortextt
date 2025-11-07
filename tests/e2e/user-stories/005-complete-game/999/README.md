@@ -8,8 +8,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 - **Players**: 2
   - Player 1 - Color: #0173B2, Starting edge: 0
   - Player 2 - Color: #DE8F05, Starting edge: 1
-- **Total Actions**: 68
-- **Tile Placements**: 21 moves
+- **Total Actions**: 35
+- **Tile Placements**: 10 moves
 - **Game Outcome**: finished
 
 ## Test Execution
@@ -155,8 +155,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/015-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-2, 3)
-- Rotation: 2
+- Position: (-2, 2)
+- Rotation: 4
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -184,8 +184,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/018-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (3, -3)
-- Rotation: 2
+- Position: (2, -2)
+- Rotation: 1
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -213,8 +213,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/021-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-2, 2)
-- Rotation: 5
+- Position: (-1, 2)
+- Rotation: 4
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -242,8 +242,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/024-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (2, -3)
-- Rotation: 2
+- Position: (1, -1)
+- Rotation: 1
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -271,8 +271,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/027-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-3, 2)
-- Rotation: 2
+- Position: (-1, 1)
+- Rotation: 3
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -300,8 +300,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/030-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (3, -1)
-- Rotation: 2
+- Position: (0, 0)
+- Rotation: 1
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -329,8 +329,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/033-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (-1, 1)
-- Rotation: 3
+- Position: (0, 1)
+- Rotation: 4
 
 **Expected State**: Tile placed on board, flows updated
 
@@ -358,342 +358,23 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ![PLACE_TILE](screenshots/036-place_tile.png)
 
 **Action**: `PLACE_TILE`
-- Position: (1, -3)
-- Rotation: 5
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 37: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/037-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 38: DRAW_TILE
-![DRAW_TILE](screenshots/038-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 39: PLACE_TILE
-![PLACE_TILE](screenshots/039-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (-2, 1)
-- Rotation: 5
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 40: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/040-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 41: DRAW_TILE
-![DRAW_TILE](screenshots/041-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 42: PLACE_TILE
-![PLACE_TILE](screenshots/042-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (0, -3)
-- Rotation: 1
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 43: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/043-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 44: DRAW_TILE
-![DRAW_TILE](screenshots/044-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 45: PLACE_TILE
-![PLACE_TILE](screenshots/045-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (-1, 0)
-- Rotation: 1
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 46: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/046-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 47: DRAW_TILE
-![DRAW_TILE](screenshots/047-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 48: PLACE_TILE
-![PLACE_TILE](screenshots/048-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (2, 0)
+- Position: (1, 0)
 - Rotation: 4
 
 **Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 49: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/049-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 50: DRAW_TILE
-![DRAW_TILE](screenshots/050-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 51: PLACE_TILE
-![PLACE_TILE](screenshots/051-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (0, 0)
-- Rotation: 3
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 52: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/052-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 53: DRAW_TILE
-![DRAW_TILE](screenshots/053-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 54: PLACE_TILE
-![PLACE_TILE](screenshots/054-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (-1, -2)
-- Rotation: 1
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 55: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/055-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 56: DRAW_TILE
-![DRAW_TILE](screenshots/056-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 57: PLACE_TILE
-![PLACE_TILE](screenshots/057-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (0, -1)
-- Rotation: 0
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 58: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/058-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 59: DRAW_TILE
-![DRAW_TILE](screenshots/059-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 60: PLACE_TILE
-![PLACE_TILE](screenshots/060-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (-2, -1)
-- Rotation: 1
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 61: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/061-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 62: DRAW_TILE
-![DRAW_TILE](screenshots/062-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 63: PLACE_TILE
-![PLACE_TILE](screenshots/063-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (1, -1)
-- Rotation: 4
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 64: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/064-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 65: DRAW_TILE
-![DRAW_TILE](screenshots/065-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 66: PLACE_TILE
-![PLACE_TILE](screenshots/066-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (-2, 0)
-- Rotation: 0
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 67: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/067-next_player.png)
-
-**Action**: `NEXT_PLAYER`
-
-**Expected State**: Turn advances to next player
-
----
-
-### Step 68: DRAW_TILE
-![DRAW_TILE](screenshots/068-draw_tile.png)
-
-**Action**: `DRAW_TILE`
-
-**Expected State**: Current player draws a new tile
-
----
-
-### Step 69: PLACE_TILE
-![PLACE_TILE](screenshots/069-place_tile.png)
-
-**Action**: `PLACE_TILE`
-- Position: (2, -2)
-- Rotation: 1
-
-**Expected State**: Tile placed on board, flows updated
-
----
-
-### Step 70: Final Game State
+### Step 37: Final Game State
 ![Final State](screenshots/final-state.png)
 
 **Game Phase**: finished
-**Total Moves**: 21
+**Total Moves**: 10
 
 ## Validation Checklist
 
-- [ ] All 68 actions executed successfully
-- [ ] 21 tiles placed on board
+- [ ] All 35 actions executed successfully
+- [ ] 10 tiles placed on board
 - [ ] No illegal moves attempted
 - [ ] Flow calculations correct at each step
 - [ ] Game state matches expectations file
