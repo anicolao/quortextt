@@ -92,7 +92,7 @@ function main() {
   console.log(`  ✓ Saved ${readmeFile}`);
   
   // Generate and save README file for 006- (clicks test) if it's a different directory
-  const dir006 = outputDir.replace('/005-complete-game/', '/006-complete-game-mouse/');
+  // dir006 already declared above for screenshot cleanup
   if (dir006 !== outputDir) {
     console.log('  Generating README for 006-...');
     fs.mkdirSync(dir006, { recursive: true });
