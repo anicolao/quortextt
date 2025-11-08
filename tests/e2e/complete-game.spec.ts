@@ -130,7 +130,7 @@ test.describe('Complete 2-Player Game', () => {
       // Check if game already ended after drawing (e.g., constraint victory)
       if (state.game.phase === 'finished') {
         console.log('🎉 Game ended after drawing tile!');
-        console.log('  Winner:', state.game.winner);
+        console.log('  Winners:', state.game.winners);
         console.log('  Win type:', state.game.winType);
         
         gameEnded = true;
@@ -283,7 +283,7 @@ test.describe('Complete 2-Player Game', () => {
       // Check if game ended
       if (state.game.phase === 'finished') {
         console.log('🎉 Game ended with victory!');
-        console.log('  Winner:', state.game.winner);
+        console.log('  Winners:', state.game.winners);
         console.log('  Win type:', state.game.winType);
         
         gameEnded = true;
@@ -318,8 +318,9 @@ test.describe('Complete 2-Player Game', () => {
     
     if (gameEnded) {
       expect(state.game.phase).toBe('finished');
-      expect(state.game.winner).toBeDefined();
-      console.log(`  - Winner: ${state.game.winner}`);
+      expect(state.game.winners).toBeDefined();
+      expect(state.game.winners.length).toBeGreaterThan(0);
+      console.log(`  - Winners: ${state.game.winners.join(', ')}`);
       console.log(`  - Victory type: ${state.game.winType}`);
     } else {
       expect(state.game.phase).toBe('playing');
