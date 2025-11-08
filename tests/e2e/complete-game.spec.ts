@@ -10,6 +10,9 @@ test.describe('Complete 2-Player Game', () => {
   const VICTORY_SCREENSHOT_NAME = 'victory-final.png'; // Final victory screenshot
 
   test('should play through multiple turns and verify flow edge data matches rendered flows', async ({ page }) => {
+    // Increase timeout as deterministic gameplay may take longer
+    test.setTimeout(60000); // 60 seconds
+    
     await page.goto('/');
     await page.waitForSelector('canvas#game-canvas');
     

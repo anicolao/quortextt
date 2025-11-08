@@ -100,11 +100,17 @@ test.describe('Flow Propagation from Player Edges', () => {
     if (!state.game.players || state.game.players.length < 2) {
       throw new Error('Expected at least 2 players after game start');
     }
-    const player1AfterReload = state.game.players[0];
-    const player2AfterReload = state.game.players[1];
     
-    // Place tile ON player 1's edge (row=-3) at position (-3, 2)
-    // At this position, player's edge directions are West and NorthWest
+    // Position (-3, 2) is on edge 4 (top-left edge for radius-3 board)
+    // Find which player has edge 4
+    const playerWithEdge4 = state.game.players.find((p: any) => p.edgePosition === 4);
+    const otherPlayer = state.game.players.find((p: any) => p.edgePosition !== 4);
+    if (!playerWithEdge4 || !otherPlayer) {
+      throw new Error('Could not find players with expected edge positions');
+    }
+    
+    // Place tile ON player's edge (row=-3) at position (-3, 2)
+    // At this position, the hex is on edge 4
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ 
@@ -119,24 +125,24 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     state = await getReduxState(page);
     
-    // Screenshot showing tile WITH colored flows (blue for player 1)
+    // Screenshot showing tile WITH colored flows
     await pauseAnimations(page);
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/003-flow-propagation/003-with-connection.png',
       fullPage: false
     });
     
-    // Verify player 1 has flows
-    player1Flows = state.game.flows[player1AfterReload.id];
-    expect(player1Flows?.length || 0).toBeGreaterThan(0);
-    expect(player1Flows?.includes('-3,2')).toBe(true);
+    // Verify the player with edge 4 has flows
+    const playerWithEdge4Flows = state.game.flows[playerWithEdge4.id];
+    expect(playerWithEdge4Flows?.length || 0).toBeGreaterThan(0);
+    expect(playerWithEdge4Flows?.includes('-3,2')).toBe(true);
     
-    // Verify player 2 has no flows (tile is not near their edge)
-    const player2Flows = state.game.flows[player2AfterReload.id];
-    expect(player2Flows?.length || 0).toBe(0);
+    // Verify the other player has no flows (tile is not near their edge)
+    const otherPlayerFlows = state.game.flows[otherPlayer.id];
+    expect(otherPlayerFlows?.length || 0).toBe(0);
     
     console.log('✓ Flow propagation test passed');
-    console.log('  - Player 1 edge:', player1AfterReload.edgePosition, '(NorthWest, row=-3)');
+    console.log('  - Player with edge 4:', playerWithEdge4.id, 'has flows');
     console.log('  - Tile placed at (-3, 2) with flow connections');
     console.log('  - Player 1 flows:', player1Flows?.length || 0, 'positions');
     console.log('  - Player 2 flows:', player2Flows?.length || 0, 'positions');
