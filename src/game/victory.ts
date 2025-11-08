@@ -150,8 +150,12 @@ export function isConnectionInWinningPath(
   
   if (!edgeMap) return false;
   
-  // Check if both directions belong to this player
-  if (edgeMap.get(dir1) !== playerId || edgeMap.get(dir2) !== playerId) {
+  // With unidirectional flows, only entry directions are recorded in flowEdges
+  // Check if at least one direction belongs to this player
+  const dir1IsPlayer = edgeMap.get(dir1) === playerId;
+  const dir2IsPlayer = edgeMap.get(dir2) === playerId;
+  
+  if (!dir1IsPlayer && !dir2IsPlayer) {
     return false;
   }
   

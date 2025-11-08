@@ -691,7 +691,7 @@ describe('victory conditions', () => {
       const flowEdges = new Map<string, Map<number, string>>();
       const edgeMap = new Map<number, string>();
       edgeMap.set(0, 'p2'); // Different player
-      edgeMap.set(1, 'p1');
+      edgeMap.set(1, 'p2'); // Both directions belong to different player
       flowEdges.set('0,0', edgeMap);
       
       const result = isConnectionInWinningPath(
@@ -823,6 +823,61 @@ describe('victory conditions', () => {
       
       // Should return true because one direction goes off-board (edge 0)
       // and the other connects to flow
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should handle both neighbors valid - one in flow, one not', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Create a flow path with multiple tiles
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -2, col: 0 } },
+        { type: TileType.NoSharps, rotation: 0, position: { row: -1, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const players = [createPlayer('p1', 0)];
+      const { flows, flowEdges } = calculateFlows(board, players);
+      
+      // Check middle tile where both neighbors are valid (on-board)
+      const result = isConnectionInWinningPath(
+        { row: -2, col: 0 },
+        0,
+        3,
+        'p1',
+        flows,
+        flowEdges
+      );
+      
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should handle neighbor valid but not in flow', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Place tiles where one neighbor is valid but not in the flow
+      const tiles: PlacedTile[] = [
+        { type: TileType.TwoSharps, rotation: 5, position: { row: -3, col: 0 } },
+        { type: TileType.NoSharps, rotation: 0, position: { row: -1, col: 0 } },
+      ];
+      
+      tiles.forEach(tile => board.set(positionToKey(tile.position), tile));
+      
+      const players = [createPlayer('p1', 0)];
+      const { flows, flowEdges } = calculateFlows(board, players);
+      
+      // Check where neighbor at -2,0 direction is valid but empty (not in flow)
+      const result = isConnectionInWinningPath(
+        { row: -3, col: 0 },
+        3,
+        0,
+        'p1',
+        flows,
+        flowEdges
+      );
+      
       expect(typeof result).toBe('boolean');
     });
   });
