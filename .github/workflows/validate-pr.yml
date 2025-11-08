@@ -30,6 +30,11 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run test:coverage -- --coverage.thresholds.lines=100 --coverage.thresholds.branches=95 --coverage.thresholds.functions=95 --coverage.thresholds.statements=95
       
+      - name: Install fonts for consistent rendering
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-liberation fonts-noto-core
+      
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       
