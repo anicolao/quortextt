@@ -186,7 +186,7 @@ async function getStartButtonCoordinates(page: any) {
 test.describe('Complete 2-Player Game with Mouse Clicks', () => {
   // Test configuration constants
   const DETERMINISTIC_SEED = 999; // Seed for reproducible tile shuffle
-  const MAX_MOVES_LIMIT = 33; // Limit to avoid the bug at move 34
+  const MAX_MOVES_LIMIT = 50; // Safety limit
   const SCREENSHOT_DIR = 'tests/e2e/user-stories/006-complete-game-mouse';
 
   test('should play through a full game using only mouse clicks', async ({ page }) => {
@@ -294,58 +294,10 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     const allPositions = generatePositions();
     let positionIndex = 0;
+    let useReverseOrder = false;
     
-    while (!gameEnded && moveNumber < MAX_MOVES_LIMIT) {
-      
-      state = await getReduxState(page);
-      const currentTile = state.game.currentTile;
-      
-      if (currentTile === null) {
-        console.log('No more tiles to draw - deck exhausted');
-        break;
-      }
-      
-      // Check if game already ended after drawing
-      if (state.game.phase === 'finished') {
-        console.log('🎉 Game ended after drawing tile!');
-        console.log('  Winner:', state.game.winner);
-        console.log('  Win type:', state.game.winType);
-        
-        gameEnded = true;
-        moveNumber++;
-        
-        await takeScreenshot('victory-final');
-        
-        break;
-      }
-      
-      // Find next valid position
-      let position = null;
-      let rotation = 0;
-      
-      while (positionIndex < allPositions.length) {
-        const testPos = allPositions[positionIndex];
-        const posKey = `${testPos.row},${testPos.col}`;
-        
-        if (!state.game.board?.[posKey]) {
-          position = testPos;
-          rotation = (moveNumber + 1) % 6;
-          positionIndex++;
-          break;
-        }
-        positionIndex++;
-      }
-      
-      if (!position) {
-        console.log('No valid positions - board is full');
-        break;
-      }
-      
-      console.log(`\n=== Move ${moveNumber + 1}: Placing tile at (${position.row}, ${position.col}) with rotation ${rotation} ===`);
-      
-      // Take screenshot before placement
-      await takeScreenshot(`before-move-${moveNumber + 1}`);
-      
+    // Helper function to attempt placing a tile at a position with a specific rotation
+    const attemptPlacement = async (position: { row: number; col: number }, rotation: number) => {
       // Step 1: Rotate the tile to desired rotation using mouse clicks
       state = await getReduxState(page);
       let currentRotation = state.ui.currentRotation;
@@ -400,10 +352,131 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`  After checkmark click - phase: ${state.game.phase}, screen: ${state.game.screen}`);
       console.log(`  Selected position: ${state.ui.selectedPosition ? `(${state.ui.selectedPosition.row}, ${state.ui.selectedPosition.col})` : 'null'}`);
       
+      // Check if tile was actually committed (if not, the move was illegal/blocked)
+      const tileKey = `${position.row},${position.col}`;
+      const placedTile = state.game.board?.[tileKey];
+      
+      return {
+        success: placedTile !== undefined,
+        gameEnded: state.game.phase === 'finished'
+      };
+    };
+    
+    while (!gameEnded && moveNumber < MAX_MOVES_LIMIT) {
+      
+      state = await getReduxState(page);
+      const currentTile = state.game.currentTile;
+      
+      if (currentTile === null) {
+        console.log('No more tiles to draw - deck exhausted');
+        break;
+      }
+      
+      // Check if game already ended after drawing
+      if (state.game.phase === 'finished') {
+        console.log('🎉 Game ended after drawing tile!');
+        console.log('  Winner:', state.game.winner);
+        console.log('  Win type:', state.game.winType);
+        
+        gameEnded = true;
+        moveNumber++;
+        
+        await takeScreenshot('victory-final');
+        
+        break;
+      }
+      
+      // Find next valid position
+      let position = null;
+      let rotation = 0;
+      
+      // Try positions in order (forward or reverse based on flag)
+      if (useReverseOrder) {
+        // Search from the end backwards
+        for (let i = allPositions.length - 1; i >= 0; i--) {
+          const testPos = allPositions[i];
+          const posKey = `${testPos.row},${testPos.col}`;
+          
+          if (!state.game.board?.[posKey]) {
+            position = testPos;
+            rotation = (moveNumber + 1) % 6;
+            break;
+          }
+        }
+      } else {
+        // Search from current position forward
+        for (let i = positionIndex; i < allPositions.length; i++) {
+          const testPos = allPositions[i];
+          const posKey = `${testPos.row},${testPos.col}`;
+          
+          if (!state.game.board?.[posKey]) {
+            position = testPos;
+            rotation = (moveNumber + 1) % 6;
+            positionIndex = i + 1;
+            break;
+          }
+        }
+      }
+      
+      if (!position) {
+        console.log('No valid positions - board is full');
+        break;
+      }
+      
+      console.log(`\n=== Move ${moveNumber + 1}: Placing tile at (${position.row}, ${position.col}) with rotation ${rotation} ===`);
+      
+      // Take screenshot before placement
+      await takeScreenshot(`before-move-${moveNumber + 1}`);
+      
+      // Try to place the tile, with retry logic if blocked
+      let placementResult = await attemptPlacement(position, rotation);
+      
+      // If placement failed (player is blocked), try all rotations
+      if (!placementResult.success && !placementResult.gameEnded) {
+        console.log(`  ⚠️  Placement blocked at rotation ${rotation}, trying all rotations...`);
+        
+        let foundValidRotation = false;
+        for (let tryRotation = 0; tryRotation < 6; tryRotation++) {
+          if (tryRotation === rotation) continue; // Already tried this one
+          
+          console.log(`  Trying rotation ${tryRotation}...`);
+          
+          // Cancel current placement by clicking X button
+          const xCoords = await getConfirmationButtonCoords(page, position, 'x');
+          await page.mouse.click(box.x + xCoords.x, box.y + xCoords.y);
+          await page.waitForTimeout(300);
+          
+          placementResult = await attemptPlacement(position, tryRotation);
+          
+          if (placementResult.success || placementResult.gameEnded) {
+            console.log(`  ✓ Success with rotation ${tryRotation}!`);
+            rotation = tryRotation;
+            foundValidRotation = true;
+            break;
+          }
+        }
+        
+        // If still blocked after trying all rotations, try reverse order positions
+        if (!foundValidRotation && !placementResult.gameEnded) {
+          console.log(`  ⚠️  All rotations blocked, switching to reverse position order...`);
+          useReverseOrder = true;
+          
+          // Cancel current placement
+          const xCoords = await getConfirmationButtonCoords(page, position, 'x');
+          await page.mouse.click(box.x + xCoords.x, box.y + xCoords.y);
+          await page.waitForTimeout(300);
+          
+          // Continue to next iteration to try a different position
+          continue;
+        }
+      }
+      
+      // Update state after successful placement
+      state = await getReduxState(page);
       moveNumber++;
       
       // Check if game ended after placement (victory might have occurred)
-      if (state.game.phase === 'finished') {
+      if (placementResult.gameEnded || state.game.phase === 'finished') {
         console.log('🎉 Game ended with victory after clicking checkmark!');
         console.log('  Winner:', state.game.winner);
         console.log('  Win type:', state.game.winType);
