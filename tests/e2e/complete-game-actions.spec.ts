@@ -1,6 +1,7 @@
-// Generic E2E test that replays a game from .actions file and validates flows
 import { test, expect } from '@playwright/test';
 import { getReduxState, pauseAnimations } from './helpers';
+import { traceFlow } from '../../src/game/flows';
+import { getEdgePositionsWithDirections, positionToKey } from '../../src/game/board';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -152,11 +153,6 @@ async function testCompleteGameFromActions(page: any, seed: string) {
     // Wait for next frame to ensure rendering is complete
     await waitForNextFrame(page);
     
-    // For PLACE_TILE actions, wait an extra frame for flow recalculation
-    if (action.type === 'PLACE_TILE') {
-      await waitForNextFrame(page);
-    }
-    
     // Take screenshot for every action
     const filename = String(screenshotCounter).padStart(3, '0') + `-${action.type.toLowerCase()}.png`;
     await page.screenshot({ 
@@ -169,123 +165,117 @@ async function testCompleteGameFromActions(page: any, seed: string) {
     if (expectations && (action.type === 'NEXT_PLAYER' || i === actions.length - 1)) {
       moveCounter++;
       
-      // Wait for state to be updated
-      await waitForNextFrame(page);
-      await waitForNextFrame(page);
-      
       // Find expectations for this move
       const expectation = expectations.movePrefixes.find(e => e.move === moveCounter);
       
       if (expectation) {
         console.log(`  Validating flows for move ${moveCounter}...`);
         
-        // Get current state
+        // Get board and player data from Redux state
         const state = await getReduxState(page);
+        const players = state.game.players;
         
-        // Extract ordered flows from state by tracing from each player's edge
-        // This logic should match complete-game-flows.test.ts
-        const actualP1Flows: string[][] = [];
-        const actualP2Flows: string[][] = [];
-        
-        // Get player IDs
-        const players = state.game?.players || [];
-        if (players.length >= 2) {
-          const player1 = players[0];
-          const player2 = players[1];
-          
-          // Trace flows for each player from their edge positions
-          // We need to extract flow sequences from flowEdges
-          const flowEdges = state.game?.flowEdges || {};
-          
-          // Build flows by tracing from edge positions
-          // For now, extract all flow edges for each player and group them into ordered sequences
-          for (const [posKey, edges] of Object.entries(flowEdges)) {
-            if (typeof edges === 'object' && edges !== null) {
-              for (const [edgeStr, owner] of Object.entries(edges)) {
-                const flowEdge = `${posKey}:${edgeStr}`;
-                
-                if (owner === player1.id) {
-                  // Find or create flow sequence containing this edge
-                  let found = false;
-                  for (const flow of actualP1Flows) {
-                    if (flow.includes(flowEdge)) {
-                      found = true;
-                      break;
-                    }
-                  }
-                  if (!found) {
-                    // This is a simplification - we're not properly tracing flows here
-                    // But the browser state should have properly traced flows already
-                  }
-                } else if (owner === player2.id) {
-                  // Same for player 2
-                }
-              }
-            }
-          }
-          
-          // Actually, we need to get the flows from the state's flow data structure
-          // The state should have player.flows or similar that contains traced flows
-          // Let me check what the state structure actually contains
-          
-          console.log(`  State structure: players=${players.length}, flowEdges keys=${Object.keys(flowEdges).length}`);
-          
-          // For now, extract all flow edges for validation
-          const actualP1EdgeSet = new Set<string>();
-          const actualP2EdgeSet = new Set<string>();
-          
-          for (const [posKey, edges] of Object.entries(flowEdges)) {
-            if (typeof edges === 'object' && edges !== null) {
-              for (const [edgeStr, owner] of Object.entries(edges)) {
-                const flowEdge = `${posKey}:${edgeStr}`;
-                if (owner === player1.id) {
-                  actualP1EdgeSet.add(flowEdge);
-                } else if (owner === player2.id) {
-                  actualP2EdgeSet.add(flowEdge);
-                }
-              }
-            }
-          }
-          
-          // Build expected edge sets from prefixes
-          const expectedP1EdgeSet = new Set<string>();
-          const expectedP2EdgeSet = new Set<string>();
-          
-          for (const [flowIdxStr, prefixLength] of Object.entries(expectation.p1)) {
-            const flowIdx = Number(flowIdxStr);
-            if (expectations.p1Flows[flowIdx]) {
-              const prefix = expectations.p1Flows[flowIdx].slice(0, prefixLength);
-              prefix.forEach(edge => expectedP1EdgeSet.add(edge));
-            }
-          }
-          
-          for (const [flowIdxStr, prefixLength] of Object.entries(expectation.p2)) {
-            const flowIdx = Number(flowIdxStr);
-            if (expectations.p2Flows[flowIdx]) {
-              const prefix = expectations.p2Flows[flowIdx].slice(0, prefixLength);
-              prefix.forEach(edge => expectedP2EdgeSet.add(edge));
-            }
-          }
-          
-          // Compare: expected edges should be subset of actual edges
-          // (actual may have more if flows extend beyond the prefix)
-          const p1Missing = [...expectedP1EdgeSet].filter(e => !actualP1EdgeSet.has(e));
-          const p2Missing = [...expectedP2EdgeSet].filter(e => !actualP2EdgeSet.has(e));
-          
-          if (p1Missing.length > 0 || p2Missing.length > 0) {
-            console.error(`  ❌ Flow mismatch at move ${moveCounter}:`);
-            console.error(`    Expected P1: ${expectedP1EdgeSet.size} edges, Actual: ${actualP1EdgeSet.size} edges`);
-            console.error(`    Expected P2: ${expectedP2EdgeSet.size} edges, Actual: ${actualP2EdgeSet.size} edges`);
-            if (p1Missing.length > 0) console.error(`    P1 missing: ${p1Missing.slice(0, 10).join(' ')}${p1Missing.length > 10 ? '...' : ''}`);
-            if (p2Missing.length > 0) console.error(`    P2 missing: ${p2Missing.slice(0, 10).join(' ')}${p2Missing.length > 10 ? '...' : ''}`);
-          } else {
-            console.log(`  ✓ All expected flows present (P1: ${expectedP1EdgeSet.size}/${actualP1EdgeSet.size} edges, P2: ${expectedP2EdgeSet.size}/${actualP2EdgeSet.size} edges)`);
-          }
-          
-          // Assert expected edges are present (subset check)
-          expect(p1Missing.length, `P1 missing expected flow edges at move ${moveCounter}: ${p1Missing.join(' ')}`).toBe(0);
-          expect(p2Missing.length, `P2 missing expected flow edges at move ${moveCounter}: ${p2Missing.join(' ')}`).toBe(0);
+        if (!players || players.length < 2) {
+          throw new Error('Not enough players');
         }
+        
+        const player1 = players[0];
+        const player2 = players[1];
+        
+        // Convert board from serialized object back to Map
+        const board = new Map();
+        for (const [key, value] of Object.entries(state.game.board || {})) {
+          board.set(key, value);
+        }
+        
+        // Trace flows for each player (matching unit test approach)
+        const actualP1Flows: Array<Array<{pos: string, dir: number}>> = [];
+        const actualP2Flows: Array<Array<{pos: string, dir: number}>> = [];
+        
+        for (const player of players) {
+          const edgeData = getEdgePositionsWithDirections(player.edgePosition);
+          
+          for (const { pos, dir } of edgeData) {
+            const posKey = positionToKey(pos);
+            const tile = board.get(posKey);
+            
+            if (!tile) {
+              continue;
+            }
+            
+            const { edges } = traceFlow(board, pos, dir, player.id);
+            
+            if (edges.length > 0) {
+              const flowEdges = edges.map(e => ({
+                pos: e.position,
+                dir: e.direction
+              }));
+              
+              if (player.id === player1.id) {
+                actualP1Flows.push(flowEdges);
+              } else {
+                actualP2Flows.push(flowEdges);
+              }
+            }
+          }
+        }
+        
+        // Validate ordered flow sequences match expected prefixes (matching unit test)
+        for (const [flowIdxStr, prefixLength] of Object.entries(expectation.p1)) {
+          const flowIdx = Number(flowIdxStr);
+          
+          if (!actualP1Flows[flowIdx]) {
+            throw new Error(`Move ${moveCounter}: P1 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
+          }
+          
+          if (actualP1Flows[flowIdx].length < prefixLength) {
+            throw new Error(`Move ${moveCounter}: P1 flow ${flowIdx} has ${actualP1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+          }
+          
+          // Validate the prefix matches
+          const actualPrefix = actualP1Flows[flowIdx].slice(0, prefixLength);
+          const expectedPrefix = expectations.p1Flows[flowIdx].slice(0, prefixLength);
+          
+          for (let i = 0; i < prefixLength; i++) {
+            const actual = actualPrefix[i];
+            const expected = expectedPrefix[i];
+            const [expectedPos, expectedDirStr] = expected.split(':');
+            const expectedDir = parseInt(expectedDirStr);
+            
+            if (actual.pos !== expectedPos || actual.dir !== expectedDir) {
+              throw new Error(`Move ${moveCounter}: P1 flow ${flowIdx} edge ${i} mismatch: expected ${expectedPos}:${expectedDir}, got ${actual.pos}:${actual.dir}`);
+            }
+          }
+        }
+        
+        for (const [flowIdxStr, prefixLength] of Object.entries(expectation.p2)) {
+          const flowIdx = Number(flowIdxStr);
+          
+          if (!actualP2Flows[flowIdx]) {
+            throw new Error(`Move ${moveCounter}: P2 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
+          }
+          
+          if (actualP2Flows[flowIdx].length < prefixLength) {
+            throw new Error(`Move ${moveCounter}: P2 flow ${flowIdx} has ${actualP2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+          }
+          
+          // Validate the prefix matches
+          const actualPrefix = actualP2Flows[flowIdx].slice(0, prefixLength);
+          const expectedPrefix = expectations.p2Flows[flowIdx].slice(0, prefixLength);
+          
+          for (let i = 0; i < prefixLength; i++) {
+            const actual = actualPrefix[i];
+            const expected = expectedPrefix[i];
+            const [expectedPos, expectedDirStr] = expected.split(':');
+            const expectedDir = parseInt(expectedDirStr);
+            
+            if (actual.pos !== expectedPos || actual.dir !== expectedDir) {
+              throw new Error(`Move ${moveCounter}: P2 flow ${flowIdx} edge ${i} mismatch: expected ${expectedPos}:${expectedDir}, got ${actual.pos}:${actual.dir}`);
+            }
+          }
+        }
+        
+        console.log(`  ✓ Flow validation passed for move ${moveCounter}`);
       }
     }
   }
@@ -308,11 +298,7 @@ async function testCompleteGameFromActions(page: any, seed: string) {
 }
 
 test.describe('Complete Game from Actions - Seed 888', () => {
-  // Note: Flow propagation is comprehensively tested in:
-  // - Unit tests (tests/game/flows.test.ts) with 100% coverage
-  // - E2E test (complete-game.spec.ts) validates flows work end-to-end
-  // This detailed flow validation test is skipped as it's redundant and fragile
-  test.skip('should replay game from 888.actions file', async ({ page }) => {
+  test('should replay game from 888.actions file', async ({ page }) => {
     // Time the test to set appropriate timeout
     const startTime = Date.now();
     await testCompleteGameFromActions(page, '888');
@@ -326,11 +312,7 @@ test.describe('Complete Game from Actions - Seed 888', () => {
 });
 
 test.describe('Complete Game from Actions - Seed 999', () => {
-  // Note: Flow propagation is comprehensively tested in:
-  // - Unit tests (tests/game/flows.test.ts) with 100% coverage
-  // - E2E test (complete-game.spec.ts) validates flows work end-to-end
-  // This detailed flow validation test is skipped as it's redundant and fragile
-  test.skip('should replay game from 999.actions file', async ({ page }) => {
+  test('should replay game from 999.actions file', async ({ page }) => {
     // Time the test to set appropriate timeout
     const startTime = Date.now();
     await testCompleteGameFromActions(page, '999');
