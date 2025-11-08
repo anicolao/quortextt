@@ -28,7 +28,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'START_GAME' });
   });
   
-  await page.waitForTimeout(100);
+  await waitForNextFrame(page);
   
   // Complete seating phase
   await completeSeatingPhase(page, canvas, box);
@@ -40,7 +40,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'DRAW_TILE' });
   });
   
-  await page.waitForTimeout(100);
+  await waitForNextFrame(page);
 }
 
 test.describe('Flow Propagation from Player Edges', () => {
@@ -75,7 +75,7 @@ test.describe('Flow Propagation from Player Edges', () => {
       });
     });
     
-    await page.waitForTimeout(500);
+    await waitForNextFrame(page);
     state = await getReduxState(page);
     
     // Screenshot showing tile without flows (grey, not colored)
