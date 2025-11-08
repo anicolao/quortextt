@@ -18,8 +18,8 @@ test.describe('Victory Animation', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'ADD_PLAYER' });
       
-      // Start the game
-      store.dispatch({ type: 'START_GAME' });
+      // Start the game with deterministic seed
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
     await page.waitForTimeout(300);
@@ -103,8 +103,8 @@ test.describe('Victory Animation', () => {
         store.dispatch({ type: 'ADD_PLAYER' });
       }
       
-      // Start the game
-      store.dispatch({ type: 'START_GAME' });
+      // Start the game with deterministic seed
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
     await page.waitForTimeout(300);

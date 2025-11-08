@@ -44,22 +44,21 @@ test.describe('Complete 2-Player Game', () => {
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
     
-    await page.evaluate(() => {
+    await page.evaluate((seed) => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'START_GAME' });
-    });
+      store.dispatch({ type: 'START_GAME', payload: { seed } });
+    }, DETERMINISTIC_SEED);
     
     await page.waitForTimeout(100);
     
-    // Complete seating phase
+    // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
     
-    // Shuffle with deterministic seed and draw a tile
-    await page.evaluate((seed) => {
+    // Draw a tile
+    await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed } });
       store.dispatch({ type: 'DRAW_TILE' });
-    }, DETERMINISTIC_SEED);
+    });
     
     await page.waitForTimeout(100);
     

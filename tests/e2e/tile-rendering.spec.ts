@@ -74,15 +74,16 @@ test.describe('Tile Rendering Tests', () => {
         // Start game with specific tile distribution (all tiles of one type)
         await page.evaluate(() => {
           const store = (window as any).__REDUX_STORE__;
-          store.dispatch({ type: 'START_GAME' });
+          store.dispatch({ type: 'START_GAME', payload: { seed: 42 } });
         });
         
         await page.waitForTimeout(100);
         
-        // Complete seating phase
+        // Complete seating phase (tiles will be automatically shuffled with the seed)
         await completeSeatingPhase(page, canvas, box);
         
-        // Shuffle with custom distribution and draw first tile
+        // Reshuffle with custom distribution
+        // We need to use SHUFFLE_TILES here because we're changing the tile distribution
         await page.evaluate(({ distribution }) => {
           const store = (window as any).__REDUX_STORE__;
           store.dispatch({ 
