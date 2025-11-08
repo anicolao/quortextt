@@ -3,6 +3,17 @@
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
+// Wait for next animation frame to ensure rendering is complete
+async function waitForNextFrame(page: any) {
+  await page.evaluate(() => {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+  });
+}
+
 // Helper to setup a game with two players
 async function setupTwoPlayerGame(page: any) {
   
