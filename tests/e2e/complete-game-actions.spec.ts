@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { getReduxState, pauseAnimations } from './helpers';
-import { traceFlow } from '../../src/game/flows';
-import { getEdgePositionsWithDirections, positionToKey } from '../../src/game/board';
+import { getFlowExit } from '../../src/game/tiles';
+import { getEdgePositionsWithDirections, positionToKey, keyToPosition, getNeighborInDirection, getOppositeDirection } from '../../src/game/board';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -182,39 +182,66 @@ async function testCompleteGameFromActions(page: any, seed: string) {
         const player1 = players[0];
         const player2 = players[1];
         
-        // Convert board from serialized object back to Map
-        const board = new Map();
-        for (const [key, value] of Object.entries(state.game.board || {})) {
-          board.set(key, value);
-        }
+        // Get flowEdges directly from Redux state (no manual tracing needed)
+        // flowEdges is stored as a nested object: { position: { direction: playerId } }
+        const flowEdgesObj = state.game.flowEdges || {};
         
-        // Trace flows for each player (matching unit test approach)
+        // Organize flows by player and starting edge
         const actualP1Flows: Array<Array<{pos: string, dir: number}>> = [];
         const actualP2Flows: Array<Array<{pos: string, dir: number}>> = [];
         
+        // For each player, collect all edges that belong to them, organized by starting edge
         for (const player of players) {
           const edgeData = getEdgePositionsWithDirections(player.edgePosition);
           
-          for (const { pos, dir } of edgeData) {
-            const posKey = positionToKey(pos);
-            const tile = board.get(posKey);
+          // For each potential starting edge of this player
+          for (const { pos: startPos, dir: startDir } of edgeData) {
+            const startPosKey = positionToKey(startPos);
+            const flowEdgesList: Array<{pos: string, dir: number}> = [];
             
-            if (!tile) {
-              continue;
+            // Collect all edges for this flow
+            // Since we now use unidirectional flows, we need to trace through the board
+            // starting from the edge position
+            const visited = new Set<string>();
+            let currentPos = startPosKey;
+            let currentDir = startDir;
+            
+            while (true) {
+              const key = `${currentPos}:${currentDir}`;
+              if (visited.has(key)) break;
+              visited.add(key);
+              
+              const posEdges = flowEdgesObj[currentPos];
+              if (!posEdges || posEdges[currentDir] !== player.id) {
+                break;
+              }
+              
+              flowEdgesList.push({ pos: currentPos, dir: currentDir });
+              
+              // Find the next position by getting the tile and following the flow
+              const board = state.game.board || {};
+              const tile = board[currentPos];
+              if (!tile) break;
+              
+              // Find exit direction
+              const exitDir = getFlowExit(tile, currentDir);
+              if (exitDir === null) break;
+              
+              // Move to next hex
+              const currentPosObj = keyToPosition(currentPos);
+              const nextPos = getNeighborInDirection(currentPosObj, exitDir);
+              const nextPosKey = positionToKey(nextPos);
+              
+              // Next entry is opposite of exit
+              currentPos = nextPosKey;
+              currentDir = getOppositeDirection(exitDir);
             }
             
-            const { edges } = traceFlow(board, pos, dir, player.id);
-            
-            if (edges.length > 0) {
-              const flowEdges = edges.map(e => ({
-                pos: e.position,
-                dir: e.direction
-              }));
-              
+            if (flowEdgesList.length > 0) {
               if (player.id === player1.id) {
-                actualP1Flows.push(flowEdges);
+                actualP1Flows.push(flowEdgesList);
               } else {
-                actualP2Flows.push(flowEdges);
+                actualP2Flows.push(flowEdgesList);
               }
             }
           }
