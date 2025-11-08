@@ -206,21 +206,20 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(state.game.configPlayers[0].color).toBe('#CC78BC'); // Purple
     expect(state.game.configPlayers[1].color).toBe('#CA5127'); // Red
     
-    // Start the game
+    // Start the game with deterministic seed (transitions to seating)
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'START_GAME' });
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
     await waitForNextFrame(page);
     
-    // Complete seating phase
+    // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
     
-    // Shuffle with deterministic seed and draw a tile
+    // Draw a tile
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 12345 } });
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
@@ -300,6 +299,7 @@ test.describe('Gameplay Screen Rendering', () => {
     });
     
     // STEP 5: Move to next player
+    const initialPlayerIndex = state.game.currentPlayerIndex;
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'NEXT_PLAYER' });
@@ -316,8 +316,9 @@ test.describe('Gameplay Screen Rendering', () => {
     await waitForNextFrame(page);
     
     state = await getReduxState(page);
-    // Verify we moved to next player (should be player index 1)
-    expect(state.game.currentPlayerIndex).toBe(1);
+    // Verify we moved to next player (index should have changed)
+    expect(state.game.currentPlayerIndex).not.toBe(initialPlayerIndex);
+    expect(state.game.currentPlayerIndex).toBe((initialPlayerIndex + 1) % 2);
     expect(state.game.currentTile).toBeDefined();
     
     await pauseAnimations(page);
