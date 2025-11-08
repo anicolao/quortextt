@@ -345,8 +345,8 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     console.log(`Move ${moveCount + 1}: ${preferredMoves.length} preferred moves (adjacent to flows) out of ${legalMoves.length} legal moves`);
     
-    // Choose a random move from preferred moves
-    const move = preferredMoves[rng.nextInt(preferredMoves.length)];
+    // Choose the first move from preferred moves (deterministic after sorting)
+    const move = preferredMoves[0];
     
     // Place the tile
     actions.push({
