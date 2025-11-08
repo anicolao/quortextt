@@ -103,7 +103,7 @@ export function calculateNewFlowPaths(
 
       if (actualPlayerFlow) {
         // Find the first segment (connection) that doesn't exist in the actual flow
-        // A segment exists if BOTH directions have the player's flow at that position
+        // With one-way flows, only the entry direction is recorded, so check if EITHER direction has flow
         for (let i = 0; i < previewSegments.length; i++) {
           const segment = previewSegments[i];
           const actualEdges = actualFlows.flowEdges.get(segment.position);
@@ -115,12 +115,12 @@ export function calculateNewFlowPaths(
           }
           
           // Check if THIS SPECIFIC CONNECTION (dir1<->dir2) exists in actual flow
-          // We need BOTH directions to have the player's flow for this segment to exist
+          // With one-way flows, only ONE direction will have the player's flow (the entry direction)
           const hasDir1 = actualEdges?.get(segment.direction1) === player.id;
           const hasDir2 = actualEdges?.get(segment.direction2) === player.id;
           
-          // If either direction doesn't have the player's flow, this segment is new
-          if (!hasDir1 || !hasDir2) {
+          // If NEITHER direction has the player's flow, this segment is new
+          if (!hasDir1 && !hasDir2) {
             firstNewSegmentIndex = i;
             break;
           }

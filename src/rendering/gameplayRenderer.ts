@@ -665,10 +665,10 @@ export class GameplayRenderer {
 
     connections.forEach(([dir1, dir2]) => {
       // Only draw grey if this connection doesn't have filled flow
-      const hasFlow =
-        tileFlowEdges &&
-        tileFlowEdges.get(dir1) === tileFlowEdges.get(dir2) &&
-        tileFlowEdges.get(dir1) !== undefined;
+      // With one-way flows, only the entry direction is recorded, so check if EITHER direction has a player
+      const player1 = tileFlowEdges?.get(dir1);
+      const player2 = tileFlowEdges?.get(dir2);
+      const hasFlow = player1 !== undefined || player2 !== undefined;
 
       if (!hasFlow) {
         this.drawFlowConnection(center, dir1, dir2, "#888888", 1.0, false);
@@ -730,18 +730,22 @@ export class GameplayRenderer {
           const player1 = tileFlowEdges.get(dir1);
           const player2 = tileFlowEdges.get(dir2);
 
-          if (player1 && player1 === player2) {
-            const player = state.game.players.find((p) => p.id === player1);
+          // With one-way flows, only the entry direction is recorded
+          // So check if EITHER direction has a player ID
+          const playerId = player1 || player2;
+          
+          if (playerId) {
+            const player = state.game.players.find((p) => p.id === playerId);
             if (player) {
               // Check if this specific connection is part of the winning path
               const shouldGlow =
                 isGameOver &&
-                winnerIds.includes(player1) &&
+                winnerIds.includes(playerId) &&
                 isConnectionInWinningPath(
                   tile.position,
                   dir1 as Direction,
                   dir2 as Direction,
-                  player1,
+                  playerId,
                   state.game.flows,
                   state.game.flowEdges,
                   state.game.boardRadius,
