@@ -324,6 +324,12 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
       break;
     }
     
+    // Check we have a tile to place
+    if (state.currentTile === null) {
+      // No more tiles
+      break;
+    }
+    
     // Check if game ended
     if (state.phase === 'finished') {
       break;
