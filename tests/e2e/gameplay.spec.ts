@@ -2,6 +2,17 @@
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
 
+// Helper to wait for next animation frame (ensures Redux state updates are complete)
+async function waitForNextFrame(page: any) {
+  await page.evaluate(() => {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+  });
+}
+
 // Helper to setup a game with Purple and Red players (matching end of 001-player-configuration)
 async function setupTwoPlayerGame(page: any) {
   await page.goto('/');
@@ -21,7 +32,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CA5127', edge: 1 } });
   });
   
-  await page.waitForTimeout(100);
+  await waitForNextFrame(page);
   
   // Start the game (transitions to seating)
   await page.evaluate(() => {
@@ -29,7 +40,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'START_GAME' });
   });
   
-  await page.waitForTimeout(100);
+  await waitForNextFrame(page);
   
   // Complete seating phase
   await completeSeatingPhase(page, canvas, box);
@@ -41,7 +52,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'DRAW_TILE' });
   });
   
-  await page.waitForTimeout(100);
+  await waitForNextFrame(page);
 }
 
 test.describe('Gameplay Screen Rendering', () => {
@@ -189,7 +200,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CA5127', edge: 1 } });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     // Verify we have Purple and Red players
     let state = await getReduxState(page);
@@ -202,7 +213,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'START_GAME' });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     // Complete seating phase
     await completeSeatingPhase(page, canvas, box);
@@ -214,7 +225,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -236,7 +247,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: { row: 0, col: 0 } });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.selectedPosition).toEqual({ row: 0, col: 0 });
@@ -253,7 +264,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_ROTATION', payload: 2 }); // Rotate to position 2
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.currentRotation).toBe(2);
@@ -270,7 +281,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'PLACE_TILE', payload: { position: { row: 0, col: 0 }, rotation: 2 } });
     });
     
-    await page.waitForTimeout(200);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.board['0,0']).toBeDefined();
@@ -281,7 +292,7 @@ test.describe('Gameplay Screen Rendering', () => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
     });
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     await pauseAnimations(page);
     await page.screenshot({ 
@@ -295,7 +306,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'NEXT_PLAYER' });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     // Draw tile for next player
     await page.evaluate(() => {
@@ -303,7 +314,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     // Verify we moved to next player (should be player index 1)
@@ -323,7 +334,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: { row: 1, col: 0 } });
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.selectedPosition).toEqual({ row: 1, col: 0 });
@@ -340,7 +351,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_ROTATION', payload: 4 }); // Rotate to position 4
     });
     
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.currentRotation).toBe(4);
@@ -357,7 +368,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'PLACE_TILE', payload: { position: { row: 1, col: 0 }, rotation: 4 } });
     });
     
-    await page.waitForTimeout(200);
+    await waitForNextFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.board['1,0']).toBeDefined();
@@ -368,7 +379,7 @@ test.describe('Gameplay Screen Rendering', () => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
     });
-    await page.waitForTimeout(100);
+    await waitForNextFrame(page);
     
     await pauseAnimations(page);
     await page.screenshot({ 
