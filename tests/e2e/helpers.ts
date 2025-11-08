@@ -93,8 +93,29 @@ export async function pauseAnimations(page: any) {
     const store = (window as any).__REDUX_STORE__;
     store.dispatch({ type: 'PAUSE_ANIMATIONS' });
   });
-  // Wait a bit for animations to stop
-  await page.waitForTimeout(100);
+  // Wait for multiple animation frames to ensure rendering is complete
+  await page.evaluate(() => {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+          });
+        });
+      });
+    });
+  });
+  // Force a canvas rendering flush by reading canvas data
+  await page.evaluate(() => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Reading pixel data forces the canvas to flush any pending operations
+      ctx.getImageData(0, 0, 1, 1);
+    }
+  });
+  // Additional wait to ensure everything is settled
+  await page.waitForTimeout(300);
 }
 
 /**

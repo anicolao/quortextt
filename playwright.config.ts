@@ -17,11 +17,21 @@ export default defineConfig({
       name: 'chromium',
       use: { 
         ...devices['Desktop Chrome'],
+        deviceScaleFactor: 1,
         launchOptions: {
           args: [
             '--font-render-hinting=none',
             '--disable-font-subpixel-positioning',
             '--disable-lcd-text',
+            '--disable-skia-runtime-opts',
+            '--disable-system-font-check',
+            '--disable-features=FontAccess',
+            '--force-device-scale-factor=1',
+            '--disable-accelerated-2d-canvas',
+            '--disable-gpu',
+            '--use-gl=swiftshader',
+            '--disable-smooth-scrolling',
+            '--disable-partial-raster',
           ],
         },
       },
