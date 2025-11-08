@@ -28,14 +28,7 @@ describe('Game Generator', () => {
     expect(shuffleAction).toBeDefined();
   });
   
-  it.skip('should generate the same game for the same seed', () => {
-    // TODO: This test is currently disabled due to non-determinism in hasViablePath BFS traversal
-    // The issue appears to be related to Map/Set iteration order when building the adjacency graph
-    // from different board states. Even with sorted neighbors in BFS and reset player IDs, the
-    // path finding can return different (but equally valid) paths, leading to different scores
-    // and thus different tile placements. This needs further investigation.
-    // 
-    // Note: The tile placement strategy IS working correctly - this is purely a test determinism issue.
+  it('should generate the same game for the same seed', () => {
     
     // Reset player ID counter to ensure deterministic player IDs
     resetPlayerIdCounter();

@@ -6,35 +6,63 @@
 {"type":"wait","delay":200,"description":"Wait for edge selection"}
 {"type":"click","target":"edge-hex","x":400,"y":582.3529411764706,"description":"Select edge 3 for player P2"}
 {"type":"wait","delay":200,"description":"Wait for edge selection"}
+{"type":"click","target":"hex-position","x":308.3031925404712,"y":141.17647058823528,"description":"Click hex at (-3, 0)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":378.89142783458885,"y":141.17647058823528,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":277.7375900539616,"y":405.88235294117646,"description":"Click hex at (2, -3)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":348.3258253480792,"y":405.88235294117646,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
+{"type":"click","target":"hex-position","x":369.4343975134904,"y":141.17647058823528,"description":"Click hex at (-3, 1)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":440.02263280760803,"y":141.17647058823528,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":338.8687950269808,"y":405.88235294117646,"description":"Click hex at (2, -2)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":409.4570303210985,"y":405.88235294117646,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":338.8687950269808,"y":194.11764705882354,"description":"Click hex at (-2, 0)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
 {"type":"click","target":"checkmark","x":409.4570303210985,"y":194.11764705882354,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":430.5656024865096,"y":458.82352941176475,"description":"Click hex at (3, -1)"}
+{"type":"click","target":"hex-position","x":400,"y":405.88235294117646,"description":"Click hex at (2, -1)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":501.1538377806272,"y":458.82352941176475,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":470.5882352941177,"y":405.88235294117646,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":369.4343975134904,"y":247.05882352941177,"description":"Click hex at (-1, 0)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":440.02263280760803,"y":247.05882352941177,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":461.1312049730192,"y":405.88235294117646,"description":"Click hex at (2, 0)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":531.7194402671369,"y":405.88235294117646,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 4)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":461.1312049730192,"y":194.11764705882354,"description":"Click hex at (-2, 2)"}
+{"type":"click","target":"hex-position","x":338.8687950269808,"y":300,"description":"Click hex at (0, -1)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":531.7194402671369,"y":194.11764705882354,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":409.4570303210985,"y":300,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":522.2624099460384,"y":405.88235294117646,"description":"Click hex at (2, 1)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":592.850645240156,"y":405.88235294117646,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":400,"y":300,"description":"Click hex at (0, 0)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":470.5882352941177,"y":300,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":308.3031925404712,"y":458.82352941176475,"description":"Click hex at (3, -3)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":378.89142783458885,"y":458.82352941176475,"description":"Click checkmark to confirm"}
+{"type":"wait","delay":400,"description":"Wait for confirmation"}
+{"type":"click","target":"hex-position","x":369.4343975134904,"y":352.94117647058823,"description":"Click hex at (1, -1)"}
+{"type":"wait","delay":300,"description":"Wait for tile placement"}
+{"type":"click","target":"checkmark","x":440.02263280760803,"y":352.94117647058823,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
 {"type":"click","target":"hex-position","x":369.4343975134904,"y":458.82352941176475,"description":"Click hex at (3, -2)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
@@ -42,65 +70,7 @@
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
 {"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":369.4343975134904,"y":141.17647058823528,"description":"Click hex at (-3, 1)"}
+{"type":"click","target":"hex-position","x":430.5656024865096,"y":352.94117647058823,"description":"Click hex at (1, 0)"}
 {"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":440.02263280760803,"y":141.17647058823528,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"hex-position","x":308.3031925404712,"y":458.82352941176475,"description":"Click hex at (3, -3)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":378.89142783458885,"y":458.82352941176475,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":308.3031925404712,"y":141.17647058823528,"description":"Click hex at (-3, 0)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":378.89142783458885,"y":141.17647058823528,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"hex-position","x":400,"y":405.88235294117646,"description":"Click hex at (2, -1)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":470.5882352941177,"y":405.88235294117646,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":308.3031925404712,"y":247.05882352941177,"description":"Click hex at (-1, -1)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":378.89142783458885,"y":247.05882352941177,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":338.8687950269808,"y":405.88235294117646,"description":"Click hex at (2, -2)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":409.4570303210985,"y":405.88235294117646,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":277.7375900539616,"y":300,"description":"Click hex at (0, -2)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":348.3258253480792,"y":300,"description":"Click checkmark to confirm"}
-{"type":"wait","delay":400,"description":"Wait for confirmation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 1)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 2)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 3)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 4)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":421.1764705882353,"y":300,"description":"Rotate tile (rotation 5)"}
-{"type":"wait","delay":200,"description":"Wait for rotation"}
-{"type":"click","target":"hex-position","x":308.3031925404712,"y":352.94117647058823,"description":"Click hex at (1, -2)"}
-{"type":"wait","delay":300,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":378.89142783458885,"y":352.94117647058823,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":501.1538377806272,"y":352.94117647058823,"description":"Click checkmark to confirm"}
 {"type":"wait","delay":400,"description":"Wait for confirmation"}
