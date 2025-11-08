@@ -48,6 +48,9 @@ export interface GameState {
   configPlayers: ConfigPlayer[];
   boardRadius: number;  // Board size (default 3 for 37 tiles)
   
+  // Random seed for deterministic behavior
+  seed?: number;  // Optional seed for tile shuffling and seating order
+  
   // Seating phase
   seatingPhase: SeatingPhaseState;
   

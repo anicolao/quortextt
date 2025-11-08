@@ -262,6 +262,7 @@ export function gameReducer(
         screen: 'seating',
         phase: 'seating',
         boardRadius: action.payload?.boardRadius ?? state.boardRadius,
+        seed, // Store seed for later use when shuffling tiles
         seatingPhase: {
           active: true,
           seatingOrder,
@@ -397,10 +398,10 @@ export function gameReducer(
         
         // Initialize the game
         // Use existing availableTiles if already shuffled (e.g., from SHUFFLE_TILES action)
-        // Otherwise create a new shuffled deck
+        // Otherwise create a new shuffled deck using the stored seed from START_GAME
         const availableTiles = state.availableTiles.length > 0 
           ? state.availableTiles 
-          : createShuffledDeck();
+          : createShuffledDeck(state.seed);
         const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
         const remainingTiles = availableTiles.slice(1);
         

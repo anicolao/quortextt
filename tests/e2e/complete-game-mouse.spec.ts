@@ -236,9 +236,13 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     expect(state.game.configPlayers.length).toBe(2);
     
     // === STEP 3: Start the game ===
-    // Click the Start button
-    const startCoords = await getStartButtonCoordinates(page);
-    await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
+    // Inject seed before starting for deterministic behavior
+    await page.evaluate((seed) => {
+      const store = (window as any).__REDUX_STORE__;
+      // Dispatch START_GAME with seed instead of clicking button
+      store.dispatch({ type: 'START_GAME', payload: { seed } });
+    }, DETERMINISTIC_SEED);
+    
     await page.waitForTimeout(200);
     
     // We should now be in seating phase - need to select edges
@@ -250,12 +254,11 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     const { completeSeatingPhase } = await import('./helpers');
     await completeSeatingPhase(page, canvas, box);
     
-    // Shuffle with deterministic seed and draw a tile
-    await page.evaluate((seed) => {
+    // Draw a tile
+    await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed } });
       store.dispatch({ type: 'DRAW_TILE' });
-    }, DETERMINISTIC_SEED);
+    });
     
     await page.waitForTimeout(200);
     

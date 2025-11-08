@@ -25,18 +25,17 @@ async function setupTwoPlayerGame(page: any) {
     const store = (window as any).__REDUX_STORE__;
     store.dispatch({ type: 'ADD_PLAYER' });
     store.dispatch({ type: 'ADD_PLAYER' });
-    store.dispatch({ type: 'START_GAME' });
+    store.dispatch({ type: 'START_GAME', payload: { seed: 42 } });
   });
   
   await waitForNextFrame(page);
   
-  // Complete seating phase
+  // Complete seating phase (tiles will be automatically shuffled with the seed)
   await completeSeatingPhase(page, canvas, box);
   
-  // Shuffle with deterministic seed and draw a tile
+  // Draw a tile
   await page.evaluate(() => {
     const store = (window as any).__REDUX_STORE__;
-    store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 42 } });
     store.dispatch({ type: 'DRAW_TILE' });
   });
   

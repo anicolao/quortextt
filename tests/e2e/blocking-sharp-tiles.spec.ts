@@ -28,15 +28,16 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
     
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
-      store.dispatch({ type: 'START_GAME' });
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
     await page.waitForTimeout(100);
     
-    // Complete seating phase
+    // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
     
-    // Shuffle with only three-sharp tiles (40 tiles, all type 3)
+    // Reshuffle with only three-sharp tiles (40 tiles, all type 3)
+    // We need to use SHUFFLE_TILES here because we're changing the tile distribution
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ 
