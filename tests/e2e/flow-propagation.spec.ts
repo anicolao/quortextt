@@ -101,23 +101,40 @@ test.describe('Flow Propagation from Player Edges', () => {
       throw new Error('Expected at least 2 players after game start');
     }
     
-    // Position (-3, 2) is on edge 4 (top-left edge for radius-3 board)
-    // Find which player has edge 4
-    const playerWithEdge4 = state.game.players.find((p: any) => p.edgePosition === 4);
-    const otherPlayer = state.game.players.find((p: any) => p.edgePosition !== 4);
-    if (!playerWithEdge4 || !otherPlayer) {
-      throw new Error('Could not find players with expected edge positions');
+    const player1AfterReload = state.game.players[0];
+    const player2AfterReload = state.game.players[1];
+    
+    // For a radius-3 hexagonal board, find a position on player 1's edge
+    // Edge positions as defined in board.ts:
+    // 0: NorthWest (row = -3), 1: NorthEast (col = 3), 2: East (row + col = 3),
+    // 3: SouthEast (row = 3), 4: SouthWest, 5: West
+    // Use mid-edge positions to avoid corners that belong to multiple edges
+    const edgeToPosition: { [key: number]: { row: number; col: number } } = {
+      0: { row: -3, col: 1 },  // NorthWest edge (mid-position, not corner)
+      1: { row: -2, col: 3 },  // NorthEast edge (mid-position, not corner)
+      2: { row: 1, col: 2 },   // East edge (mid-position, not corner)
+      3: { row: 3, col: 1 },   // SouthEast edge (mid-position, not corner)
+      4: { row: 2, col: -2 },  // SouthWest edge (mid-position, not corner)
+      5: { row: 1, col: -3 },  // West edge (mid-position, not corner)
+    };
+    
+    const positionOnPlayer1Edge = edgeToPosition[player1AfterReload.edgePosition];
+    if (!positionOnPlayer1Edge) {
+      throw new Error(`Unsupported edge position: ${player1AfterReload.edgePosition}`);
     }
     
-    // Place tile ON player's edge (row=-3) at position (-3, 2)
-    // At this position, the hex is on edge 4
-    await page.evaluate(() => {
+    console.log(`  - Testing with player 1 at edge ${player1AfterReload.edgePosition}`);
+    console.log(`  - Will place tile at position (${positionOnPlayer1Edge.row}, ${positionOnPlayer1Edge.col})`);
+    const posKey = `${positionOnPlayer1Edge.row},${positionOnPlayer1Edge.col}`;
+    
+    // Place tile ON player 1's edge
+    await page.evaluate((pos) => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ 
         type: 'PLACE_TILE', 
-        payload: { position: { row: -3, col: 2 }, rotation: 0 } 
+        payload: { position: pos, rotation: 0 } 
       });
-    });
+    }, positionOnPlayer1Edge);
     
     // Wait for state to be updated after tile placement
     await waitForNextFrame(page);
@@ -132,19 +149,23 @@ test.describe('Flow Propagation from Player Edges', () => {
       fullPage: false
     });
     
-    // Verify the player with edge 4 has flows
-    const playerWithEdge4Flows = state.game.flows[playerWithEdge4.id];
-    expect(playerWithEdge4Flows?.length || 0).toBeGreaterThan(0);
-    expect(playerWithEdge4Flows?.includes('-3,2')).toBe(true);
+    // Verify player 1 has flows
+    player1Flows = state.game.flows[player1AfterReload.id];
+    console.log(`  - Player 1 edge: ${player1AfterReload.edgePosition}`);
+    console.log(`  - Position used: ${posKey}`);
+    console.log(`  - Player 1 flows: ${player1Flows?.length || 0} positions`);
+    if (player1Flows && player1Flows.length > 0) {
+      console.log(`  - Flow positions: ${player1Flows.join(', ')}`);
+    }
+    expect(player1Flows?.length || 0).toBeGreaterThan(0);
+    expect(player1Flows?.includes(posKey)).toBe(true);
     
-    // Verify the other player has no flows (tile is not near their edge)
-    const otherPlayerFlows = state.game.flows[otherPlayer.id];
-    expect(otherPlayerFlows?.length || 0).toBe(0);
+    // Verify player 2 has no flows (tile is not near their edge)
+    const player2Flows = state.game.flows[player2AfterReload.id];
+    expect(player2Flows?.length || 0).toBe(0);
     
     console.log('✓ Flow propagation test passed');
-    console.log('  - Player with edge 4:', playerWithEdge4.id, 'has flows');
-    console.log('  - Tile placed at (-3, 2) with flow connections');
-    console.log('  - Player 1 flows:', player1Flows?.length || 0, 'positions');
-    console.log('  - Player 2 flows:', player2Flows?.length || 0, 'positions');
+    console.log(`  - Player 1 (edge ${player1AfterReload.edgePosition}): has flows at ${posKey}`);
+    console.log('  - Player 2: no flows (tile not on their edge)');
   });
 });
