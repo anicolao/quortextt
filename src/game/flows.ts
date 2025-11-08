@@ -52,15 +52,12 @@ export function traceFlow(
     // Add this position to the flow only if there's a valid flow connection
     flowPositions.add(posKey);
 
-    // Record that this player's flow enters and exits through these edges
+    // Record only the entry (forward) direction for this player's flow
+    // This prevents conflicts when two players' flows pass through the same position
+    // in opposite directions - each records their own entry direction
     flowEdges.push({
       position: posKey,
       direction: entryDir,
-      playerId,
-    });
-    flowEdges.push({
-      position: posKey,
-      direction: exitDir,
       playerId,
     });
 
