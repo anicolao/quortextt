@@ -396,7 +396,11 @@ export function gameReducer(
         const currentPlayerIndex = updatedPlayers.findIndex(p => p.id === startingPlayerId);
         
         // Initialize the game
-        const availableTiles = createShuffledDeck();
+        // Use existing availableTiles if already shuffled (e.g., from SHUFFLE_TILES action)
+        // Otherwise create a new shuffled deck
+        const availableTiles = state.availableTiles.length > 0 
+          ? state.availableTiles 
+          : createShuffledDeck();
         const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
         const remainingTiles = availableTiles.slice(1);
         
