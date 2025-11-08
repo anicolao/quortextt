@@ -164,6 +164,9 @@ async function testCompleteGameFromActions(page: any, seed: string) {
     if (expectations && (action.type === 'NEXT_PLAYER' || i === actions.length - 1)) {
       moveCounter++;
       
+      // Wait for state to be updated
+      await waitForNextFrame(page);
+      
       // Find expectations for this move
       const expectation = expectations.movePrefixes.find(e => e.move === moveCounter);
       

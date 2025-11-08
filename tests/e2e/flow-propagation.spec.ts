@@ -103,7 +103,10 @@ test.describe('Flow Propagation from Player Edges', () => {
       });
     });
     
-    await page.waitForTimeout(500);
+    // Wait for state to be updated after tile placement
+    await waitForNextFrame(page);
+    await waitForNextFrame(page);
+    
     state = await getReduxState(page);
     
     // Screenshot showing tile WITH colored flows (blue for player 1)
