@@ -115,8 +115,11 @@ function findFlowAdjacentMoves(
   const currentPlayer = state.players[state.currentPlayerIndex];
   const playerFlows = state.flows.get(currentPlayer.id);
   
+  // Define moves to consider based on whether we have flows
+  let movesToConsider: Array<{ position: HexPosition; rotation: Rotation }>;
+  
   if (!playerFlows || playerFlows.size === 0) {
-    // No flows yet, choose a position adjacent to the player's starting edge
+    // No flows yet, consider moves adjacent to the player's starting edge
     const edgePositions = getEdgePositions(currentPlayer.edgePosition, 3);
     const adjacentToEdge = legalMoves.filter(move => {
       return edgePositions.some(edgePos => {
@@ -136,22 +139,19 @@ function findFlowAdjacentMoves(
       });
     });
     
-    return adjacentToEdge.length > 0 ? adjacentToEdge : legalMoves;
-  }
-  
-  // Find legal moves adjacent to positions where we have flows
-  const adjacentMoves = legalMoves.filter(move => {
-    const directions: Direction[] = [0, 1, 2, 3, 4, 5];
-    return directions.some(dir => {
-      const neighbor = getNeighborInDirection(move.position, dir);
-      const neighborKey = positionToKey(neighbor);
-      return playerFlows.has(neighborKey);
+    movesToConsider = adjacentToEdge.length > 0 ? adjacentToEdge : legalMoves;
+  } else {
+    // Find legal moves adjacent to positions where we have flows
+    const adjacentMoves = legalMoves.filter(move => {
+      const directions: Direction[] = [0, 1, 2, 3, 4, 5];
+      return directions.some(dir => {
+        const neighbor = getNeighborInDirection(move.position, dir);
+        const neighborKey = positionToKey(neighbor);
+        return playerFlows.has(neighborKey);
+      });
     });
-  });
-  
-  if (adjacentMoves.length === 0) {
-    // No adjacent moves, fall back to all legal moves
-    return legalMoves;
+    
+    movesToConsider = adjacentMoves.length > 0 ? adjacentMoves : legalMoves;
   }
   
   // Score each move by testing with hasViablePath
@@ -163,7 +163,7 @@ function findFlowAdjacentMoves(
   
   const scoredMoves: ScoredMove[] = [];
   
-  for (const move of adjacentMoves) {
+  for (const move of movesToConsider) {
     if (state.currentTile === null) continue;
     
     // Create a simulated board with this move placed
