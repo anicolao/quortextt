@@ -527,8 +527,9 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     if (gameEnded) {
       expect(state.game.phase).toBe('finished');
-      expect(state.game.winner).toBeDefined();
-      console.log(`  - Winner: ${state.game.winner}`);
+      expect(state.game.winners).toBeDefined();
+      expect(state.game.winners.length).toBeGreaterThan(0);
+      console.log(`  - Winners: ${state.game.winners.join(', ')}`);
       console.log(`  - Victory type: ${state.game.winType}`);
     } else {
       expect(state.game.phase).toBe('playing');
