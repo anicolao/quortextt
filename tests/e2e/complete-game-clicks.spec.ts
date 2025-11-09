@@ -94,3 +94,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
 test('Complete game from clicks - seed 888', async ({ page }) => {
   await testCompleteGameFromClicks(page, '888');
 });
+
+test('Complete game from clicks - seed 999', async ({ page }) => {
+  await testCompleteGameFromClicks(page, '999');
+});
