@@ -20,6 +20,15 @@ interface MoveExpectation {
   totalTiles: number;
 }
 
+/**
+ * Tile placement info from actions file
+ */
+interface TilePlacementInfo {
+  moveNumber: number;
+  position: { row: number; col: number };
+  rotation: number;
+}
+
 function parseExpectationsFile(filepath: string): MoveExpectation[] {
   const content = fs.readFileSync(filepath, 'utf-8');
   const lines = content.split('\n');
@@ -70,6 +79,33 @@ function parseExpectationsFile(filepath: string): MoveExpectation[] {
 }
 
 /**
+ * Load tile placement info from actions file
+ */
+function loadTilePlacements(actionsFilepath: string): TilePlacementInfo[] {
+  const content = fs.readFileSync(actionsFilepath, 'utf-8');
+  const actions = content
+    .split('\n')
+    .filter(line => line.trim())
+    .map(line => JSON.parse(line));
+  
+  const placements: TilePlacementInfo[] = [];
+  let moveNumber = 0;
+  
+  for (const action of actions) {
+    if (action.type === 'PLACE_TILE') {
+      moveNumber++;
+      placements.push({
+        moveNumber,
+        position: action.payload.position,
+        rotation: action.payload.rotation
+      });
+    }
+  }
+  
+  return placements;
+}
+
+/**
  * Count actual flows and their lengths from game state
  */
 function countFlows(state: any): { p1Flows: Record<number, number>, p2Flows: Record<number, number> } {
@@ -110,19 +146,23 @@ function countFlows(state: any): { p1Flows: Record<number, number>, p2Flows: Rec
 // This test replays a game from .clicks file (actual mouse clicks)
 async function testCompleteGameFromClicks(page: any, seed: string) {
   const clicksFile = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/${seed}.clicks`);
+  const actionsFile = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/${seed}.actions`);
   const expectationsFile = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/${seed}.expectations`);
   const screenshotDir = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/screenshots`);
   
   // Create screenshot directory
   fs.mkdirSync(screenshotDir, { recursive: true });
   
-  // Load clicks and expectations
+  // Load clicks, actions, and expectations
   const content = fs.readFileSync(clicksFile, 'utf-8');
   const clicks = loadClicksFromFile(content);
   console.log(`Loaded ${clicks.length} clicks for seed ${seed}`);
   
   const expectations = parseExpectationsFile(expectationsFile);
   console.log(`Loaded ${expectations.length} move expectations`);
+  
+  const expectedPlacements = loadTilePlacements(actionsFile);
+  console.log(`Loaded ${expectedPlacements.length} expected tile placements`);
   
   // Navigate to the game
   await page.goto('/');
@@ -233,6 +273,33 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         const boardSize = state.game.board ? Object.keys(state.game.board).length : 0;
         
         console.log(`  After move ${tilesPlaced}: ${boardSize} tiles on board`);
+        
+        // Validate tile type and rotation against expected placement
+        if (tilesPlaced <= expectedPlacements.length) {
+          const expectedPlacement = expectedPlacements[tilesPlaced - 1];
+          const posKey = `${expectedPlacement.position.row},${expectedPlacement.position.col}`;
+          
+          if (state.game.board && state.game.board[posKey]) {
+            const placedTile = state.game.board[posKey];
+            const actualRotation = placedTile.rotation;
+            const actualTileType = placedTile.type;
+            
+            // Validate rotation
+            if (actualRotation !== expectedPlacement.rotation) {
+              console.log(`  ❌ Move ${tilesPlaced}: Rotation mismatch at ${posKey}`);
+              console.log(`     Expected rotation: ${expectedPlacement.rotation}, Actual: ${actualRotation}`);
+              throw new Error(`Move ${tilesPlaced}: Expected rotation ${expectedPlacement.rotation} but got ${actualRotation}`);
+            } else {
+              console.log(`  ✓ Move ${tilesPlaced}: Rotation ${actualRotation} matches expected`);
+            }
+            
+            // Log tile type (we can't predict exact type, but it's deterministic with seed)
+            console.log(`  ✓ Move ${tilesPlaced}: Tile type ${actualTileType} at ${posKey}`);
+          } else {
+            console.log(`  ❌ Move ${tilesPlaced}: Tile not found at expected position ${posKey}`);
+            throw new Error(`Move ${tilesPlaced}: Expected tile at ${posKey} but not found`);
+          }
+        }
         
         // Validate against expectations
         if (currentMoveExpectation < expectations.length) {
