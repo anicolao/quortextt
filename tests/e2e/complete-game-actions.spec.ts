@@ -157,6 +157,17 @@ async function testCompleteGameFromActions(page: any, seed: string) {
       store.dispatch(act);
     }, action);
     
+    // Log deck after SHUFFLE_TILES
+    if (action.type === 'SHUFFLE_TILES') {
+      const state = await page.evaluate(() => {
+        const store = (window as any).__REDUX_STORE__;
+        return store.getState().game;
+      });
+      console.log(`[005 Test] After SHUFFLE_TILES:`);
+      console.log(`  - First 5 tiles: ${state.availableTiles.slice(0, 5).map((t: number) => `type=${t}`).join(', ')}`);
+      console.log(`  - Seed: ${state.seed}`);
+    }
+    
     // Wait for next frame to ensure rendering is complete
     await waitForNextFrame(page);
     

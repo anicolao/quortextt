@@ -306,17 +306,10 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
   }
   
   // At this point, seating is complete and we're in gameplay mode
-  // The game has already drawn the first tile from the seeded deck
+  // The SELECT_EDGE transition has already drawn the first tile from the seeded deck
+  // so we don't need to call DRAW_TILE here
   
-  // Step 5: Draw initial tile (already seeded from SHUFFLE_TILES before edge selection)
-  actions.push({ type: 'DRAW_TILE' });
-  state = gameReducer(state, actions[actions.length - 1]);
-  
-  if (state.currentTile === null) {
-    throw new Error(`No current tile after DRAW_TILE - availableTiles: ${state.availableTiles.length}`);
-  }
-  
-  // Step 6: Play the game
+  // Step 5: Play the game
   let moveCount = 0;
   const movePrefixes: MovePrefix[] = [];
   
