@@ -1,7 +1,7 @@
 // End-to-end test for tile rendering - visualize all tile types in all rotations
 // This test helps verify that tile rendering matches the logical model
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase } from './helpers';
+import { getReduxState, completeSeatingPhase, waitForAnimationFrame } from './helpers';
 
 test.describe('Tile Rendering Tests', () => {
   // TileType enum values (must match src/game/types.ts)
@@ -64,7 +64,7 @@ test.describe('Tile Rendering Tests', () => {
           store.dispatch({ type: 'RETURN_TO_CONFIG' });
         });
         
-        await page.waitForTimeout(100);
+        await waitForAnimationFrame(page);
         
         // Get canvas for seating
         const canvas = page.locator('canvas#game-canvas');
@@ -77,7 +77,7 @@ test.describe('Tile Rendering Tests', () => {
           store.dispatch({ type: 'START_GAME', payload: { seed: 42 } });
         });
         
-        await page.waitForTimeout(100);
+        await waitForAnimationFrame(page);
         
         // Complete seating phase (tiles will be automatically shuffled with the seed)
         await completeSeatingPhase(page, canvas, box);
@@ -96,7 +96,7 @@ test.describe('Tile Rendering Tests', () => {
           store.dispatch({ type: 'DRAW_TILE' });
         }, { distribution: tileType.distribution });
         
-        await page.waitForTimeout(100);
+        await waitForAnimationFrame(page);
         
         // Place the tile at center position for visibility
         await page.evaluate(({ rotation }) => {
@@ -107,7 +107,7 @@ test.describe('Tile Rendering Tests', () => {
           });
         }, { rotation });
         
-        await page.waitForTimeout(500);
+        await waitForAnimationFrame(page);
         
         // Pause animations to prevent canvas from being redrawn
         await page.evaluate(() => {
@@ -115,7 +115,7 @@ test.describe('Tile Rendering Tests', () => {
           store.dispatch({ type: 'PAUSE_ANIMATIONS' });
         });
         
-        await page.waitForTimeout(100);
+        await waitForAnimationFrame(page);
         
         // Add edge labels using canvas text overlay
         await page.evaluate(({ directionNames, tileTypeName, rotation, connections }) => {
@@ -173,7 +173,7 @@ test.describe('Tile Rendering Tests', () => {
           connections: getRotatedConnections(tileType.name, rotation)
         });
         
-        await page.waitForTimeout(300);
+        await waitForAnimationFrame(page);
         
         // Take screenshot
         const filename = `tests/e2e/user-stories/006-tile-rendering/${tileType.name.toLowerCase()}-rotation-${rotation}.png`;

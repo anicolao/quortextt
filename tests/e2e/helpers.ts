@@ -20,6 +20,18 @@ export async function getReduxState(page: any) {
 }
 
 /**
+ * Wait for the next animation frame
+ * This is sufficient for redux state changes since redux is synchronous
+ */
+export async function waitForAnimationFrame(page: any) {
+  await page.evaluate(() => {
+    return new Promise(resolve => {
+      requestAnimationFrame(resolve);
+    });
+  });
+}
+
+/**
  * Helper to get edge button coordinates for seating phase
  * @param page - Playwright page object
  * @param edgeNumber - Edge number (0-5)
@@ -77,11 +89,11 @@ export async function completeSeatingPhase(page: any, canvas: any, box: any) {
     // Select edge i for player i (simple strategy)
     const coords = await getSeatingEdgeButtonCoordinates(page, i);
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
   }
   
-  // Wait for transition to gameplay
-  await page.waitForTimeout(200);
+  // Wait for transition to gameplay - redux is synchronous, one frame is enough
+  await waitForAnimationFrame(page);
 }
 
 /**
@@ -114,8 +126,7 @@ export async function pauseAnimations(page: any) {
       ctx.getImageData(0, 0, 1, 1);
     }
   });
-  // Additional wait to ensure everything is settled
-  await page.waitForTimeout(300);
+  // Redux is synchronous, animation frames above are sufficient
 }
 
 /**
@@ -137,7 +148,7 @@ export async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'ADD_PLAYER' });
   });
   
-  await page.waitForTimeout(100);
+  await waitForAnimationFrame(page);
   
   // Start the game with deterministic seed (transitions to seating)
   await page.evaluate(() => {
@@ -145,7 +156,7 @@ export async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
   });
   
-  await page.waitForTimeout(100);
+  await waitForAnimationFrame(page);
   
   // Complete seating phase (tiles will be automatically shuffled with the seed)
   await completeSeatingPhase(page, canvas, box);
@@ -156,5 +167,5 @@ export async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'DRAW_TILE' });
   });
   
-  await page.waitForTimeout(100);
+  await waitForAnimationFrame(page);
 }

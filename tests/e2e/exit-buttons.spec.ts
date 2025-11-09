@@ -1,6 +1,6 @@
 // End-to-end tests for the exit buttons in gameplay screen
 import { test, expect } from '@playwright/test';
-import { getReduxState, setupTwoPlayerGame } from './helpers';
+import { getReduxState, setupTwoPlayerGame, waitForAnimationFrame } from './helpers';
 
 // Exit button dimensions (from gameplayRenderer.ts)
 const EXIT_BUTTON_SIZE = 50;
@@ -26,7 +26,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
       position: { x: EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset - back in configuration with no players
     state = await getReduxState(page);
@@ -54,7 +54,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
       position: { x: box.width - EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset
     state = await getReduxState(page);
@@ -80,7 +80,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
       position: { x: EXIT_BUTTON_CLICK_OFFSET, y: box.height - EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset
     state = await getReduxState(page);
@@ -106,7 +106,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
       position: { x: box.width - EXIT_BUTTON_CLICK_OFFSET, y: box.height - EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset
     state = await getReduxState(page);
@@ -133,7 +133,7 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
     await canvas.click({
       position: { x: EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify complete reset
     state = await getReduxState(page);
@@ -148,14 +148,14 @@ test.describe('Exit Buttons in Gameplay Screen', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
       store.dispatch({ type: 'ADD_PLAYER' });
     });
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Start the second game
     await page.evaluate(() => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'START_GAME' });
     });
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify seating phase has correct number of players
     state = await getReduxState(page);
@@ -193,7 +193,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       });
     }, winnerId);
     
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     // Verify we're on the game-over screen
     state = await getReduxState(page);
@@ -205,7 +205,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       position: { x: EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset - back in configuration with no players
     state = await getReduxState(page);
@@ -240,7 +240,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       });
     }, winnerId);
     
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     // Verify we're on the game-over screen
     state = await getReduxState(page);
@@ -251,7 +251,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       position: { x: box.width - EXIT_BUTTON_CLICK_OFFSET, y: EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset
     state = await getReduxState(page);
@@ -284,7 +284,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       });
     }, winnerId);
     
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     // Verify we're on the game-over screen
     state = await getReduxState(page);
@@ -295,7 +295,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       position: { x: EXIT_BUTTON_CLICK_OFFSET, y: box.height - EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset
     state = await getReduxState(page);
@@ -328,7 +328,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       });
     }, winnerId);
     
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     // Verify we're on the game-over screen
     state = await getReduxState(page);
@@ -339,7 +339,7 @@ test.describe('Exit Buttons in Victory Screen', () => {
       position: { x: box.width - EXIT_BUTTON_CLICK_OFFSET, y: box.height - EXIT_BUTTON_CLICK_OFFSET }
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify game is completely reset
     state = await getReduxState(page);

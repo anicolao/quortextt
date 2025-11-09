@@ -1,7 +1,7 @@
 // E2E test for blocking detection with three-sharp tiles
 // Tests that blocking moves are properly prevented in the UI
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
 
 test.describe('Blocking Detection with Three-Sharp Tiles', () => {
   // Note: Blocking detection is comprehensively tested in unit tests
@@ -19,7 +19,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
     });
     
-    await page.waitForTimeout(300);
+    await waitForAnimationFrame(page);
     
     // Start the game
     const canvas = page.locator('canvas#game-canvas');
@@ -31,7 +31,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
       store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
@@ -50,7 +50,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     let state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -98,7 +98,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
         });
       }, pos);
       
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
       
       // Try to place the tile by dispatching PLACE_TILE action
       // The reducer will check legality and only place if legal
@@ -143,7 +143,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
         console.log(`Could not place tile at (${pos.row}, ${pos.col}) - checking if this is expected blocking...`);
       }
       
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     // Get final state
@@ -166,7 +166,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
       });
     }, lastPos);
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Check if this move is considered legal (it should be ILLEGAL)
     // Try to place the tile and see if the board size increases

@@ -1,7 +1,7 @@
 // E2E test for victory animation
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
 
 test.describe('Victory Animation', () => {
   test('should display animated victory modals in all corners with pulsing flow', async ({ page }) => {
@@ -22,7 +22,7 @@ test.describe('Victory Animation', () => {
       store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
-    await page.waitForTimeout(300);
+    await waitForAnimationFrame(page);
     
     // Complete seating phase
     const canvas = page.locator('canvas#game-canvas');
@@ -31,7 +31,7 @@ test.describe('Victory Animation', () => {
     
     await completeSeatingPhase(page, canvas, box);
     
-    await page.waitForTimeout(300);
+    await waitForAnimationFrame(page);
     
     // Get current state to determine winner
     let state = await getReduxState(page);
@@ -52,7 +52,7 @@ test.describe('Victory Animation', () => {
     }, winnerId);
     
     // Wait for the game over screen to appear
-    await page.waitForTimeout(500);
+    await waitForAnimationFrame(page);
     
     // Verify we're on the game-over screen
     state = await getReduxState(page);
@@ -62,7 +62,7 @@ test.describe('Victory Animation', () => {
     console.log(`Winners: ${state.game.winners}, Win type: ${state.game.winType}`);
     
     // Wait for initial animation to start (modal fade-in)
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     // Take a screenshot during early animation
     await pauseAnimations(page);
@@ -72,7 +72,7 @@ test.describe('Victory Animation', () => {
     });
     
     // Wait for modal to fully appear
-    await page.waitForTimeout(500);
+    await waitForAnimationFrame(page);
     await pauseAnimations(page);
     await page.screenshot({ 
       path: '/tmp/victory-animation-modal.png',
@@ -80,7 +80,7 @@ test.describe('Victory Animation', () => {
     });
     
     // Wait for pulse animation
-    await page.waitForTimeout(2000);
+    await waitForAnimationFrame(page);
     await pauseAnimations(page);
     await page.screenshot({ 
       path: '/tmp/victory-animation-pulse.png',
@@ -107,7 +107,7 @@ test.describe('Victory Animation', () => {
       store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
-    await page.waitForTimeout(300);
+    await waitForAnimationFrame(page);
     
     // Complete seating phase
     const canvas = page.locator('canvas#game-canvas');
@@ -116,7 +116,7 @@ test.describe('Victory Animation', () => {
     
     await completeSeatingPhase(page, canvas, box);
     
-    await page.waitForTimeout(300);
+    await waitForAnimationFrame(page);
     
     // Get team information and trigger victory
     let state = await getReduxState(page);
@@ -137,7 +137,7 @@ test.describe('Victory Animation', () => {
       });
     }, winners);
     
-    await page.waitForTimeout(1000);
+    await waitForAnimationFrame(page);
     
     // Verify game over
     state = await getReduxState(page);
