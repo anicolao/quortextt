@@ -1,6 +1,6 @@
 // E2E test demonstrating correct multi-tile flow propagation with screenshots
 import { test } from '@playwright/test';
-import { completeSeatingPhase , pauseAnimations } from './helpers';
+import { completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
 
 test.describe('Multi-Tile Flow Progression', () => {
   test('should generate screenshots showing correct flow behavior', async ({ page }) => {
@@ -20,7 +20,7 @@ test.describe('Multi-Tile Flow Progression', () => {
       store.dispatch({ type: 'START_GAME', payload: { seed: 167 } });
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
@@ -31,7 +31,7 @@ test.describe('Multi-Tile Flow Progression', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(500);
+    await waitForAnimationFrame(page);
     
     // === STEP 0: Initial state ===
     await pauseAnimations(page);
@@ -51,7 +51,7 @@ test.describe('Multi-Tile Flow Progression', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(1000);
+    await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
     await page.screenshot({ 
@@ -70,7 +70,7 @@ test.describe('Multi-Tile Flow Progression', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(1000);
+    await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
     await page.screenshot({ 
@@ -89,7 +89,7 @@ test.describe('Multi-Tile Flow Progression', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(1000);
+    await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
     await page.screenshot({ 

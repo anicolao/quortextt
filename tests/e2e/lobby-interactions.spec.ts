@@ -2,7 +2,7 @@
 // Tests the rotated player labels and remove button functionality
 
 import { test, expect } from '@playwright/test';
-import { getReduxState , pauseAnimations } from './helpers';
+import { getReduxState , pauseAnimations, waitForAnimationFrame } from './helpers';
 
 // Helper to get edge button coordinates
 async function getEdgeButtonCoordinates(page: any, colorIndex: number, edge: 0 | 1 | 2 | 3) {
@@ -175,7 +175,7 @@ test.describe('Lobby Mouse Interactions', () => {
       if (!coords) throw new Error(`Button coordinates not found for ${player.name} edge`);
       
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     // Verify all 4 players were added
@@ -202,7 +202,7 @@ test.describe('Lobby Mouse Interactions', () => {
     const coords = await getEdgeButtonCoordinates(page, 0, 0); // Blue from bottom
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
@@ -216,7 +216,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify player was removed
     state = await getReduxState(page);
@@ -236,7 +236,7 @@ test.describe('Lobby Mouse Interactions', () => {
     const coords = await getEdgeButtonCoordinates(page, 0, 1); // Blue from right
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
@@ -251,7 +251,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify player was removed
     state = await getReduxState(page);
@@ -267,7 +267,7 @@ test.describe('Lobby Mouse Interactions', () => {
     const coords = await getEdgeButtonCoordinates(page, 0, 2); // Blue from top
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
@@ -282,7 +282,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify player was removed
     state = await getReduxState(page);
@@ -298,7 +298,7 @@ test.describe('Lobby Mouse Interactions', () => {
     const coords = await getEdgeButtonCoordinates(page, 0, 3); // Blue from left
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     let state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
@@ -313,7 +313,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify player was removed
     state = await getReduxState(page);
@@ -337,7 +337,7 @@ test.describe('Lobby Mouse Interactions', () => {
       const coords = await getEdgeButtonCoordinates(page, player.colorIndex, player.edge);
       if (!coords) continue;
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     let state = await getReduxState(page);
@@ -351,7 +351,7 @@ test.describe('Lobby Mouse Interactions', () => {
     let removeCoords = await getRemoveButtonCoordinates(page, 1);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
@@ -364,7 +364,7 @@ test.describe('Lobby Mouse Interactions', () => {
     removeCoords = await getRemoveButtonCoordinates(page, 1);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
@@ -385,7 +385,7 @@ test.describe('Lobby Mouse Interactions', () => {
     // Reload page to ensure canvas is properly sized for portrait
     await page.reload();
     await page.waitForSelector('canvas#game-canvas');
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
@@ -405,7 +405,7 @@ test.describe('Lobby Mouse Interactions', () => {
       const coords = await getEdgeButtonCoordinates(page, player.colorIndex, player.edge);
       if (!coords) continue;
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     let state = await getReduxState(page);
@@ -420,7 +420,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify player was removed
     state = await getReduxState(page);
@@ -439,7 +439,7 @@ test.describe('Lobby Mouse Interactions', () => {
     // Reload page to ensure canvas is properly sized for portrait
     await page.reload();
     await page.waitForSelector('canvas#game-canvas');
-    await page.waitForTimeout(200);
+    await waitForAnimationFrame(page);
     
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
@@ -456,7 +456,7 @@ test.describe('Lobby Mouse Interactions', () => {
       const coords = await getEdgeButtonCoordinates(page, player.colorIndex, player.edge);
       if (!coords) continue;
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     let state = await getReduxState(page);
@@ -471,7 +471,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found for right edge player');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
@@ -486,7 +486,7 @@ test.describe('Lobby Mouse Interactions', () => {
     if (!removeCoords) throw new Error('Remove button not found for left edge player');
     
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(0);

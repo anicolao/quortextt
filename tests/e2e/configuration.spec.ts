@@ -1,7 +1,7 @@
 // End-to-end tests for the game configuration screen (redesigned edge-based lobby)
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame } from './helpers';
 
 // Helper to get edge button coordinates for the new lobby
 // colorIndex: 0=blue, 1=orange, 2=green, 3=yellow, 4=purple, 5=red
@@ -103,7 +103,7 @@ test.describe('Configuration Screen', () => {
     if (!coords) throw new Error('Button coordinates not found');
     
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify a player was added
     const state = await getReduxState(page);
@@ -132,7 +132,7 @@ test.describe('Configuration Screen', () => {
       const coords = await getEdgeButtonCoordinates(page, player.colorIndex, player.edge);
       if (!coords) throw new Error('Button coordinates not found');
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     // Verify 3 players were added
@@ -156,7 +156,7 @@ test.describe('Configuration Screen', () => {
       const coords = await getEdgeButtonCoordinates(page, i, 0);
       if (coords) {
         await page.mouse.click(box.x + coords.x, box.y + coords.y);
-        await page.waitForTimeout(50);
+        await waitForAnimationFrame(page);
       }
     }
     
@@ -185,7 +185,7 @@ test.describe('Configuration Screen', () => {
       const coords = await getEdgeButtonCoordinates(page, player.colorIndex, player.edge);
       if (!coords) continue;
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     let state = await getReduxState(page);
@@ -245,7 +245,7 @@ test.describe('Configuration Screen', () => {
     });
     
     await page.mouse.click(box.x + removeButtonCoords.x, box.y + removeButtonCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify one player was removed (3 remaining out of 4)
     state = await getReduxState(page);
@@ -264,7 +264,7 @@ test.describe('Configuration Screen', () => {
     let coords = await getEdgeButtonCoordinates(page, 0, 0); // Blue
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     const initialState = await getReduxState(page);
     expect(initialState.game.configPlayers[0].color).toBe('#0173B2'); // Blue
@@ -287,13 +287,13 @@ test.describe('Configuration Screen', () => {
     });
     
     await page.mouse.click(box.x + removeButtonCoords.x, box.y + removeButtonCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
 
     // Add a player with orange color
     coords = await getEdgeButtonCoordinates(page, 1, 0); // Orange
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify color changed
     const newState = await getReduxState(page);
@@ -312,7 +312,7 @@ test.describe('Configuration Screen', () => {
     const coords = await getEdgeButtonCoordinates(page, 0, 0);
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     let state = await getReduxState(page);
     expect(state.game.screen).toBe('configuration');
@@ -321,7 +321,7 @@ test.describe('Configuration Screen', () => {
     // Click Start button (center)
     const startCoords = await getStartButtonCoordinates(page);
     await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Verify we're now in seating phase
     state = await getReduxState(page);
@@ -354,7 +354,7 @@ test.describe('Configuration Screen', () => {
       const coords = await getEdgeButtonCoordinates(page, player.colorIndex, player.edge);
       if (!coords) continue;
       await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await page.waitForTimeout(100);
+      await waitForAnimationFrame(page);
     }
     
     const state = await getReduxState(page);
@@ -434,7 +434,7 @@ test.describe('Configuration Screen', () => {
     let coords = await getEdgeButtonCoordinates(page, 0, 0); // Blue
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
@@ -446,7 +446,7 @@ test.describe('Configuration Screen', () => {
     coords = await getEdgeButtonCoordinates(page, 1, 1); // Orange from right
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
@@ -458,7 +458,7 @@ test.describe('Configuration Screen', () => {
     coords = await getEdgeButtonCoordinates(page, 2, 2); // Green from top
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
@@ -470,7 +470,7 @@ test.describe('Configuration Screen', () => {
     coords = await getEdgeButtonCoordinates(page, 3, 0); // Yellow
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(4);
@@ -482,7 +482,7 @@ test.describe('Configuration Screen', () => {
     coords = await getEdgeButtonCoordinates(page, 4, 0); // Purple
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(5);
@@ -494,7 +494,7 @@ test.describe('Configuration Screen', () => {
     coords = await getEdgeButtonCoordinates(page, 5, 0); // Red
     if (!coords) throw new Error('Button not found');
     await page.mouse.click(box.x + coords.x, box.y + coords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(6);
@@ -507,7 +507,7 @@ test.describe('Configuration Screen', () => {
     let removeCoords = await getRemoveButtonCoordinates(page, 0);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(5);
@@ -520,7 +520,7 @@ test.describe('Configuration Screen', () => {
     removeCoords = await getRemoveButtonCoordinates(page, 0);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(4);
@@ -533,7 +533,7 @@ test.describe('Configuration Screen', () => {
     removeCoords = await getRemoveButtonCoordinates(page, 0);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
@@ -546,7 +546,7 @@ test.describe('Configuration Screen', () => {
     removeCoords = await getRemoveButtonCoordinates(page, 0);
     if (!removeCoords) throw new Error('Remove button not found');
     await page.mouse.click(box.x + removeCoords.x, box.y + removeCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
@@ -557,7 +557,7 @@ test.describe('Configuration Screen', () => {
     // STEP 12: Click Start Game button
     const startCoords = await getStartButtonCoordinates(page);
     await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('seating');
@@ -584,7 +584,7 @@ test.describe('Configuration Screen', () => {
       return { x, y };
     });
     await page.mouse.click(box.x + seatingCoords.x, box.y + seatingCoords.y);
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('seating');
@@ -610,7 +610,7 @@ test.describe('Configuration Screen', () => {
       return { x, y };
     });
     await page.mouse.click(box.x + seatingCoords.x, box.y + seatingCoords.y);
-    await page.waitForTimeout(200); // Wait for transition to gameplay
+    await waitForAnimationFrame(page); // Wait for transition to gameplay
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');

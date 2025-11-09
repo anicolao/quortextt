@@ -1,7 +1,7 @@
 // E2E test for a complete 2-player game user story
 // This test demonstrates a full game from setup to victory
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame } from './helpers';
 
 test.describe('Complete 2-Player Game', () => {
   // Test configuration constants
@@ -30,7 +30,7 @@ test.describe('Complete 2-Player Game', () => {
       store.dispatch({ type: 'ADD_PLAYER' });
     });
     
-    await page.waitForTimeout(300);
+    await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
     await page.screenshot({ 
@@ -52,7 +52,7 @@ test.describe('Complete 2-Player Game', () => {
       store.dispatch({ type: 'START_GAME', payload: { seed } });
     }, DETERMINISTIC_SEED);
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
@@ -63,7 +63,7 @@ test.describe('Complete 2-Player Game', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await page.waitForTimeout(100);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -119,7 +119,7 @@ test.describe('Complete 2-Player Game', () => {
         store.dispatch({ type: 'DRAW_TILE' });
       });
       
-      await page.waitForTimeout(200);
+      await waitForAnimationFrame(page);
       
       state = await getReduxState(page);
       const currentTile = state.game.currentTile;
@@ -183,7 +183,7 @@ test.describe('Complete 2-Player Game', () => {
         });
       }, { row: position.row, col: position.col, rotation });
       
-      await page.waitForTimeout(300);
+      await waitForAnimationFrame(page);
       
       state = await getReduxState(page);
       moveNumber++;
@@ -305,7 +305,7 @@ test.describe('Complete 2-Player Game', () => {
         store.dispatch({ type: 'NEXT_PLAYER' });
       });
       
-      await page.waitForTimeout(200);
+      await waitForAnimationFrame(page);
     }
     
     // === Final Verification ===
