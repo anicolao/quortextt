@@ -218,6 +218,18 @@ export function actionsToClicks(
         break;
       }
       
+      case 'SHUFFLE_TILES': {
+        // Don't generate a click for SHUFFLE_TILES - use action dispatch to preserve seed
+        // This is the action that actually creates the shuffled deck!
+        clicks.push({
+          type: 'wait',
+          animationFrames: 0,
+          description: `DISPATCH_ACTION: SHUFFLE_TILES with seed ${action.payload?.seed || 'default'}`
+        });
+        clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for tiles shuffle' });
+        break;
+      }
+      
       case 'SELECT_EDGE': {
         // Click on an edge hexagon in the seating phase
         const edgeCoords = getSeatingEdgeButtonCoords(
@@ -281,7 +293,6 @@ export function actionsToClicks(
       
       case 'DRAW_TILE':
       case 'NEXT_PLAYER':
-      case 'SHUFFLE_TILES':
         // These are automatic/programmatic actions, no clicks needed
         break;
     }
