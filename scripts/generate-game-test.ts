@@ -13,7 +13,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateRandomGameWithState, saveActionsToFile } from '../tests/utils/gameGenerator';
-import { actionsToClicks, generateExpectationsWithPrefixes, generateReadme, saveClicksToFile } from '../tests/utils/actionConverter';
+import { actionsToClicks, generateExpectationsWithPrefixes, generateReadme, generateReadmeFromClicks, saveClicksToFile } from '../tests/utils/actionConverter';
+
+// Canvas size for playwright browser tests (Desktop Chrome default)
+const CANVAS_WIDTH = 1280;
+const CANVAS_HEIGHT = 720;
 
 function main() {
   const args = process.argv.slice(2);
@@ -71,11 +75,11 @@ function main() {
   
   // Generate and save clicks file
   console.log('  Generating click sequence...');
-  const clicks = actionsToClicks(actions);
+  const clicks = actionsToClicks(actions, CANVAS_WIDTH, CANVAS_HEIGHT);
   const clicksFile = path.join(outputDir, `${seed}.clicks`);
   const clicksContent = saveClicksToFile(clicks);
   fs.writeFileSync(clicksFile, clicksContent, 'utf-8');
-  console.log(`  ✓ Saved ${clicksFile}`);
+  console.log(`  ✓ Saved ${clicksFile} (for ${CANVAS_WIDTH}x${CANVAS_HEIGHT} canvas)`);
   
   // Generate and save expectations file (includes move prefixes)
   console.log('  Generating expectations...');
@@ -110,8 +114,11 @@ function main() {
     fs.writeFileSync(expectations006File, expectations, 'utf-8');
     console.log(`  ✓ Saved ${expectations006File}`);
     
+    // Generate README for mouse-based test (describes clicks, not actions)
+    console.log('  Generating README for 006- (mouse clicks)...');
+    const readme006 = generateReadmeFromClicks(seed, clicks, actions, finalState);
     const readme006File = path.join(dir006, 'README.md');
-    fs.writeFileSync(readme006File, readme, 'utf-8');
+    fs.writeFileSync(readme006File, readme006, 'utf-8');
     console.log(`  ✓ Saved ${readme006File}`);
   }
   

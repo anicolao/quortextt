@@ -662,3 +662,117 @@ export function generateReadme(
   
   return lines.join('\n');
 }
+
+/**
+ * Generate a README.md file from clicks (for mouse-based tests)
+ * This describes what the USER does (clicks), not backend actions
+ */
+export function generateReadmeFromClicks(
+  seed: number,
+  clicks: ClickAction[],
+  actions: GameAction[],
+  finalState: GameState
+): string {
+  const lines: string[] = [];
+  const playerCount = actions.filter(a => a.type === 'ADD_PLAYER').length;
+  const placeCount = actions.filter(a => a.type === 'PLACE_TILE').length;
+  
+  // Header
+  lines.push(`# Complete Game Test - Seed ${seed}`);
+  lines.push('');
+  lines.push('## Overview');
+  lines.push(`This test validates a complete game flow from lobby setup through gameplay to completion using seed ${seed}. The game demonstrates deterministic behavior with mouse click interactions.`);
+  lines.push('');
+  
+  // Game Configuration
+  lines.push('## Game Configuration');
+  lines.push(`- **Seed**: ${seed}`);
+  lines.push(`- **Players**: ${playerCount}`);
+  
+  const players = actions.filter(a => a.type === 'ADD_PLAYER');
+  players.forEach((p, idx) => {
+    lines.push(`  - Player ${idx + 1} - Color: ${p.payload.color}, Starting edge: ${p.payload.edge}`);
+  });
+  
+  lines.push(`- **Total Clicks**: ${clicks.filter(c => c.type === 'click').length}`);
+  lines.push(`- **Tile Placements**: ${placeCount} moves`);
+  lines.push(`- **Game Outcome**: ${finalState.phase}`);
+  lines.push('');
+  
+  // Test Execution
+  lines.push('## Test Execution');
+  lines.push('');
+  lines.push('Each screenshot shows the result of a user click action.');
+  lines.push('');
+  
+  let stepCounter = 1;
+  let screenshotCounter = 1;
+  
+  // Initial screenshot
+  lines.push(`### Step ${stepCounter++}: Initial Screen`);
+  lines.push(`![Initial Screen](screenshots/${screenshotCounter.toString().padStart(4, '0')}-initial-screen.png)`);
+  lines.push('');
+  lines.push('**User Action**: Application loads');
+  lines.push('**Expected State**: Game canvas visible, empty configuration screen ready for player setup');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+  screenshotCounter++;
+  
+  // Document each click
+  for (const click of clicks) {
+    if (click.type === 'click') {
+      const screenshot = `${screenshotCounter.toString().padStart(4, '0')}-click.png`;
+      
+      lines.push(`### Step ${stepCounter++}: ${click.description}`);
+      lines.push(`![${click.description}](screenshots/${screenshot})`);
+      lines.push('');
+      lines.push(`**User Action**: ${click.description}`);
+      
+      // Add more context based on the description
+      if (click.description.includes('add player')) {
+        lines.push('**Expected State**: Player added to configuration, color button appears');
+      } else if (click.description.includes('START')) {
+        lines.push('**Expected State**: Game transitions to seating phase, players choose board edges');
+      } else if (click.description.includes('Select edge')) {
+        lines.push('**Expected State**: Player seated at chosen edge, waiting for other players');
+      } else if (click.description.includes('Rotate tile')) {
+        lines.push('**Expected State**: Preview tile rotates to new orientation');
+      } else if (click.description.includes('Click hex')) {
+        lines.push('**Expected State**: Tile preview appears at selected hex position');
+      } else if (click.description.includes('checkmark')) {
+        lines.push('**Expected State**: Tile placed on board, flows updated, turn advances');
+      }
+      
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+      screenshotCounter++;
+    }
+  }
+  
+  // Final screenshot
+  lines.push(`### Step ${stepCounter}: Final Game State`);
+  lines.push(`![Final State](screenshots/final-state.png)`);
+  lines.push('');
+  lines.push(`**Game Phase**: ${finalState.phase}`);
+  lines.push(`**Total Moves**: ${placeCount}`);
+  lines.push('');
+  
+  // Validation checklist
+  lines.push('## Validation Checklist');
+  lines.push('');
+  lines.push(`- [ ] All ${clicks.filter(c => c.type === 'click').length} clicks executed successfully`);
+  lines.push(`- [ ] ${placeCount} tiles placed on board`);
+  lines.push('- [ ] No illegal moves attempted');
+  lines.push('- [ ] Flow calculations correct at each step');
+  lines.push('- [ ] Game state matches expectations file');
+  lines.push(`- [ ] Final phase is "${finalState.phase}"`);
+  lines.push(`- [ ] ${playerCount} players participated`);
+  lines.push('- [ ] Screenshots captured for all clicks');
+  lines.push('- [ ] Test completes without errors');
+  lines.push('- [ ] Deterministic behavior - same seed produces same game');
+  lines.push('');
+  
+  return lines.join('\n');
+}
