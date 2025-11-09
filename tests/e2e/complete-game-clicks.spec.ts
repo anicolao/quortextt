@@ -356,6 +356,14 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         console.log(`  Board keys:`, state.game.board ? Object.keys(state.game.board) : []);
         console.log(`  Flow edges keys:`, state.game.flowEdges ? Object.keys(state.game.flowEdges).length : 0);
         
+        // Log all flow edges for debugging
+        if (state.game.flowEdges) {
+          Object.entries(state.game.flowEdges).forEach(([pos, edges]: [string, any]) => {
+            const edgeStr = Object.entries(edges).map(([dir, player]) => `${dir}:${player}`).join(', ');
+            console.log(`    FlowEdges at ${pos}: {${edgeStr}}`);
+          });
+        }
+        
         // Validate tile rotation against expected placement
         if (tilesPlaced <= expectedPlacements.length) {
           const expectedPlacement = expectedPlacements[tilesPlaced - 1];
@@ -364,6 +372,8 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
           if (state.game.board && state.game.board[posKey]) {
             const placedTile = state.game.board[posKey];
             const actualRotation = placedTile.rotation;
+            
+            console.log(`  Placed tile at ${posKey}: type=${placedTile.type}, rotation=${actualRotation}`);
             
             // Validate rotation
             if (actualRotation !== expectedPlacement.rotation) {
@@ -385,6 +395,14 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
           
           // Trace actual flows from game state
           const actualFlows = traceFlows(state);
+          
+          console.log(`    P1 flows found: ${actualFlows.p1Flows.length}, P2 flows found: ${actualFlows.p2Flows.length}`);
+          actualFlows.p1Flows.forEach((flow, idx) => {
+            console.log(`    P1 flow ${idx}: ${flow.length} edges - ${flow.map(e => `${e.pos}:${e.dir}`).join(', ')}`);
+          });
+          actualFlows.p2Flows.forEach((flow, idx) => {
+            console.log(`    P2 flow ${idx}: ${flow.length} edges - ${flow.map(e => `${e.pos}:${e.dir}`).join(', ')}`);
+          });
           
           // Validate P1 flows
           for (const [flowIdxStr, prefixLength] of Object.entries(moveExpectation.p1)) {
