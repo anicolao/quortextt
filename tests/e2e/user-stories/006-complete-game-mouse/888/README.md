@@ -8,8 +8,8 @@ This test validates a complete game flow from lobby setup through gameplay to co
 - **Players**: 2
   - Player 1 - Color: #0173B2, Starting edge: 0
   - Player 2 - Color: #DE8F05, Starting edge: 1
-- **Total Clicks**: 29
-- **Tile Placements**: 7 moves
+- **Total Clicks**: 32
+- **Tile Placements**: 9 moves
 - **Game Outcome**: finished
 
 ## Test Execution
@@ -64,27 +64,27 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 7: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0007-click.png)
+### Step 7: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0007-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 8: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0008-click.png)
 
 **User Action**: Click checkmark to confirm
 **Expected State**: Tile placed on board, flows updated, turn advances
 
 ---
 
-### Step 8: Click hex at (2, -3)
-![Click hex at (2, -3)](screenshots/0008-click.png)
+### Step 9: Click hex at (2, -3)
+![Click hex at (2, -3)](screenshots/0009-click.png)
 
 **User Action**: Click hex at (2, -3)
 **Expected State**: Tile preview appears at selected hex position
-
----
-
-### Step 9: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0009-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
 
 ---
 
@@ -96,10 +96,10 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 11: Click hex at (-2, -1)
-![Click hex at (-2, -1)](screenshots/0011-click.png)
+### Step 11: Click hex at (-2, 0)
+![Click hex at (-2, 0)](screenshots/0011-click.png)
 
-**User Action**: Click hex at (-2, -1)
+**User Action**: Click hex at (-2, 0)
 **Expected State**: Tile preview appears at selected hex position
 
 ---
@@ -112,139 +112,139 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 13: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0013-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
-
----
-
-### Step 14: Click hex at (3, -3)
-![Click hex at (3, -3)](screenshots/0014-click.png)
-
-**User Action**: Click hex at (3, -3)
-**Expected State**: Tile preview appears at selected hex position
-
----
-
-### Step 15: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0015-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 16: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0016-click.png)
+### Step 13: Rotate tile (rotation 2)
+![Rotate tile (rotation 2)](screenshots/0013-click.png)
 
 **User Action**: Rotate tile (rotation 2)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 17: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0017-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
-
----
-
-### Step 18: Click hex at (-1, -1)
-![Click hex at (-1, -1)](screenshots/0018-click.png)
-
-**User Action**: Click hex at (-1, -1)
-**Expected State**: Tile preview appears at selected hex position
-
----
-
-### Step 19: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0019-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 20: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0020-click.png)
-
-**User Action**: Rotate tile (rotation 2)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 21: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0021-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
-
----
-
-### Step 22: Click hex at (1, -2)
-![Click hex at (1, -2)](screenshots/0022-click.png)
-
-**User Action**: Click hex at (1, -2)
-**Expected State**: Tile preview appears at selected hex position
-
----
-
-### Step 23: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0023-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 24: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0024-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
-
----
-
-### Step 25: Click hex at (0, -1)
-![Click hex at (0, -1)](screenshots/0025-click.png)
-
-**User Action**: Click hex at (0, -1)
-**Expected State**: Tile preview appears at selected hex position
-
----
-
-### Step 26: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0026-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 27: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0027-click.png)
-
-**User Action**: Rotate tile (rotation 2)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 28: Rotate tile (rotation 3)
-![Rotate tile (rotation 3)](screenshots/0028-click.png)
+### Step 14: Rotate tile (rotation 3)
+![Rotate tile (rotation 3)](screenshots/0014-click.png)
 
 **User Action**: Rotate tile (rotation 3)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 29: Rotate tile (rotation 4)
-![Rotate tile (rotation 4)](screenshots/0029-click.png)
+### Step 15: Rotate tile (rotation 4)
+![Rotate tile (rotation 4)](screenshots/0015-click.png)
 
 **User Action**: Rotate tile (rotation 4)
 **Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 16: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0016-click.png)
+
+**User Action**: Click checkmark to confirm
+**Expected State**: Tile placed on board, flows updated, turn advances
+
+---
+
+### Step 17: Click hex at (3, -3)
+![Click hex at (3, -3)](screenshots/0017-click.png)
+
+**User Action**: Click hex at (3, -3)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 18: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0018-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 19: Rotate tile (rotation 2)
+![Rotate tile (rotation 2)](screenshots/0019-click.png)
+
+**User Action**: Rotate tile (rotation 2)
+**Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 20: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0020-click.png)
+
+**User Action**: Click checkmark to confirm
+**Expected State**: Tile placed on board, flows updated, turn advances
+
+---
+
+### Step 21: Click hex at (-1, -1)
+![Click hex at (-1, -1)](screenshots/0021-click.png)
+
+**User Action**: Click hex at (-1, -1)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 22: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0022-click.png)
+
+**User Action**: Click checkmark to confirm
+**Expected State**: Tile placed on board, flows updated, turn advances
+
+---
+
+### Step 23: Click hex at (3, -2)
+![Click hex at (3, -2)](screenshots/0023-click.png)
+
+**User Action**: Click hex at (3, -2)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 24: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0024-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 25: Rotate tile (rotation 2)
+![Rotate tile (rotation 2)](screenshots/0025-click.png)
+
+**User Action**: Rotate tile (rotation 2)
+**Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 26: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0026-click.png)
+
+**User Action**: Click checkmark to confirm
+**Expected State**: Tile placed on board, flows updated, turn advances
+
+---
+
+### Step 27: Click hex at (0, -1)
+![Click hex at (0, -1)](screenshots/0027-click.png)
+
+**User Action**: Click hex at (0, -1)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 28: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0028-click.png)
+
+**User Action**: Click checkmark to confirm
+**Expected State**: Tile placed on board, flows updated, turn advances
+
+---
+
+### Step 29: Click hex at (1, -3)
+![Click hex at (1, -3)](screenshots/0029-click.png)
+
+**User Action**: Click hex at (1, -3)
+**Expected State**: Tile preview appears at selected hex position
 
 ---
 
@@ -256,16 +256,40 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 31: Final Game State
+### Step 31: Click hex at (1, -2)
+![Click hex at (1, -2)](screenshots/0031-click.png)
+
+**User Action**: Click hex at (1, -2)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 32: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0032-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
+
+---
+
+### Step 33: Click checkmark to confirm
+![Click checkmark to confirm](screenshots/0033-click.png)
+
+**User Action**: Click checkmark to confirm
+**Expected State**: Tile placed on board, flows updated, turn advances
+
+---
+
+### Step 34: Final Game State
 ![Final State](screenshots/final-state.png)
 
 **Game Phase**: finished
-**Total Moves**: 7
+**Total Moves**: 9
 
 ## Validation Checklist
 
-- [ ] All 29 clicks executed successfully
-- [ ] 7 tiles placed on board
+- [ ] All 32 clicks executed successfully
+- [ ] 9 tiles placed on board
 - [ ] No illegal moves attempted
 - [ ] Flow calculations correct at each step
 - [ ] Game state matches expectations file
