@@ -24,7 +24,10 @@ interface FlowExpectations {
   p1Flows: Array<string[]>;  // Array of flows, each flow is array of "pos:dir" strings
   p2Flows: Array<string[]>;
   movePrefixes: Array<{ 
-    move: number; 
+    move: number;
+    tileType: number;
+    position: { row: number; col: number };
+    rotation: number;
     p1: Record<number, number>;  // flowIndex -> prefixLength
     p2: Record<number, number>;
   }>;
@@ -36,7 +39,7 @@ function parseExpectations(expectationsFile: string): FlowExpectations {
   
   const p1Flows: Array<string[]> = [];
   const p2Flows: Array<string[]> = [];
-  const movePrefixes: Array<{ move: number; p1: Record<number, number>; p2: Record<number, number> }> = [];
+  const movePrefixes: Array<{ move: number; tileType: number; position: { row: number; col: number }; rotation: number; p1: Record<number, number>; p2: Record<number, number> }> = [];
   
   let section = '';
   
@@ -59,12 +62,16 @@ function parseExpectations(expectationsFile: string): FlowExpectations {
       const index = parseInt(indexStr);
       p2Flows[index] = flowStr ? flowStr.split(/\s+/) : [];
     } else if (section === '[MOVE_PREFIXES]') {
-      // Format: 1 p1={0:2,1:2} p2={}
-      const match = line.match(/^(\d+)\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
+      // Format: 1 tile=0 pos=-3,0 rot=0 p1={0:2,1:2} p2={}
+      const match = line.match(/^(\d+)\s+tile=(\d+)\s+pos=([-\d]+),([-\d]+)\s+rot=(\d+)\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
       if (match) {
         const move = parseInt(match[1]);
-        const p1Str = match[2];
-        const p2Str = match[3];
+        const tileType = parseInt(match[2]);
+        const row = parseInt(match[3]);
+        const col = parseInt(match[4]);
+        const rotation = parseInt(match[5]);
+        const p1Str = match[6];
+        const p2Str = match[7];
         
         const p1: Record<number, number> = {};
         if (p1Str) {
@@ -82,7 +89,7 @@ function parseExpectations(expectationsFile: string): FlowExpectations {
           }
         }
         
-        movePrefixes.push({ move, p1, p2 });
+        movePrefixes.push({ move, tileType, position: { row, col }, rotation, p1, p2 });
       }
     }
   }
@@ -169,7 +176,7 @@ async function testCompleteGameFromActions(page: any, seed: string) {
       const expectation = expectations.movePrefixes.find(e => e.move === moveCounter);
       
       if (expectation) {
-        console.log(`  Validating flows for move ${moveCounter}...`);
+        console.log(`  Validating tile and flows for move ${moveCounter}...`);
         
         // Get board and player data from Redux state
         const state = await getReduxState(page);
@@ -178,6 +185,25 @@ async function testCompleteGameFromActions(page: any, seed: string) {
         if (!players || players.length < 2) {
           throw new Error('Not enough players');
         }
+        
+        // Validate placed tile type and rotation
+        const board = state.game.board || {};
+        const placedPosKey = positionToKey(expectation.position);
+        const placedTile = board[placedPosKey];
+        
+        if (!placedTile) {
+          throw new Error(`Move ${moveCounter}: No tile found at expected position ${placedPosKey}`);
+        }
+        
+        if (placedTile.type !== expectation.tileType) {
+          throw new Error(`Move ${moveCounter}: Tile type mismatch at ${placedPosKey}: expected type ${expectation.tileType}, got type ${placedTile.type}`);
+        }
+        
+        if (placedTile.rotation !== expectation.rotation) {
+          throw new Error(`Move ${moveCounter}: Tile rotation mismatch at ${placedPosKey}: expected rotation ${expectation.rotation}, got rotation ${placedTile.rotation}`);
+        }
+        
+        console.log(`  ✓ Tile validation: type=${placedTile.type}, rotation=${placedTile.rotation} at ${placedPosKey}`);
         
         const player1 = players[0];
         const player2 = players[1];

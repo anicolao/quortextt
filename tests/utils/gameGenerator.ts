@@ -242,6 +242,9 @@ function findFlowAdjacentMoves(
  */
 export interface MovePrefix {
   move: number;
+  tileType: number; // 0-3 representing TileType
+  rotation: number; // 0-5
+  position: HexPosition;
   p1FlowLengths: Record<number, number>;
   p2FlowLengths: Record<number, number>;
 }
@@ -354,6 +357,11 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     // Choose the first move from preferred moves (deterministic after sorting)
     const move = preferredMoves[0];
     
+    // Save tile type and rotation before placing (currentTile is cleared after placement)
+    const placedTileType = state.currentTile;
+    const placedPosition = move.position;
+    const placedRotation = move.rotation;
+    
     // Place the tile
     actions.push({
       type: 'PLACE_TILE',
@@ -364,7 +372,7 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     moveCount++;
     
     // After placing tile, record flow lengths for move prefix tracking
-    const movePrefix = generateMovePrefix(state, moveCount, player1Id, player2Id);
+    const movePrefix = generateMovePrefix(state, moveCount, player1Id, player2Id, placedTileType, placedRotation, placedPosition);
     movePrefixes.push(movePrefix);
     
     // Check if game ended
@@ -392,7 +400,10 @@ function generateMovePrefix(
   state: GameState,
   moveNumber: number,
   player1Id: string,
-  player2Id: string
+  player2Id: string,
+  tileType: number,
+  rotation: number,
+  position: HexPosition
 ): MovePrefix {
   const p1FlowLengths: Record<number, number> = {};
   const p2FlowLengths: Record<number, number> = {};
@@ -425,6 +436,9 @@ function generateMovePrefix(
   
   return {
     move: moveNumber,
+    tileType,
+    rotation,
+    position,
     p1FlowLengths,
     p2FlowLengths,
   };
