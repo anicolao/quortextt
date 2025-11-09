@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import { getReduxState, pauseAnimations, waitForAnimationFrame } from './helpers';
 import { loadClicksFromFile, ClickAction } from '../utils/actionConverter';
 import { getFlowExit } from '../../src/game/tiles';
-import { getEdgePositionsWithDirections, positionToKey } from '../../src/game/board';
+import { getEdgePositionsWithDirections, positionToKey, keyToPosition, getNeighborInDirection as getNeighbor, getOppositeDirection } from '../../src/game/board';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -185,11 +185,12 @@ function traceFlows(state: any): {
         if (exitDir === null) break;
         
         // Move to next hex
-        const nextPos = getNeighborInDirection(currentPos, exitDir);
-        if (!nextPos) break;
+        const currentPosObj = keyToPosition(currentPos);
+        const nextPosObj = getNeighbor(currentPosObj, exitDir);
+        const nextPos = positionToKey(nextPosObj);
         
         currentPos = nextPos;
-        currentDir = (exitDir + 3) % 6; // Opposite direction when entering next hex
+        currentDir = getOppositeDirection(exitDir);
       }
       
       // If we found a flow, add it
@@ -207,25 +208,6 @@ function traceFlows(state: any): {
   }
   
   return { p1Flows, p2Flows };
-}
-
-// Helper function to get neighbor in direction (from board.ts logic)
-function getNeighborInDirection(posKey: string, dir: number): string | null {
-  const parts = posKey.split(',');
-  const row = parseInt(parts[0]);
-  const col = parseInt(parts[1]);
-  
-  const directions = [
-    { row: -1, col: 0 },  // 0: SW
-    { row: -1, col: 1 },  // 1: W  
-    { row: 0, col: 1 },   // 2: NW
-    { row: 1, col: 0 },   // 3: NE
-    { row: 1, col: -1 },  // 4: E
-    { row: 0, col: -1 },  // 5: SE
-  ];
-  
-  const delta = directions[dir];
-  return `${row + delta.row},${col + delta.col}`;
 }
 
 // Test function parameterized by seed
@@ -422,12 +404,6 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         await waitForAnimationFrame(page);
         await waitForAnimationFrame(page);
         
-        // Add a small delay to ensure all state updates have propagated
-        await page.waitForTimeout(100);
-        
-        // Re-read state after animation frames to get updated flow edges
-        state = await getReduxState(page);
-        
         tilesPlaced++;
         const boardSize = state.game.board ? Object.keys(state.game.board).length : 0;
         
@@ -508,9 +484,9 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
               throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
             }
             
-            if (actualFlows.p1Flows[flowIdx].length < prefixLength) {
-              console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
-              throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+            if (actualFlows.p1Flows[flowIdx].length !== prefixLength) {
+              console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
+              throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
             }
             
             // Validate the prefix matches
@@ -547,9 +523,9 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
               throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
             }
             
-            if (actualFlows.p2Flows[flowIdx].length < prefixLength) {
-              console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
-              throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+            if (actualFlows.p2Flows[flowIdx].length !== prefixLength) {
+              console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
+              throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
             }
             
             // Validate the prefix matches
@@ -600,16 +576,10 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   expect(finalTileCount).toBeGreaterThan(0);
 }
 
-// NOTE: These click-based tests are currently skipped due to flow validation issues.
-// The same game seeds pass validation when using action-based tests (see complete-game-actions.spec.ts),
-// but fail when using mouse click simulation. The root cause appears to be timing differences
-// in how flow edges are calculated or propagated through the Redux store when actions are
-// dispatched via UI clicks vs direct Redux actions. Since the action-based tests validate
-// the same game logic and unit tests have 100% coverage, these are safe to skip.
-test.skip('Complete game from clicks - seed 888', async ({ page }) => {
+test('Complete game from clicks - seed 888', async ({ page }) => {
   await testCompleteGameFromClicks(page, '888');
 });
 
-test.skip('Complete game from clicks - seed 999', async ({ page }) => {
+test('Complete game from clicks - seed 999', async ({ page }) => {
   await testCompleteGameFromClicks(page, '999');
 });
