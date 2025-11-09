@@ -1,422 +1,545 @@
 # Complete Game Test - Seed 999
 
 ## Overview
-This test validates a complete game flow from lobby setup through gameplay to completion using seed 999. The game demonstrates deterministic behavior with mouse click interactions.
+This test validates a complete game flow from lobby setup through gameplay to completion using seed 999. The game demonstrates deterministic behavior with strategic tile placements that prioritize extending each player's flows.
 
 ## Game Configuration
 - **Seed**: 999
 - **Players**: 2
   - Player 1 - Color: #0173B2, Starting edge: 0
   - Player 2 - Color: #DE8F05, Starting edge: 1
-- **Total Clicks**: 49
+- **Total Actions**: 53
 - **Tile Placements**: 16 moves
 - **Game Outcome**: finished
 
 ## Test Execution
 
-Each screenshot shows the result of a user click action.
-
 ### Step 1: Initial Screen
-![Initial Screen](screenshots/0001-initial-screen.png)
+![Initial Screen](screenshots/001-initial-screen.png)
 
-**User Action**: Application loads
+**Action**: Application loads
 **Expected State**: Game canvas visible, empty configuration screen ready for player setup
 
 ---
 
-### Step 2: Click to add player (#0173B2 at edge 0)
-![Click to add player (#0173B2 at edge 0)](screenshots/0002-click.png)
+### Step 2: ADD_PLAYER
+![ADD_PLAYER](screenshots/002-add_player.png)
 
-**User Action**: Click to add player (#0173B2 at edge 0)
-**Expected State**: Player added to configuration, color button appears
+**Action**: `ADD_PLAYER`
+- Color: #0173B2
+- Edge: 0
 
----
-
-### Step 3: Click to add player (#DE8F05 at edge 1)
-![Click to add player (#DE8F05 at edge 1)](screenshots/0003-click.png)
-
-**User Action**: Click to add player (#DE8F05 at edge 1)
-**Expected State**: Player added to configuration, color button appears
+**Expected State**: Player added to configuration
 
 ---
 
-### Step 4: Select edge 0 for player P1
-![Select edge 0 for player P1](screenshots/0004-click.png)
+### Step 3: ADD_PLAYER
+![ADD_PLAYER](screenshots/003-add_player.png)
 
-**User Action**: Select edge 0 for player P1
-**Expected State**: Player seated at chosen edge, waiting for other players
+**Action**: `ADD_PLAYER`
+- Color: #DE8F05
+- Edge: 1
 
----
-
-### Step 5: Select edge 3 for player P2
-![Select edge 3 for player P2](screenshots/0005-click.png)
-
-**User Action**: Select edge 3 for player P2
-**Expected State**: Player seated at chosen edge, waiting for other players
+**Expected State**: Player added to configuration
 
 ---
 
-### Step 6: Click hex at (-3, 0)
-![Click hex at (-3, 0)](screenshots/0006-click.png)
+### Step 4: START_GAME
+![START_GAME](screenshots/004-start_game.png)
 
-**User Action**: Click hex at (-3, 0)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `START_GAME`
 
----
-
-### Step 7: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0007-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Transition to seating phase
 
 ---
 
-### Step 8: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0008-click.png)
+### Step 5: SHUFFLE_TILES
+![SHUFFLE_TILES](screenshots/005-shuffle_tiles.png)
 
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Action**: `SHUFFLE_TILES`
 
----
-
-### Step 9: Click hex at (2, -3)
-![Click hex at (2, -3)](screenshots/0009-click.png)
-
-**User Action**: Click hex at (2, -3)
-**Expected State**: Tile preview appears at selected hex position
+**Expected State**: Tile deck shuffled
 
 ---
 
-### Step 10: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0010-click.png)
+### Step 6: SELECT_EDGE
+![SELECT_EDGE](screenshots/006-select_edge.png)
 
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Action**: `SELECT_EDGE`
+- Player: P1
+- Edge: 0
 
----
-
-### Step 11: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0011-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Player edge selected, gameplay begins when all players seated
 
 ---
 
-### Step 12: Click hex at (-2, -1)
-![Click hex at (-2, -1)](screenshots/0012-click.png)
+### Step 7: SELECT_EDGE
+![SELECT_EDGE](screenshots/007-select_edge.png)
 
-**User Action**: Click hex at (-2, -1)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `SELECT_EDGE`
+- Player: P2
+- Edge: 3
 
----
-
-### Step 13: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0013-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Player edge selected, gameplay begins when all players seated
 
 ---
 
-### Step 14: Click hex at (2, -2)
-![Click hex at (2, -2)](screenshots/0014-click.png)
+### Step 8: DRAW_TILE
+![DRAW_TILE](screenshots/008-draw_tile.png)
 
-**User Action**: Click hex at (2, -2)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `DRAW_TILE`
 
----
-
-### Step 15: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0015-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 16: Click hex at (-2, 0)
-![Click hex at (-2, 0)](screenshots/0016-click.png)
+### Step 9: PLACE_TILE
+![PLACE_TILE](screenshots/009-place_tile.png)
 
-**User Action**: Click hex at (-2, 0)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `PLACE_TILE`
+- Position: (-3, 0)
+- Rotation: 1
 
----
-
-### Step 17: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0017-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 18: Click hex at (3, -3)
-![Click hex at (3, -3)](screenshots/0018-click.png)
+### Step 10: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/010-next_player.png)
 
-**User Action**: Click hex at (3, -3)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `NEXT_PLAYER`
 
----
-
-### Step 19: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0019-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Turn advances to next player
 
 ---
 
-### Step 20: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0020-click.png)
+### Step 11: DRAW_TILE
+![DRAW_TILE](screenshots/011-draw_tile.png)
 
-**User Action**: Rotate tile (rotation 2)
-**Expected State**: Preview tile rotates to new orientation
+**Action**: `DRAW_TILE`
 
----
-
-### Step 21: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0021-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 22: Click hex at (-1, -1)
-![Click hex at (-1, -1)](screenshots/0022-click.png)
+### Step 12: PLACE_TILE
+![PLACE_TILE](screenshots/012-place_tile.png)
 
-**User Action**: Click hex at (-1, -1)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `PLACE_TILE`
+- Position: (2, -3)
+- Rotation: 1
 
----
-
-### Step 23: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0023-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 24: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0024-click.png)
+### Step 13: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/013-next_player.png)
 
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Action**: `NEXT_PLAYER`
 
----
-
-### Step 25: Click hex at (1, -2)
-![Click hex at (1, -2)](screenshots/0025-click.png)
-
-**User Action**: Click hex at (1, -2)
-**Expected State**: Tile preview appears at selected hex position
+**Expected State**: Turn advances to next player
 
 ---
 
-### Step 26: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0026-click.png)
+### Step 14: DRAW_TILE
+![DRAW_TILE](screenshots/014-draw_tile.png)
 
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Action**: `DRAW_TILE`
 
----
-
-### Step 27: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0027-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 28: Click hex at (0, -1)
-![Click hex at (0, -1)](screenshots/0028-click.png)
+### Step 15: PLACE_TILE
+![PLACE_TILE](screenshots/015-place_tile.png)
 
-**User Action**: Click hex at (0, -1)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `PLACE_TILE`
+- Position: (-2, -1)
+- Rotation: 0
 
----
-
-### Step 29: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0029-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 30: Click hex at (-1, 0)
-![Click hex at (-1, 0)](screenshots/0030-click.png)
+### Step 16: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/016-next_player.png)
 
-**User Action**: Click hex at (-1, 0)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `NEXT_PLAYER`
 
----
-
-### Step 31: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0031-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Turn advances to next player
 
 ---
 
-### Step 32: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0032-click.png)
+### Step 17: DRAW_TILE
+![DRAW_TILE](screenshots/017-draw_tile.png)
 
-**User Action**: Rotate tile (rotation 2)
-**Expected State**: Preview tile rotates to new orientation
+**Action**: `DRAW_TILE`
 
----
-
-### Step 33: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0033-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 34: Click hex at (0, -2)
-![Click hex at (0, -2)](screenshots/0034-click.png)
+### Step 18: PLACE_TILE
+![PLACE_TILE](screenshots/018-place_tile.png)
 
-**User Action**: Click hex at (0, -2)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `PLACE_TILE`
+- Position: (2, -2)
+- Rotation: 0
 
----
-
-### Step 35: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0035-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 36: Click hex at (0, -3)
-![Click hex at (0, -3)](screenshots/0036-click.png)
+### Step 19: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/019-next_player.png)
 
-**User Action**: Click hex at (0, -3)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `NEXT_PLAYER`
 
----
-
-### Step 37: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0037-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Turn advances to next player
 
 ---
 
-### Step 38: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0038-click.png)
+### Step 20: DRAW_TILE
+![DRAW_TILE](screenshots/020-draw_tile.png)
 
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Action**: `DRAW_TILE`
 
----
-
-### Step 39: Click hex at (1, -1)
-![Click hex at (1, -1)](screenshots/0039-click.png)
-
-**User Action**: Click hex at (1, -1)
-**Expected State**: Tile preview appears at selected hex position
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 40: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0040-click.png)
+### Step 21: PLACE_TILE
+![PLACE_TILE](screenshots/021-place_tile.png)
 
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Action**: `PLACE_TILE`
+- Position: (-2, 0)
+- Rotation: 0
 
----
-
-### Step 41: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0041-click.png)
-
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 42: Click hex at (1, -3)
-![Click hex at (1, -3)](screenshots/0042-click.png)
+### Step 22: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/022-next_player.png)
 
-**User Action**: Click hex at (1, -3)
-**Expected State**: Tile preview appears at selected hex position
+**Action**: `NEXT_PLAYER`
 
----
-
-### Step 43: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0043-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Turn advances to next player
 
 ---
 
-### Step 44: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0044-click.png)
+### Step 23: DRAW_TILE
+![DRAW_TILE](screenshots/023-draw_tile.png)
 
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Action**: `DRAW_TILE`
 
----
-
-### Step 45: Click hex at (-3, 1)
-![Click hex at (-3, 1)](screenshots/0045-click.png)
-
-**User Action**: Click hex at (-3, 1)
-**Expected State**: Tile preview appears at selected hex position
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 46: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0046-click.png)
+### Step 24: PLACE_TILE
+![PLACE_TILE](screenshots/024-place_tile.png)
 
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Action**: `PLACE_TILE`
+- Position: (3, -3)
+- Rotation: 2
 
----
-
-### Step 47: Click hex at (0, 0)
-![Click hex at (0, 0)](screenshots/0047-click.png)
-
-**User Action**: Click hex at (0, 0)
-**Expected State**: Tile preview appears at selected hex position
+**Expected State**: Tile placed on board, flows updated
 
 ---
 
-### Step 48: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0048-click.png)
+### Step 25: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/025-next_player.png)
 
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
+**Action**: `NEXT_PLAYER`
 
----
-
-### Step 49: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0049-click.png)
-
-**User Action**: Rotate tile (rotation 2)
-**Expected State**: Preview tile rotates to new orientation
+**Expected State**: Turn advances to next player
 
 ---
 
-### Step 50: Click checkmark to confirm
-![Click checkmark to confirm](screenshots/0050-click.png)
+### Step 26: DRAW_TILE
+![DRAW_TILE](screenshots/026-draw_tile.png)
 
-**User Action**: Click checkmark to confirm
-**Expected State**: Tile placed on board, flows updated, turn advances
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
 
 ---
 
-### Step 51: Final Game State
+### Step 27: PLACE_TILE
+![PLACE_TILE](screenshots/027-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (-1, -1)
+- Rotation: 1
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 28: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/028-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 29: DRAW_TILE
+![DRAW_TILE](screenshots/029-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 30: PLACE_TILE
+![PLACE_TILE](screenshots/030-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (1, -2)
+- Rotation: 1
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 31: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/031-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 32: DRAW_TILE
+![DRAW_TILE](screenshots/032-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 33: PLACE_TILE
+![PLACE_TILE](screenshots/033-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (0, -1)
+- Rotation: 0
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 34: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/034-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 35: DRAW_TILE
+![DRAW_TILE](screenshots/035-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 36: PLACE_TILE
+![PLACE_TILE](screenshots/036-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (-1, 0)
+- Rotation: 2
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 37: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/037-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 38: DRAW_TILE
+![DRAW_TILE](screenshots/038-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 39: PLACE_TILE
+![PLACE_TILE](screenshots/039-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (0, -2)
+- Rotation: 0
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 40: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/040-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 41: DRAW_TILE
+![DRAW_TILE](screenshots/041-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 42: PLACE_TILE
+![PLACE_TILE](screenshots/042-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (0, -3)
+- Rotation: 1
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 43: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/043-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 44: DRAW_TILE
+![DRAW_TILE](screenshots/044-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 45: PLACE_TILE
+![PLACE_TILE](screenshots/045-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (1, -1)
+- Rotation: 1
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 46: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/046-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 47: DRAW_TILE
+![DRAW_TILE](screenshots/047-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 48: PLACE_TILE
+![PLACE_TILE](screenshots/048-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (1, -3)
+- Rotation: 1
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 49: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/049-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 50: DRAW_TILE
+![DRAW_TILE](screenshots/050-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 51: PLACE_TILE
+![PLACE_TILE](screenshots/051-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (-3, 1)
+- Rotation: 0
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 52: NEXT_PLAYER
+![NEXT_PLAYER](screenshots/052-next_player.png)
+
+**Action**: `NEXT_PLAYER`
+
+**Expected State**: Turn advances to next player
+
+---
+
+### Step 53: DRAW_TILE
+![DRAW_TILE](screenshots/053-draw_tile.png)
+
+**Action**: `DRAW_TILE`
+
+**Expected State**: Current player draws a new tile
+
+---
+
+### Step 54: PLACE_TILE
+![PLACE_TILE](screenshots/054-place_tile.png)
+
+**Action**: `PLACE_TILE`
+- Position: (0, 0)
+- Rotation: 2
+
+**Expected State**: Tile placed on board, flows updated
+
+---
+
+### Step 55: Final Game State
 ![Final State](screenshots/final-state.png)
 
 **Game Phase**: finished
@@ -424,13 +547,13 @@ Each screenshot shows the result of a user click action.
 
 ## Validation Checklist
 
-- [ ] All 49 clicks executed successfully
+- [ ] All 53 actions executed successfully
 - [ ] 16 tiles placed on board
 - [ ] No illegal moves attempted
 - [ ] Flow calculations correct at each step
 - [ ] Game state matches expectations file
 - [ ] Final phase is "finished"
 - [ ] 2 players participated
-- [ ] Screenshots captured for all clicks
+- [ ] Screenshots captured for all actions
 - [ ] Test completes without errors
 - [ ] Deterministic behavior - same seed produces same game

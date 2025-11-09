@@ -350,7 +350,9 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
           
           // If tiles were created, log the first few
           if (stateAfter.game.availableTiles && stateAfter.game.availableTiles.length > 0) {
-            console.log(`  - First 5 tiles in deck: ${stateAfter.game.availableTiles.slice(0, 5).map((t: any) => `type${t.type}`).join(', ')}`);
+            const first5Types = stateAfter.game.availableTiles.slice(0, 5);
+            console.log(`  - First 5 tiles in deck: ${first5Types.map((t: number) => `type=${t}`).join(', ')}`);
+            console.log(`  - First tile type: ${stateAfter.game.availableTiles[0]} (seed ${seedValue} should give specific type)`);
           }
           console.log(`=== END DISPATCH_ACTION ===\n`);
           
