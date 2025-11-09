@@ -207,12 +207,12 @@ export function actionsToClicks(
       }
       
       case 'START_GAME': {
+        // Don't generate a click for START_GAME - use action dispatch to preserve seed
+        // Add a special marker that the test should dispatch this action directly
         clicks.push({
-          type: 'click',
-          target: 'start-button',
-          x: canvasWidth / 2,
-          y: canvasHeight / 2,
-          description: 'Click START button'
+          type: 'wait',
+          animationFrames: 0,
+          description: `DISPATCH_ACTION: START_GAME with seed ${action.payload?.seed || 'default'}`
         });
         clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for game start' });
         break;

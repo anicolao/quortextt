@@ -1,6 +1,6 @@
 {"type":"click","target":"edge-button","x":445,"y":654,"description":"Click to add player (#0173B2 at edge 0)"}
 {"type":"click","target":"edge-button","x":1214,"y":204,"description":"Click to add player (#DE8F05 at edge 1)"}
-{"type":"click","target":"start-button","x":640,"y":360,"description":"Click START button"}
+{"type":"wait","animationFrames":0,"description":"DISPATCH_ACTION: START_GAME with seed 888"}
 {"type":"wait","animationFrames":1,"description":"Wait for game start"}
 {"type":"click","target":"edge-hex","x":639.9999999999999,"y":21.176470588235304,"description":"Select edge 0 for player P1"}
 {"type":"wait","animationFrames":1,"description":"Wait for edge selection"}
