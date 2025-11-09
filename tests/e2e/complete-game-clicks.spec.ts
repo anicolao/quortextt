@@ -273,7 +273,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   expect(state).toBeDefined();
   expect(state.game).toBeDefined();
   expect(state.game.players.length).toBe(0); // No players initially
-  console.log(`✓ Initial state: 0 players, configuration phase`);
+  console.log(`✓ Initial state: 0 players, configuration phase, seed=${state.game.seed}`);
   
   let screenshotCounter = 2;
   let tilesPlaced = 0;
@@ -296,7 +296,18 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         if (actionMatch) {
           const actionType = actionMatch[1];
           const seedValue = parseInt(actionMatch[2]);
-          console.log(`Dispatching ${actionType} action with seed ${seedValue}`);
+          console.log(`\n=== DISPATCH_ACTION: ${actionType} with seed ${seedValue} ===`);
+          
+          // Check state BEFORE dispatch
+          const stateBefore = await getReduxState(page);
+          console.log(`BEFORE dispatch:`);
+          console.log(`  - screen: ${stateBefore.game.screen}`);
+          console.log(`  - phase: ${stateBefore.game.phase}`);
+          console.log(`  - seed in state: ${stateBefore.game.seed}`);
+          console.log(`  - availableTiles count: ${stateBefore.game.availableTiles?.length || 0}`);
+          console.log(`  - currentTile: ${stateBefore.game.currentTile ? JSON.stringify(stateBefore.game.currentTile) : 'null'}`);
+          console.log(`  - players count: ${stateBefore.game.players?.length || 0}`);
+          console.log(`  - configPlayers count: ${stateBefore.game.configPlayers?.length || 0}`);
           
           // Dispatch the action to Redux store
           const result = await page.evaluate(({actionType, seedValue}) => {
@@ -305,21 +316,43 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
               console.error('Redux store not found on window');
               return { success: false, error: 'Store not found' };
             }
-            console.log(`About to dispatch action: ${actionType} with seed ${seedValue}`);
+            console.log(`Dispatching ${actionType} with payload:`, { seed: seedValue });
             store.dispatch({
               type: actionType,
               payload: { seed: seedValue }
             });
             const state = store.getState();
-            console.log(`Dispatched ${actionType} action. Seed in state:`, state.game.seed);
-            return { success: true, seed: state.game.seed };
+            return { 
+              success: true, 
+              seed: state.game.seed,
+              screen: state.game.screen,
+              phase: state.game.phase,
+              availableTilesCount: state.game.availableTiles?.length || 0,
+              currentTile: state.game.currentTile,
+            };
           }, {actionType, seedValue});
           
-          console.log(`  Dispatch result:`, result);
+          console.log(`Dispatch result:`, result);
           
           // Wait for the action to be processed
           await waitForAnimationFrame(page);
           await waitForAnimationFrame(page);
+          
+          // Check state AFTER dispatch
+          const stateAfter = await getReduxState(page);
+          console.log(`AFTER dispatch:`);
+          console.log(`  - screen: ${stateAfter.game.screen}`);
+          console.log(`  - phase: ${stateAfter.game.phase}`);
+          console.log(`  - seed in state: ${stateAfter.game.seed}`);
+          console.log(`  - availableTiles count: ${stateAfter.game.availableTiles?.length || 0}`);
+          console.log(`  - currentTile: ${stateAfter.game.currentTile ? JSON.stringify(stateAfter.game.currentTile) : 'null'}`);
+          console.log(`  - players count: ${stateAfter.game.players?.length || 0}`);
+          
+          // If tiles were created, log the first few
+          if (stateAfter.game.availableTiles && stateAfter.game.availableTiles.length > 0) {
+            console.log(`  - First 5 tiles in deck: ${stateAfter.game.availableTiles.slice(0, 5).map((t: any) => `type${t.type}`).join(', ')}`);
+          }
+          console.log(`=== END DISPATCH_ACTION ===\n`);
           
           continue; // Skip the normal wait handling
         }
@@ -359,7 +392,23 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
       // Validate player count after ADD_PLAYER clicks
       if (click.description?.includes('add player')) {
         const playerCount = state.game.players?.length || 0;
-        console.log(`  After click: ${playerCount} players in game`);
+        console.log(`  After click: ${playerCount} players in game, seed=${state.game.seed}`);
+      }
+      
+      // Log state after edge selection to see when deck is created
+      if (click.description?.includes('Select edge')) {
+        console.log(`  After edge selection: screen=${state.game.screen}, phase=${state.game.phase}`);
+        console.log(`    seed=${state.game.seed}`);
+        console.log(`    availableTiles count: ${state.game.availableTiles?.length || 0}`);
+        console.log(`    currentTile: ${state.game.currentTile ? `type${state.game.currentTile.type}` : 'null'}`);
+        
+        // If we just transitioned to gameplay, log the first tiles
+        if (state.game.phase === 'playing' && state.game.currentTile) {
+          console.log(`  🎲 DECK CREATED! First tile drawn: type${state.game.currentTile.type}`);
+          if (state.game.availableTiles && state.game.availableTiles.length > 0) {
+            console.log(`    Next 5 tiles: ${state.game.availableTiles.slice(0, 5).map((t: any) => `type${t.type}`).join(', ')}`);
+          }
+        }
       }
       
       // Validate tiles after PLACE_TILE/checkmark clicks
