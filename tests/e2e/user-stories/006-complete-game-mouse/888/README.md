@@ -80,19 +80,19 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 9: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0009-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 10: Click hex at (2, -3)
-![Click hex at (2, -3)](screenshots/0010-click.png)
+### Step 9: Click hex at (2, -3)
+![Click hex at (2, -3)](screenshots/0009-click.png)
 
 **User Action**: Click hex at (2, -3)
 **Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 10: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0010-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
 
 ---
 
@@ -104,19 +104,19 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 12: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0012-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 13: Click hex at (-2, -1)
-![Click hex at (-2, -1)](screenshots/0013-click.png)
+### Step 12: Click hex at (-2, -1)
+![Click hex at (-2, -1)](screenshots/0012-click.png)
 
 **User Action**: Click hex at (-2, -1)
 **Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 13: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0013-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
 
 ---
 
@@ -128,27 +128,27 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 15: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0015-click.png)
+### Step 15: Click hex at (3, -3)
+![Click hex at (3, -3)](screenshots/0015-click.png)
+
+**User Action**: Click hex at (3, -3)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 16: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0016-click.png)
 
 **User Action**: Rotate tile (rotation 1)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 16: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0016-click.png)
+### Step 17: Rotate tile (rotation 2)
+![Rotate tile (rotation 2)](screenshots/0017-click.png)
 
 **User Action**: Rotate tile (rotation 2)
 **Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 17: Click hex at (3, -3)
-![Click hex at (3, -3)](screenshots/0017-click.png)
-
-**User Action**: Click hex at (3, -3)
-**Expected State**: Tile preview appears at selected hex position
 
 ---
 
@@ -160,27 +160,27 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 19: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0019-click.png)
+### Step 19: Click hex at (-1, -1)
+![Click hex at (-1, -1)](screenshots/0019-click.png)
+
+**User Action**: Click hex at (-1, -1)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 20: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0020-click.png)
 
 **User Action**: Rotate tile (rotation 1)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 20: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0020-click.png)
+### Step 21: Rotate tile (rotation 2)
+![Rotate tile (rotation 2)](screenshots/0021-click.png)
 
 **User Action**: Rotate tile (rotation 2)
 **Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 21: Click hex at (-1, -1)
-![Click hex at (-1, -1)](screenshots/0021-click.png)
-
-**User Action**: Click hex at (-1, -1)
-**Expected State**: Tile preview appears at selected hex position
 
 ---
 
@@ -192,19 +192,19 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 23: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0023-click.png)
-
-**User Action**: Rotate tile (rotation 1)
-**Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 24: Click hex at (1, -2)
-![Click hex at (1, -2)](screenshots/0024-click.png)
+### Step 23: Click hex at (1, -2)
+![Click hex at (1, -2)](screenshots/0023-click.png)
 
 **User Action**: Click hex at (1, -2)
 **Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 24: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0024-click.png)
+
+**User Action**: Rotate tile (rotation 1)
+**Expected State**: Preview tile rotates to new orientation
 
 ---
 
@@ -216,43 +216,43 @@ Each screenshot shows the result of a user click action.
 
 ---
 
-### Step 26: Rotate tile (rotation 1)
-![Rotate tile (rotation 1)](screenshots/0026-click.png)
+### Step 26: Click hex at (0, -1)
+![Click hex at (0, -1)](screenshots/0026-click.png)
+
+**User Action**: Click hex at (0, -1)
+**Expected State**: Tile preview appears at selected hex position
+
+---
+
+### Step 27: Rotate tile (rotation 1)
+![Rotate tile (rotation 1)](screenshots/0027-click.png)
 
 **User Action**: Rotate tile (rotation 1)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 27: Rotate tile (rotation 2)
-![Rotate tile (rotation 2)](screenshots/0027-click.png)
+### Step 28: Rotate tile (rotation 2)
+![Rotate tile (rotation 2)](screenshots/0028-click.png)
 
 **User Action**: Rotate tile (rotation 2)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 28: Rotate tile (rotation 3)
-![Rotate tile (rotation 3)](screenshots/0028-click.png)
+### Step 29: Rotate tile (rotation 3)
+![Rotate tile (rotation 3)](screenshots/0029-click.png)
 
 **User Action**: Rotate tile (rotation 3)
 **Expected State**: Preview tile rotates to new orientation
 
 ---
 
-### Step 29: Rotate tile (rotation 4)
-![Rotate tile (rotation 4)](screenshots/0029-click.png)
+### Step 30: Rotate tile (rotation 4)
+![Rotate tile (rotation 4)](screenshots/0030-click.png)
 
 **User Action**: Rotate tile (rotation 4)
 **Expected State**: Preview tile rotates to new orientation
-
----
-
-### Step 30: Click hex at (0, -1)
-![Click hex at (0, -1)](screenshots/0030-click.png)
-
-**User Action**: Click hex at (0, -1)
-**Expected State**: Tile preview appears at selected hex position
 
 ---
 
