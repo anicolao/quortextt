@@ -208,6 +208,26 @@ function runGameValidationTest(seed: number) {
         // Skip actions that would cause errors in non-gameplay states
         try {
           state = gameReducer(state, action);
+          
+          // Log important state changes
+          if (action.type === 'START_GAME') {
+            console.log(`[Action Test] START_GAME with seed: ${action.payload?.seed}`);
+            console.log(`  State after: seed=${state.seed}, screen=${state.screen}, phase=${state.phase}`);
+          }
+          
+          if (action.type === 'SELECT_EDGE' && state.phase === 'playing') {
+            console.log(`[Action Test] Transitioned to playing phase after edge selection`);
+            console.log(`  seed=${state.seed}`);
+            console.log(`  currentTile: ${state.currentTile ? `type${state.currentTile.type}` : 'null'}`);
+            console.log(`  availableTiles count: ${state.availableTiles.length}`);
+            if (state.availableTiles.length > 0) {
+              console.log(`  First 5 tiles in deck: ${state.availableTiles.slice(0, 5).map(t => `type${t.type}`).join(', ')}`);
+            }
+          }
+          
+          if (action.type === 'DRAW_TILE' && moveCounter === 0) {
+            console.log(`[Action Test] First DRAW_TILE: type${state.currentTile?.type}`);
+          }
         } catch (error) {
           console.warn(`Error processing action ${i + 1}/${actions.length} (${action.type}):`, error);
           throw error;
