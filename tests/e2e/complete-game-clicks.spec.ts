@@ -486,6 +486,13 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
             console.log(`    P2 flow ${idx}: ${flow.length} edges - ${flow.map(e => `${e.pos}:${e.dir}`).join(', ')}`);
           });
           
+          // Check exact number of P1 flows
+          const expectedP1FlowCount = Object.keys(moveExpectation.p1).length;
+          if (actualFlows.p1Flows.length !== expectedP1FlowCount) {
+            console.log(`  ❌ Move ${tilesPlaced}: Expected ${expectedP1FlowCount} P1 flows, got ${actualFlows.p1Flows.length}`);
+            throw new Error(`Move ${tilesPlaced}: Expected ${expectedP1FlowCount} P1 flows, got ${actualFlows.p1Flows.length}`);
+          }
+          
           // Validate P1 flows
           for (const [flowIdxStr, prefixLength] of Object.entries(moveExpectation.p1)) {
             const flowIdx = Number(flowIdxStr);
@@ -495,9 +502,9 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
               throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
             }
             
-            if (actualFlows.p1Flows[flowIdx].length < prefixLength) {
-              console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
-              throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+            if (actualFlows.p1Flows[flowIdx].length !== prefixLength) {
+              console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
+              throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
             }
             
             // Validate the prefix matches
@@ -518,6 +525,13 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
             }
           }
           
+          // Check exact number of P2 flows
+          const expectedP2FlowCount = Object.keys(moveExpectation.p2).length;
+          if (actualFlows.p2Flows.length !== expectedP2FlowCount) {
+            console.log(`  ❌ Move ${tilesPlaced}: Expected ${expectedP2FlowCount} P2 flows, got ${actualFlows.p2Flows.length}`);
+            throw new Error(`Move ${tilesPlaced}: Expected ${expectedP2FlowCount} P2 flows, got ${actualFlows.p2Flows.length}`);
+          }
+          
           // Validate P2 flows
           for (const [flowIdxStr, prefixLength] of Object.entries(moveExpectation.p2)) {
             const flowIdx = Number(flowIdxStr);
@@ -527,9 +541,9 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
               throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
             }
             
-            if (actualFlows.p2Flows[flowIdx].length < prefixLength) {
-              console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
-              throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+            if (actualFlows.p2Flows[flowIdx].length !== prefixLength) {
+              console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
+              throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected exactly ${prefixLength}`);
             }
             
             // Validate the prefix matches
