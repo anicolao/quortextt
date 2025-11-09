@@ -15,7 +15,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ## Test Execution
 
 ### Step 1: Initial Screen
-![Initial Screen](screenshots/001-initial-screen.png)
+![Initial Screen](screenshots/0001-initial-screen.png)
 
 **Action**: Application loads
 **Expected State**: Game canvas visible, empty configuration screen ready for player setup
@@ -23,7 +23,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 2: ADD_PLAYER
-![ADD_PLAYER](screenshots/002-add_player.png)
+![ADD_PLAYER](screenshots/0002-click.png)
 
 **Action**: `ADD_PLAYER`
 - Color: #0173B2
@@ -34,7 +34,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 3: ADD_PLAYER
-![ADD_PLAYER](screenshots/003-add_player.png)
+![ADD_PLAYER](screenshots/0003-click.png)
 
 **Action**: `ADD_PLAYER`
 - Color: #DE8F05
@@ -45,7 +45,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 4: START_GAME
-![START_GAME](screenshots/004-start_game.png)
+![START_GAME](screenshots/0004-click.png)
 
 **Action**: `START_GAME`
 
@@ -54,7 +54,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 5: SHUFFLE_TILES
-![SHUFFLE_TILES](screenshots/005-shuffle_tiles.png)
+![SHUFFLE_TILES](screenshots/0005-click.png)
 
 **Action**: `SHUFFLE_TILES`
 
@@ -63,7 +63,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 6: SELECT_EDGE
-![SELECT_EDGE](screenshots/006-select_edge.png)
+![SELECT_EDGE](screenshots/0006-click.png)
 
 **Action**: `SELECT_EDGE`
 - Player: P1
@@ -74,7 +74,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 7: SELECT_EDGE
-![SELECT_EDGE](screenshots/007-select_edge.png)
+![SELECT_EDGE](screenshots/0007-click.png)
 
 **Action**: `SELECT_EDGE`
 - Player: P2
@@ -85,7 +85,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 8: DRAW_TILE
-![DRAW_TILE](screenshots/008-draw_tile.png)
+![DRAW_TILE](screenshots/0008-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -94,7 +94,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 9: PLACE_TILE
-![PLACE_TILE](screenshots/009-place_tile.png)
+![PLACE_TILE](screenshots/0009-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (-3, 0)
@@ -105,7 +105,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 10: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/010-next_player.png)
+![NEXT_PLAYER](screenshots/0010-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -114,7 +114,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 11: DRAW_TILE
-![DRAW_TILE](screenshots/011-draw_tile.png)
+![DRAW_TILE](screenshots/0011-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -123,7 +123,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 12: PLACE_TILE
-![PLACE_TILE](screenshots/012-place_tile.png)
+![PLACE_TILE](screenshots/0012-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (2, -3)
@@ -134,7 +134,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 13: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/013-next_player.png)
+![NEXT_PLAYER](screenshots/0013-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -143,7 +143,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 14: DRAW_TILE
-![DRAW_TILE](screenshots/014-draw_tile.png)
+![DRAW_TILE](screenshots/0014-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -152,7 +152,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 15: PLACE_TILE
-![PLACE_TILE](screenshots/015-place_tile.png)
+![PLACE_TILE](screenshots/0015-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (-2, -1)
@@ -163,7 +163,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 16: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/016-next_player.png)
+![NEXT_PLAYER](screenshots/0016-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -172,7 +172,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 17: DRAW_TILE
-![DRAW_TILE](screenshots/017-draw_tile.png)
+![DRAW_TILE](screenshots/0017-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -181,7 +181,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 18: PLACE_TILE
-![PLACE_TILE](screenshots/018-place_tile.png)
+![PLACE_TILE](screenshots/0018-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (2, -2)
@@ -192,7 +192,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 19: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/019-next_player.png)
+![NEXT_PLAYER](screenshots/0019-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -201,7 +201,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 20: DRAW_TILE
-![DRAW_TILE](screenshots/020-draw_tile.png)
+![DRAW_TILE](screenshots/0020-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -210,7 +210,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 21: PLACE_TILE
-![PLACE_TILE](screenshots/021-place_tile.png)
+![PLACE_TILE](screenshots/0021-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (-2, 0)
@@ -221,7 +221,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 22: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/022-next_player.png)
+![NEXT_PLAYER](screenshots/0022-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -230,7 +230,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 23: DRAW_TILE
-![DRAW_TILE](screenshots/023-draw_tile.png)
+![DRAW_TILE](screenshots/0023-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -239,7 +239,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 24: PLACE_TILE
-![PLACE_TILE](screenshots/024-place_tile.png)
+![PLACE_TILE](screenshots/0024-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (3, -3)
@@ -250,7 +250,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 25: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/025-next_player.png)
+![NEXT_PLAYER](screenshots/0025-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -259,7 +259,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 26: DRAW_TILE
-![DRAW_TILE](screenshots/026-draw_tile.png)
+![DRAW_TILE](screenshots/0026-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -268,7 +268,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 27: PLACE_TILE
-![PLACE_TILE](screenshots/027-place_tile.png)
+![PLACE_TILE](screenshots/0027-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (-1, -1)
@@ -279,7 +279,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 28: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/028-next_player.png)
+![NEXT_PLAYER](screenshots/0028-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -288,7 +288,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 29: DRAW_TILE
-![DRAW_TILE](screenshots/029-draw_tile.png)
+![DRAW_TILE](screenshots/0029-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -297,7 +297,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 30: PLACE_TILE
-![PLACE_TILE](screenshots/030-place_tile.png)
+![PLACE_TILE](screenshots/0030-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (1, -2)
@@ -308,7 +308,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 31: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/031-next_player.png)
+![NEXT_PLAYER](screenshots/0031-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -317,7 +317,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 32: DRAW_TILE
-![DRAW_TILE](screenshots/032-draw_tile.png)
+![DRAW_TILE](screenshots/0032-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -326,7 +326,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 33: PLACE_TILE
-![PLACE_TILE](screenshots/033-place_tile.png)
+![PLACE_TILE](screenshots/0033-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (0, -1)
@@ -337,7 +337,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 34: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/034-next_player.png)
+![NEXT_PLAYER](screenshots/0034-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -346,7 +346,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 35: DRAW_TILE
-![DRAW_TILE](screenshots/035-draw_tile.png)
+![DRAW_TILE](screenshots/0035-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -355,7 +355,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 36: PLACE_TILE
-![PLACE_TILE](screenshots/036-place_tile.png)
+![PLACE_TILE](screenshots/0036-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (-1, 0)
@@ -366,7 +366,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 37: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/037-next_player.png)
+![NEXT_PLAYER](screenshots/0037-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -375,7 +375,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 38: DRAW_TILE
-![DRAW_TILE](screenshots/038-draw_tile.png)
+![DRAW_TILE](screenshots/0038-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -384,7 +384,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 39: PLACE_TILE
-![PLACE_TILE](screenshots/039-place_tile.png)
+![PLACE_TILE](screenshots/0039-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (0, -2)
@@ -395,7 +395,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 40: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/040-next_player.png)
+![NEXT_PLAYER](screenshots/0040-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -404,7 +404,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 41: DRAW_TILE
-![DRAW_TILE](screenshots/041-draw_tile.png)
+![DRAW_TILE](screenshots/0041-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -413,7 +413,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 42: PLACE_TILE
-![PLACE_TILE](screenshots/042-place_tile.png)
+![PLACE_TILE](screenshots/0042-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (0, -3)
@@ -424,7 +424,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 43: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/043-next_player.png)
+![NEXT_PLAYER](screenshots/0043-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -433,7 +433,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 44: DRAW_TILE
-![DRAW_TILE](screenshots/044-draw_tile.png)
+![DRAW_TILE](screenshots/0044-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -442,7 +442,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 45: PLACE_TILE
-![PLACE_TILE](screenshots/045-place_tile.png)
+![PLACE_TILE](screenshots/0045-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (1, -1)
@@ -453,7 +453,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 46: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/046-next_player.png)
+![NEXT_PLAYER](screenshots/0046-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -462,7 +462,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 47: DRAW_TILE
-![DRAW_TILE](screenshots/047-draw_tile.png)
+![DRAW_TILE](screenshots/0047-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -471,7 +471,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 48: PLACE_TILE
-![PLACE_TILE](screenshots/048-place_tile.png)
+![PLACE_TILE](screenshots/0048-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (1, -3)
@@ -482,7 +482,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 49: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/049-next_player.png)
+![NEXT_PLAYER](screenshots/0049-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -491,7 +491,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 50: DRAW_TILE
-![DRAW_TILE](screenshots/050-draw_tile.png)
+![DRAW_TILE](screenshots/0050-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -500,7 +500,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 51: PLACE_TILE
-![PLACE_TILE](screenshots/051-place_tile.png)
+![PLACE_TILE](screenshots/0051-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (-3, 1)
@@ -511,7 +511,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 52: NEXT_PLAYER
-![NEXT_PLAYER](screenshots/052-next_player.png)
+![NEXT_PLAYER](screenshots/0052-click.png)
 
 **Action**: `NEXT_PLAYER`
 
@@ -520,7 +520,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 53: DRAW_TILE
-![DRAW_TILE](screenshots/053-draw_tile.png)
+![DRAW_TILE](screenshots/0053-click.png)
 
 **Action**: `DRAW_TILE`
 
@@ -529,7 +529,7 @@ This test validates a complete game flow from lobby setup through gameplay to co
 ---
 
 ### Step 54: PLACE_TILE
-![PLACE_TILE](screenshots/054-place_tile.png)
+![PLACE_TILE](screenshots/0054-click.png)
 
 **Action**: `PLACE_TILE`
 - Position: (0, 0)
