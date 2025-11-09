@@ -50,15 +50,17 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
       await page.mouse.click(box.x + click.x!, box.y + click.y!);
       console.log(`Click ${i + 1}/${clicks.length}: ${click.description}`);
     } else if (click.type === 'wait') {
-      // Handle wait - use animationFrames if available, otherwise fall back to delay
+      // Handle wait - must use animationFrames
       if (click.animationFrames !== undefined) {
         // Wait for specified number of animation frames
         for (let f = 0; f < click.animationFrames; f++) {
           await waitForAnimationFrame(page);
         }
       } else if (click.delay !== undefined) {
-        // Legacy delay support (deprecated)
-        await page.waitForTimeout(click.delay);
+        // Legacy delay is not supported - fail the test
+        throw new Error(`Legacy delay found in click ${i + 1}: ${click.description}. Please regenerate .clicks files with animationFrames instead of delay.`);
+      } else {
+        throw new Error(`Wait action at click ${i + 1} has neither animationFrames nor delay: ${click.description}`);
       }
     }
     
