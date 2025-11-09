@@ -239,22 +239,7 @@ export function actionsToClicks(
       case 'PLACE_TILE': {
         const { position, rotation } = action.payload;
         
-        // Rotate tile to desired rotation
-        const rotationsNeeded = (rotation - currentRotation + 6) % 6;
-        for (let i = 0; i < rotationsNeeded; i++) {
-          const rotateCoords = getTileRotationCoords(canvasWidth, canvasHeight);
-          clicks.push({
-            type: 'click',
-            target: 'tile-rotate',
-            x: rotateCoords.x,
-            y: rotateCoords.y,
-            description: `Rotate tile (rotation ${(currentRotation + i + 1) % 6})`
-          });
-          clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for rotation' });
-        }
-        currentRotation = rotation;
-        
-        // Click on hex position to place tile
+        // First, click on hex position to place tile preview
         const hexCoords = getHexPixelCoords(position, canvasWidth, canvasHeight);
         clicks.push({
           type: 'click',
@@ -265,7 +250,22 @@ export function actionsToClicks(
         });
         clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for tile placement' });
         
-        // Click checkmark to confirm
+        // Then rotate tile to desired rotation (if needed)
+        if (rotation !== 0) {
+          for (let i = 0; i < rotation; i++) {
+            const rotateCoords = getTileRotationCoords(canvasWidth, canvasHeight, position);
+            clicks.push({
+              type: 'click',
+              target: 'tile-rotate',
+              x: rotateCoords.x,
+              y: rotateCoords.y,
+              description: `Rotate tile (rotation ${i + 1})`
+            });
+            clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for rotation' });
+          }
+        }
+        
+        // Finally, click checkmark to confirm
         const checkCoords = getCheckmarkCoords(position, canvasWidth, canvasHeight);
         clicks.push({
           type: 'click',
@@ -276,8 +276,6 @@ export function actionsToClicks(
         });
         clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for confirmation' });
         
-        // Reset rotation after placement
-        currentRotation = 0;
         break;
       }
       

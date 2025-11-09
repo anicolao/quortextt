@@ -171,6 +171,10 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         for (let f = 0; f < click.animationFrames; f++) {
           await waitForAnimationFrame(page);
         }
+        // Add extra wait after rotations to ensure UI updates
+        if (click.description?.includes('rotation')) {
+          await waitForAnimationFrame(page);
+        }
       } else if (click.delay !== undefined) {
         // Legacy delay is not supported - fail the test
         throw new Error(`Legacy delay found in click ${i + 1}: ${click.description}. Please regenerate .clicks files with animationFrames instead of delay.`);
@@ -201,6 +205,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
       // Validate tiles after PLACE_TILE/checkmark clicks
       if (click.description?.includes('checkmark to confirm')) {
         // Wait extra time for tile placement to complete
+        await waitForAnimationFrame(page);
         await waitForAnimationFrame(page);
         await waitForAnimationFrame(page);
         
