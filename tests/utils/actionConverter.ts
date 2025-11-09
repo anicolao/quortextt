@@ -22,7 +22,8 @@ export interface ClickAction {
   target?: string; // Description of what to click
   x?: number;      // Pixel x coordinate (relative)
   y?: number;      // Pixel y coordinate (relative)
-  delay?: number;  // Milliseconds to wait
+  delay?: number;  // Milliseconds to wait (deprecated - use animationFrames instead)
+  animationFrames?: number; // Number of animation frames to wait (default: 1)
   description: string;
 }
 
@@ -213,7 +214,7 @@ export function actionsToClicks(
           y: canvasHeight / 2,
           description: 'Click START button'
         });
-        clicks.push({ type: 'wait', delay: 200, description: 'Wait for game start' });
+        clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for game start' });
         break;
       }
       
@@ -231,7 +232,7 @@ export function actionsToClicks(
           y: edgeCoords.y,
           description: `Select edge ${action.payload.edgeNumber} for player ${action.payload.playerId}`
         });
-        clicks.push({ type: 'wait', delay: 200, description: 'Wait for edge selection' });
+        clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for edge selection' });
         break;
       }
       
@@ -249,7 +250,7 @@ export function actionsToClicks(
             y: rotateCoords.y,
             description: `Rotate tile (rotation ${(currentRotation + i + 1) % 6})`
           });
-          clicks.push({ type: 'wait', delay: 200, description: 'Wait for rotation' });
+          clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for rotation' });
         }
         currentRotation = rotation;
         
@@ -262,7 +263,7 @@ export function actionsToClicks(
           y: hexCoords.y,
           description: `Click hex at (${position.row}, ${position.col})`
         });
-        clicks.push({ type: 'wait', delay: 300, description: 'Wait for tile placement' });
+        clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for tile placement' });
         
         // Click checkmark to confirm
         const checkCoords = getCheckmarkCoords(position, canvasWidth, canvasHeight);
@@ -273,7 +274,7 @@ export function actionsToClicks(
           y: checkCoords.y,
           description: 'Click checkmark to confirm'
         });
-        clicks.push({ type: 'wait', delay: 400, description: 'Wait for confirmation' });
+        clicks.push({ type: 'wait', animationFrames: 1, description: 'Wait for confirmation' });
         
         // Reset rotation after placement
         currentRotation = 0;
