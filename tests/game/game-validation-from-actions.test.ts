@@ -61,8 +61,8 @@ function parseExpectations(content: string): FlowExpectations {
         p2Flows[index] = pairs;
       }
     } else if (section === '[MOVE_PREFIXES]') {
-      // Format: 1 p1={0:2,1:2} p2={}
-      const match = line.match(/^(\d+)\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
+      // Format: 1 tile=0 pos=-3,0 rot=0 p1={0:2,1:2} p2={}
+      const match = line.match(/^(\d+)\s+tile=\d+\s+pos=[-\d]+,[-\d]+\s+rot=\d+\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
       if (match) {
         const move = parseInt(match[1]);
         const p1Str = match[2];

@@ -19,7 +19,10 @@ interface FlowExpectations {
   p1Flows: Array<string[]>;  // Array of flows, each flow is array of "pos:dir" strings
   p2Flows: Array<string[]>;
   movePrefixes: Array<{ 
-    move: number; 
+    move: number;
+    tileType: number;
+    position: { row: number; col: number };
+    rotation: number;
     p1: Record<number, number>;  // flowIndex -> prefixLength
     p2: Record<number, number>;
   }>;
@@ -40,7 +43,7 @@ function parseExpectationsFile(filepath: string): FlowExpectations {
   
   const p1Flows: Array<string[]> = [];
   const p2Flows: Array<string[]> = [];
-  const movePrefixes: Array<{ move: number; p1: Record<number, number>; p2: Record<number, number> }> = [];
+  const movePrefixes: Array<{ move: number; tileType: number; position: { row: number; col: number }; rotation: number; p1: Record<number, number>; p2: Record<number, number> }> = [];
   
   let section = '';
   
@@ -63,12 +66,16 @@ function parseExpectationsFile(filepath: string): FlowExpectations {
       const index = parseInt(indexStr);
       p2Flows[index] = flowStr ? flowStr.split(/\s+/) : [];
     } else if (section === '[MOVE_PREFIXES]') {
-      // Format: 1 p1={0:2,1:2} p2={}
-      const match = line.match(/^(\d+)\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
+      // Format: 1 tile=0 pos=-3,0 rot=0 p1={0:2,1:2} p2={}
+      const match = line.match(/^(\d+)\s+tile=(\d+)\s+pos=([-\d]+),([-\d]+)\s+rot=(\d+)\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
       if (match) {
         const move = parseInt(match[1]);
-        const p1Str = match[2];
-        const p2Str = match[3];
+        const tileType = parseInt(match[2]);
+        const row = parseInt(match[3]);
+        const col = parseInt(match[4]);
+        const rotation = parseInt(match[5]);
+        const p1Str = match[6];
+        const p2Str = match[7];
         
         const p1: Record<number, number> = {};
         if (p1Str) {
@@ -86,7 +93,7 @@ function parseExpectationsFile(filepath: string): FlowExpectations {
           }
         }
         
-        movePrefixes.push({ move, p1, p2 });
+        movePrefixes.push({ move, tileType, position: { row, col }, rotation, p1, p2 });
       }
     }
   }
@@ -364,23 +371,34 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
           });
         }
         
-        // Validate tile rotation against expected placement
-        if (tilesPlaced <= expectedPlacements.length) {
-          const expectedPlacement = expectedPlacements[tilesPlaced - 1];
-          const posKey = `${expectedPlacement.position.row},${expectedPlacement.position.col}`;
+        // Validate tile type and rotation against expectations
+        const moveExpectation = expectations.movePrefixes.find(e => e.move === tilesPlaced);
+        
+        if (moveExpectation) {
+          const posKey = `${moveExpectation.position.row},${moveExpectation.position.col}`;
           
           if (state.game.board && state.game.board[posKey]) {
             const placedTile = state.game.board[posKey];
             const actualRotation = placedTile.rotation;
+            const actualTileType = placedTile.type;
             
-            console.log(`  Placed tile at ${posKey}: type=${placedTile.type}, rotation=${actualRotation}`);
+            console.log(`  Placed tile at ${posKey}: type=${actualTileType}, rotation=${actualRotation}`);
+            
+            // Validate tile type
+            if (actualTileType !== moveExpectation.tileType) {
+              console.log(`  ❌ Move ${tilesPlaced}: Tile type mismatch at ${posKey}`);
+              console.log(`     Expected type: ${moveExpectation.tileType}, Actual: ${actualTileType}`);
+              throw new Error(`Move ${tilesPlaced}: Expected tile type ${moveExpectation.tileType} but got ${actualTileType}`);
+            }
             
             // Validate rotation
-            if (actualRotation !== expectedPlacement.rotation) {
+            if (actualRotation !== moveExpectation.rotation) {
               console.log(`  ❌ Move ${tilesPlaced}: Rotation mismatch at ${posKey}`);
-              console.log(`     Expected rotation: ${expectedPlacement.rotation}, Actual: ${actualRotation}`);
-              throw new Error(`Move ${tilesPlaced}: Expected rotation ${expectedPlacement.rotation} but got ${actualRotation}`);
+              console.log(`     Expected rotation: ${moveExpectation.rotation}, Actual: ${actualRotation}`);
+              throw new Error(`Move ${tilesPlaced}: Expected rotation ${moveExpectation.rotation} but got ${actualRotation}`);
             }
+            
+            console.log(`  ✓ Tile validation passed: type=${actualTileType}, rotation=${actualRotation}`);
           } else {
             console.log(`  ❌ Move ${tilesPlaced}: Tile not found at expected position ${posKey}`);
             throw new Error(`Move ${tilesPlaced}: Expected tile at ${posKey} but not found`);
@@ -388,8 +406,6 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         }
         
         // Validate flows against expectations
-        const moveExpectation = expectations.movePrefixes.find(e => e.move === tilesPlaced);
-        
         if (moveExpectation) {
           console.log(`  Validating flows for move ${tilesPlaced}...`);
           

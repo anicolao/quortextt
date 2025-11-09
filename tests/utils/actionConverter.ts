@@ -408,7 +408,8 @@ function formatMovePrefixes(movePrefixes: MovePrefix[]): string[] {
       .map(([k, v]) => `${k}:${v}`)
       .join(',');
     
-    return `${prefix.move} p1={${p1Str}} p2={${p2Str}}`;
+    // Format: "1 tile=0 pos=-3,0 rot=0 p1={0:2,1:2} p2={}"
+    return `${prefix.move} tile=${prefix.tileType} pos=${prefix.position.row},${prefix.position.col} rot=${prefix.rotation} p1={${p1Str}} p2={${p2Str}}`;
   });
 }
 
