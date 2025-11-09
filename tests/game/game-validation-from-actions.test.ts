@@ -159,12 +159,16 @@ function runGameValidationTest(seed: number) {
             }
           }
           
+          // Check exact number of P1 flows
+          const expectedP1FlowCount = Object.keys(expectation.p1).length;
+          expect(actualP1Flows.length, `P1 should have exactly ${expectedP1FlowCount} flows at move ${moveCounter}`).toBe(expectedP1FlowCount);
+          
           // Validate ordered flow sequences match expected prefixes
           // For each flow index, validate only the prefix up to the specified length
           for (const [flowIdxStr, prefixLength] of Object.entries(expectation.p1)) {
             const flowIdx = Number(flowIdxStr);
             expect(actualP1Flows[flowIdx], `P1 flow ${flowIdx} should exist at move ${moveCounter}`).toBeDefined();
-            expect(actualP1Flows[flowIdx].length, `P1 flow ${flowIdx} should have at least ${prefixLength} edges at move ${moveCounter}`).toBeGreaterThanOrEqual(prefixLength);
+            expect(actualP1Flows[flowIdx].length, `P1 flow ${flowIdx} should have exactly ${prefixLength} edges at move ${moveCounter}`).toBe(prefixLength);
             
             // Validate the prefix matches
             const actualPrefix = actualP1Flows[flowIdx].slice(0, prefixLength);
@@ -172,10 +176,14 @@ function runGameValidationTest(seed: number) {
             expect(actualPrefix, `P1 flow ${flowIdx} prefix mismatch at move ${moveCounter}`).toEqual(expectedPrefix);
           }
           
+          // Check exact number of P2 flows
+          const expectedP2FlowCount = Object.keys(expectation.p2).length;
+          expect(actualP2Flows.length, `P2 should have exactly ${expectedP2FlowCount} flows at move ${moveCounter}`).toBe(expectedP2FlowCount);
+          
           for (const [flowIdxStr, prefixLength] of Object.entries(expectation.p2)) {
             const flowIdx = Number(flowIdxStr);
             expect(actualP2Flows[flowIdx], `P2 flow ${flowIdx} should exist at move ${moveCounter}`).toBeDefined();
-            expect(actualP2Flows[flowIdx].length, `P2 flow ${flowIdx} should have at least ${prefixLength} edges at move ${moveCounter}`).toBeGreaterThanOrEqual(prefixLength);
+            expect(actualP2Flows[flowIdx].length, `P2 flow ${flowIdx} should have exactly ${prefixLength} edges at move ${moveCounter}`).toBe(prefixLength);
             
             // Validate the prefix matches
             const actualPrefix = actualP2Flows[flowIdx].slice(0, prefixLength);
