@@ -94,8 +94,22 @@ function main() {
   // Generate and save README file for 006- (clicks test) if it's a different directory
   // dir006 already declared above for screenshot cleanup
   if (dir006 !== outputDir) {
-    console.log('  Generating README for 006-...');
+    console.log('  Generating files for 006-...');
     fs.mkdirSync(dir006, { recursive: true });
+    
+    // Copy actions, clicks, and expectations to 006 directory
+    const actions006File = path.join(dir006, `${seed}.actions`);
+    fs.writeFileSync(actions006File, actionsContent, 'utf-8');
+    console.log(`  ✓ Saved ${actions006File}`);
+    
+    const clicks006File = path.join(dir006, `${seed}.clicks`);
+    fs.writeFileSync(clicks006File, clicksContent, 'utf-8');
+    console.log(`  ✓ Saved ${clicks006File}`);
+    
+    const expectations006File = path.join(dir006, `${seed}.expectations`);
+    fs.writeFileSync(expectations006File, expectations, 'utf-8');
+    console.log(`  ✓ Saved ${expectations006File}`);
+    
     const readme006File = path.join(dir006, 'README.md');
     fs.writeFileSync(readme006File, readme, 'utf-8');
     console.log(`  ✓ Saved ${readme006File}`);

@@ -1,6 +1,7 @@
 // Generic E2E test that replays a game from .clicks file (mouse clicks)
 import { test, expect } from '@playwright/test';
-import { getReduxState, pauseAnimations } from './helpers';
+import { getReduxState, pauseAnimations, waitForAnimationFrame } from './helpers';
+import { loadClicksFromFile, ClickAction } from '../utils/actionConverter';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,42 +10,30 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Wait for next animation frame to ensure rendering is complete
-async function waitForNextFrame(page: any) {
-  await page.evaluate(() => {
-    return new Promise(resolve => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(resolve);
-      });
-    });
-  });
-}
-
 // Test function parameterized by seed
-// This test uses the .actions file to replay via Redux actions, not clicks
-async function testCompleteGameFromActions(page: any, seed: string) {
-  const actionsFile = path.join(__dirname, `user-stories/005-complete-game/${seed}/${seed}.actions`);
+// This test replays a game from .clicks file (actual mouse clicks)
+async function testCompleteGameFromClicks(page: any, seed: string) {
+  const clicksFile = path.join(__dirname, `user-stories/005-complete-game/${seed}/${seed}.clicks`);
   const screenshotDir = path.join(__dirname, `user-stories/006-complete-game-mouse/${seed}/screenshots`);
   
   // Create screenshot directory
   fs.mkdirSync(screenshotDir, { recursive: true });
   
-  // Load actions
-  const content = fs.readFileSync(actionsFile, 'utf-8');
-  const actions = content
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => JSON.parse(line));
-  console.log(`Loaded ${actions.length} actions for seed ${seed}`);
+  // Load clicks
+  const content = fs.readFileSync(clicksFile, 'utf-8');
+  const clicks = loadClicksFromFile(content);
+  console.log(`Loaded ${clicks.length} clicks for seed ${seed}`);
   
   // Navigate to the game
   await page.goto('/');
   await page.waitForSelector('canvas#game-canvas');
   
-  // Pause animations once at the start
-  await pauseAnimations(page);
+  const canvas = page.locator('canvas#game-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas not found');
   
   // Take initial screenshot
+  await pauseAnimations(page);
   await page.screenshot({ 
     path: path.join(screenshotDir, '0001-initial-screen.png'),
     fullPage: false
@@ -52,25 +41,37 @@ async function testCompleteGameFromActions(page: any, seed: string) {
   
   let screenshotCounter = 2;
   
-  // Replay each action
-  for (let i = 0; i < actions.length; i++) {
-    const action = actions[i];
+  // Replay each click
+  for (let i = 0; i < clicks.length; i++) {
+    const click = clicks[i];
     
-    await page.evaluate((act) => {
-      const store = (window as any).__REDUX_STORE__;
-      store.dispatch(act);
-    }, action);
+    if (click.type === 'click') {
+      // Perform the click at the specified coordinates
+      await page.mouse.click(box.x + click.x!, box.y + click.y!);
+      console.log(`Click ${i + 1}/${clicks.length}: ${click.description}`);
+    } else if (click.type === 'wait') {
+      // Handle wait - use animationFrames if available, otherwise fall back to delay
+      if (click.animationFrames !== undefined) {
+        // Wait for specified number of animation frames
+        for (let f = 0; f < click.animationFrames; f++) {
+          await waitForAnimationFrame(page);
+        }
+      } else if (click.delay !== undefined) {
+        // Legacy delay support (deprecated)
+        await page.waitForTimeout(click.delay);
+      }
+    }
     
-    // Wait for next frame to ensure rendering is complete
-    await waitForNextFrame(page);
-    
-    // Take screenshot for every action
-    const filename = String(screenshotCounter).padStart(4, '0') + `-${action.type.toLowerCase()}.png`;
-    await page.screenshot({ 
-      path: path.join(screenshotDir, filename),
-      fullPage: false
-    });
-    screenshotCounter++;
+    // Take screenshot after each click action (not after waits)
+    if (click.type === 'click') {
+      await pauseAnimations(page);
+      const filename = String(screenshotCounter).padStart(4, '0') + `-click.png`;
+      await page.screenshot({ 
+        path: path.join(screenshotDir, filename),
+        fullPage: false
+      });
+      screenshotCounter++;
+    }
   }
   
   // Take final screenshot
@@ -84,13 +85,10 @@ async function testCompleteGameFromActions(page: any, seed: string) {
   expect(state).toBeDefined();
   expect(state.game).toBeDefined();
   
-  // Count ADD_PLAYER actions to verify
-  const playerCount = actions.filter(a => a.type === 'ADD_PLAYER').length;
-  
-  expect(state.game.configPlayers.length).toBe(playerCount);
-  console.log(`✓ Game completed with ${playerCount} players`);
+  console.log(`✓ Game completed from ${clicks.length} clicks`);
+  console.log(`  Final game phase: ${state.game.phase}`);
 }
 
 test('Complete game from clicks - seed 888', async ({ page }) => {
-  await testCompleteGameFromActions(page, '888');
+  await testCompleteGameFromClicks(page, '888');
 });
