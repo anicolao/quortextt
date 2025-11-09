@@ -165,8 +165,28 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
       // Wait a bit for state to update
       await waitForAnimationFrame(page);
     } else if (click.type === 'wait') {
+      // Check if this is a DISPATCH_ACTION marker
+      if (click.description?.startsWith('DISPATCH_ACTION:')) {
+        const actionMatch = click.description.match(/DISPATCH_ACTION: (\w+) with seed (\d+)/);
+        if (actionMatch) {
+          const actionType = actionMatch[1];
+          const seedValue = parseInt(actionMatch[2]);
+          console.log(`Dispatching ${actionType} action with seed ${seedValue}`);
+          
+          await page.evaluate(({actionType, seedValue}) => {
+            const store = (window as any).__REDUX_STORE__;
+            store.dispatch({
+              type: actionType,
+              payload: { seed: seedValue }
+            });
+          }, {actionType, seedValue});
+          
+          continue; // Skip the normal wait handling
+        }
+      }
+      
       // Handle wait - must use animationFrames
-      if (click.animationFrames !== undefined) {
+      if (click.animationFrames !== undefined && click.animationFrames > 0) {
         // Wait for specified number of animation frames
         for (let f = 0; f < click.animationFrames; f++) {
           await waitForAnimationFrame(page);
@@ -178,7 +198,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
       } else if (click.delay !== undefined) {
         // Legacy delay is not supported - fail the test
         throw new Error(`Legacy delay found in click ${i + 1}: ${click.description}. Please regenerate .clicks files with animationFrames instead of delay.`);
-      } else {
+      } else if (click.animationFrames === undefined) {
         throw new Error(`Wait action at click ${i + 1} has neither animationFrames nor delay: ${click.description}`);
       }
     }
