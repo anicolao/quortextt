@@ -298,13 +298,28 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
           const seedValue = parseInt(actionMatch[2]);
           console.log(`Dispatching ${actionType} action with seed ${seedValue}`);
           
-          await page.evaluate(({actionType, seedValue}) => {
+          // Dispatch the action to Redux store
+          const result = await page.evaluate(({actionType, seedValue}) => {
             const store = (window as any).__REDUX_STORE__;
+            if (!store) {
+              console.error('Redux store not found on window');
+              return { success: false, error: 'Store not found' };
+            }
+            console.log(`About to dispatch action: ${actionType} with seed ${seedValue}`);
             store.dispatch({
               type: actionType,
               payload: { seed: seedValue }
             });
+            const state = store.getState();
+            console.log(`Dispatched ${actionType} action. Seed in state:`, state.game.seed);
+            return { success: true, seed: state.game.seed };
           }, {actionType, seedValue});
+          
+          console.log(`  Dispatch result:`, result);
+          
+          // Wait for the action to be processed
+          await waitForAnimationFrame(page);
+          await waitForAnimationFrame(page);
           
           continue; // Skip the normal wait handling
         }
