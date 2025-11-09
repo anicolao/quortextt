@@ -2,6 +2,8 @@
 import { test, expect } from '@playwright/test';
 import { getReduxState, pauseAnimations, waitForAnimationFrame } from './helpers';
 import { loadClicksFromFile, ClickAction } from '../utils/actionConverter';
+import { getFlowExit } from '../../src/game/tiles';
+import { getEdgePositionsWithDirections, positionToKey } from '../../src/game/board';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,13 +13,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Parse expectations file to extract move prefixes
+ * Parse expectations file to get flow data for validation
  */
-interface MoveExpectation {
-  moveNumber: number;
-  p1Flows: Record<number, number>;
-  p2Flows: Record<number, number>;
-  totalTiles: number;
+interface FlowExpectations {
+  p1Flows: Array<string[]>;  // Array of flows, each flow is array of "pos:dir" strings
+  p2Flows: Array<string[]>;
+  movePrefixes: Array<{ 
+    move: number; 
+    p1: Record<number, number>;  // flowIndex -> prefixLength
+    p2: Record<number, number>;
+  }>;
 }
 
 /**
@@ -29,53 +34,64 @@ interface TilePlacementInfo {
   rotation: number;
 }
 
-function parseExpectationsFile(filepath: string): MoveExpectation[] {
+function parseExpectationsFile(filepath: string): FlowExpectations {
   const content = fs.readFileSync(filepath, 'utf-8');
-  const lines = content.split('\n');
-  const expectations: MoveExpectation[] = [];
+  const lines = content.split('\n').filter(line => line.trim() && !line.startsWith('#'));
   
-  let inMovePrefixes = false;
+  const p1Flows: Array<string[]> = [];
+  const p2Flows: Array<string[]> = [];
+  const movePrefixes: Array<{ move: number; p1: Record<number, number>; p2: Record<number, number> }> = [];
+  
+  let section = '';
+  
   for (const line of lines) {
-    if (line.includes('[MOVE_PREFIXES]')) {
-      inMovePrefixes = true;
+    if (line.startsWith('[')) {
+      section = line.trim();
       continue;
     }
     
-    if (inMovePrefixes && line.trim()) {
-      // Parse line like: "1 p1={0:1,1:1} p2={}"
+    if (section === '[P1_FLOWS]') {
+      const colonIndex = line.indexOf(':');
+      const indexStr = line.substring(0, colonIndex).trim();
+      const flowStr = line.substring(colonIndex + 1).trim();
+      const index = parseInt(indexStr);
+      p1Flows[index] = flowStr ? flowStr.split(/\s+/) : [];
+    } else if (section === '[P2_FLOWS]') {
+      const colonIndex = line.indexOf(':');
+      const indexStr = line.substring(0, colonIndex).trim();
+      const flowStr = line.substring(colonIndex + 1).trim();
+      const index = parseInt(indexStr);
+      p2Flows[index] = flowStr ? flowStr.split(/\s+/) : [];
+    } else if (section === '[MOVE_PREFIXES]') {
+      // Format: 1 p1={0:2,1:2} p2={}
       const match = line.match(/^(\d+)\s+p1=\{([^}]*)\}\s+p2=\{([^}]*)\}/);
       if (match) {
-        const moveNumber = parseInt(match[1]);
-        const p1Data = match[2];
-        const p2Data = match[3];
+        const move = parseInt(match[1]);
+        const p1Str = match[2];
+        const p2Str = match[3];
         
-        const p1Flows: Record<number, number> = {};
-        if (p1Data) {
-          p1Data.split(',').forEach(pair => {
-            const [idx, len] = pair.split(':').map(Number);
-            p1Flows[idx] = len;
-          });
+        const p1: Record<number, number> = {};
+        if (p1Str) {
+          for (const pair of p1Str.split(',')) {
+            const [k, v] = pair.split(':');
+            p1[parseInt(k)] = parseInt(v);
+          }
         }
         
-        const p2Flows: Record<number, number> = {};
-        if (p2Data) {
-          p2Data.split(',').forEach(pair => {
-            const [idx, len] = pair.split(':').map(Number);
-            p2Flows[idx] = len;
-          });
+        const p2: Record<number, number> = {};
+        if (p2Str) {
+          for (const pair of p2Str.split(',')) {
+            const [k, v] = pair.split(':');
+            p2[parseInt(k)] = parseInt(v);
+          }
         }
         
-        expectations.push({
-          moveNumber,
-          p1Flows,
-          p2Flows,
-          totalTiles: moveNumber // Each move places one tile
-        });
+        movePrefixes.push({ move, p1, p2 });
       }
     }
   }
   
-  return expectations;
+  return { p1Flows, p2Flows, movePrefixes };
 }
 
 /**
@@ -106,40 +122,103 @@ function loadTilePlacements(actionsFilepath: string): TilePlacementInfo[] {
 }
 
 /**
- * Count actual flows and their lengths from game state
+ * Trace actual flows from game state
+ * Returns flows organized by player and starting edge
  */
-function countFlows(state: any): { p1Flows: Record<number, number>, p2Flows: Record<number, number> } {
-  const p1Flows: Record<number, number> = {};
-  const p2Flows: Record<number, number> = {};
+function traceFlows(state: any): { 
+  p1Flows: Array<Array<{pos: string, dir: number}>>, 
+  p2Flows: Array<Array<{pos: string, dir: number}>> 
+} {
+  const p1Flows: Array<Array<{pos: string, dir: number}>> = [];
+  const p2Flows: Array<Array<{pos: string, dir: number}>> = [];
   
   if (!state?.game?.players || state.game.players.length < 2) {
     return { p1Flows, p2Flows };
   }
   
-  // Get player flow data
-  const player1 = state.game.players[0];
-  const player2 = state.game.players[1];
+  const players = state.game.players;
+  const player1 = players[0];
+  const player2 = players[1];
+  const flowEdgesObj = state.game.flowEdges || {};
+  const board = state.game.board || {};
   
-  // Count flows for each player
-  if (player1?.flows) {
-    Object.keys(player1.flows).forEach((key, idx) => {
-      const flowData = player1.flows[key];
-      if (flowData && flowData.length > 0) {
-        p1Flows[idx] = flowData.length;
+  // Trace flows for each player
+  for (const player of players) {
+    const playerFlows: Array<Array<{pos: string, dir: number}>> = [];
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition);
+    
+    // For each potential starting edge of this player
+    for (const { pos: startPos, dir: startDir } of edgeData) {
+      const startPosKey = positionToKey(startPos);
+      const flowEdgesList: Array<{pos: string, dir: number}> = [];
+      
+      // Trace this flow
+      const visited = new Set<string>();
+      let currentPos = startPosKey;
+      let currentDir = startDir;
+      
+      while (true) {
+        const key = `${currentPos}:${currentDir}`;
+        if (visited.has(key)) break;
+        visited.add(key);
+        
+        const posEdges = flowEdgesObj[currentPos];
+        if (!posEdges || posEdges[currentDir] !== player.id) {
+          break;
+        }
+        
+        flowEdgesList.push({ pos: currentPos, dir: currentDir });
+        
+        // Find the next position by getting the tile and following the flow
+        const tile = board[currentPos];
+        if (!tile) break;
+        
+        // Find exit direction
+        const exitDir = getFlowExit(tile, currentDir);
+        if (exitDir === null) break;
+        
+        // Move to next hex
+        const nextPos = getNeighborInDirection(currentPos, exitDir);
+        if (!nextPos) break;
+        
+        currentPos = nextPos;
+        currentDir = (exitDir + 3) % 6; // Opposite direction when entering next hex
       }
-    });
-  }
-  
-  if (player2?.flows) {
-    Object.keys(player2.flows).forEach((key, idx) => {
-      const flowData = player2.flows[key];
-      if (flowData && flowData.length > 0) {
-        p2Flows[idx] = flowData.length;
+      
+      // If we found a flow, add it
+      if (flowEdgesList.length > 0) {
+        playerFlows.push(flowEdgesList);
       }
-    });
+    }
+    
+    // Store flows for this player
+    if (player.id === player1.id) {
+      p1Flows.push(...playerFlows);
+    } else if (player.id === player2.id) {
+      p2Flows.push(...playerFlows);
+    }
   }
   
   return { p1Flows, p2Flows };
+}
+
+// Helper function to get neighbor in direction (from board.ts logic)
+function getNeighborInDirection(posKey: string, dir: number): string | null {
+  const parts = posKey.split(',');
+  const row = parseInt(parts[0]);
+  const col = parseInt(parts[1]);
+  
+  const directions = [
+    { row: -1, col: 0 },  // 0: SW
+    { row: -1, col: 1 },  // 1: W  
+    { row: 0, col: 1 },   // 2: NW
+    { row: 1, col: 0 },   // 3: NE
+    { row: 1, col: -1 },  // 4: E
+    { row: 0, col: -1 },  // 5: SE
+  ];
+  
+  const delta = directions[dir];
+  return `${row + delta.row},${col + delta.col}`;
 }
 
 // Test function parameterized by seed
@@ -159,7 +238,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   console.log(`Loaded ${clicks.length} clicks for seed ${seed}`);
   
   const expectations = parseExpectationsFile(expectationsFile);
-  console.log(`Loaded ${expectations.length} move expectations`);
+  console.log(`Loaded ${expectations.movePrefixes.length} move expectations`);
   
   const expectedPlacements = loadTilePlacements(actionsFile);
   console.log(`Loaded ${expectedPlacements.length} expected tile placements`);
@@ -190,7 +269,6 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   console.log(`✓ Initial state: 0 players, configuration phase`);
   
   let screenshotCounter = 2;
-  let currentMoveExpectation = 0;
   let tilesPlaced = 0;
   
   // Replay each click
@@ -264,7 +342,9 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
       
       // Validate tiles after PLACE_TILE/checkmark clicks
       if (click.description?.includes('checkmark to confirm')) {
-        // Wait extra time for tile placement to complete
+        // Wait extra time for tile placement to complete and flows to update
+        await waitForAnimationFrame(page);
+        await waitForAnimationFrame(page);
         await waitForAnimationFrame(page);
         await waitForAnimationFrame(page);
         await waitForAnimationFrame(page);
@@ -273,8 +353,10 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
         const boardSize = state.game.board ? Object.keys(state.game.board).length : 0;
         
         console.log(`  After move ${tilesPlaced}: ${boardSize} tiles on board`);
+        console.log(`  Board keys:`, state.game.board ? Object.keys(state.game.board) : []);
+        console.log(`  Flow edges keys:`, state.game.flowEdges ? Object.keys(state.game.flowEdges).length : 0);
         
-        // Validate tile type and rotation against expected placement
+        // Validate tile rotation against expected placement
         if (tilesPlaced <= expectedPlacements.length) {
           const expectedPlacement = expectedPlacements[tilesPlaced - 1];
           const posKey = `${expectedPlacement.position.row},${expectedPlacement.position.col}`;
@@ -282,39 +364,93 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
           if (state.game.board && state.game.board[posKey]) {
             const placedTile = state.game.board[posKey];
             const actualRotation = placedTile.rotation;
-            const actualTileType = placedTile.type;
             
             // Validate rotation
             if (actualRotation !== expectedPlacement.rotation) {
               console.log(`  ❌ Move ${tilesPlaced}: Rotation mismatch at ${posKey}`);
               console.log(`     Expected rotation: ${expectedPlacement.rotation}, Actual: ${actualRotation}`);
               throw new Error(`Move ${tilesPlaced}: Expected rotation ${expectedPlacement.rotation} but got ${actualRotation}`);
-            } else {
-              console.log(`  ✓ Move ${tilesPlaced}: Rotation ${actualRotation} matches expected`);
             }
-            
-            // Log tile type (we can't predict exact type, but it's deterministic with seed)
-            console.log(`  ✓ Move ${tilesPlaced}: Tile type ${actualTileType} at ${posKey}`);
           } else {
             console.log(`  ❌ Move ${tilesPlaced}: Tile not found at expected position ${posKey}`);
             throw new Error(`Move ${tilesPlaced}: Expected tile at ${posKey} but not found`);
           }
         }
         
-        // Validate against expectations
-        if (currentMoveExpectation < expectations.length) {
-          const exp = expectations[currentMoveExpectation];
+        // Validate flows against expectations
+        const moveExpectation = expectations.movePrefixes.find(e => e.move === tilesPlaced);
+        
+        if (moveExpectation) {
+          console.log(`  Validating flows for move ${tilesPlaced}...`);
           
-          if (exp.moveNumber === tilesPlaced) {
-            // Validate expectation - log warning if mismatch but don't fail
-            if (boardSize !== exp.totalTiles) {
-              console.log(`  ⚠ Move ${tilesPlaced}: ${boardSize} tiles (expected ${exp.totalTiles}) - MISMATCH`);
-              console.log(`    This may indicate a difference between action replay and UI click behavior`);
-            } else {
-              console.log(`  ✓ Move ${tilesPlaced}: ${boardSize} tiles (expected ${exp.totalTiles})`);
+          // Trace actual flows from game state
+          const actualFlows = traceFlows(state);
+          
+          // Validate P1 flows
+          for (const [flowIdxStr, prefixLength] of Object.entries(moveExpectation.p1)) {
+            const flowIdx = Number(flowIdxStr);
+            
+            if (!actualFlows.p1Flows[flowIdx]) {
+              console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} not found`);
+              throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
             }
-            currentMoveExpectation++;
+            
+            if (actualFlows.p1Flows[flowIdx].length < prefixLength) {
+              console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+              throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} has ${actualFlows.p1Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+            }
+            
+            // Validate the prefix matches
+            const actualPrefix = actualFlows.p1Flows[flowIdx].slice(0, prefixLength);
+            const expectedPrefix = expectations.p1Flows[flowIdx].slice(0, prefixLength);
+            
+            for (let i = 0; i < prefixLength; i++) {
+              const actual = actualPrefix[i];
+              const expected = expectedPrefix[i];
+              const [expectedPos, expectedDirStr] = expected.split(':');
+              const expectedDir = parseInt(expectedDirStr);
+              
+              if (actual.pos !== expectedPos || actual.dir !== expectedDir) {
+                console.log(`  ❌ Move ${tilesPlaced}: P1 flow ${flowIdx} edge ${i} mismatch`);
+                console.log(`     Expected: ${expectedPos}:${expectedDir}, Got: ${actual.pos}:${actual.dir}`);
+                throw new Error(`Move ${tilesPlaced}: P1 flow ${flowIdx} edge ${i} mismatch: expected ${expectedPos}:${expectedDir}, got ${actual.pos}:${actual.dir}`);
+              }
+            }
           }
+          
+          // Validate P2 flows
+          for (const [flowIdxStr, prefixLength] of Object.entries(moveExpectation.p2)) {
+            const flowIdx = Number(flowIdxStr);
+            
+            if (!actualFlows.p2Flows[flowIdx]) {
+              console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} not found`);
+              throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} not found (expected prefix length ${prefixLength})`);
+            }
+            
+            if (actualFlows.p2Flows[flowIdx].length < prefixLength) {
+              console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+              throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} has ${actualFlows.p2Flows[flowIdx].length} edges, expected at least ${prefixLength}`);
+            }
+            
+            // Validate the prefix matches
+            const actualPrefix = actualFlows.p2Flows[flowIdx].slice(0, prefixLength);
+            const expectedPrefix = expectations.p2Flows[flowIdx].slice(0, prefixLength);
+            
+            for (let i = 0; i < prefixLength; i++) {
+              const actual = actualPrefix[i];
+              const expected = expectedPrefix[i];
+              const [expectedPos, expectedDirStr] = expected.split(':');
+              const expectedDir = parseInt(expectedDirStr);
+              
+              if (actual.pos !== expectedPos || actual.dir !== expectedDir) {
+                console.log(`  ❌ Move ${tilesPlaced}: P2 flow ${flowIdx} edge ${i} mismatch`);
+                console.log(`     Expected: ${expectedPos}:${expectedDir}, Got: ${actual.pos}:${actual.dir}`);
+                throw new Error(`Move ${tilesPlaced}: P2 flow ${flowIdx} edge ${i} mismatch: expected ${expectedPos}:${expectedDir}, got ${actual.pos}:${actual.dir}`);
+              }
+            }
+          }
+          
+          console.log(`  ✓ Move ${tilesPlaced}: Rotation and flows validated`);
         }
       }
     }
