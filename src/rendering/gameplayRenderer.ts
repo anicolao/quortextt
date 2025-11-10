@@ -1125,10 +1125,10 @@ export class GameplayRenderer {
     const buttonPositions = this.getOrientedButtonPositions(center, buttonSpacing, playerEdge);
     
     // Checkmark button (positioned to the right from player's perspective)
-    this.renderCheckmarkButton(buttonPositions.checkmark, buttonSize, isLegal, hasSupermove);
+    this.renderCheckmarkButton(buttonPositions.checkmark, buttonSize, isLegal, hasSupermove, playerEdge);
 
     // X button (positioned to the left from player's perspective)
-    this.renderXButton(buttonPositions.cancel, buttonSize);
+    this.renderXButton(buttonPositions.cancel, buttonSize, playerEdge);
 
     // Rotation buttons at NE and NW corners
     this.renderRotationButton(buttonPositions.rotateNE, buttonSize * 0.6, true, playerEdge);
@@ -1198,6 +1198,7 @@ export class GameplayRenderer {
     size: number,
     enabled: boolean,
     hasSupermove: boolean = false,
+    playerEdge: number = 0,
   ): void {
     // Get glow intensity for supermove animation (same as victory glow)
     const glowIntensity = victoryAnimationState.glowIntensity;
@@ -1224,6 +1225,14 @@ export class GameplayRenderer {
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
 
+    // Rotate the checkmark icon to face the player
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+    
+    this.ctx.translate(center.x, center.y);
+    this.ctx.rotate(rotationRad);
+
     // Draw checkmark icon
     if (hasSupermove) {
       // White checkmark with pulsing opacity
@@ -1237,20 +1246,30 @@ export class GameplayRenderer {
     this.ctx.lineJoin = "round";
 
     this.ctx.beginPath();
-    this.ctx.moveTo(center.x - size * 0.25, center.y);
-    this.ctx.lineTo(center.x - size * 0.05, center.y + size * 0.2);
-    this.ctx.lineTo(center.x + size * 0.3, center.y - size * 0.2);
+    this.ctx.moveTo(-size * 0.25, 0);
+    this.ctx.lineTo(-size * 0.05, size * 0.2);
+    this.ctx.lineTo(size * 0.3, -size * 0.2);
     this.ctx.stroke();
 
     this.ctx.restore();
   }
 
-  private renderXButton(center: Point, size: number): void {
+  private renderXButton(center: Point, size: number, playerEdge: number = 0): void {
+    this.ctx.save();
+    
     // Draw button background
     this.ctx.fillStyle = "rgba(211, 47, 47, 0.8)";
     this.ctx.beginPath();
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
+
+    // Rotate the X icon to face the player
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+    
+    this.ctx.translate(center.x, center.y);
+    this.ctx.rotate(rotationRad);
 
     // Draw X icon
     this.ctx.strokeStyle = BUTTON_ICON;
@@ -1259,11 +1278,13 @@ export class GameplayRenderer {
 
     const offset = size * 0.2;
     this.ctx.beginPath();
-    this.ctx.moveTo(center.x - offset, center.y - offset);
-    this.ctx.lineTo(center.x + offset, center.y + offset);
-    this.ctx.moveTo(center.x + offset, center.y - offset);
-    this.ctx.lineTo(center.x - offset, center.y + offset);
+    this.ctx.moveTo(-offset, -offset);
+    this.ctx.lineTo(offset, offset);
+    this.ctx.moveTo(offset, -offset);
+    this.ctx.lineTo(-offset, offset);
     this.ctx.stroke();
+    
+    this.ctx.restore();
   }
 
   private renderRotationButton(
@@ -1303,25 +1324,25 @@ export class GameplayRenderer {
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead
+    // Draw arrowhead at the START of the arc
     const arrowSize = size * 0.15;
-    const arrowAngle = endAngle;
+    const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
     
-    // Calculate arrowhead direction
-    const perpAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
+    // Calculate arrowhead direction (pointing in direction of rotation)
+    const perpAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
     
     this.ctx.beginPath();
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? 0.5 : -0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? 0.5 : -0.5))
+      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? -0.5 : 0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? -0.5 : 0.5))
     );
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? 0.5 : -0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? 0.5 : -0.5))
+      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? -0.5 : 0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? -0.5 : 0.5))
     );
     this.ctx.stroke();
 

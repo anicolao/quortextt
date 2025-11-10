@@ -145,7 +145,7 @@ export class GameplayInputHandler {
       
       // Check if clicking on the tile itself to rotate (preserve existing functionality)
       if (isPointInHex({ x: canvasX, y: canvasY }, tileCenter, layout.size)) {
-        this.handleTileRotation(canvasX, tileCenter.x);
+        this.handleTileRotation(canvasX, canvasY, tileCenter.x, tileCenter.y, playerEdge);
         return;
       }
     } else {
@@ -155,7 +155,7 @@ export class GameplayInputHandler {
         const edgePos = getPlayerEdgePosition(currentPlayer.edgePosition, layout, state.game.boardRadius);
         
         if (isPointInHex({ x: canvasX, y: canvasY }, edgePos, layout.size)) {
-          this.handleTileRotation(canvasX, edgePos.x);
+          this.handleTileRotation(canvasX, canvasY, edgePos.x, edgePos.y, currentPlayer.edgePosition);
           return;
         }
       }
@@ -240,13 +240,28 @@ export class GameplayInputHandler {
     };
   }
 
-  private handleTileRotation(clickX: number, tileCenterX: number): void {
+  private handleTileRotation(clickX: number, clickY: number, tileCenterX: number, tileCenterY: number, playerEdge: number): void {
     const state = store.getState();
     const currentRotation = state.ui.currentRotation;
 
-    // Determine rotation direction based on which side was clicked
+    // Map edge positions to rotation angles (in degrees)
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+
+    // Calculate the click position relative to tile center
+    const relX = clickX - tileCenterX;
+    const relY = clickY - tileCenterY;
+
+    // Rotate the click position back by the player's edge angle
+    // This gives us the click position in the player's local coordinate system
+    const cos = Math.cos(-rotationRad);
+    const sin = Math.sin(-rotationRad);
+    const localX = relX * cos - relY * sin;
+
+    // In player's local coordinate system, left side (negative X) = clockwise, right side (positive X) = counter-clockwise
     let newRotation: Rotation;
-    if (clickX < tileCenterX) {
+    if (localX < 0) {
       // Left side - rotate clockwise
       newRotation = ((currentRotation + 1) % 6) as Rotation;
     } else {
