@@ -53,10 +53,8 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         const aiEdge = selectAIEdge(humanEdge, seatingPhase.availableEdges);
         
         if (aiEdge !== null) {
-          // Dispatch edge selection for AI (with a small delay for visual feedback)
-          setTimeout(() => {
-            store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
-          }, 500);
+          // Dispatch edge selection for AI immediately (Redux is synchronous)
+          store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
         }
       }
     }
@@ -125,22 +123,20 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       );
       
       if (aiMove) {
-        // Dispatch the move (with a small delay for visual feedback)
-        setTimeout(() => {
-          if (aiMove.isReplacement) {
-            store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
-            // After replacement, AI will have another turn to place the replaced tile
-            // This will be handled by the next DRAW_TILE trigger
-          } else {
-            store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
-            
-            // If this wasn't part of a supermove, advance to next player
-            if (!supermoveInProgress) {
-              store.dispatch(nextPlayer() as any);
-              store.dispatch(drawTile() as any);
-            }
+        // Dispatch the move immediately (Redux is synchronous - no setTimeout needed)
+        if (aiMove.isReplacement) {
+          store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
+          // After replacement, AI will have another turn to place the replaced tile
+          // This will be handled by the next DRAW_TILE trigger
+        } else {
+          store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
+          
+          // If this wasn't part of a supermove, advance to next player
+          if (!supermoveInProgress) {
+            store.dispatch(nextPlayer() as any);
+            store.dispatch(drawTile() as any);
           }
-        }, 1000); // 1 second delay so human can see what AI is doing
+        }
       }
     }
   }
