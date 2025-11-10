@@ -38,8 +38,8 @@ describe('Blocking Detection with Three-Sharp Tiles', () => {
     };
 
     // This should be detected as blocking
-    const isLegal = isLegalMove(board, finalTile, players, teams);
-    const blocked = getBlockedPlayers(board, finalTile, players, teams);
+    const isLegal = isLegalMove(board, finalTile, players, teams, 3, false);
+    const blocked = getBlockedPlayers(board, finalTile, players, teams, 3);
 
     console.log('Is move legal?', isLegal);
     console.log('Blocked players:', blocked);
@@ -92,8 +92,8 @@ describe('Blocking Detection with Three-Sharp Tiles', () => {
       position: { row: barrierRow, col: 3 },
     };
 
-    const isLegal = isLegalMove(board, blockingTile, players, teams);
-    const blocked = getBlockedPlayers(board, blockingTile, players, teams);
+    const isLegal = isLegalMove(board, blockingTile, players, teams, 3, false);
+    const blocked = getBlockedPlayers(board, blockingTile, players, teams, 3);
 
     console.log('Sharp corners barrier - Is move legal?', isLegal);
     console.log('Sharp corners barrier - Blocked players:', blocked);
@@ -130,7 +130,7 @@ describe('Blocking Detection with Three-Sharp Tiles', () => {
       position: { row: 1, col: 0 },
     };
 
-    const isLegal = isLegalMove(board, nonBlockingTile, players, teams);
+    const isLegal = isLegalMove(board, nonBlockingTile, players, teams, 3, false);
     
     // This should be legal since there's still a path through the gap
     expect(isLegal).toBe(true);
@@ -183,8 +183,8 @@ describe('Blocking Detection with Three-Sharp Tiles', () => {
       position: { row: 0, col: 0 },
     };
 
-    const isLegal = isLegalMove(board, testTile, players, teams);
-    const blocked = getBlockedPlayers(board, testTile, players, teams);
+    const isLegal = isLegalMove(board, testTile, players, teams, 3, false);
+    const blocked = getBlockedPlayers(board, testTile, players, teams, 3);
 
     console.log('Empty hexes test - Is move legal?', isLegal);
     console.log('Empty hexes test - Blocked players:', blocked);
