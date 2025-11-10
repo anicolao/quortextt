@@ -150,8 +150,9 @@ function getCheckmarkCoords(
   const rotationRad = (rotationAngle * Math.PI) / 180;
   
   // Define checkmark button position for edge 0 (bottom player)
+  // Button should be to the right AND toward the player
   const baseX = buttonSpacing;
-  const baseY = 0;
+  const baseY = buttonSpacing;
   
   // Rotate position around tile center
   const cos = Math.cos(rotationRad);

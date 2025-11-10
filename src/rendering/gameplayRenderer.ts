@@ -1166,13 +1166,11 @@ export class GameplayRenderer {
     const rotationRad = (rotationAngle * Math.PI) / 180;
 
     // Define button positions relative to tile center for edge 0 (bottom player)
-    // Player is looking UP (negative Y direction) at the tile
-    // From the player's perspective:
-    // - Checkmark to their right (+X in screen coords) and toward them (+Y toward player)
-    // - Cancel to their left (-X in screen coords) and toward them (+Y toward player)
+    // Player at edge 0 is at the BOTTOM of the screen looking UP (negative Y direction)
+    // Buttons should be BETWEEN the player and the tile (positive Y from tile toward player)
     const basePositions = {
-      checkmark: { x: spacing, y: 0 },   // To the right of tile
-      cancel: { x: -spacing, y: 0 },      // To the left of tile
+      checkmark: { x: spacing, y: spacing },   // To the right AND toward player
+      cancel: { x: -spacing, y: spacing },      // To the left AND toward player
       // Rotation buttons with more spacing
       rotateNE: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 3), // Direction 3 = NE
       rotateNW: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 2), // Direction 2 = NW
