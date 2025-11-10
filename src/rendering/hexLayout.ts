@@ -37,7 +37,7 @@ export function calculateCanvasSizeMultiplier(boardRadius: number): number {
 export function calculateHexLayout(
   canvasWidth: number,
   canvasHeight: number,
-  boardRadius: number = 3,
+  boardRadius: number,
 ): HexLayout {
   const minDimension = Math.min(canvasWidth, canvasHeight);
   const size = minDimension / calculateCanvasSizeMultiplier(boardRadius);

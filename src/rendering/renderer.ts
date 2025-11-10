@@ -134,7 +134,8 @@ export class Renderer {
       this.gameplayRenderer = new GameplayRenderer(
         this.ctx,
         this.canvas.width,
-        this.canvas.height
+        this.canvas.height,
+        state.game.boardRadius
       );
     }
 
@@ -154,7 +155,8 @@ export class Renderer {
       this.gameplayRenderer = new GameplayRenderer(
         this.ctx,
         this.canvas.width,
-        this.canvas.height
+        this.canvas.height,
+        state.game.boardRadius
       );
     }
     this.gameplayRenderer.render(state);
