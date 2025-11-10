@@ -172,10 +172,11 @@ export function gameReducer(
         return state;
       }
 
-      // Get color and edge from payload, or auto-assign if not provided
+      // Get color, edge, and isAI from payload, or auto-assign if not provided
       const payload = action.payload || {};
       let color = payload.color;
       let edge = payload.edge;
+      const isAI = payload.isAI || false;
 
       // Auto-assign color if not provided
       if (color === undefined) {
@@ -210,6 +211,7 @@ export function gameReducer(
         id: generatePlayerId(),
         color,
         edge: edge as 0 | 1 | 2 | 3,
+        isAI,
       };
 
       return {
@@ -384,7 +386,7 @@ export function gameReducer(
             id: cp.id,
             color: cp.color,
             edgePosition: cp.id === playerId ? edgeNumber : -1,
-            isAI: false,
+            isAI: cp.isAI,
           }));
       
       // Increment seating index
