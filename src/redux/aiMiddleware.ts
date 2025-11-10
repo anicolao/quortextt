@@ -6,6 +6,7 @@ import {
   GameAction,
   SELECT_EDGE,
   DRAW_TILE,
+  REPLACE_TILE,
   placeTile,
   replaceTile,
   nextPlayer,
@@ -60,8 +61,8 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     }
   }
   
-  // Handle AI move during gameplay - only respond to DRAW_TILE
-  if (gameAction.type === DRAW_TILE) {
+  // Handle AI move during gameplay - respond to DRAW_TILE or REPLACE_TILE (for supermoves)
+  if (gameAction.type === DRAW_TILE || gameAction.type === REPLACE_TILE) {
     const { players, currentPlayerIndex, currentTile, board, teams, phase, supermoveInProgress } = state.game;
     
     // Only act if we're in playing phase and have a current tile
@@ -109,16 +110,17 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       }
     }
     
-    // Check if current player is AI - only act on DRAW_TILE to avoid duplicate actions
+    // Check if current player is AI
     if (currentPlayer && currentPlayer.isAI) {
       // AI needs to make a move
+      // If supermove is already in progress, disable supermove for this move to prevent infinite replacements
       const aiMove = selectAIMove(
         board,
         currentTile,
         currentPlayer,
         players,
         teams,
-        supermoveEnabled,
+        supermoveEnabled && !supermoveInProgress, // Disable supermove if already in progress
         state.game.boardRadius
       );
       
