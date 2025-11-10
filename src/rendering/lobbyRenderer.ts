@@ -403,6 +403,86 @@ export class LobbyRenderer {
     });
     contentY += lineHeight;
 
+    // Tile Distribution section
+    contentY += 10;
+    this.ctx.font = "bold 20px sans-serif";
+    this.ctx.fillText("Tile Distribution:", contentX, contentY);
+    contentY += lineHeight + 5;
+
+    this.ctx.font = "18px sans-serif";
+
+    // Render tile previews and controls in horizontal row
+    const tileTypes = [0, 1, 2, 3]; // TileType enum values
+    const tileSize = 30; // Small hexagon size
+    const controlSpacing = 95; // Space for each control set
+    const startX = contentX + 20;
+
+    for (let i = 0; i < tileTypes.length; i++) {
+      const x = startX + i * controlSpacing;
+      const tileY = contentY;
+
+      // Render small tile preview
+      this.renderSmallTile(tileTypes[i], x + 15, tileY, tileSize);
+
+      // Render number control beneath tile
+      const controlY = tileY + tileSize + 10;
+      this.renderNumberControl(x, controlY, settings.tileDistribution[i], 0, 99);
+
+      // Add controls to clickable areas
+      controls.push({
+        type: 'number',
+        x: x - 25,
+        y: controlY,
+        width: 30,
+        height: buttonHeight,
+        settingKey: 'tileDistribution',
+        tileIndex: i,
+        label: '-',
+      });
+      controls.push({
+        type: 'number',
+        x: x + 40,
+        y: controlY,
+        width: 30,
+        height: buttonHeight,
+        settingKey: 'tileDistribution',
+        tileIndex: i,
+        label: '+',
+      });
+    }
+
+    contentY += 80; // Space for tiles + controls
+
+    // Total tiles display
+    const { totalTiles, numGroups } = this.calculateTotalTiles(settings.tileDistribution, settings.boardRadius);
+    this.ctx.fillText(`Total: ${totalTiles} tiles (${numGroups} groups)`, contentX, contentY);
+    contentY += lineHeight;
+
+    // Reset button
+    const resetButtonWidth = 150;
+    const resetButtonHeight = 30;
+    const resetButtonX = contentX + (dialogWidth - 60 - resetButtonWidth) / 2;
+    this.ctx.fillStyle = "#555555";
+    this.ctx.fillRect(resetButtonX, contentY, resetButtonWidth, resetButtonHeight);
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(resetButtonX, contentY, resetButtonWidth, resetButtonHeight);
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "16px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText("Reset to Default", resetButtonX + resetButtonWidth / 2, contentY + resetButtonHeight / 2);
+    controls.push({
+      type: 'reset-distribution',
+      x: resetButtonX,
+      y: contentY,
+      width: resetButtonWidth,
+      height: resetButtonHeight,
+    });
+    contentY += lineHeight;
+
+    this.ctx.font = "18px sans-serif";
+    this.ctx.textAlign = "left";
+
     // Debug section
     contentY += 10;
     this.ctx.font = "bold 20px sans-serif";
@@ -592,5 +672,117 @@ export class LobbyRenderer {
     this.ctx.fillStyle = value < max ? "#ffffff" : "#666666";
     this.ctx.font = "bold 20px sans-serif";
     this.ctx.fillText("+", x + 60, y + buttonHeight / 2);
+  }
+
+  // Render a small tile preview showing the flow pattern
+  private renderSmallTile(tileType: number, centerX: number, centerY: number, size: number): void {
+    // Draw hexagon background
+    this.ctx.fillStyle = "#3a3a4e";
+    this.drawSmallHexagon(centerX, centerY, size, true);
+    
+    // Draw hexagon border
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1;
+    this.drawSmallHexagon(centerX, centerY, size, false);
+
+    // Draw simplified flow patterns based on tile type
+    this.ctx.strokeStyle = "#888888";
+    this.ctx.lineWidth = 2;
+
+    const r = size * 0.5; // Radius for edge points
+    
+    // Calculate edge midpoints for a pointy-top hexagon
+    const edges = [];
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 6; // Offset by 30° for pointy-top
+      edges.push({
+        x: centerX + r * Math.cos(angle),
+        y: centerY + r * Math.sin(angle),
+      });
+    }
+
+    // Draw flow connections based on tile type
+    // Using canonical orientation from TILE_FLOWS
+    switch (tileType) {
+      case 0: // NoSharps: [0-2, 1-4, 3-5] (three curves)
+        this.drawCurvedFlow(centerX, centerY, edges[0], edges[2], r * 0.3);
+        this.drawStraightFlow(edges[1], edges[4]);
+        this.drawCurvedFlow(centerX, centerY, edges[3], edges[5], r * 0.3);
+        break;
+      case 1: // OneSharp: [0-5, 1-3, 2-4]
+        this.drawCurvedFlow(centerX, centerY, edges[0], edges[5], r * 0.5); // Sharp
+        this.drawCurvedFlow(centerX, centerY, edges[1], edges[3], r * 0.3);
+        this.drawCurvedFlow(centerX, centerY, edges[2], edges[4], r * 0.3);
+        break;
+      case 2: // TwoSharps: [0-5, 1-4, 2-3]
+        this.drawCurvedFlow(centerX, centerY, edges[0], edges[5], r * 0.5); // Sharp
+        this.drawStraightFlow(edges[1], edges[4]);
+        this.drawCurvedFlow(centerX, centerY, edges[2], edges[3], r * 0.5); // Sharp
+        break;
+      case 3: // ThreeSharps: [0-5, 1-2, 3-4]
+        this.drawCurvedFlow(centerX, centerY, edges[0], edges[5], r * 0.5); // Sharp
+        this.drawCurvedFlow(centerX, centerY, edges[1], edges[2], r * 0.5); // Sharp
+        this.drawCurvedFlow(centerX, centerY, edges[3], edges[4], r * 0.5); // Sharp
+        break;
+    }
+  }
+
+  private drawSmallHexagon(centerX: number, centerY: number, size: number, fill: boolean): void {
+    this.ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 6; // Offset by 30° for pointy-top
+      const x = centerX + size * Math.cos(angle);
+      const y = centerY + size * Math.sin(angle);
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+    this.ctx.closePath();
+    if (fill) {
+      this.ctx.fill();
+    } else {
+      this.ctx.stroke();
+    }
+  }
+
+  private drawStraightFlow(from: { x: number; y: number }, to: { x: number; y: number }): void {
+    this.ctx.beginPath();
+    this.ctx.moveTo(from.x, from.y);
+    this.ctx.lineTo(to.x, to.y);
+    this.ctx.stroke();
+  }
+
+  private drawCurvedFlow(
+    centerX: number,
+    centerY: number,
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    curvature: number
+  ): void {
+    // Calculate control point for quadratic curve
+    // The control point is offset toward the center
+    const midX = (from.x + to.x) / 2;
+    const midY = (from.y + to.y) / 2;
+    const dx = centerX - midX;
+    const dy = centerY - midY;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const ctrlX = midX + (dx / len) * curvature;
+    const ctrlY = midY + (dy / len) * curvature;
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(from.x, from.y);
+    this.ctx.quadraticCurveTo(ctrlX, ctrlY, to.x, to.y);
+    this.ctx.stroke();
+  }
+
+  private calculateTotalTiles(
+    distribution: [number, number, number, number],
+    boardRadius: number
+  ): { totalTiles: number; numGroups: number } {
+    // Import the calculation function from gameReducer
+    const { calculateTileCountsFromRatio } = require('../redux/gameReducer');
+    return calculateTileCountsFromRatio(boardRadius, distribution);
   }
 }

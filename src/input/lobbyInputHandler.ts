@@ -32,6 +32,20 @@ export class LobbyInputHandler {
           
           if (control.type === 'number' && control.settingKey) {
             const key = control.settingKey;
+            
+            // Special handling for tile distribution
+            if (key === 'tileDistribution' && control.tileIndex !== undefined) {
+              const currentDist = [...currentSettings.tileDistribution] as [number, number, number, number];
+              const delta = control.label === '+' ? 1 : -1;
+              const newValue = Math.max(0, Math.min(99, currentDist[control.tileIndex] + delta));
+              currentDist[control.tileIndex] = newValue;
+              
+              store.dispatch(updateSettings({
+                tileDistribution: currentDist
+              }));
+              return;
+            }
+            
             const currentValue = currentSettings[key] as number;
             let newValue = currentValue;
             
@@ -51,6 +65,13 @@ export class LobbyInputHandler {
             
             store.dispatch(updateSettings({
               [key]: newValue
+            }));
+            return;
+          }
+
+          if (control.type === 'reset-distribution') {
+            store.dispatch(updateSettings({
+              tileDistribution: [1, 1, 1, 1]
             }));
             return;
           }
