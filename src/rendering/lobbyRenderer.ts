@@ -11,6 +11,12 @@ import {
   calculateLobbyLayout,
 } from "./lobbyLayout";
 import { calculateTileCountsFromRatio } from "../redux/gameReducer";
+import { TileType } from "../game/types";
+import { getFlowConnections } from "../game/tiles";
+
+// Tile rendering constants (matching gameplayRenderer)
+const TILE_BG = "#2a2a2a";
+const TILE_BORDER = "#444444";
 
 export class LobbyRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -483,6 +489,7 @@ export class LobbyRenderer {
 
     this.ctx.font = "18px sans-serif";
     this.ctx.textAlign = "left";
+    this.ctx.fillStyle = "#ffffff"; // Ensure text is white
 
     // Debug section
     contentY += 10;
@@ -675,57 +682,94 @@ export class LobbyRenderer {
     this.ctx.fillText("+", x + 60, y + buttonHeight / 2);
   }
 
-  // Render a small tile preview showing the flow pattern
+  // Render a small tile preview using the same approach as gameplayRenderer
   private renderSmallTile(tileType: number, centerX: number, centerY: number, size: number): void {
+    const center = { x: centerX, y: centerY };
+    
     // Draw hexagon background
-    this.ctx.fillStyle = "#3a3a4e";
+    this.ctx.fillStyle = TILE_BG;
     this.drawSmallHexagon(centerX, centerY, size, true);
     
     // Draw hexagon border
-    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.strokeStyle = TILE_BORDER;
     this.ctx.lineWidth = 1;
     this.drawSmallHexagon(centerX, centerY, size, false);
 
-    // Draw simplified flow patterns based on tile type
+    // Draw flow connections using the canonical tile flows
+    const connections = getFlowConnections(tileType as TileType, 0); // rotation 0
     this.ctx.strokeStyle = "#888888";
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = size * 0.15; // Proportional to tile size
+    this.ctx.lineCap = "round";
 
-    const r = size * 0.5; // Radius for edge points
+    connections.forEach(([dir1, dir2]) => {
+      this.drawSmallFlowConnection(center, dir1, dir2, size);
+    });
+  }
+
+  private drawSmallFlowConnection(
+    center: { x: number; y: number },
+    dir1: number,
+    dir2: number,
+    size: number
+  ): void {
+    // Get edge midpoints (reusing the approach from gameplayRenderer)
+    const start = this.getSmallEdgeMidpoint(center, size, dir1);
+    const end = this.getSmallEdgeMidpoint(center, size, dir2);
+
+    // Get control points (perpendicular to edges)
+    const control1Vec = this.getSmallPerpendicularVector(dir1, size);
+    const control2Vec = this.getSmallPerpendicularVector(dir2, size);
+
+    const control1 = {
+      x: start.x + control1Vec.x,
+      y: start.y + control1Vec.y,
+    };
+    const control2 = {
+      x: end.x + control2Vec.x,
+      y: end.y + control2Vec.y,
+    };
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(start.x, start.y);
+    this.ctx.bezierCurveTo(
+      control1.x,
+      control1.y,
+      control2.x,
+      control2.y,
+      end.x,
+      end.y,
+    );
+    this.ctx.stroke();
+  }
+
+  // Helper to get edge midpoint for small tiles (simplified version of getEdgeMidpoint)
+  private getSmallEdgeMidpoint(center: { x: number; y: number }, size: number, direction: number): { x: number; y: number } {
+    // Direction values: 0=SW, 1=W, 2=NW, 3=NE, 4=E, 5=SE
+    // For pointy-top hexagon, angles are: SW=-150°, W=-90°, NW=-30°, NE=30°, E=90°, SE=150°
+    const angleOffset = -150; // SW at -150°
+    const angleDeg = angleOffset + (direction * 60);
+    const angleRad = (Math.PI / 180) * angleDeg;
     
-    // Calculate edge midpoints for a pointy-top hexagon
-    const edges = [];
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i - Math.PI / 6; // Offset by 30° for pointy-top
-      edges.push({
-        x: centerX + r * Math.cos(angle),
-        y: centerY + r * Math.sin(angle),
-      });
-    }
+    return {
+      x: center.x + size * Math.cos(angleRad),
+      y: center.y + size * Math.sin(angleRad),
+    };
+  }
 
-    // Draw flow connections based on tile type
-    // Using canonical orientation from TILE_FLOWS
-    switch (tileType) {
-      case 0: // NoSharps: [0-2, 1-4, 3-5] (three curves)
-        this.drawCurvedFlow(centerX, centerY, edges[0], edges[2], r * 0.3);
-        this.drawStraightFlow(edges[1], edges[4]);
-        this.drawCurvedFlow(centerX, centerY, edges[3], edges[5], r * 0.3);
-        break;
-      case 1: // OneSharp: [0-5, 1-3, 2-4]
-        this.drawCurvedFlow(centerX, centerY, edges[0], edges[5], r * 0.5); // Sharp
-        this.drawCurvedFlow(centerX, centerY, edges[1], edges[3], r * 0.3);
-        this.drawCurvedFlow(centerX, centerY, edges[2], edges[4], r * 0.3);
-        break;
-      case 2: // TwoSharps: [0-5, 1-4, 2-3]
-        this.drawCurvedFlow(centerX, centerY, edges[0], edges[5], r * 0.5); // Sharp
-        this.drawStraightFlow(edges[1], edges[4]);
-        this.drawCurvedFlow(centerX, centerY, edges[2], edges[3], r * 0.5); // Sharp
-        break;
-      case 3: // ThreeSharps: [0-5, 1-2, 3-4]
-        this.drawCurvedFlow(centerX, centerY, edges[0], edges[5], r * 0.5); // Sharp
-        this.drawCurvedFlow(centerX, centerY, edges[1], edges[2], r * 0.5); // Sharp
-        this.drawCurvedFlow(centerX, centerY, edges[3], edges[4], r * 0.5); // Sharp
-        break;
-    }
+  // Helper to get perpendicular vector for small tiles (simplified version of getPerpendicularVector)
+  private getSmallPerpendicularVector(direction: number, size: number): { x: number; y: number } {
+    // Get perpendicular direction pointing inward toward tile center
+    const angleOffset = -150; // SW at -150°
+    const angleDeg = angleOffset + (direction * 60);
+    const perpAngleDeg = angleDeg + 90; // Perpendicular
+    const perpAngleRad = (Math.PI / 180) * perpAngleDeg;
+    
+    const distance = size * 0.4; // Control point distance
+    
+    return {
+      x: distance * Math.cos(perpAngleRad),
+      y: distance * Math.sin(perpAngleRad),
+    };
   }
 
   private drawSmallHexagon(centerX: number, centerY: number, size: number, fill: boolean): void {
@@ -748,35 +792,6 @@ export class LobbyRenderer {
     }
   }
 
-  private drawStraightFlow(from: { x: number; y: number }, to: { x: number; y: number }): void {
-    this.ctx.beginPath();
-    this.ctx.moveTo(from.x, from.y);
-    this.ctx.lineTo(to.x, to.y);
-    this.ctx.stroke();
-  }
-
-  private drawCurvedFlow(
-    centerX: number,
-    centerY: number,
-    from: { x: number; y: number },
-    to: { x: number; y: number },
-    curvature: number
-  ): void {
-    // Calculate control point for quadratic curve
-    // The control point is offset toward the center
-    const midX = (from.x + to.x) / 2;
-    const midY = (from.y + to.y) / 2;
-    const dx = centerX - midX;
-    const dy = centerY - midY;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const ctrlX = midX + (dx / len) * curvature;
-    const ctrlY = midY + (dy / len) * curvature;
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(from.x, from.y);
-    this.ctx.quadraticCurveTo(ctrlX, ctrlY, to.x, to.y);
-    this.ctx.stroke();
-  }
 
   private calculateTotalTiles(
     distribution: [number, number, number, number],
