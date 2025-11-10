@@ -16,17 +16,17 @@
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
 {"type":"click","target":"tile-rotate","x":518.6968727706362,"y":487.05882352941177,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
-{"type":"click","target":"checkmark","x":577.9909904176951,"y":487.05882352941177,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":408.57922571181274,"y":487.05882352941177,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":493.2851080647539,"y":232.94117647058823,"description":"Click hex at (-2, -1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
-{"type":"click","target":"tile-rotate","x":518.6968727706362,"y":232.94117647058823,"description":"Rotate tile (rotation 1)"}
+{"type":"click","target":"tile-rotate","x":467.8733433588715,"y":232.94117647058823,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
 {"type":"click","target":"checkmark","x":577.9909904176951,"y":232.94117647058823,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":566.642554032377,"y":487.05882352941177,"description":"Click hex at (2, -2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":651.3484363853182,"y":487.05882352941177,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":481.93667167943585,"y":487.05882352941177,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":456.60638508094246,"y":296.47058823529414,"description":"Click hex at (-1, -2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
@@ -38,7 +38,7 @@
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
 {"type":"click","target":"tile-rotate","x":555.3755957544478,"y":550.5882352941177,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
-{"type":"click","target":"checkmark","x":614.6697134015067,"y":550.5882352941177,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":445.2579486956243,"y":550.5882352941177,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":529.9638310485655,"y":296.47058823529414,"description":"Click hex at (-1, -1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
@@ -52,7 +52,7 @@
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
 {"type":"click","target":"tile-rotate","x":555.3755957544478,"y":423.52941176470586,"description":"Rotate tile (rotation 3)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
-{"type":"click","target":"checkmark","x":614.6697134015067,"y":423.52941176470586,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":445.2579486956243,"y":423.52941176470586,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":493.2851080647539,"y":360,"description":"Click hex at (0, -2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
@@ -60,5 +60,5 @@
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":603.3212770161884,"y":423.52941176470586,"description":"Click hex at (1, -1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
-{"type":"click","target":"checkmark","x":688.0271593691297,"y":423.52941176470586,"description":"Click checkmark to confirm"}
+{"type":"click","target":"checkmark","x":518.6153946632472,"y":423.52941176470586,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}

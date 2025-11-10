@@ -128,7 +128,7 @@ export class GameplayInputHandler {
       );
       
       if (distToRotateNE < rotationButtonSize / 2) {
-        // Rotate clockwise
+        // NE button: Rotate clockwise
         const currentRotation = state.ui.currentRotation;
         const newRotation = ((currentRotation + 1) % 6) as Rotation;
         store.dispatch(setRotation(newRotation));
@@ -136,7 +136,7 @@ export class GameplayInputHandler {
       }
       
       if (distToRotateNW < rotationButtonSize / 2) {
-        // Rotate counter-clockwise
+        // NW button: Rotate counter-clockwise
         const currentRotation = state.ui.currentRotation;
         const newRotation = ((currentRotation + 5) % 6) as Rotation;
         store.dispatch(setRotation(newRotation));
@@ -145,7 +145,7 @@ export class GameplayInputHandler {
       
       // Check if clicking on the tile itself to rotate (preserve existing functionality)
       if (isPointInHex({ x: canvasX, y: canvasY }, tileCenter, layout.size)) {
-        this.handleTileRotation(canvasX, tileCenter.x);
+        this.handleTileRotation(canvasX, canvasY, tileCenter.x, tileCenter.y, playerEdge);
         return;
       }
     } else {
@@ -155,7 +155,7 @@ export class GameplayInputHandler {
         const edgePos = getPlayerEdgePosition(currentPlayer.edgePosition, layout, state.game.boardRadius);
         
         if (isPointInHex({ x: canvasX, y: canvasY }, edgePos, layout.size)) {
-          this.handleTileRotation(canvasX, edgePos.x);
+          this.handleTileRotation(canvasX, canvasY, edgePos.x, edgePos.y, currentPlayer.edgePosition);
           return;
         }
       }
@@ -205,9 +205,9 @@ export class GameplayInputHandler {
     const basePositions = {
       checkmark: { x: spacing, y: 0 },
       cancel: { x: -spacing, y: 0 },
-      // NE and NW corners at approximately 60° and 120° from tile center
-      rotateNE: this.getEdgeMidpointRelative(spacing * 0.6, 3), // Direction 3 = NE
-      rotateNW: this.getEdgeMidpointRelative(spacing * 0.6, 2), // Direction 2 = NW
+      // NE and NW corners with increased spacing
+      rotateNE: this.getEdgeMidpointRelative(spacing * 0.75, 3), // Direction 3 = NE
+      rotateNW: this.getEdgeMidpointRelative(spacing * 0.75, 2), // Direction 2 = NW
     };
 
     // Rotate each position and translate to tile center
@@ -240,18 +240,33 @@ export class GameplayInputHandler {
     };
   }
 
-  private handleTileRotation(clickX: number, tileCenterX: number): void {
+  private handleTileRotation(clickX: number, clickY: number, tileCenterX: number, tileCenterY: number, playerEdge: number): void {
     const state = store.getState();
     const currentRotation = state.ui.currentRotation;
 
-    // Determine rotation direction based on which side was clicked
+    // Map edge positions to rotation angles (in degrees)
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+
+    // Calculate the click position relative to tile center
+    const relX = clickX - tileCenterX;
+    const relY = clickY - tileCenterY;
+
+    // Rotate the click position back by the player's edge angle
+    // This gives us the click position in the player's local coordinate system
+    const cos = Math.cos(-rotationRad);
+    const sin = Math.sin(-rotationRad);
+    const localX = relX * cos - relY * sin;
+
+    // In player's local coordinate system, left side (negative X) = clockwise, right side (positive X) = counter-clockwise
     let newRotation: Rotation;
-    if (clickX < tileCenterX) {
-      // Left side - rotate counter-clockwise
-      newRotation = ((currentRotation + 5) % 6) as Rotation;
-    } else {
-      // Right side - rotate clockwise
+    if (localX < 0) {
+      // Left side - rotate clockwise
       newRotation = ((currentRotation + 1) % 6) as Rotation;
+    } else {
+      // Right side - rotate counter-clockwise
+      newRotation = ((currentRotation + 5) % 6) as Rotation;
     }
 
     store.dispatch(setRotation(newRotation));

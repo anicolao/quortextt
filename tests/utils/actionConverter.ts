@@ -101,11 +101,12 @@ function getEdgeButtonCoords(
 }
 
 /**
- * Get coordinates for tile rotation (click on right side)
+ * Get coordinates for tile rotation (click on left side in player's local coordinate system for clockwise rotation)
  */
 function getTileRotationCoords(
   canvasWidth: number,
   canvasHeight: number,
+  playerEdge: number,
   hexPos: HexPosition | null = null,
   boardRadius: number = 3
 ): { x: number; y: number } {
@@ -125,14 +126,30 @@ function getTileRotationCoords(
     centerY = canvasHeight / 2;
   }
   
-  return { x: centerX + offset, y: centerY };
+  // Calculate left side in player's local coordinate system
+  // Map edge positions to rotation angles (in degrees)
+  const edgeAngles = [0, 60, 120, 180, 240, 300];
+  const rotationAngle = edgeAngles[playerEdge];
+  const rotationRad = (rotationAngle * Math.PI) / 180;
+  
+  // In player's local coords, left is at (-offset, 0)
+  // Rotate this point to screen coords
+  const localX = -offset;
+  const localY = 0;
+  const cos = Math.cos(rotationRad);
+  const sin = Math.sin(rotationRad);
+  const screenX = centerX + (localX * cos - localY * sin);
+  const screenY = centerY + (localX * sin + localY * cos);
+  
+  return { x: screenX, y: screenY };
 }
 
 /**
- * Get coordinates for checkmark button
+ * Get coordinates for checkmark button (oriented to player's edge)
  */
 function getCheckmarkCoords(
   hexPos: HexPosition,
+  playerEdge: number,
   canvasWidth: number,
   canvasHeight: number,
   boardRadius: number = 3
@@ -142,7 +159,23 @@ function getCheckmarkCoords(
   const buttonSpacing = size * 2;
   
   const hexCoords = getHexPixelCoords(hexPos, canvasWidth, canvasHeight, boardRadius);
-  return { x: hexCoords.x + buttonSpacing, y: hexCoords.y };
+  
+  // Map edge positions to rotation angles (in degrees)
+  const edgeAngles = [0, 60, 120, 180, 240, 300];
+  const rotationAngle = edgeAngles[playerEdge];
+  const rotationRad = (rotationAngle * Math.PI) / 180;
+  
+  // Define checkmark button position for edge 0 (bottom player)
+  const baseX = buttonSpacing;
+  const baseY = 0;
+  
+  // Rotate position around tile center
+  const cos = Math.cos(rotationRad);
+  const sin = Math.sin(rotationRad);
+  const x = hexCoords.x + (baseX * cos - baseY * sin);
+  const y = hexCoords.y + (baseX * sin + baseY * cos);
+  
+  return { x, y };
 }
 
 /**
@@ -178,8 +211,7 @@ function getSeatingEdgeButtonCoords(
 
 /**
  * Convert actions to click sequence
- * Note: This does NOT replay the actions through the reducer to avoid player ID issues.
- * It converts each action independently.
+ * Tracks minimal game state to determine current player's edge position
  */
 export function actionsToClicks(
   actions: GameAction[],
@@ -189,6 +221,10 @@ export function actionsToClicks(
   const clicks: ClickAction[] = [];
   let currentRotation = 0;
   const usedColors: string[] = []; // Track used colors for dynamic button positioning
+  
+  // Track minimal game state for player edge positions
+  let currentPlayerIndex = 0;
+  const playerEdges: number[] = []; // Array of edge positions for each player
   
   for (const action of actions) {
     switch (action.type) {
@@ -236,6 +272,9 @@ export function actionsToClicks(
       }
       
       case 'SELECT_EDGE': {
+        // Track player edge selection
+        playerEdges.push(action.payload.edgeNumber);
+        
         // Click on an edge hexagon in the seating phase
         const edgeCoords = getSeatingEdgeButtonCoords(
           action.payload.edgeNumber,
@@ -256,6 +295,9 @@ export function actionsToClicks(
       case 'PLACE_TILE': {
         const { position, rotation } = action.payload;
         
+        // Get current player's edge position
+        const currentPlayerEdge = playerEdges[currentPlayerIndex] || 0;
+        
         // First, click on hex position to place tile preview
         const hexCoords = getHexPixelCoords(position, canvasWidth, canvasHeight);
         clicks.push({
@@ -270,7 +312,7 @@ export function actionsToClicks(
         // Then rotate tile to desired rotation (if needed)
         if (rotation !== 0) {
           for (let i = 0; i < rotation; i++) {
-            const rotateCoords = getTileRotationCoords(canvasWidth, canvasHeight, position);
+            const rotateCoords = getTileRotationCoords(canvasWidth, canvasHeight, currentPlayerEdge, position);
             clicks.push({
               type: 'click',
               target: 'tile-rotate',
@@ -282,8 +324,8 @@ export function actionsToClicks(
           }
         }
         
-        // Finally, click checkmark to confirm
-        const checkCoords = getCheckmarkCoords(position, canvasWidth, canvasHeight);
+        // Finally, click checkmark to confirm (oriented to player's edge)
+        const checkCoords = getCheckmarkCoords(position, currentPlayerEdge, canvasWidth, canvasHeight);
         clicks.push({
           type: 'click',
           target: 'checkmark',
@@ -297,8 +339,12 @@ export function actionsToClicks(
       }
       
       case 'DRAW_TILE':
+        // Automatic action, no click needed
+        break;
+      
       case 'NEXT_PLAYER':
-        // These are automatic/programmatic actions, no clicks needed
+        // Advance to next player
+        currentPlayerIndex = (currentPlayerIndex + 1) % playerEdges.length;
         break;
     }
   }
