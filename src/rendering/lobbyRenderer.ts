@@ -345,7 +345,7 @@ export class LobbyRenderer {
 
     // Dialog box
     const dialogWidth = Math.min(500, canvasWidth * 0.8);
-    const dialogHeight = Math.min(650, canvasHeight * 0.85);
+    const dialogHeight = Math.min(750, canvasHeight * 0.9);
     const dialogX = (canvasWidth - dialogWidth) / 2;
     const dialogY = (canvasHeight - dialogHeight) / 2;
 
@@ -425,15 +425,16 @@ export class LobbyRenderer {
     // Render tile previews and controls in horizontal row
     const tileTypes = [0, 1, 2, 3]; // TileType enum values
     const tileSize = 30; // Small hexagon size
-    const controlSpacing = 95; // Space for each control set
-    const startX = contentX + 20;
+    const controlSpacing = 110; // Space for each control set (increased for better spacing)
+    const startX = contentX;
 
     for (let i = 0; i < tileTypes.length; i++) {
       const x = startX + i * controlSpacing;
       const tileY = contentY;
 
-      // Render small tile preview
-      this.renderSmallTile(tileTypes[i], x + 15, tileY, tileSize);
+      // Render small tile preview - centered above the control
+      // Control is centered at x, so tile should be at x (not x + 15)
+      this.renderSmallTile(tileTypes[i], x, tileY, tileSize);
 
       // Render number control beneath tile
       const controlY = tileY + tileSize + 10;
