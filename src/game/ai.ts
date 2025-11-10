@@ -6,7 +6,8 @@ import {
   Team, 
   HexPosition, 
   TileType, 
-  Rotation
+  Rotation,
+  Direction
 } from './types';
 import { 
   findLegalMoves, 
@@ -16,7 +17,10 @@ import {
 import { 
   getAllBoardPositions,
   positionToKey,
-  getOppositeEdge
+  getOppositeEdge,
+  getNeighborInDirection,
+  isValidPosition,
+  getEdgePositionsWithDirections
 } from './board';
 import { checkVictory } from './victory';
 
@@ -116,6 +120,44 @@ function evaluatePosition(
   return aiScore + enemyScore;
 }
 
+// Check if a position is adjacent to any flow or starting edge for any player
+function isAdjacentToFlowOrEdge(
+  position: HexPosition,
+  board: Map<string, PlacedTile>,
+  players: Player[],
+  boardRadius = 3
+): boolean {
+  // Check all 6 neighbors
+  for (let dir = 0; dir < 6; dir++) {
+    const neighbor = getNeighborInDirection(position, dir as Direction);
+    
+    // Check if neighbor is a valid position
+    if (!isValidPosition(neighbor, boardRadius)) {
+      continue;
+    }
+    
+    const neighborKey = positionToKey(neighbor);
+    
+    // Check if neighbor has a tile (adjacent to existing tile)
+    if (board.has(neighborKey)) {
+      return true;
+    }
+    
+    // Check if neighbor is a starting edge position for any player
+    for (const player of players) {
+      const edgeData = getEdgePositionsWithDirections(player.edgePosition, boardRadius);
+      const isEdgePos = edgeData.some(({ pos }) => 
+        pos.row === neighbor.row && pos.col === neighbor.col
+      );
+      if (isEdgePos) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 // Generate all move candidates for the AI
 export function generateMoveCandidates(
   board: Map<string, PlacedTile>,
@@ -132,8 +174,13 @@ export function generateMoveCandidates(
   for (let rotation = 0; rotation < 6; rotation++) {
     const rot = rotation as Rotation;
     
-    // 1. Regular placements - all legal moves
-    const legalPositions = findLegalMoves(board, tileType, rot, players, teams, boardRadius);
+    // 1. Regular placements - only positions adjacent to flows or starting edges
+    const allLegalPositions = findLegalMoves(board, tileType, rot, players, teams, boardRadius);
+    
+    // Filter to only positions adjacent to flows or starting edges
+    const legalPositions = allLegalPositions.filter(pos => 
+      isAdjacentToFlowOrEdge(pos, board, players, boardRadius)
+    );
     
     for (const position of legalPositions) {
       // Create test board with this move
