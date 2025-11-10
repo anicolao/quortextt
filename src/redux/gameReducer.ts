@@ -118,10 +118,10 @@ function randomizePlayerOrder(playerIds: string[], seed?: number): string[] {
 // Helper function to determine gameplay order after seating is complete
 // Players are ordered clockwise by their edge positions
 // Starting player is the first from the seating order
-function determineGameplayOrder(
-  players: { id: string; edgePosition: number }[],
+function determineGameplayOrder<T extends { id: string; edgePosition: number }>(
+  players: T[],
   seatingOrder: string[]
-): string[] {
+): T[] {
   // Sort players by edge position (clockwise order)
   const sortedPlayers = [...players].sort(
     (a, b) => a.edgePosition - b.edgePosition
@@ -137,7 +137,7 @@ function determineGameplayOrder(
     ...sortedPlayers.slice(0, startIndex)
   ];
   
-  return gameplayOrder.map(p => p.id);
+  return gameplayOrder;
 }
 
 // Reducer function
@@ -391,13 +391,8 @@ export function gameReducer(
           );
         }
         
-        // Determine gameplay order
-        const gameplayOrder = determineGameplayOrder(updatedPlayers, seatingPhase.seatingOrder);
-        
-        // Reorder players array to match gameplay order (clockwise from starting player)
-        const orderedPlayers = gameplayOrder.map(id => 
-          updatedPlayers.find(p => p.id === id)!
-        );
+        // Determine gameplay order - players ordered clockwise from starting player
+        const orderedPlayers = determineGameplayOrder(updatedPlayers, seatingPhase.seatingOrder);
         
         // Starting player is now at index 0
         const currentPlayerIndex = 0;
