@@ -16,27 +16,24 @@ describe('gameReducer', () => {
   describe('ADD_PLAYER', () => {
     it('should add a player to empty list', () => {
       const state = gameReducer(initialState, addPlayer(PLAYER_COLORS[0], 0));
-      // First human player added, so AI is automatically added
-      expect(state.configPlayers.length).toBe(2);
+      expect(state.configPlayers.length).toBe(1);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
       expect(state.configPlayers[0].isAI).toBe(false);
-      // AI player should be added automatically
-      expect(state.configPlayers[1].isAI).toBe(true);
     });
 
     it('should add multiple players with different colors', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[2], 0));
-      state = gameReducer(state, addPlayer(PLAYER_COLORS[3], 0));
 
-      // First player triggers AI addition, then 2 more human players = 4 total
-      expect(state.configPlayers.length).toBe(4);
+      expect(state.configPlayers.length).toBe(3);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
       expect(state.configPlayers[0].isAI).toBe(false);
-      expect(state.configPlayers[1].isAI).toBe(true); // Auto-added AI
+      expect(state.configPlayers[1].color).toBe(PLAYER_COLORS[1]);
+      expect(state.configPlayers[1].isAI).toBe(false);
       expect(state.configPlayers[2].color).toBe(PLAYER_COLORS[2]);
-      expect(state.configPlayers[3].color).toBe(PLAYER_COLORS[3]);
+      expect(state.configPlayers[2].isAI).toBe(false);
     });
 
     it('should not add more than MAX_PLAYERS', () => {
@@ -50,12 +47,10 @@ describe('gameReducer', () => {
 
     it('should auto-assign color and edge when no payload provided', () => {
       const state = gameReducer(initialState, { type: 'ADD_PLAYER' });
-      // First human player added, so AI is automatically added
-      expect(state.configPlayers.length).toBe(2);
+      expect(state.configPlayers.length).toBe(1);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
       expect(state.configPlayers[0].edge).toBe(0);
       expect(state.configPlayers[0].isAI).toBe(false);
-      expect(state.configPlayers[1].isAI).toBe(true);
     });
 
     it('should auto-assign next available color when no color provided', () => {
@@ -63,49 +58,43 @@ describe('gameReducer', () => {
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, { type: 'ADD_PLAYER', payload: { edge: 1 } });
       
-      // First adds P1 (human) + P2 (AI), then adds P3 (human)
-      expect(state.configPlayers.length).toBe(3);
+      expect(state.configPlayers.length).toBe(2);
       expect(state.configPlayers[0].isAI).toBe(false);
-      expect(state.configPlayers[1].isAI).toBe(true); // Auto-added AI
-      expect(state.configPlayers[2].isAI).toBe(false);
-      expect(state.configPlayers[2].color).toBe(PLAYER_COLORS[2]); // Next available after 0 and 1
-      expect(state.configPlayers[2].edge).toBe(1);
+      expect(state.configPlayers[1].isAI).toBe(false);
+      expect(state.configPlayers[1].color).toBe(PLAYER_COLORS[1]);
+      expect(state.configPlayers[1].edge).toBe(1);
     });
 
     it('should auto-assign next available edge when no edge provided', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[2] } });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[1] } });
       
-      // First adds P1 (human) + P2 (AI), then adds P3 (human)
-      expect(state.configPlayers.length).toBe(3);
-      expect(state.configPlayers[2].color).toBe(PLAYER_COLORS[2]);
-      expect(state.configPlayers[2].edge).toBe(2); // Edges 0 and 1 are taken
+      expect(state.configPlayers.length).toBe(2);
+      expect(state.configPlayers[1].color).toBe(PLAYER_COLORS[1]);
+      expect(state.configPlayers[1].edge).toBe(1); // Edge 0 is taken, use 1
     });
 
     it('should auto-assign edges in sequence when multiple players added without edges', () => {
       let state = initialState;
       state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[0] } });
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[1] } });
       state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[2] } });
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[3] } });
       
-      // First adds P1 (human) + AI, then 2 more humans = 4 total
-      expect(state.configPlayers.length).toBe(4);
-      expect(state.configPlayers[0].edge).toBe(0); // P1
-      expect(state.configPlayers[1].edge).toBe(1); // AI
-      expect(state.configPlayers[2].edge).toBe(2); // P3
-      expect(state.configPlayers[3].edge).toBe(3); // P4
+      expect(state.configPlayers.length).toBe(3);
+      expect(state.configPlayers[0].edge).toBe(0);
+      expect(state.configPlayers[1].edge).toBe(1);
+      expect(state.configPlayers[2].edge).toBe(2);
     });
 
     it('should skip already-used edges when auto-assigning', () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      state = gameReducer(state, addPlayer(PLAYER_COLORS[2], 2));
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[3] } });
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 2));
+      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[2] } });
       
-      // First adds P1 (human, edge 0) + AI (edge 1), then P3 (edge 2), then P4 (edge 3 - next available)
-      expect(state.configPlayers.length).toBe(4);
-      expect(state.configPlayers[3].edge).toBe(3); // Should skip 0, 1, 2, use 3
+      expect(state.configPlayers.length).toBe(3);
+      expect(state.configPlayers[2].edge).toBe(1); // Should skip 0 and 2, use 1
     });
 
     it('should fallback to edge 0 when all edges are taken', () => {
@@ -151,13 +140,11 @@ describe('gameReducer', () => {
       const stateBefore = state;
       state = gameReducer(state, { type: 'ADD_PLAYER', payload: {} });
       
-      // First adds P1 (color 0, edge 0) + AI (color 1, edge 1)
-      // Then adds P3 (color 2, edge 2)
-      expect(state.configPlayers.length).toBe(3);
+      // Auto-assigns color 1 since color 0 is taken
+      expect(state.configPlayers.length).toBe(2);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
       expect(state.configPlayers[1].color).toBe(PLAYER_COLORS[1]);
-      expect(state.configPlayers[1].isAI).toBe(true);
-      expect(state.configPlayers[2].color).toBe(PLAYER_COLORS[2]);
+      expect(state.configPlayers[1].isAI).toBe(false);
     });
 
     it('should not add player when explicitly provided color is already taken', () => {
@@ -250,6 +237,40 @@ describe('gameReducer', () => {
       expect(state.phase).toBe('seating');
       expect(state.seatingPhase.active).toBe(true);
       expect(state.seatingPhase.availableEdges).toEqual([0, 1, 2, 3, 4, 5]);
+    });
+
+    it('should add AI opponent when only one player and start game', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      
+      // Should have 1 player before starting
+      expect(state.configPlayers.length).toBe(1);
+      expect(state.configPlayers[0].isAI).toBe(false);
+      
+      // Start the game
+      state = gameReducer(state, startGame());
+      
+      // Should have 2 players now (original + AI)
+      expect(state.configPlayers.length).toBe(2);
+      expect(state.configPlayers[0].isAI).toBe(false);
+      expect(state.configPlayers[1].isAI).toBe(true);
+      expect(state.screen).toBe('seating');
+    });
+
+    it('should not add AI when multiple players start game', () => {
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
+      
+      // Should have 2 players before starting
+      expect(state.configPlayers.length).toBe(2);
+      
+      // Start the game
+      state = gameReducer(state, startGame());
+      
+      // Should still have 2 players (no AI added)
+      expect(state.configPlayers.length).toBe(2);
+      expect(state.configPlayers.every(p => !p.isAI)).toBe(true);
     });
 
     it('should not transition when no players exist', () => {
