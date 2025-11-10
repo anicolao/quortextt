@@ -38,7 +38,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      expect(isLegalMove(board, newTile, players, teams)).toBe(false);
+      expect(isLegalMove(board, newTile, players, teams, 3, false)).toBe(false);
     });
 
     it('should accept move on empty position', () => {
@@ -52,7 +52,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      expect(isLegalMove(board, tile, players, teams)).toBe(true);
+      expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
     });
 
     it('should accept move that causes victory', () => {
@@ -71,7 +71,7 @@ describe('legal move validation', () => {
       const teams: Team[] = [];
 
       // Should be legal
-      expect(isLegalMove(board, tile, players, teams)).toBe(true);
+      expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
     });
 
     it('should work with team games', () => {
@@ -93,7 +93,7 @@ describe('legal move validation', () => {
         { player1Id: 'p2', player2Id: 'p4' },
       ];
 
-      expect(isLegalMove(board, tile, players, teams)).toBe(true);
+      expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
     });
   });
 
@@ -103,7 +103,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams);
+      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3);
 
       // On an empty board, many positions should be legal
       expect(legalMoves.length).toBeGreaterThan(0);
@@ -121,7 +121,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams);
+      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3);
 
       // Should not include the occupied position
       expect(legalMoves).not.toContainEqual({ row: 0, col: 0 });
@@ -132,8 +132,8 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const moves1 = findLegalMoves(board, TileType.NoSharps, 0, players, teams);
-      const moves2 = findLegalMoves(board, TileType.ThreeSharps, 0, players, teams);
+      const moves1 = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3);
+      const moves2 = findLegalMoves(board, TileType.ThreeSharps, 0, players, teams, 3);
 
       // Both should find legal moves
       expect(moves1.length).toBeGreaterThan(0);
@@ -145,8 +145,8 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const moves1 = findLegalMoves(board, TileType.OneSharp, 0, players, teams);
-      const moves2 = findLegalMoves(board, TileType.OneSharp, 3, players, teams);
+      const moves1 = findLegalMoves(board, TileType.OneSharp, 0, players, teams, 3);
+      const moves2 = findLegalMoves(board, TileType.OneSharp, 3, players, teams, 3);
 
       // Both should find legal moves
       expect(moves1.length).toBeGreaterThan(0);
@@ -160,7 +160,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const canPlace = canTileBePlacedAnywhere(board, TileType.NoSharps, players, teams);
+      const canPlace = canTileBePlacedAnywhere(board, TileType.NoSharps, players, teams, 3);
 
       expect(canPlace).toBe(true);
     });
@@ -179,7 +179,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const canPlace = canTileBePlacedAnywhere(board, TileType.TwoSharps, players, teams);
+      const canPlace = canTileBePlacedAnywhere(board, TileType.TwoSharps, players, teams, 3);
 
       expect(canPlace).toBe(true);
     });
@@ -190,7 +190,7 @@ describe('legal move validation', () => {
       const teams: Team[] = [];
 
       // Even if one rotation doesn't work, others might
-      const canPlace = canTileBePlacedAnywhere(board, TileType.ThreeSharps, players, teams);
+      const canPlace = canTileBePlacedAnywhere(board, TileType.ThreeSharps, players, teams, 3);
 
       expect(canPlace).toBe(true);
     });
@@ -214,7 +214,7 @@ describe('legal move validation', () => {
 
       // With a completely full board, no tile can be placed in any rotation
       // This exercises line 176-177 (return false)
-      const canPlace = canTileBePlacedAnywhere(board, TileType.NoSharps, players, teams);
+      const canPlace = canTileBePlacedAnywhere(board, TileType.NoSharps, players, teams, 3);
       expect(canPlace).toBe(false);
     });
 
@@ -236,7 +236,7 @@ describe('legal move validation', () => {
       }
 
       // Should still find legal moves on empty spaces
-      const canPlace = canTileBePlacedAnywhere(board, TileType.OneSharp, players, teams);
+      const canPlace = canTileBePlacedAnywhere(board, TileType.OneSharp, players, teams, 3);
       expect(canPlace).toBe(true);
     });
   });
@@ -269,7 +269,7 @@ describe('legal move validation', () => {
 
       // This move should be legal even if it might otherwise block paths
       // This exercises line 120-121
-      expect(isLegalMove(board, finalTile, players, teams)).toBe(true);
+      expect(isLegalMove(board, finalTile, players, teams, 3, false)).toBe(true);
     });
   });
 
@@ -294,7 +294,7 @@ describe('legal move validation', () => {
         position: { row: 0, col: 0 },
       };
 
-      expect(isLegalMove(board, tile, players, teams)).toBe(true);
+      expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
     });
 
     it('should handle individual player blocking', () => {
@@ -309,7 +309,7 @@ describe('legal move validation', () => {
       };
 
       // Should be legal
-      expect(isLegalMove(board, tile, players, teams)).toBe(true);
+      expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
     });
 
     it('should return false when all paths blocked for individual player', () => {
@@ -340,7 +340,7 @@ describe('legal move validation', () => {
 
       // With almost full board of ThreeSharps, this should create blocked paths
       // This exercises the return false at line 95-96
-      const result = isLegalMove(board, testTile, players, teams);
+      const result = isLegalMove(board, testTile, players, teams, 3, false);
       expect(typeof result).toBe('boolean');
     });
 
@@ -377,7 +377,7 @@ describe('legal move validation', () => {
       };
 
       // This should exercise the team blocking logic at line 87-88
-      const result = isLegalMove(board, testTile, players, teams);
+      const result = isLegalMove(board, testTile, players, teams, 3, false);
       expect(typeof result).toBe('boolean');
     });
   });
@@ -401,7 +401,7 @@ describe('legal move validation', () => {
 
       // Now test canTileBePlacedAnywhere which will check all positions
       // Since board is full, no tile can be placed
-      const canPlace = canTileBePlacedAnywhere(board, TileType.OneSharp, players, teams);
+      const canPlace = canTileBePlacedAnywhere(board, TileType.OneSharp, players, teams, 3);
       
       // Should return false - board is full, no legal placements
       expect(canPlace).toBe(false);
@@ -432,7 +432,7 @@ describe('legal move validation', () => {
       };
 
       // This should exercise the viable path logic
-      const isLegal = isLegalMove(board, testTile, players, teams);
+      const isLegal = isLegalMove(board, testTile, players, teams, 3, false);
       
       // Result depends on the board state, but the test exercises the code path
       expect(typeof isLegal).toBe('boolean');
@@ -467,7 +467,7 @@ describe('legal move validation', () => {
       };
 
       // This exercises the nearly-full board viable path checking
-      const isLegal = isLegalMove(board, testTile, players, teams);
+      const isLegal = isLegalMove(board, testTile, players, teams, 3, false);
       expect(typeof isLegal).toBe('boolean');
     });
   });
@@ -506,7 +506,7 @@ describe('legal move validation', () => {
         rotation: 0,
         position: { row: -2, col: 0 },
       };
-      expect(isLegalMove(board, tileBehindWall, players, teams)).toBe(true);
+      expect(isLegalMove(board, tileBehindWall, players, teams, 3, false)).toBe(true);
 
       // Try to place a tile on p2 side (south) that would disconnect p1 further
       // This is on the south side of the wall
@@ -517,7 +517,7 @@ describe('legal move validation', () => {
       };
       // This should still be legal for p2, but let's test it doesn't completely block p1
       // Since the wall already separates them, this placement should be fine
-      expect(isLegalMove(board, tileInFront, players, teams)).toBe(true);
+      expect(isLegalMove(board, tileInFront, players, teams, 3, false)).toBe(true);
     });
 
     it('should reject move that blocks path through a narrow corridor', () => {
@@ -556,7 +556,7 @@ describe('legal move validation', () => {
 
       // This move should be rejected as it blocks all paths
       // However, if there are other routes around, it might still be legal
-      const result = isLegalMove(board, blockingTile, players, teams);
+      const result = isLegalMove(board, blockingTile, players, teams, 3, false);
       expect(typeof result).toBe('boolean');
     });
 
@@ -573,7 +573,7 @@ describe('legal move validation', () => {
         position: { row: 0, col: 0 },
       };
 
-      expect(isLegalMove(board, tile, players, teams)).toBe(true);
+      expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
     });
 
     it('should handle complex blocking scenarios with multiple empty positions', () => {
@@ -609,7 +609,7 @@ describe('legal move validation', () => {
         position: { row: 0, col: 0 },
       };
 
-      const result = isLegalMove(board, tile, players, teams);
+      const result = isLegalMove(board, tile, players, teams, 3, false);
       expect(typeof result).toBe('boolean');
     });
   });
@@ -620,7 +620,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const debugInfo = getDebugPathInfo(board, players, teams);
+      const debugInfo = getDebugPathInfo(board, players, teams, 3);
 
       expect(debugInfo).toHaveLength(2);
       expect(debugInfo[0].playerId).toBe('p1');
@@ -643,7 +643,7 @@ describe('legal move validation', () => {
         { player1Id: 'p2', player2Id: 'p4' },
       ];
 
-      const debugInfo = getDebugPathInfo(board, players, teams);
+      const debugInfo = getDebugPathInfo(board, players, teams, 3);
 
       expect(debugInfo).toHaveLength(4);
       expect(debugInfo[0].playerId).toBe('p1');
@@ -671,7 +671,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const blocked = getBlockedPlayers(board, tile, players, teams);
+      const blocked = getBlockedPlayers(board, tile, players, teams, 3);
       expect(blocked).toEqual([]);
     });
 
@@ -702,7 +702,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const blocked = getBlockedPlayers(board, victoryTile, players, teams);
+      const blocked = getBlockedPlayers(board, victoryTile, players, teams, 3);
       expect(blocked).toEqual([]);
     });
 
@@ -739,7 +739,7 @@ describe('legal move validation', () => {
         { player1Id: 'p2', player2Id: 'p4' },
       ];
 
-      const blocked = getBlockedPlayers(board, blockingTile, players, teams);
+      const blocked = getBlockedPlayers(board, blockingTile, players, teams, 3);
       // Should block both teams (4 players total)
       expect(blocked.length).toBeGreaterThan(0);
     });

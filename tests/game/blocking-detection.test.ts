@@ -51,7 +51,7 @@ describe('Blocking Detection - Comprehensive Tests', () => {
     // P1 can still reach positions on their side, P2 can reach positions on their side
     // So this should be LEGAL because each player still has viable paths on their side
     // The BFS will find connectivity within each zone
-    const result = isLegalMove(board, tileOnP1Side, players, teams);
+    const result = isLegalMove(board, tileOnP1Side, players, teams, 3, false);
     
     // Actually, with the barrier, P1 (edge 0) can still reach positions near edge 0
     // And P2 (edge 3) can still reach positions near edge 3
@@ -100,7 +100,7 @@ describe('Blocking Detection - Comprehensive Tests', () => {
       position: { row: -1, col: 1 },
     };
 
-    const result = isLegalMove(board, tile, players, teams);
+    const result = isLegalMove(board, tile, players, teams, 3, false);
     // With a gap, there's still a path from edge 0 to edge 3
     expect(result).toBe(true);
   });
@@ -137,7 +137,7 @@ describe('Blocking Detection - Comprehensive Tests', () => {
       position: { row: 0, col: 0 },
     };
 
-    const result = isLegalMove(board, gapClosingTile, players, teams);
+    const result = isLegalMove(board, gapClosingTile, players, teams, 3, false);
     // Closing the gap would block all paths
     expect(result).toBe(false);
   });
@@ -183,7 +183,7 @@ describe('Blocking Detection - Comprehensive Tests', () => {
       position: { row: -1, col: 0 },
     };
 
-    const result = isLegalMove(board, tile, players, teams);
+    const result = isLegalMove(board, tile, players, teams, 3, false);
     // With complete barrier, team 1 (p1-p3) is blocked
     expect(result).toBe(false);
   });
@@ -200,7 +200,7 @@ describe('Blocking Detection - Comprehensive Tests', () => {
       position: { row: 0, col: 0 },
     };
 
-    expect(isLegalMove(board, tile, players, teams)).toBe(true);
+    expect(isLegalMove(board, tile, players, teams, 3, false)).toBe(true);
   });
 
   it('should handle edge case with nearly full board', () => {
@@ -243,7 +243,7 @@ describe('Blocking Detection - Comprehensive Tests', () => {
 
     // The move validity depends on whether it blocks paths
     // Just verify the function returns a boolean result
-    const result = isLegalMove(board, tile, players, teams);
+    const result = isLegalMove(board, tile, players, teams, 3, false);
     expect(typeof result).toBe('boolean');
   });
 });
