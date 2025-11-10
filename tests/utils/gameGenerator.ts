@@ -10,7 +10,7 @@ import { gameReducer, initialState } from '../../src/redux/gameReducer';
 import { GameState } from '../../src/redux/types';
 import { getAllBoardPositions, positionToKey, getEdgePositions, getNeighborInDirection, getOppositeDirection } from '../../src/game/board';
 import { HexPosition, Rotation, Direction } from '../../src/game/types';
-import { isLegalMove } from '../../src/game/legality';
+import { isLegalMove, hasViablePath } from '../../src/game/legality';
 import { traceFlow } from '../../src/game/flows';
 import { getEdgePositionsWithDirections } from '../../src/game/board';
 import { getFlowExit } from '../../src/game/tiles';
@@ -163,17 +163,15 @@ function findLegalMoves(
 }
 
 /**
- * Find legal moves that will extend the current player's existing flows
- * Checks if placing the tile will actually create a flow connection
- */
-/**
- * Find best moves using simple adjacency-based selection
+ * Find best moves using path-based scoring on filtered adjacent moves
  * Strategy:
  * 1. Identify legal moves adjacent to tiles where we have flows
- * 2. Return those moves (sorted for determinism)
+ * 2. For the filtered set, call hasViablePath with debug on to score each move
+ * 3. Score: +1 per occupied hex, -2 per empty hex in pathToTarget
+ * 4. Play the option with the highest score (deterministic among ties)
  * 
- * Previous version used hasViablePath scoring but it was very slow for tests.
- * The adjacency filtering already provides good move selection.
+ * This applies the expensive scoring only to the already-filtered adjacent moves,
+ * providing better move quality while maintaining good performance.
  */
 function findFlowAdjacentMoves(
   state: GameState,
@@ -221,8 +219,88 @@ function findFlowAdjacentMoves(
     movesToConsider = adjacentMoves.length > 0 ? adjacentMoves : legalMoves;
   }
   
-  // Return filtered moves (already sorted by findLegalMoves for determinism)
-  return movesToConsider;
+  // Score each move by testing with hasViablePath
+  // This is applied only to the filtered set of adjacent moves
+  interface ScoredMove {
+    position: HexPosition;
+    rotation: Rotation;
+    score: number;
+  }
+  
+  const scoredMoves: ScoredMove[] = [];
+  
+  for (const move of movesToConsider) {
+    if (state.currentTile === null) continue;
+    
+    // Create a simulated board with this move placed
+    const simulatedBoard = new Map(state.board);
+    const posKey = positionToKey(move.position);
+    simulatedBoard.set(posKey, {
+      type: state.currentTile,
+      rotation: move.rotation,
+    });
+    
+    // Find the target edge (opposite of player's starting edge)
+    const targetEdge = (currentPlayer.edgePosition + 3) % 6;
+    
+    // Call hasViablePath with debug info
+    const result = hasViablePath(
+      simulatedBoard,
+      currentPlayer,
+      targetEdge,
+      true, // returnDebugInfo
+      true, // allowEmptyHexes
+      3 // boardRadius
+    );
+    
+    if (typeof result === 'boolean') {
+      // No debug info returned, skip
+      continue;
+    }
+    
+    // Score based on pathToTarget
+    let score = 0;
+    if (result.hasPath && result.pathToTarget) {
+      for (const pos of result.pathToTarget) {
+        const key = positionToKey(pos);
+        if (simulatedBoard.has(key)) {
+          score += 1; // +1 for occupied hex
+        } else {
+          score -= 2; // -2 for empty hex
+        }
+      }
+    }
+    
+    scoredMoves.push({
+      position: move.position,
+      rotation: move.rotation,
+      score,
+    });
+  }
+  
+  if (scoredMoves.length === 0) {
+    return movesToConsider;
+  }
+  
+  // Find the highest score
+  const maxScore = Math.max(...scoredMoves.map(m => m.score));
+  
+  // Get all moves with the highest score
+  const bestMoves = scoredMoves.filter(m => m.score === maxScore);
+  
+  // Sort moves for deterministic selection (when multiple have same score)
+  // Sort by row, then col, then rotation
+  bestMoves.sort((a, b) => {
+    if (a.position.row !== b.position.row) {
+      return a.position.row - b.position.row;
+    }
+    if (a.position.col !== b.position.col) {
+      return a.position.col - b.position.col;
+    }
+    return a.rotation - b.rotation;
+  });
+  
+  return bestMoves;
 }
 
 /**
