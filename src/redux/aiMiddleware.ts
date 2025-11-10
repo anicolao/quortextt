@@ -6,7 +6,6 @@ import {
   GameAction,
   SELECT_EDGE,
   DRAW_TILE,
-  NEXT_PLAYER,
   placeTile,
   replaceTile,
   nextPlayer,
@@ -61,8 +60,8 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     }
   }
   
-  // Handle AI move during gameplay
-  if (gameAction.type === DRAW_TILE || gameAction.type === NEXT_PLAYER) {
+  // Handle AI move during gameplay - only respond to DRAW_TILE
+  if (gameAction.type === DRAW_TILE) {
     const { players, currentPlayerIndex, currentTile, board, teams, phase, supermoveInProgress } = state.game;
     
     // Only act if we're in playing phase and have a current tile
@@ -110,7 +109,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       }
     }
     
-    // Check if current player is AI
+    // Check if current player is AI - only act on DRAW_TILE to avoid duplicate actions
     if (currentPlayer && currentPlayer.isAI) {
       // AI needs to make a move
       const aiMove = selectAIMove(
