@@ -436,6 +436,42 @@ describe("gameReducer", () => {
     });
   });
 
+  describe("SET_AI_SCORING_DATA", () => {
+    it("should set AI scoring data", () => {
+      const scoringData = new Map<
+        string,
+        { rotation: number; score: number }[]
+      >();
+      scoringData.set("0,0", [
+        { rotation: 0, score: 100 },
+        { rotation: 1, score: 200 },
+      ]);
+
+      const state = gameReducer(initialState, setAIScoringData(scoringData));
+
+      expect(state.aiScoringData).toBe(scoringData);
+      expect(state.aiScoringData?.get("0,0")).toEqual([
+        { rotation: 0, score: 100 },
+        { rotation: 1, score: 200 },
+      ]);
+    });
+
+    it("should clear AI scoring data when set to undefined", () => {
+      let state = initialState;
+      const scoringData = new Map<
+        string,
+        { rotation: number; score: number }[]
+      >();
+      scoringData.set("0,0", [{ rotation: 0, score: 100 }]);
+      state = gameReducer(state, setAIScoringData(scoringData));
+
+      expect(state.aiScoringData).toBeDefined();
+
+      state = gameReducer(state, setAIScoringData(undefined));
+
+      expect(state.aiScoringData).toBeUndefined();
+    });
+  });
   describe("Board radius and tile distribution", () => {
     it("should use default distribution for default radius (3)", () => {
       const state = gameReducer(initialState, {
