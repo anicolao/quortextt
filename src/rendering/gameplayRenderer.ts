@@ -681,6 +681,11 @@ export class GameplayRenderer {
     state.game.board.forEach((tile) => {
       this.renderAnimatingFlows(tile, state);
     });
+
+    // Pass 5: Draw tile borders on top of all flows for clean edge appearance
+    state.game.board.forEach((tile) => {
+      this.renderTileBorder(tile);
+    });
   }
 
   private renderTile(
@@ -703,12 +708,21 @@ export class GameplayRenderer {
     this.ctx.fillStyle = TILE_BG;
     this.drawHexagon(center, this.layout.size, true);
 
-    // Draw tile border
+    // Draw tile border (lighter line under flows)
     this.ctx.strokeStyle = TILE_BORDER;
     this.ctx.lineWidth = 1;
     this.drawHexagon(center, this.layout.size, false);
 
     this.ctx.globalAlpha = 1.0;
+  }
+
+  private renderTileBorder(tile: PlacedTile): void {
+    const center = hexToPixel(tile.position, this.layout);
+
+    // Draw 2-pixel border on top of flows for clean appearance
+    this.ctx.strokeStyle = TILE_BORDER;
+    this.ctx.lineWidth = 2;
+    this.drawHexagon(center, this.layout.size, false);
   }
 
   private renderGreyChannels(tile: PlacedTile, state: RootState): void {
@@ -781,39 +795,99 @@ export class GameplayRenderer {
       } else if (!animData || animData.animationProgress >= 1.0) {
         // No animation data or animation done - check for actual filled flow
         if (tileFlowEdges) {
-          const player1 = tileFlowEdges.get(dir1);
-          const player2 = tileFlowEdges.get(dir2);
+          const player1Id = tileFlowEdges.get(dir1);
+          const player2Id = tileFlowEdges.get(dir2);
 
-          // With one-way flows, only the entry direction is recorded
-          // So check if EITHER direction has a player ID
-          const playerId = player1 || player2;
-          
-          if (playerId) {
-            const player = state.game.players.find((p) => p.id === playerId);
-            if (player) {
-              // Check if this specific connection is part of the winning path
-              const shouldGlow =
+          // Check if we have bidirectional flow (two different players using same channel)
+          if (player1Id && player2Id && player1Id !== player2Id) {
+            // Bidirectional flow: draw each player's flow clipped to half the channel
+            const player1 = state.game.players.find((p) => p.id === player1Id);
+            const player2 = state.game.players.find((p) => p.id === player2Id);
+            
+            if (player1) {
+              const shouldGlow1 =
                 isGameOver &&
-                winnerIds.includes(playerId) &&
+                winnerIds.includes(player1Id) &&
                 isConnectionInWinningPath(
                   tile.position,
                   dir1 as Direction,
                   dir2 as Direction,
-                  playerId,
+                  player1Id,
                   state.game.flows,
                   state.game.flowEdges,
                   state.game.boardRadius,
                 );
-
+              
+              // Draw player1's flow clipped to left half
               this.drawFlowConnection(
                 center,
                 dir1,
                 dir2,
-                player.color,
+                player1.color,
                 1.0,
                 false,
-                shouldGlow,
+                shouldGlow1,
+                'left', // Clip to left half
               );
+            }
+            
+            if (player2) {
+              const shouldGlow2 =
+                isGameOver &&
+                winnerIds.includes(player2Id) &&
+                isConnectionInWinningPath(
+                  tile.position,
+                  dir2 as Direction,
+                  dir1 as Direction,
+                  player2Id,
+                  state.game.flows,
+                  state.game.flowEdges,
+                  state.game.boardRadius,
+                );
+              
+              // Draw player2's flow clipped to right half
+              this.drawFlowConnection(
+                center,
+                dir2,
+                dir1,
+                player2.color,
+                1.0,
+                false,
+                shouldGlow2,
+                'right', // Clip to right half
+              );
+            }
+          } else {
+            // Single direction flow: only one player uses this channel
+            const playerId = player1Id || player2Id;
+            
+            if (playerId) {
+              const player = state.game.players.find((p) => p.id === playerId);
+              if (player) {
+                // Check if this specific connection is part of the winning path
+                const shouldGlow =
+                  isGameOver &&
+                  winnerIds.includes(playerId) &&
+                  isConnectionInWinningPath(
+                    tile.position,
+                    dir1 as Direction,
+                    dir2 as Direction,
+                    playerId,
+                    state.game.flows,
+                    state.game.flowEdges,
+                    state.game.boardRadius,
+                  );
+
+                this.drawFlowConnection(
+                  center,
+                  dir1,
+                  dir2,
+                  player.color,
+                  1.0,
+                  false,
+                  shouldGlow,
+                );
+              }
             }
           }
         }
@@ -865,6 +939,7 @@ export class GameplayRenderer {
     progress: number,
     isAnimating: boolean,
     withGlow: boolean = false,
+    clipSide?: 'left' | 'right', // For bidirectional flows
   ): void {
     // Get edge midpoints
     const start = getEdgeMidpoint(center, this.layout.size, dir1);
@@ -885,6 +960,43 @@ export class GameplayRenderer {
 
     this.ctx.save();
 
+    // If clipping is requested, create a clipping region
+    if (clipSide) {
+      this.ctx.beginPath();
+      
+      // Create a clipping polygon that covers one half of the curve
+      // We'll clip based on a line from start to end (centerline of the channel)
+      const steps = 20;
+      const points: Point[] = [];
+      
+      // Sample points along the bezier curve
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const point = this.bezierPoint(t, start, control1, control2, end);
+        points.push(point);
+      }
+      
+      // Create clipping polygon
+      if (clipSide === 'left') {
+        // For left side: draw from start to end, then along curve back to start
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.lineTo(end.x, end.y);
+        for (let i = points.length - 1; i >= 0; i--) {
+          this.ctx.lineTo(points[i].x, points[i].y);
+        }
+      } else {
+        // For right side: draw from start along curve to end, then back to start
+        this.ctx.moveTo(start.x, start.y);
+        for (let i = 0; i < points.length; i++) {
+          this.ctx.lineTo(points[i].x, points[i].y);
+        }
+        this.ctx.lineTo(end.x, end.y);
+      }
+      
+      this.ctx.closePath();
+      this.ctx.clip();
+    }
+
     // Add pulsing glow effect if this is a winning flow
     if (withGlow) {
       // Get current glow intensity from animation state
@@ -897,8 +1009,8 @@ export class GameplayRenderer {
     }
 
     this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = this.layout.size * 0.15;
-    this.ctx.lineCap = "round";
+    this.ctx.lineWidth = this.layout.size * 0.18; // Slightly wider stroke
+    this.ctx.lineCap = "butt"; // Square caps instead of round
 
     if (isAnimating) {
       this.ctx.globalAlpha = 0.7; // Preview opacity
@@ -1042,8 +1154,8 @@ export class GameplayRenderer {
       const control2 = { x: end.x + control2Vec.x, y: end.y + control2Vec.y };
 
       this.ctx.strokeStyle = playerColor;
-      this.ctx.lineWidth = this.layout.size * 0.15;
-      this.ctx.lineCap = "round";
+      this.ctx.lineWidth = this.layout.size * 0.18; // Slightly wider stroke
+      this.ctx.lineCap = "butt"; // Square caps instead of round
 
       this.ctx.beginPath();
       this.ctx.moveTo(start.x, start.y);
