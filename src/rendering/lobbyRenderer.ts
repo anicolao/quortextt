@@ -402,6 +402,7 @@ export class LobbyRenderer {
     // Supermove
     this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.supermove);
     this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
+    this.ctx.textAlign = "left"; // Ensure left alignment
     this.ctx.fillText("Supermove", contentX, contentY + checkboxSize / 2);
     controls.push({
       type: 'checkbox',
@@ -417,6 +418,7 @@ export class LobbyRenderer {
     contentY += 10;
     this.ctx.font = "bold 20px sans-serif";
     this.ctx.fillStyle = "#ffffff"; // Ensure white text
+    this.ctx.textAlign = "left"; // Ensure left alignment
     this.ctx.fillText("Tile Distribution:", contentX, contentY);
     contentY += lineHeight + 5;
 
@@ -433,8 +435,8 @@ export class LobbyRenderer {
       const tileY = contentY;
 
       // Render small tile preview - centered above the control
-      // Control is centered at x, so tile should be at x (not x + 15)
-      this.renderSmallTile(tileTypes[i], x, tileY, tileSize);
+      // Control spans from (x-25) to (x+75), so center is at x+25
+      this.renderSmallTile(tileTypes[i], x + 25, tileY, tileSize);
 
       // Render number control beneath tile
       const controlY = tileY + tileSize + 10;
@@ -468,6 +470,7 @@ export class LobbyRenderer {
     // Total tiles display
     this.ctx.font = "18px sans-serif";
     this.ctx.fillStyle = "#ffffff"; // White text
+    this.ctx.textAlign = "left"; // Ensure left alignment
     const { totalTiles, numGroups } = this.calculateTotalTiles(settings.tileDistribution, settings.boardRadius);
     this.ctx.fillText(`Total: ${totalTiles} tiles (${numGroups} groups)`, contentX, contentY);
     contentY += lineHeight;
