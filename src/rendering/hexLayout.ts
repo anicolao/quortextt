@@ -26,13 +26,21 @@ export function calculateBoardRadiusMultiplier(boardRadius: number): number {
   return boardRadius * 2 + 1.2;
 }
 
+// Calculate the canvas size divisor based on board size
+// For a board with radius N (default 3), the canvas size divisor is ((N * 2 + 2) * 2 + 1)
+// This accounts for: board size (N * 2 + 1 for center tile), +1 for spacing, *2 for both sides, +1 for edge spacing
+export function calculateCanvasSizeMultiplier(boardRadius: number): number {
+  return ((boardRadius * 2 + 2) * 2 + 1);
+}
+
 // Calculate optimal hex layout for the canvas
 export function calculateHexLayout(
   canvasWidth: number,
   canvasHeight: number,
+  boardRadius: number = 3,
 ): HexLayout {
   const minDimension = Math.min(canvasWidth, canvasHeight);
-  const size = minDimension / 17;
+  const size = minDimension / calculateCanvasSizeMultiplier(boardRadius);
 
   // Center of the canvas
   const origin: Point = {

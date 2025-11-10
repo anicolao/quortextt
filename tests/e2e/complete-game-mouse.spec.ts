@@ -13,7 +13,9 @@ async function getHexPixelCoords(page: any, hexPos: HexPosition) {
     
     // Calculate hex layout (same as in hexLayout.ts)
     const minDimension = Math.min(canvasWidth, canvasHeight);
-    const size = minDimension / 17;
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
     const originX = canvasWidth / 2;
     const originY = canvasHeight / 2;
     
@@ -35,7 +37,9 @@ async function getTileRotationCoords(page: any, hexPos: HexPosition | null, side
     
     // Calculate hex layout
     const minDimension = Math.min(canvasWidth, canvasHeight);
-    const size = minDimension / 17;
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
     const originX = canvasWidth / 2;
     const originY = canvasHeight / 2;
     
@@ -51,7 +55,8 @@ async function getTileRotationCoords(page: any, hexPos: HexPosition | null, side
       const edgePosition = currentPlayer.edgePosition;
       
       // Calculate player edge position (matching the fixed logic in hexLayout.ts)
-      const boardRadius = size * 7.2;
+      const boardRadiusMultiplier = boardRadius * 2 + 1.2; // = 7.2 for boardRadius=3
+      const boardRadiusPixels = size * boardRadiusMultiplier;
       
       // Calculate maximum distance that keeps tile within canvas
       const maxVerticalDistance = Math.min(
@@ -64,7 +69,7 @@ async function getTileRotationCoords(page: any, hexPos: HexPosition | null, side
         canvasWidth - originX - size * 1.5  // Right edge
       );
       
-      const idealDistance = boardRadius + size * 1.5;
+      const idealDistance = boardRadiusPixels + size * 1.5;
       const maxDistance = Math.min(maxVerticalDistance, maxHorizontalDistance);
       const previewDistance = Math.min(idealDistance, maxDistance);
       
@@ -95,7 +100,9 @@ async function getConfirmationButtonCoords(page: any, hexPos: HexPosition, butto
     
     // Calculate hex layout
     const minDimension = Math.min(canvasWidth, canvasHeight);
-    const size = minDimension / 17;
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
     const originX = canvasWidth / 2;
     const originY = canvasHeight / 2;
     

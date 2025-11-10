@@ -13,6 +13,7 @@ import { GameState } from '../../src/redux/types';
 import { HexPosition, Rotation } from '../../src/game/types';
 import { traceFlow } from '../../src/game/flows';
 import { getEdgePositionsWithDirections, positionToKey } from '../../src/game/board';
+import { calculateBoardRadiusMultiplier, calculateCanvasSizeMultiplier } from '../../src/rendering/hexLayout';
 
 /**
  * Represents a click action in the UI
@@ -33,10 +34,11 @@ export interface ClickAction {
 function getHexPixelCoords(
   hexPos: HexPosition,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  boardRadius: number = 3
 ): { x: number; y: number } {
   const minDimension = Math.min(canvasWidth, canvasHeight);
-  const size = minDimension / 17;
+  const size = minDimension / calculateCanvasSizeMultiplier(boardRadius);
   const originX = canvasWidth / 2;
   const originY = canvasHeight / 2;
   
@@ -104,10 +106,11 @@ function getEdgeButtonCoords(
 function getTileRotationCoords(
   canvasWidth: number,
   canvasHeight: number,
-  hexPos: HexPosition | null = null
+  hexPos: HexPosition | null = null,
+  boardRadius: number = 3
 ): { x: number; y: number } {
   const minDimension = Math.min(canvasWidth, canvasHeight);
-  const size = minDimension / 17;
+  const size = minDimension / calculateCanvasSizeMultiplier(boardRadius);
   const offset = size * 0.6;
   
   let centerX: number, centerY: number;
@@ -131,13 +134,14 @@ function getTileRotationCoords(
 function getCheckmarkCoords(
   hexPos: HexPosition,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  boardRadius: number = 3
 ): { x: number; y: number } {
   const minDimension = Math.min(canvasWidth, canvasHeight);
-  const size = minDimension / 17;
+  const size = minDimension / calculateCanvasSizeMultiplier(boardRadius);
   const buttonSpacing = size * 2;
   
-  const hexCoords = getHexPixelCoords(hexPos, canvasWidth, canvasHeight);
+  const hexCoords = getHexPixelCoords(hexPos, canvasWidth, canvasHeight, boardRadius);
   return { x: hexCoords.x + buttonSpacing, y: hexCoords.y };
 }
 
@@ -147,15 +151,16 @@ function getCheckmarkCoords(
 function getSeatingEdgeButtonCoords(
   edgeNumber: number,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  boardRadius: number = 3
 ): { x: number; y: number } {
   const minDimension = Math.min(canvasWidth, canvasHeight);
-  const size = minDimension / 17;
+  const size = minDimension / calculateCanvasSizeMultiplier(boardRadius);
   const originX = canvasWidth / 2;
   const originY = canvasHeight / 2;
   
   // Calculate edge button position
-  const boardRadius = size * 7.2 + size * 0.8; // Board radius plus offset for buttons
+  const boardRadiusPixels = size * calculateBoardRadiusMultiplier(boardRadius) + size * 0.8; // Board radius plus offset for buttons
   
   // Edge midpoint angles for flat-topped hexagon (matching seatingRenderer.ts)
   // Edge 0: Bottom (270°), Edge 1: Bottom-right (330°), Edge 2: Top-right (30°)
@@ -165,8 +170,8 @@ function getSeatingEdgeButtonCoords(
   const angle = edgeAngles[edgeNumber];
   const angleRad = (angle * Math.PI) / 180;
   
-  const x = originX + boardRadius * Math.cos(angleRad);
-  const y = originY + boardRadius * Math.sin(angleRad);
+  const x = originX + boardRadiusPixels * Math.cos(angleRad);
+  const y = originY + boardRadiusPixels * Math.sin(angleRad);
   
   return { x, y };
 }

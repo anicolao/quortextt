@@ -1,7 +1,7 @@
 // Tests for hexLayout utilities
 
 import { describe, it, expect } from 'vitest';
-import { calculateBoardRadiusMultiplier } from '../src/rendering/hexLayout';
+import { calculateBoardRadiusMultiplier, calculateCanvasSizeMultiplier } from '../src/rendering/hexLayout';
 
 describe('HexLayout Utilities', () => {
   describe('calculateBoardRadiusMultiplier', () => {
@@ -28,6 +28,33 @@ describe('HexLayout Utilities', () => {
     it('should calculate correct multiplier for board size 1', () => {
       const result = calculateBoardRadiusMultiplier(1);
       expect(result).toBe(3.2); // 1 * 2 + 1.2
+    });
+  });
+
+  describe('calculateCanvasSizeMultiplier', () => {
+    it('should calculate correct multiplier for default board size (3)', () => {
+      const result = calculateCanvasSizeMultiplier(3);
+      expect(result).toBe(17); // ((3 * 2 + 2) * 2 + 1)
+    });
+
+    it('should calculate correct multiplier for board size 2', () => {
+      const result = calculateCanvasSizeMultiplier(2);
+      expect(result).toBe(13); // ((2 * 2 + 2) * 2 + 1)
+    });
+
+    it('should calculate correct multiplier for board size 4', () => {
+      const result = calculateCanvasSizeMultiplier(4);
+      expect(result).toBe(21); // ((4 * 2 + 2) * 2 + 1)
+    });
+
+    it('should calculate correct multiplier for board size 5', () => {
+      const result = calculateCanvasSizeMultiplier(5);
+      expect(result).toBe(25); // ((5 * 2 + 2) * 2 + 1)
+    });
+
+    it('should calculate correct multiplier for board size 1', () => {
+      const result = calculateCanvasSizeMultiplier(1);
+      expect(result).toBe(9); // ((1 * 2 + 2) * 2 + 1)
     });
   });
 });
