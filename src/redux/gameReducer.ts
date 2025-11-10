@@ -214,36 +214,9 @@ export function gameReducer(
         isAI,
       };
 
-      let updatedPlayers = [...state.configPlayers, newPlayer];
-      
-      // If this is the first human player added, automatically add an AI opponent
-      if (!isAI && state.configPlayers.length === 0) {
-        // Find an available color and edge for the AI
-        const usedColors = new Set(updatedPlayers.map((p) => p.color));
-        const aiColor = PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[1];
-        
-        const usedEdges = new Set(updatedPlayers.map((p) => p.edge));
-        let aiEdge: 0 | 1 | 2 | 3 = 1;
-        for (let i = 0; i < 4; i++) {
-          if (!usedEdges.has(i as 0 | 1 | 2 | 3)) {
-            aiEdge = i as 0 | 1 | 2 | 3;
-            break;
-          }
-        }
-        
-        const aiPlayer: ConfigPlayer = {
-          id: generatePlayerId(),
-          color: aiColor,
-          edge: aiEdge,
-          isAI: true,
-        };
-        
-        updatedPlayers.push(aiPlayer);
-      }
-
       return {
         ...state,
-        configPlayers: updatedPlayers,
+        configPlayers: [...state.configPlayers, newPlayer],
       };
     }
 
@@ -300,14 +273,41 @@ export function gameReducer(
         return state;
       }
 
+      // If only one player, automatically add an AI opponent
+      let configPlayers = state.configPlayers;
+      if (configPlayers.length === 1 && !configPlayers[0].isAI) {
+        // Find an available color and edge for the AI
+        const usedColors = new Set(configPlayers.map((p) => p.color));
+        const aiColor = PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[1];
+        
+        const usedEdges = new Set(configPlayers.map((p) => p.edge));
+        let aiEdge: 0 | 1 | 2 | 3 = 1;
+        for (let i = 0; i < 4; i++) {
+          if (!usedEdges.has(i as 0 | 1 | 2 | 3)) {
+            aiEdge = i as 0 | 1 | 2 | 3;
+            break;
+          }
+        }
+        
+        const aiPlayer: ConfigPlayer = {
+          id: generatePlayerId(),
+          color: aiColor,
+          edge: aiEdge,
+          isAI: true,
+        };
+        
+        configPlayers = [...configPlayers, aiPlayer];
+      }
+
       // Randomize player order for seating selection
-      const playerIds = state.configPlayers.map(cp => cp.id);
+      const playerIds = configPlayers.map(cp => cp.id);
       const seed = action.payload?.seed;
       const seatingOrder = randomizePlayerOrder(playerIds, seed);
 
       // Transition to seating phase
       return {
         ...state,
+        configPlayers, // Update config players if AI was added
         screen: 'seating',
         phase: 'seating',
         boardRadius: action.payload?.boardRadius ?? state.boardRadius,
