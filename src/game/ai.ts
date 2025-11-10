@@ -122,8 +122,16 @@ function evaluatePosition(
   }
   
   if (enemyMinPathLength === Infinity) {
-    // Enemy cannot win - very good score (but not as good as actual victory)
-    return 50000;
+    // Enemy has no viable path currently
+    // If there are tiles on the board, they could use supermove to create a path
+    // Treat them as 0.5 moves away from victory in that case
+    if (board.size > 0) {
+      // Supermove is available - treat enemy as 0.5 moves away
+      enemyMinPathLength = 0.5;
+    } else {
+      // No tiles on board, enemy truly cannot win
+      return 50000;
+    }
   }
   
   const aiScore = OWN_PATH_WEIGHT * (aiPathLength * aiPathLength);
