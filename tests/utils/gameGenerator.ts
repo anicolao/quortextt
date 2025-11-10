@@ -10,7 +10,7 @@ import { gameReducer, initialState } from '../../src/redux/gameReducer';
 import { GameState } from '../../src/redux/types';
 import { getAllBoardPositions, positionToKey, getEdgePositions, getNeighborInDirection, getOppositeDirection } from '../../src/game/board';
 import { HexPosition, Rotation, Direction } from '../../src/game/types';
-import { isLegalMove, hasViablePath } from '../../src/game/legality';
+import { isLegalMove } from '../../src/game/legality';
 import { traceFlow } from '../../src/game/flows';
 import { getEdgePositionsWithDirections } from '../../src/game/board';
 import { getFlowExit } from '../../src/game/tiles';
@@ -46,7 +46,8 @@ class SeededRandom {
 }
 
 /**
- * Find all legal moves for the current player
+ * Find legal moves for the current player
+ * Optimized to find good moves quickly without checking all possibilities
  */
 function findLegalMoves(
   state: GameState,
@@ -54,11 +55,16 @@ function findLegalMoves(
 ): Array<{ position: HexPosition; rotation: Rotation }> {
   const legalMoves: Array<{ position: HexPosition; rotation: Rotation }> = [];
   const currentPlayer = state.players[state.currentPlayerIndex];
+  const playerFlows = state.flows.get(currentPlayer.id);
   
   // Get all valid board positions
   const allPositions = getAllBoardPositions(state.boardRadius);
   
-  // Check each position
+  // Sort positions by priority: prefer positions adjacent to existing flows
+  const positionsByPriority: HexPosition[] = [];
+  const adjacentPositions: HexPosition[] = [];
+  const otherPositions: HexPosition[] = [];
+  
   for (const position of allPositions) {
     const posKey = positionToKey(position);
     
@@ -67,6 +73,61 @@ function findLegalMoves(
       continue;
     }
     
+    // Check if adjacent to player's flows
+    let isAdjacent = false;
+    if (playerFlows && playerFlows.size > 0) {
+      const directions: Direction[] = [0, 1, 2, 3, 4, 5];
+      isAdjacent = directions.some(dir => {
+        const neighbor = getNeighborInDirection(position, dir);
+        const neighborKey = positionToKey(neighbor);
+        return playerFlows.has(neighborKey);
+      });
+    } else {
+      // No flows yet, check if adjacent to starting edge
+      const edgePositions = getEdgePositions(currentPlayer.edgePosition, 3);
+      isAdjacent = edgePositions.some(edgePos => {
+        const deltaRow = position.row - edgePos.row;
+        const deltaCol = position.col - edgePos.col;
+        
+        // Check if adjacent using hex grid vectors
+        return (
+          (deltaRow === -1 && deltaCol === 0) ||   // SouthWest
+          (deltaRow === 0 && deltaCol === -1) ||   // West
+          (deltaRow === 1 && deltaCol === -1) ||   // NorthWest
+          (deltaRow === 1 && deltaCol === 0) ||    // NorthEast
+          (deltaRow === 0 && deltaCol === 1) ||    // East
+          (deltaRow === -1 && deltaCol === 1)      // SouthEast
+        );
+      });
+    }
+    
+    if (isAdjacent) {
+      adjacentPositions.push(position);
+    } else {
+      otherPositions.push(position);
+    }
+  }
+  
+  // Sort each group for determinism
+  const sortPositions = (positions: HexPosition[]) => {
+    positions.sort((a, b) => {
+      if (a.row !== b.row) return a.row - b.row;
+      if (a.col !== b.col) return a.col - b.col;
+      return 0;
+    });
+  };
+  
+  sortPositions(adjacentPositions);
+  sortPositions(otherPositions);
+  
+  // Check adjacent positions first, then others
+  positionsByPriority.push(...adjacentPositions, ...otherPositions);
+  
+  // Check each position in priority order
+  // Stop early if we find enough legal moves (optimization for test generation)
+  const MIN_LEGAL_MOVES = 5; // Find at least 5 legal moves for variety
+  
+  for (const position of positionsByPriority) {
     // Try all rotations
     for (let rotation = 0; rotation < 6; rotation++) {
       const testTile = {
@@ -79,6 +140,11 @@ function findLegalMoves(
       if (isLegalMove(state.board, testTile, state.players, state.teams, state.boardRadius)) {
         legalMoves.push({ position, rotation: rotation as Rotation });
       }
+    }
+    
+    // Early exit optimization: if we found enough moves from adjacent positions, we can stop
+    if (legalMoves.length >= MIN_LEGAL_MOVES && position === adjacentPositions[adjacentPositions.length - 1]) {
+      break;
     }
   }
   
@@ -101,12 +167,13 @@ function findLegalMoves(
  * Checks if placing the tile will actually create a flow connection
  */
 /**
- * Find best moves using path-based scoring
+ * Find best moves using simple adjacency-based selection
  * Strategy:
  * 1. Identify legal moves adjacent to tiles where we have flows
- * 2. For each rotation of each adjacent position, call hasViablePath with debug on
- * 3. Score: +1 per occupied hex, -2 per empty hex in pathToTarget
- * 4. Play the option with the highest score (random among ties)
+ * 2. Return those moves (sorted for determinism)
+ * 
+ * Previous version used hasViablePath scoring but it was very slow for tests.
+ * The adjacency filtering already provides good move selection.
  */
 function findFlowAdjacentMoves(
   state: GameState,
@@ -154,87 +221,8 @@ function findFlowAdjacentMoves(
     movesToConsider = adjacentMoves.length > 0 ? adjacentMoves : legalMoves;
   }
   
-  // Score each move by testing with hasViablePath
-  interface ScoredMove {
-    position: HexPosition;
-    rotation: Rotation;
-    score: number;
-  }
-  
-  const scoredMoves: ScoredMove[] = [];
-  
-  for (const move of movesToConsider) {
-    if (state.currentTile === null) continue;
-    
-    // Create a simulated board with this move placed
-    const simulatedBoard = new Map(state.board);
-    const posKey = positionToKey(move.position);
-    simulatedBoard.set(posKey, {
-      type: state.currentTile,
-      rotation: move.rotation,
-    });
-    
-    // Find the target edge (opposite of player's starting edge)
-    const targetEdge = (currentPlayer.edgePosition + 3) % 6;
-    
-    // Call hasViablePath with debug info
-    const result = hasViablePath(
-      simulatedBoard,
-      currentPlayer,
-      targetEdge,
-      true, // returnDebugInfo
-      true, // allowEmptyHexes
-      3 // boardRadius
-    );
-    
-    if (typeof result === 'boolean') {
-      // No debug info returned, skip
-      continue;
-    }
-    
-    // Score based on pathToTarget
-    let score = 0;
-    if (result.hasPath && result.pathToTarget) {
-      for (const pos of result.pathToTarget) {
-        const key = positionToKey(pos);
-        if (simulatedBoard.has(key)) {
-          score += 1; // +1 for occupied hex
-        } else {
-          score -= 2; // -2 for empty hex
-        }
-      }
-    }
-    
-    scoredMoves.push({
-      position: move.position,
-      rotation: move.rotation,
-      score,
-    });
-  }
-  
-  if (scoredMoves.length === 0) {
-    return legalMoves;
-  }
-  
-  // Find the highest score
-  const maxScore = Math.max(...scoredMoves.map(m => m.score));
-  
-  // Get all moves with the highest score
-  const bestMoves = scoredMoves.filter(m => m.score === maxScore);
-  
-  // Sort moves for deterministic selection (when multiple have same score)
-  // Sort by row, then col, then rotation
-  bestMoves.sort((a, b) => {
-    if (a.position.row !== b.position.row) {
-      return a.position.row - b.position.row;
-    }
-    if (a.position.col !== b.position.col) {
-      return a.position.col - b.position.col;
-    }
-    return a.rotation - b.rotation;
-  });
-  
-  return bestMoves;
+  // Return filtered moves (already sorted by findLegalMoves for determinism)
+  return movesToConsider;
 }
 
 /**
@@ -334,18 +322,13 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     // Find legal moves
     const legalMoves = findLegalMoves(state, state.currentTile);
     
-    console.log(`Move ${moveCount + 1}: Found ${legalMoves.length} legal moves for tile type ${state.currentTile}`);
-    
     if (legalMoves.length === 0) {
       // No legal moves, game ends
-      console.warn(`No legal moves found for tile type ${state.currentTile} at move ${moveCount + 1}`);
       break;
     }
     
     // Prefer moves adjacent to player's flows
     const preferredMoves = findFlowAdjacentMoves(state, legalMoves);
-    
-    console.log(`Move ${moveCount + 1}: ${preferredMoves.length} preferred moves (adjacent to flows) out of ${legalMoves.length} legal moves`);
     
     // Choose the first move from preferred moves (deterministic after sorting)
     const move = preferredMoves[0];
@@ -370,7 +353,6 @@ export function generateRandomGameWithState(seed: number, maxMoves = 50): Genera
     
     // Check if game ended
     if (state.phase === 'finished') {
-      console.log(`Game ended after move ${moveCount}. Winners: ${state.winners.join(', ')}, WinType: ${state.winType}`);
       break;
     }
     
