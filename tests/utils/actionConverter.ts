@@ -101,7 +101,7 @@ function getEdgeButtonCoords(
 }
 
 /**
- * Get coordinates for tile rotation (click on right side)
+ * Get coordinates for tile rotation (click on left side for clockwise rotation)
  */
 function getTileRotationCoords(
   canvasWidth: number,
@@ -125,7 +125,8 @@ function getTileRotationCoords(
     centerY = canvasHeight / 2;
   }
   
-  return { x: centerX + offset, y: centerY };
+  // Click on LEFT side for clockwise rotation
+  return { x: centerX - offset, y: centerY };
 }
 
 /**
