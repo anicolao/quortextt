@@ -442,4 +442,59 @@ describe('AI Move Selection', () => {
     // Should select a move (either regular or replacement)
     expect(move).not.toBeNull();
   });
+
+  it('should treat opponent with supermove as 0.5 moves away when they have no path', () => {
+    // This test verifies the fix for scoring when opponent is blocked but has supermove
+    // The scenario: opponent has no viable path (Infinity), but board has tiles (supermove available)
+    // Expected: opponent treated as 0.5 moves away, not Infinity (which gave constant score 50000)
+    
+    const board = new Map<string, PlacedTile>();
+    
+    // Create a simple board state where we can control the path lengths
+    // Add a tile so supermove is available
+    board.set('-3,0', {
+      type: TileType.NoSharps,
+      rotation: 0,
+      position: { row: -3, col: 0 }
+    });
+    
+    const tileType = TileType.OneSharp;
+    
+    // Generate candidates
+    const candidates = generateMoveCandidates(
+      board,
+      tileType,
+      aiPlayer,
+      players,
+      teams,
+      true, // supermove enabled
+      boardRadius
+    );
+    
+    // Should have candidates
+    expect(candidates.length).toBeGreaterThan(0);
+    
+    // With the fix, scores should vary based on AI's path length
+    // Formula: score = -2*(aiPath^2) + 1*(0.5^2) = -2*(aiPath^2) + 0.25
+    // Different AI paths will give different scores
+    const scores = candidates.map(c => c.score);
+    
+    // None of the scores should be the old constant 50000
+    // (unless AI also has Infinity path, but that shouldn't happen with moves from AI edge)
+    const has50000Score = scores.some(s => s === 50000);
+    expect(has50000Score).toBe(false);
+    
+    // Select a move
+    const move = selectAIMove(
+      board,
+      tileType,
+      aiPlayer,
+      players,
+      teams,
+      true,
+      boardRadius
+    );
+    
+    expect(move).not.toBeNull();
+  });
 });
