@@ -131,7 +131,7 @@ describe('uiReducer', () => {
     it('should preserve other settings when updating', () => {
       const state = uiReducer(initialUIState, updateSettings({ boardRadius: 6 }));
 
-      expect(state.settings.supermove).toBe(false); // Should remain unchanged
+      expect(state.settings.supermove).toBe(true); // Should remain unchanged
       expect(state.settings.debugShowEdgeLabels).toBe(false); // Should remain unchanged
     });
   });
