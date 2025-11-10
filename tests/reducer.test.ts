@@ -351,4 +351,52 @@ describe('gameReducer', () => {
       expect(secondPlayerId).toBe('P1');
     });
   });
+
+  describe('Board radius and tile distribution', () => {
+    it('should use default distribution for default radius (3)', () => {
+      const state = gameReducer(initialState, { 
+        type: 'SHUFFLE_TILES', 
+        payload: { seed: 12345 } 
+      });
+      
+      // Radius 3 -> 37 hexes -> 40 tiles (10 of each type)
+      expect(state.availableTiles.length).toBe(40);
+    });
+
+    it('should calculate distribution for radius 2', () => {
+      let state = { ...initialState, boardRadius: 2 };
+      state = gameReducer(state, { 
+        type: 'SHUFFLE_TILES', 
+        payload: { seed: 12345 } 
+      });
+      
+      // Radius 2 -> 19 hexes -> 20 tiles (5 of each type)
+      expect(state.availableTiles.length).toBe(20);
+    });
+
+    it('should calculate distribution for radius 4', () => {
+      let state = { ...initialState, boardRadius: 4 };
+      state = gameReducer(state, { 
+        type: 'SHUFFLE_TILES', 
+        payload: { seed: 12345 } 
+      });
+      
+      // Radius 4 -> 61 hexes -> 64 tiles (16 of each type)
+      expect(state.availableTiles.length).toBe(64);
+    });
+
+    it('should respect explicit tile distribution over calculated one', () => {
+      let state = { ...initialState, boardRadius: 2 };
+      state = gameReducer(state, { 
+        type: 'SHUFFLE_TILES', 
+        payload: { 
+          seed: 12345,
+          tileDistribution: [7, 7, 7, 7] as [number, number, number, number]
+        } 
+      });
+      
+      // Should use the explicit distribution, not the calculated one
+      expect(state.availableTiles.length).toBe(28);
+    });
+  });
 });

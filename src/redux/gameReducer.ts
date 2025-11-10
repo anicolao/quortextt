@@ -63,15 +63,35 @@ export function resetPlayerIdCounter(): void {
   playerIdCounter = 0;
 }
 
+// Helper function to calculate number of hexes for a given board radius
+// Formula: 1 + 3*r*(r+1) where r is the radius
+export function calculateHexCount(radius: number): number {
+  return 1 + 3 * radius * (radius + 1);
+}
+
+// Helper function to calculate tile distribution for a given board radius
+// Returns the number of tiles per type (NoSharps, OneSharp, TwoSharps, ThreeSharps)
+// Rounds up hex count to the nearest multiple of 4, then divides by 4
+export function calculateTileDistribution(radius: number): [number, number, number, number] {
+  const hexCount = calculateHexCount(radius);
+  const totalTiles = Math.ceil(hexCount / 4) * 4;
+  const tilesPerType = totalTiles / 4;
+  return [tilesPerType, tilesPerType, tilesPerType, tilesPerType];
+}
+
 // Helper function to create a shuffled tile deck
 // tileDistribution: [NoSharps, OneSharp, TwoSharps, ThreeSharps]
-// Defaults to [10, 10, 10, 10] if not specified
+// If not specified, calculates based on boardRadius
+// If boardRadius is also not specified, defaults to [10, 10, 10, 10] (radius 3)
 function createShuffledDeck(
+  boardRadius: number,
   seed?: number,
   tileDistribution?: [number, number, number, number]
 ): TileType[] {
-  // Use provided distribution or default to [10, 10, 10, 10]
-  const [noSharps, oneSharp, twoSharps, threeSharps] = tileDistribution || [10, 10, 10, 10];
+  // Use explicit distribution if provided, otherwise calculate from board radius
+  const distribution = tileDistribution ?? calculateTileDistribution(boardRadius);
+  
+  const [noSharps, oneSharp, twoSharps, threeSharps] = distribution;
   
   const tiles: TileType[] = [
     ...Array(noSharps).fill(TileType.NoSharps),
@@ -305,7 +325,7 @@ export function gameReducer(
       
       return {
         ...state,
-        availableTiles: createShuffledDeck(seed, tileDistribution),
+        availableTiles: createShuffledDeck(state.boardRadius, seed, tileDistribution),
       };
     }
 
@@ -402,7 +422,7 @@ export function gameReducer(
         // Otherwise create a new shuffled deck using the stored seed from START_GAME
         const availableTiles = state.availableTiles.length > 0 
           ? state.availableTiles 
-          : createShuffledDeck(state.seed);
+          : createShuffledDeck(state.boardRadius, state.seed);
         const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
         const remainingTiles = availableTiles.slice(1);
         
