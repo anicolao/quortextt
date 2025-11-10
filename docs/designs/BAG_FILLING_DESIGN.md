@@ -40,7 +40,7 @@ The fixed 1:1:1:1 distribution limits strategic variety. Players should be able 
 3. **Automatic Calculation**: System calculates total tiles needed based on distribution ratio
 4. **Backward Compatible**: Default distribution remains 1:1:1:1
 5. **Persistent Settings**: Save custom distributions in game configuration
-6. **Multi-Angle Viewable**: Works on tabletop displays viewed from all angles
+6. **Integrated Settings**: Part of existing settings dialog, consistent with other options
 
 ## Distribution Mechanics
 
@@ -99,73 +99,78 @@ If all ratio values are 0, default to [1, 1, 1, 1] to prevent empty bag.
 
 ### Location
 
-The tile distribution settings appear in the **lobby/configuration screen**, below the player setup section.
+The tile distribution settings appear in the **Settings dialog** accessed from the lobby/configuration screen. This is the same dialog that contains Board Radius, Supermove, and Debug options.
 
-### Visual Layout
+### Settings Dialog Layout
+
+The settings dialog has a maximum width of 500px and height of 650px. The tile distribution section will be added to this existing dialog.
+
+### Visual Layout (Horizontal Only)
 
 ```
-┌─────────────────────────────────────┐
-│     Tile Distribution Settings      │
-├─────────────────────────────────────┤
-│                                     │
-│  [Tile Image]  [Tile Image]  [...] │
-│  NoSharps      OneSharp     [...]  │
-│                                     │
-│     [-]  1  [+]                    │
-│          ↑                          │
-│     Counter for each tile type      │
-│                                     │
-│  Total: 40 tiles (10 groups)        │
-│                                     │
-│  [Reset to Default]                 │
-│                                     │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│              Settings                        │
+├──────────────────────────────────────────────┤
+│ Board Radius:              [-]  3  [+]       │
+│ Supermove                           [✓]      │
+│                                              │
+│ Tile Distribution:                           │
+│                                              │
+│  [🔷]    [🔶]    [🔹]    [◇]                │
+│  [-] 1 [+] [-] 1 [+] [-] 1 [+] [-] 1 [+]     │
+│                                              │
+│  Total: 40 tiles (10 groups)                 │
+│  [Reset to Default]                          │
+│                                              │
+│ Debug Options                                │
+│ ...                                          │
+│                                              │
+│              [Close]                         │
+└──────────────────────────────────────────────┘
 ```
 
 ### Component Breakdown
 
 #### Tile Type Displays
 
-For each of the 4 tile types, display:
+For each of the 4 tile types, display in a horizontal row:
 
 1. **Tile Image**
-   - Render a sample tile of each type in canonical orientation
-   - Size: 60-80px hexagon
-   - Show flow patterns clearly
+   - Render a small sample tile of each type in canonical orientation
+   - Size: 30-35px hexagon (small to fit dialog width)
+   - Show flow patterns clearly at reduced size
    - Use same rendering as gameplay tiles
 
-2. **Tile Name** (optional, may be icons only for multi-angle viewing)
-   - "NoSharps" / "Basketball" (0 sharp corners)
-   - "OneSharp" / "Kimono" (1 sharp corner)
-   - "TwoSharps" / "Rink" (2 sharp corners)
-   - "ThreeSharps" / "Sharps" (3 sharp corners)
-
-3. **Counter Controls**
+2. **Counter Controls** (directly beneath each tile)
+   - Reuse existing `renderNumberControl()` method from settings dialog
    - **Minus Button (-)**: Decrease ratio count (minimum 0)
-   - **Number Display**: Current ratio value (0-9+)
+   - **Number Display**: Current ratio value (0-99)
    - **Plus Button (+)**: Increase ratio count (maximum 99)
 
 #### Counter Control Specifications
 
+**Reuse Existing Design:**
+The settings dialog already has a number control pattern used for "Board Radius" and "Animation Slowdown". This same control will be used for tile distribution ratios.
+
 **Button Appearance:**
-- Shape: Circular buttons
-- Size: 44px diameter (comfortable touch target)
+- Shape: Rectangular buttons (30px width × 30px height)
 - Colors:
-  - Minus: Red/orange (#E57373)
-  - Plus: Green/blue (#81C784)
-  - Background: Consistent with lobby theme
-- Icon: Large, clear "−" and "+" symbols
+  - Background: #555555 (enabled), #333333 (disabled)
+  - Text: #ffffff (enabled), #666666 (disabled)
+  - Border: #ffffff, 1px
+- Icon: Bold "−" and "+" symbols (20px font)
 
 **Number Display:**
-- Font: Large, bold (24-30px)
-- Color: High contrast (white on dark, or dark on light)
-- Width: Fixed to prevent layout shifts (3 digits max)
+- Background: #1a1a2e (dark blue-gray)
+- Border: #ffffff, 1px
+- Size: 40px width × 30px height
+- Font: 18px sans-serif, white
+- Centered text
 
 **Interaction:**
 - Tap/click to increment/decrement
-- Visual feedback: Scale down to 0.95 on press (100ms)
-- Sound effect (optional): Click/beep on press
-- Disable minus button when value is 0 (dimmed appearance)
+- Visual feedback: Consistent with existing number controls
+- Disable minus button when value is 0 (dimmed appearance: #333333 background, #666666 text)
 
 #### Information Display
 
@@ -175,238 +180,294 @@ For each of the 4 tile types, display:
   - Y = number of complete distribution groups
 - Updates live as distribution changes
 - Position: Below the tile counters, centered
+- Font: 18px sans-serif, white
 
 **Example:**
 ```
 Total: 40 tiles (10 groups)
-Distribution: 10 NoSharps, 10 OneSharp, 10 TwoSharps, 10 ThreeSharps
 ```
 
 #### Reset Button
 
 **"Reset to Default" Button:**
 - Resets distribution to [1, 1, 1, 1]
-- Position: Bottom of the settings section
-- Style: Secondary button (not as prominent as "Start Game")
+- Position: Below the total tiles indicator
+- Style: Small secondary button (similar to other dialog buttons)
+- Size: 150px width × 30px height
 - Confirmation: None needed (non-destructive action)
 
-### Layout Variations
+### Layout Constraints
 
-#### Horizontal Layout (Default)
-
-All four tile types in a horizontal row:
-
-```
-[NoSharps]  [OneSharp]  [TwoSharps]  [ThreeSharps]
-   [-] 1 [+]   [-] 1 [+]    [-] 1 [+]     [-] 1 [+]
-```
-
-**Advantages:**
-- Compact
-- Aligns with typical left-to-right reading
-- Good for landscape displays
-
-#### Vertical Layout (Narrow Screens)
-
-Stack tile controls vertically on narrow screens:
+**Horizontal Layout Only:**
+All four tile types must be displayed in a horizontal row to fit within the 500px dialog width. The layout is:
 
 ```
-[NoSharps]
-[-] 1 [+]
-
-[OneSharp]
-[-] 1 [+]
-
-[TwoSharps]
-[-] 1 [+]
-
-[ThreeSharps]
-[-] 1 [+]
+Spacing calculation (for 500px dialog with 30px margins = 440px content):
+4 tiles × 35px = 140px
+4 controls × 100px = 400px (includes minus, value, plus, spacing)
+Total: ~540px - Needs tight spacing within dialog
 ```
 
-#### Grid Layout (Tabletop)
-
-For tabletop displays with multi-angle viewing, use 2×2 grid with rotated labels:
-
-```
-[NoSharps]    [OneSharp]
-[-] 1 [+]     [-] 1 [+]
-
-[TwoSharps]   [ThreeSharps]
-[-] 1 [+]     [-] 1 [+]
-```
-
-Each quadrant rotated for viewing from that angle (0°, 90°, 180°, 270°).
+**Optimized Layout:**
+- Tiles: 30px hexagons with 5px spacing between = 140px
+- Controls: 95px each (25px minus + 40px value + 25px plus + 5px spacing) × 4 = 380px
+- Total with margins: fits within 440px content width
 
 ## Rendering Specification
 
 ### Tile Preview Rendering
 
-Use the existing tile rendering system to display sample tiles:
+The tile distribution section will be added to the existing settings dialog renderer in `lobbyRenderer.ts`. The implementation will reuse existing rendering methods:
 
 ```typescript
-// Pseudo-code for rendering tile previews
-function renderTileDistributionUI(ctx: CanvasRenderingContext2D, state: UIState) {
+// Added to renderSettingsDialog() method in lobbyRenderer.ts
+private renderSettingsDialog(...) {
+  // ... existing settings ...
+  
+  // Tile Distribution section
+  contentY += 10;
+  this.ctx.font = "bold 20px sans-serif";
+  this.ctx.fillText("Tile Distribution", contentX, contentY);
+  contentY += lineHeight;
+  
+  this.ctx.font = "18px sans-serif";
+  
+  // Render tile previews in horizontal row
   const tileTypes = [TileType.NoSharps, TileType.OneSharp, TileType.TwoSharps, TileType.ThreeSharps];
+  const tileSize = 30; // Small hexagon size
+  const controlSpacing = 95; // Space for each control set
+  const startX = contentX + 20;
   
   for (let i = 0; i < tileTypes.length; i++) {
-    const tileType = tileTypes[i];
-    const x = baseX + i * spacing;
-    const y = baseY;
+    const x = startX + i * controlSpacing;
+    const tileY = contentY;
     
-    // Render tile preview
-    renderTilePreview(ctx, tileType, Rotation.R0, x, y, previewSize);
+    // Render small tile preview
+    this.renderSmallTile(ctx, tileTypes[i], x, tileY, tileSize);
     
-    // Render counter controls
-    renderCounter(ctx, state.tileDistribution[i], x, y + controlsOffset);
+    // Render number control beneath tile (reuse existing method)
+    const controlY = tileY + tileSize + 10;
+    this.renderNumberControl(x, controlY, settings.tileDistribution[i], 0, 99);
+    
+    // Add controls to clickable areas
+    controls.push({
+      type: 'number',
+      x: x - 25,
+      y: controlY,
+      width: 30,
+      height: 30,
+      settingKey: 'tileDistribution',
+      tileIndex: i, // Which tile type this controls
+      label: '-',
+    });
+    controls.push({
+      type: 'number',
+      x: x + 40,
+      y: controlY,
+      width: 30,
+      height: 30,
+      settingKey: 'tileDistribution',
+      tileIndex: i,
+      label: '+',
+    });
   }
   
-  // Render total tiles info
-  renderTotalInfo(ctx, calculateTotalTiles(state.tileDistribution, boardSize));
+  contentY += 80; // Space for tiles + controls
+  
+  // Total tiles display
+  const totalInfo = calculateTotalTiles(settings.tileDistribution, settings.boardRadius);
+  this.ctx.fillText(`Total: ${totalInfo.totalTiles} tiles (${totalInfo.numGroups} groups)`, contentX, contentY);
+  contentY += lineHeight;
+  
+  // Reset button
+  const resetButtonWidth = 150;
+  const resetButtonHeight = 30;
+  const resetButtonX = contentX + (dialogWidth - 60 - resetButtonWidth) / 2;
+  this.renderButton(resetButtonX, contentY, resetButtonWidth, resetButtonHeight, "Reset to Default");
+  controls.push({
+    type: 'reset-distribution',
+    x: resetButtonX,
+    y: contentY,
+    width: resetButtonWidth,
+    height: resetButtonHeight,
+  });
+  contentY += lineHeight;
+  
+  // ... continue with debug options ...
+}
+
+// New helper method for small tile rendering
+private renderSmallTile(
+  ctx: CanvasRenderingContext2D,
+  tileType: TileType,
+  x: number,
+  y: number,
+  size: number
+): void {
+  // Render a small hexagonal tile with flow patterns
+  // Reuse existing tile rendering logic but scaled down
+  // ... implementation ...
 }
 ```
 
 ### Animation
 
-**Smooth Updates:**
-- Number transitions: Fade out old value, fade in new value (150ms)
-- Total tiles update: Pulse effect when distribution changes (200ms)
-- Button press: Scale animation (100ms)
+**Minimal Animation:**
+- No special animations for tile distribution controls
+- Reuse existing button interaction feedback from settings dialog
+- Number display updates immediately on click
 
 **Visual Feedback:**
-- Highlight the entire tile distribution section when values change
-- Show calculated distribution expanding from group size (optional animation)
+- Consistent with existing settings controls
+- Button color changes on click (existing behavior)
+- Total tiles recalculates and updates immediately
 
 ## State Management
 
 ### Redux State Changes
 
-#### UIState Extension
+#### GameSettings Extension
 
-Add to `UIState` (in `redux/types.ts`):
+Add to `GameSettings` interface (in `redux/types.ts`):
 
 ```typescript
-interface UIState {
-  // ... existing fields ...
+export interface GameSettings {
+  boardRadius: number;
+  supermove: boolean;
+  debugShowEdgeLabels: boolean;
+  debugShowVictoryEdges: boolean;
+  debugLegalityTest: boolean;
+  debugAnimationSlowdown: number;
+  debugAIScoring: boolean;
   
-  // Tile distribution settings
+  // NEW: Tile distribution settings
   tileDistribution: [number, number, number, number]; // [NoSharps, OneSharp, TwoSharps, ThreeSharps]
 }
 ```
 
-**Initial State:**
+**Initial State (in `uiReducer.ts`):**
 
 ```typescript
 const initialUIState: UIState = {
   // ... existing fields ...
-  tileDistribution: [1, 1, 1, 1], // Default balanced distribution
+  settings: {
+    boardRadius: 3,
+    supermove: true,
+    debugShowEdgeLabels: false,
+    debugShowVictoryEdges: false,
+    debugLegalityTest: false,
+    debugAnimationSlowdown: 1,
+    debugAIScoring: false,
+    tileDistribution: [1, 1, 1, 1], // Default balanced distribution
+  },
 };
 ```
 
-#### New Actions
+#### Settings Actions
 
-Add to `actions.ts`:
+The existing `UPDATE_SETTING` action will be extended to handle tile distribution:
 
 ```typescript
-// Update tile distribution ratio
-export const SET_TILE_DISTRIBUTION = 'SET_TILE_DISTRIBUTION';
+// Existing action in actions.ts
+export const UPDATE_SETTING = 'UPDATE_SETTING';
 
-export interface SetTileDistributionAction {
-  type: typeof SET_TILE_DISTRIBUTION;
+export interface UpdateSettingAction {
+  type: typeof UPDATE_SETTING;
   payload: {
-    distribution: [number, number, number, number];
+    key: keyof GameSettings;
+    value: any;
   };
 }
 
-// Set individual tile type ratio
-export const SET_TILE_TYPE_RATIO = 'SET_TILE_TYPE_RATIO';
-
-export interface SetTileTypeRatioAction {
-  type: typeof SET_TILE_TYPE_RATIO;
+// For tile distribution, use specialized handling:
+export interface UpdateTileDistributionAction {
+  type: typeof UPDATE_SETTING;
   payload: {
-    tileType: TileType;
-    ratio: number; // 0-99
-  };
-}
-
-// Reset distribution to default
-export const RESET_TILE_DISTRIBUTION = 'RESET_TILE_DISTRIBUTION';
-
-export interface ResetTileDistributionAction {
-  type: typeof RESET_TILE_DISTRIBUTION;
-}
-
-// Action creators
-export function setTileDistribution(
-  distribution: [number, number, number, number]
-): SetTileDistributionAction {
-  return {
-    type: SET_TILE_DISTRIBUTION,
-    payload: { distribution },
-  };
-}
-
-export function setTileTypeRatio(
-  tileType: TileType,
-  ratio: number
-): SetTileTypeRatioAction {
-  return {
-    type: SET_TILE_TYPE_RATIO,
-    payload: { tileType, ratio },
-  };
-}
-
-export function resetTileDistribution(): ResetTileDistributionAction {
-  return {
-    type: RESET_TILE_DISTRIBUTION,
+    key: 'tileDistribution';
+    value: [number, number, number, number];
+    tileIndex?: number; // Optional: which tile type to update (0-3)
+    delta?: number;     // Optional: +1 or -1 for increment/decrement
   };
 }
 ```
 
 #### Reducer Updates
 
-Update `uiReducer.ts`:
+Update `uiReducer.ts` to handle tile distribution within the existing `UPDATE_SETTING` case:
 
 ```typescript
-case SET_TILE_DISTRIBUTION: {
-  const { distribution } = action.payload;
+case UPDATE_SETTING: {
+  const { key, value, tileIndex, delta } = action.payload;
   
-  // Validate distribution (all values 0-99)
-  const validated = distribution.map(v => Math.max(0, Math.min(99, v))) as [number, number, number, number];
+  // Special handling for tileDistribution
+  if (key === 'tileDistribution') {
+    let newDistribution: [number, number, number, number];
+    
+    if (tileIndex !== undefined && delta !== undefined) {
+      // Increment/decrement a specific tile type
+      newDistribution = [...state.settings.tileDistribution] as [number, number, number, number];
+      const newValue = newDistribution[tileIndex] + delta;
+      newDistribution[tileIndex] = Math.max(0, Math.min(99, newValue));
+    } else if (Array.isArray(value)) {
+      // Set entire distribution
+      newDistribution = value.map(v => Math.max(0, Math.min(99, v))) as [number, number, number, number];
+    } else {
+      // Invalid, return state unchanged
+      return state;
+    }
+    
+    return {
+      ...state,
+      settings: {
+        ...state.settings,
+        tileDistribution: newDistribution,
+      },
+    };
+  }
   
+  // Existing logic for other settings
   return {
     ...state,
-    tileDistribution: validated,
+    settings: {
+      ...state.settings,
+      [key]: value,
+    },
   };
 }
+```
 
-case SET_TILE_TYPE_RATIO: {
-  const { tileType, ratio } = action.payload;
-  
-  // Validate ratio
-  const validatedRatio = Math.max(0, Math.min(99, ratio));
-  
-  // Update specific tile type in distribution
-  const newDistribution = [...state.tileDistribution] as [number, number, number, number];
-  newDistribution[tileType] = validatedRatio;
-  
-  return {
-    ...state,
-    tileDistribution: newDistribution,
-  };
+#### Reset Distribution Action
+
+Add a new action for resetting distribution to default:
+
+```typescript
+// In actions.ts
+export const RESET_TILE_DISTRIBUTION = 'RESET_TILE_DISTRIBUTION';
+
+export interface ResetTileDistributionAction {
+  type: typeof RESET_TILE_DISTRIBUTION;
 }
 
+export function resetTileDistribution(): ResetTileDistributionAction {
+  return { type: RESET_TILE_DISTRIBUTION };
+}
+
+// In uiReducer.ts
 case RESET_TILE_DISTRIBUTION: {
   return {
     ...state,
-    tileDistribution: [1, 1, 1, 1],
+    settings: {
+      ...state.settings,
+      tileDistribution: [1, 1, 1, 1],
+    },
   };
+}
 }
 ```
 
 ### Game Initialization
 
-Update `gameReducer.ts` to use the custom distribution:
+Update `gameReducer.ts` to use the custom distribution from settings:
 
 ```typescript
 case START_GAME: {
@@ -414,18 +475,18 @@ case START_GAME: {
   
   return {
     ...state,
-    // Use tileDistribution from UI state instead of calculated distribution
+    // Use tileDistribution from settings
     availableTiles: createShuffledDeck(
       state.boardRadius, 
       seed, 
-      uiState.tileDistribution // Pass custom distribution
+      settings.tileDistribution // Pass custom distribution from settings
     ),
     // ... rest of state ...
   };
 }
 ```
 
-**Note:** This requires access to `UIState` in the game reducer. Consider using a selector or passing the distribution as part of the `START_GAME` action payload.
+**Note:** The `START_GAME` action should include the settings in its payload, or the reducer should access settings from the UI state.
 
 ### Selectors
 
@@ -433,17 +494,17 @@ Add to `selectors.ts`:
 
 ```typescript
 /**
- * Get the current tile distribution ratio
+ * Get the current tile distribution ratio from settings
  */
 export const selectTileDistribution = (state: RootState): [number, number, number, number] => {
-  return state.ui.tileDistribution;
+  return state.ui.settings.tileDistribution;
 };
 
 /**
  * Calculate total tiles that will be in the bag based on distribution
  */
 export const selectCalculatedTileCounts = createSelector(
-  [selectTileDistribution, (state: RootState) => state.game.boardRadius],
+  [selectTileDistribution, (state: RootState) => state.ui.settings.boardRadius],
   (distribution, boardRadius): { totalTiles: number; numGroups: number; distribution: [number, number, number, number] } => {
     const boardSize = getBoardSize(boardRadius);
     const groupSize = distribution.reduce((sum, count) => sum + count, 0);
@@ -479,83 +540,78 @@ export const selectCalculatedTileCounts = createSelector(
 
 ## Input Handling
 
-### Touch/Click Events
+### Settings Dialog Input
 
-Add to lobby renderer's input handler:
+The settings dialog input handler already exists in the lobby input system. The tile distribution controls will be integrated into the existing settings dialog control handling:
 
 ```typescript
-function handleLobbyInput(x: number, y: number, state: RootState, dispatch: Dispatch): void {
-  // ... existing lobby input handling ...
+// In lobby input handler (existing pattern)
+function handleSettingsInput(x: number, y: number, state: RootState, dispatch: Dispatch): void {
+  if (!state.ui.settingsDialog) return;
   
-  // Check for tile distribution controls
-  for (let tileType = 0; tileType < 4; tileType++) {
-    const minusButton = getTileMinusButtonBounds(tileType);
-    const plusButton = getTilePlusButtonBounds(tileType);
+  const { controls } = state.ui.settingsDialog;
+  
+  for (const control of controls) {
+    if (!isPointInBounds(x, y, control)) continue;
     
-    if (isPointInBounds(x, y, minusButton)) {
-      const currentRatio = state.ui.tileDistribution[tileType];
-      if (currentRatio > 0) {
-        dispatch(setTileTypeRatio(tileType, currentRatio - 1));
+    if (control.type === 'number') {
+      // Handle +/- buttons for tile distribution
+      if (control.settingKey === 'tileDistribution' && control.tileIndex !== undefined) {
+        const delta = control.label === '+' ? 1 : -1;
+        dispatch(updateSetting('tileDistribution', null, control.tileIndex, delta));
+        return;
       }
+      
+      // Handle other number controls (boardRadius, animationSlowdown)
+      // ... existing logic ...
+    }
+    
+    if (control.type === 'reset-distribution') {
+      dispatch(resetTileDistribution());
       return;
     }
     
-    if (isPointInBounds(x, y, plusButton)) {
-      const currentRatio = state.ui.tileDistribution[tileType];
-      if (currentRatio < 99) {
-        dispatch(setTileTypeRatio(tileType, currentRatio + 1));
-      }
-      return;
-    }
-  }
-  
-  // Check for reset button
-  const resetButton = getResetButtonBounds();
-  if (isPointInBounds(x, y, resetButton)) {
-    dispatch(resetTileDistribution());
-    return;
+    // ... other control types ...
   }
 }
 ```
 
-### Keyboard Shortcuts (Optional)
-
-For desktop users:
-
-- **Number keys 1-4**: Select tile type to modify
-- **Arrow Up/Down**: Increase/decrease selected tile type ratio
-- **R**: Reset to default distribution
+**No Keyboard Shortcuts:**
+Settings dialog is touch/mouse only, consistent with the rest of the game.
 
 ## Implementation Plan
 
-### Phase 1: UI State Management
-1. Add `tileDistribution` to `UIState`
-2. Implement actions and action creators
-3. Update `uiReducer` to handle distribution changes
-4. Add selectors for distribution and calculated totals
-5. Write unit tests for reducer and selectors
+### Phase 1: State Management
+1. Add `tileDistribution` to `GameSettings` interface
+2. Update initial settings state with default [1, 1, 1, 1]
+3. Extend `UPDATE_SETTING` action to handle tile distribution
+4. Add `RESET_TILE_DISTRIBUTION` action
+5. Update `uiReducer` to handle distribution changes
+6. Add selectors for distribution and calculated totals
+7. Write unit tests for reducer and selectors
 
 ### Phase 2: Rendering
-1. Design tile preview rendering in lobby
-2. Implement counter controls rendering
-3. Add total tiles information display
-4. Implement reset button
-5. Add animations for value changes
-6. Test rendering on different screen sizes
+1. Add tile distribution section to `renderSettingsDialog()` in `lobbyRenderer.ts`
+2. Implement small tile preview rendering (30px hexagons)
+3. Reuse `renderNumberControl()` for +/- controls
+4. Add total tiles information display
+5. Implement reset button rendering
+6. Update `SettingsDialogLayout` type to include distribution controls
+7. Test rendering at 500px dialog width
 
 ### Phase 3: Input Handling
-1. Implement tap/click detection for +/- buttons
-2. Add reset button interaction
-3. Implement visual feedback for button presses
-4. Add optional keyboard shortcuts
-5. Test touch interaction on mobile/tablet
+1. Extend settings dialog control handling for distribution controls
+2. Handle +/- button clicks with tileIndex and delta
+3. Handle reset button click
+4. Test interaction with existing settings controls
+5. Verify no conflicts with other dialog elements
 
 ### Phase 4: Integration
-1. Update `START_GAME` action to accept distribution
-2. Modify `createShuffledDeck` usage to apply custom distribution
-3. Ensure distribution is applied correctly
-4. Test with various distributions
-5. Verify backward compatibility (default behavior unchanged)
+1. Update `START_GAME` action to pass distribution from settings
+2. Ensure `createShuffledDeck` receives custom distribution
+3. Test with various distributions (examples from this doc)
+4. Verify backward compatibility (default [1,1,1,1] unchanged)
+5. Test dialog height adjustment if needed
 
 ### Phase 5: Polish & Testing
 1. Add animations and transitions
@@ -670,67 +726,60 @@ if (groupSize === 0) {
 
 ### Touch Target Size
 
-- All buttons meet minimum 44px touch target size
-- Adequate spacing between adjacent controls (8px minimum)
-- Clear visual separation between +/- buttons
+- Button size: 30px × 30px (meets minimum for settings dialog)
+- Adequate spacing between adjacent controls
+- Consistent with existing settings dialog controls
 
-### Screen Reader Support (Future)
+### Settings Dialog Consistency
 
-- Add ARIA labels to buttons
-- Announce ratio changes
-- Provide text description of current distribution
-
-### Keyboard Navigation (Future)
-
-- Tab through tile type controls
-- Space/Enter to activate buttons
-- Arrow keys to adjust values
+- Matches existing settings dialog patterns
+- Same visual style as other number controls
+- Familiar interaction model for users
 
 ## Visual Design Examples
 
-### Example 1: Default Distribution
+### Example 1: Default Distribution (in Settings Dialog)
 
 ```
-  [🔷]        [🔶]        [🔹]        [◇]
-NoSharps    OneSharp    TwoSharps   ThreeSharps
-
-  [-] 1 [+]   [-] 1 [+]   [-] 1 [+]   [-] 1 [+]
-
-Total: 40 tiles (10 groups)
-Distribution: 10 of each type
-
-[Reset to Default]
+┌──────────────────────────────────────────────┐
+│              Settings                        │
+├──────────────────────────────────────────────┤
+│ Board Radius:              [-]  3  [+]       │
+│ Supermove                           [✓]      │
+│                                              │
+│ Tile Distribution:                           │
+│                                              │
+│  [🔷]   [🔶]   [🔹]   [◇]                    │
+│ [-] 1 [+] [-] 1 [+] [-] 1 [+] [-] 1 [+]      │
+│                                              │
+│  Total: 40 tiles (10 groups)                 │
+│  [Reset to Default]                          │
+│                                              │
+│ Debug Options                                │
+│ ...                                          │
+└──────────────────────────────────────────────┘
 ```
 
-### Example 2: Curves Only
+### Example 2: NoSharps Only
 
 ```
-  [🔷]        [🔶]        [🔹]        [◇]
-NoSharps    OneSharp    TwoSharps   ThreeSharps
-
-  [-] 1 [+]   [-] 0 [+]   [-] 0 [+]   [-] 0 [+]
-       ↑          ↑          ↑          ↑
-   Active      Disabled   Disabled   Disabled
-   (value>0)   (value=0)  (value=0)  (value=0)
-
-Total: 37 tiles (37 groups)
-Distribution: 37 NoSharps, 0 OneSharp, 0 TwoSharps, 0 ThreeSharps
-
-[Reset to Default]
+│ Tile Distribution:                           │
+│                                              │
+│  [🔷]   [🔶]   [🔹]   [◇]                    │
+│ [-] 1 [+] [-] 0 [+] [-] 0 [+] [-] 0 [+]      │
+│                                              │
+│  Total: 37 tiles (37 groups)                 │
 ```
 
 ### Example 3: Weighted Distribution
 
 ```
-  [🔷]        [🔶]        [🔹]        [◇]
-NoSharps    OneSharp    TwoSharps   ThreeSharps
-
-  [-] 2 [+]   [-] 1 [+]   [-] 1 [+]   [-] 1 [+]
-
-Total: 40 tiles (8 groups)
-Distribution: 16 NoSharps, 8 OneSharp, 8 TwoSharps, 8 ThreeSharps
-
-[Reset to Default]
+│ Tile Distribution:                           │
+│                                              │
+│  [🔷]   [🔶]   [🔹]   [◇]                    │
+│ [-] 2 [+] [-] 1 [+] [-] 1 [+] [-] 1 [+]      │
+│                                              │
+│  Total: 40 tiles (8 groups)                  │
 ```
 
 ## Future Enhancements
@@ -817,32 +866,34 @@ Show remaining tiles of each type during gameplay:
 
 The bag filling distribution option adds significant strategic depth and flexibility to Quortex while maintaining the game's core mechanics. The design prioritizes:
 
-1. **Intuitive Control**: Visual tile previews with simple +/- controls
-2. **Clear Feedback**: Live calculation of total tiles and distribution
-3. **Flexibility**: Support for any distribution ratio from 0 to 99 per tile type
-4. **Consistency**: Matches existing lobby UI patterns and multi-angle design
-5. **Correctness**: Proper ratio-based calculation ensures correct tile quantities
+1. **Settings Integration**: Tile distribution is part of the existing settings dialog, not a separate UI
+2. **Horizontal Layout**: Compact horizontal arrangement fits within 500px dialog width
+3. **Small Tile Previews**: 30px hexagons clearly show tile types without overwhelming the dialog
+4. **Reused Controls**: Uses existing `renderNumberControl()` method for consistency
+5. **Clear Feedback**: Live calculation of total tiles and distribution groups
+6. **Flexibility**: Support for any distribution ratio from 0 to 99 per tile type
+7. **Correctness**: Proper ratio-based calculation ensures correct tile quantities
 
-This feature enables learning scenarios, strategic experimentation, and variant gameplay while remaining true to the game's touch-first, board-focused design philosophy.
+This feature enables learning scenarios, strategic experimentation, and variant gameplay while remaining fully integrated with the existing settings system.
 
 ## Implementation Checklist
 
-- [ ] Add `tileDistribution` to `UIState`
-- [ ] Create new Redux actions for distribution control
+- [ ] Add `tileDistribution` to `GameSettings` interface
+- [ ] Update initial settings state with [1, 1, 1, 1]
+- [ ] Extend `UPDATE_SETTING` action for tile distribution
+- [ ] Add `RESET_TILE_DISTRIBUTION` action
 - [ ] Update `uiReducer` with distribution handlers
 - [ ] Add selectors for distribution and calculations
-- [ ] Design and implement tile preview rendering
-- [ ] Implement counter controls (+/- buttons)
+- [ ] Add tile distribution section to `renderSettingsDialog()`
+- [ ] Implement small tile preview rendering (30px hexagons)
+- [ ] Reuse `renderNumberControl()` for +/- buttons
 - [ ] Add total tiles information display
 - [ ] Implement reset button
-- [ ] Add input handling for button clicks
-- [ ] Update `START_GAME` to use custom distribution
-- [ ] Add animations for value changes
+- [ ] Extend settings input handling for distribution controls
+- [ ] Update `START_GAME` to use custom distribution from settings
 - [ ] Write unit tests for reducers and selectors
 - [ ] Write integration tests for distribution application
-- [ ] Write E2E tests for UI interaction
-- [ ] Add visual regression tests
-- [ ] Update user documentation
-- [ ] Test on multiple screen sizes
-- [ ] Test multi-angle viewing (tabletop mode)
+- [ ] Write E2E tests for settings dialog interaction
+- [ ] Verify dialog height accommodates new section
+- [ ] Test with various distributions (examples from doc)
 - [ ] Performance testing with large distributions
