@@ -32,19 +32,9 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
   if (gameAction.type === SELECT_EDGE || gameAction.type === START_GAME) {
     const { seatingPhase, configPlayers } = state.game;
     
-    console.log('[AI Middleware] Checking for AI edge selection...', {
-      action: gameAction.type,
-      hasSeatingPhase: !!seatingPhase,
-      active: seatingPhase?.active,
-      seatingIndex: seatingPhase?.seatingIndex,
-      seatingOrderLength: seatingPhase?.seatingOrder?.length
-    });
-    
     if (seatingPhase && seatingPhase.active && seatingPhase.seatingIndex < seatingPhase.seatingOrder.length) {
       const currentPlayerId = seatingPhase.seatingOrder[seatingPhase.seatingIndex];
       const currentConfigPlayer = configPlayers.find((p: any) => p.id === currentPlayerId);
-      
-      console.log('[AI Middleware] Current player:', currentPlayerId, 'isAI:', currentConfigPlayer?.isAI);
       
       if (currentConfigPlayer && currentConfigPlayer.isAI) {
         // AI player needs to select an edge
@@ -60,20 +50,15 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           }
         }
         
-        console.log('[AI Middleware] Available edges:', seatingPhase.availableEdges, 'Human edge:', humanEdge);
-        
         // Select an edge for AI that's not opposite to human
         const aiEdge = selectAIEdge(humanEdge, seatingPhase.availableEdges);
         
-        console.log('[AI Middleware] Selected AI edge:', aiEdge);
-        
         if (aiEdge !== null) {
-          // Dispatch synchronously first, then add a small delay for UI updates
-          console.log('[AI Middleware] Dispatching SELECT_EDGE for AI player');
-          // Use a micro-task to dispatch after current event loop iteration
-          Promise.resolve().then(() => {
+          // Use setTimeout with 0 delay to dispatch on next event loop iteration
+          // This allows the current action to complete and UI to update
+          setTimeout(() => {
             store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
-          });
+          }, 0);
         }
       }
     }

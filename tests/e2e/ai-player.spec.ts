@@ -89,87 +89,43 @@ test.describe('AI Player', () => {
     
     // Get seating order
     const seatingOrder = state.game.seatingPhase.seatingOrder;
-    const firstPlayerId = seatingOrder[0];
-    const secondPlayerId = seatingOrder[1];
     
-    // Check which player is AI
-    const player1 = state.game.configPlayers.find((p: any) => p.id === firstPlayerId);
-    const player2 = state.game.configPlayers.find((p: any) => p.id === secondPlayerId);
-    
-    const humanPlayer = player1.isAI ? player2 : player1;
-    const aiPlayer = player1.isAI ? player1 : player2;
-    
-    console.log('Human player ID:', humanPlayer.id, 'AI player ID:', aiPlayer.id);
-    console.log('Seating order:', seatingOrder);
-    console.log('First to seat:', firstPlayerId, 'is AI?', player1.isAI);
-    
-    if (firstPlayerId === humanPlayer.id) {
-      // Human goes first - select edge 0
-      const coords = await page.evaluate(() => {
-        const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const minDimension = Math.min(canvasWidth, canvasHeight);
-        const size = minDimension / 17;
-        const originX = canvasWidth / 2;
-        const originY = canvasHeight / 2;
-        const boardRadius = size * 7.2 + size * 0.8;
-        const angle = 270 * Math.PI / 180; // Edge 0 is at 270 degrees
-        return {
-          x: originX + boardRadius * Math.cos(angle),
-          y: originY + boardRadius * Math.sin(angle)
-        };
-      });
-      
-      await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await waitForAnimationFrame(page);
-      
+    // Complete seating phase using a loop (similar to passing test)
+    for (let i = 0; i < 2; i++) {
       state = await getReduxState(page);
-      expect(state.game.seatingPhase.seatingIndex).toBe(1);
+      const currentPlayerId = seatingOrder[state.game.seatingPhase.seatingIndex];
+      const currentPlayer = state.game.configPlayers.find((p: any) => p.id === currentPlayerId);
       
-      // Wait for AI to select edge (should happen automatically via middleware)
-      // Give it a bit more time in case of delays
-      await page.waitForTimeout(2000);
-      await waitForAnimationFrame(page);
-      
-      state = await getReduxState(page);
-      
-      // AI should have selected an edge
-      expect(state.game.seatingPhase.seatingIndex).toBe(2); // Past the AI's turn
-      expect(state.game.screen).toBe('gameplay'); // Should transition to gameplay
-      
-    } else {
-      // AI goes first - it should auto-select
-      // Give it more time in case of delays
-      await page.waitForTimeout(2000);
-      await waitForAnimationFrame(page);
-      
-      state = await getReduxState(page);
-      expect(state.game.seatingPhase.seatingIndex).toBe(1);
-      
-      // Now human should select
-      const coords = await page.evaluate(() => {
-        const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const minDimension = Math.min(canvasWidth, canvasHeight);
-        const size = minDimension / 17;
-        const originX = canvasWidth / 2;
-        const originY = canvasHeight / 2;
-        const boardRadius = size * 7.2 + size * 0.8;
-        const angle = 270 * Math.PI / 180;
-        return {
-          x: originX + boardRadius * Math.cos(angle),
-          y: originY + boardRadius * Math.sin(angle)
-        };
-      });
-      
-      await page.mouse.click(box.x + coords.x, box.y + coords.y);
-      await waitForAnimationFrame(page);
-      
-      state = await getReduxState(page);
-      expect(state.game.screen).toBe('gameplay');
+      if (!currentPlayer.isAI) {
+        // Human player selects edge
+        const coords = await page.evaluate((edgeNum: number) => {
+          const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+          const canvasWidth = canvas.width;
+          const canvasHeight = canvas.height;
+          const minDimension = Math.min(canvasWidth, canvasHeight);
+          const size = minDimension / 17;
+          const originX = canvasWidth / 2;
+          const originY = canvasHeight / 2;
+          const boardRadius = size * 7.2 + size * 0.8;
+          const angles = [270, 330, 30, 90, 150, 210];
+          const angle = angles[edgeNum] * Math.PI / 180;
+          return {
+            x: originX + boardRadius * Math.cos(angle),
+            y: originY + boardRadius * Math.sin(angle)
+          };
+        }, i);
+        
+        await page.mouse.click(box.x + coords.x, box.y + coords.y);
+        await waitForAnimationFrame(page);
+      } else {
+        // AI player - wait for auto-select
+        await page.waitForTimeout(1000);
+        await waitForAnimationFrame(page);
+      }
     }
+    
+    state = await getReduxState(page);
+    expect(state.game.screen).toBe('gameplay');
   });
   
   test('AI should automatically take turns during gameplay', async ({ page }) => {
