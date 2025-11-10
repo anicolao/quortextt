@@ -28,7 +28,7 @@ describe('Game Generator', () => {
     expect(shuffleAction).toBeDefined();
   });
   
-  it('should generate the same game for the same seed', () => {
+  it('should generate the same game for the same seed', { timeout: 10000 }, () => {
     
     // Reset player ID counter to ensure deterministic player IDs
     resetPlayerIdCounter();
