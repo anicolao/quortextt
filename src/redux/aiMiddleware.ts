@@ -12,6 +12,7 @@ import {
   drawTile,
   selectEdge,
   setAIScoringData,
+  START_GAME,
 } from './actions';
 import { selectAIEdge, selectAIMove, generateMoveCandidates } from '../game/ai';
 import { positionToKey } from '../game/board';
@@ -26,17 +27,18 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
   const gameAction = action as GameAction;
   
   // Handle AI edge selection during seating phase
-  if (gameAction.type === SELECT_EDGE) {
+  // Trigger on SELECT_EDGE (when a player selects and we move to next) or START_GAME (if AI goes first)
+  if (gameAction.type === SELECT_EDGE || gameAction.type === START_GAME) {
     const { seatingPhase, configPlayers } = state.game;
     
     if (seatingPhase.active && seatingPhase.seatingIndex < seatingPhase.seatingOrder.length) {
       const currentPlayerId = seatingPhase.seatingOrder[seatingPhase.seatingIndex];
-      const currentConfigPlayer = configPlayers.find(p => p.id === currentPlayerId);
+      const currentConfigPlayer = configPlayers.find((p: any) => p.id === currentPlayerId);
       
       if (currentConfigPlayer && currentConfigPlayer.isAI) {
         // AI player needs to select an edge
         // Find the human player's edge (assume there's one human player)
-        const humanPlayer = configPlayers.find(p => !p.isAI);
+        const humanPlayer = configPlayers.find((p: any) => !p.isAI);
         let humanEdge = 0; // default
         
         if (humanPlayer) {
