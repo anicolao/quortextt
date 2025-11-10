@@ -1166,14 +1166,16 @@ export class GameplayRenderer {
     const rotationRad = (rotationAngle * Math.PI) / 180;
 
     // Define button positions relative to tile center for edge 0 (bottom player)
-    // Checkmark on right, cancel on left, rotation buttons at NE and NW
+    // Player is looking UP (negative Y direction) at the tile
+    // From the player's perspective:
+    // - Checkmark to their right (+X in screen coords) and toward them (+Y toward player)
+    // - Cancel to their left (-X in screen coords) and toward them (+Y toward player)
     const basePositions = {
-      checkmark: { x: spacing, y: 0 },
-      cancel: { x: -spacing, y: 0 },
-      // NE corner: approximately at 60° from tile center
-      rotateNE: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.6, 3), // Direction 3 = NE
-      // NW corner: approximately at 120° from tile center
-      rotateNW: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.6, 2), // Direction 2 = NW
+      checkmark: { x: spacing, y: 0 },   // To the right of tile
+      cancel: { x: -spacing, y: 0 },      // To the left of tile
+      // Rotation buttons with more spacing
+      rotateNE: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 3), // Direction 3 = NE
+      rotateNW: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 2), // Direction 2 = NW
     };
 
     // Rotate each position around the origin and translate to tile center
@@ -1304,25 +1306,25 @@ export class GameplayRenderer {
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead
+    // Draw arrowhead at the START of the arc (where rotation begins)
     const arrowSize = size * 0.15;
-    const arrowAngle = endAngle;
+    const arrowAngle = startAngle;  // Changed from endAngle to startAngle
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
     
-    // Calculate arrowhead direction
-    const perpAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
+    // Calculate arrowhead direction (perpendicular to radius, pointing in direction of rotation)
+    const perpAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
     
     this.ctx.beginPath();
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? 0.5 : -0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? 0.5 : -0.5))
+      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? -0.5 : 0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? -0.5 : 0.5))
     );
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? 0.5 : -0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? 0.5 : -0.5))
+      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? -0.5 : 0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? -0.5 : 0.5))
     );
     this.ctx.stroke();
 

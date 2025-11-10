@@ -128,17 +128,17 @@ export class GameplayInputHandler {
       );
       
       if (distToRotateNE < rotationButtonSize / 2) {
-        // Rotate clockwise
+        // NE button: Rotate counter-clockwise (left button from player's view)
         const currentRotation = state.ui.currentRotation;
-        const newRotation = ((currentRotation + 1) % 6) as Rotation;
+        const newRotation = ((currentRotation + 5) % 6) as Rotation;
         store.dispatch(setRotation(newRotation));
         return;
       }
       
       if (distToRotateNW < rotationButtonSize / 2) {
-        // Rotate counter-clockwise
+        // NW button: Rotate clockwise (right button from player's view)
         const currentRotation = state.ui.currentRotation;
-        const newRotation = ((currentRotation + 5) % 6) as Rotation;
+        const newRotation = ((currentRotation + 1) % 6) as Rotation;
         store.dispatch(setRotation(newRotation));
         return;
       }
@@ -205,9 +205,9 @@ export class GameplayInputHandler {
     const basePositions = {
       checkmark: { x: spacing, y: 0 },
       cancel: { x: -spacing, y: 0 },
-      // NE and NW corners at approximately 60° and 120° from tile center
-      rotateNE: this.getEdgeMidpointRelative(spacing * 0.6, 3), // Direction 3 = NE
-      rotateNW: this.getEdgeMidpointRelative(spacing * 0.6, 2), // Direction 2 = NW
+      // NE and NW corners with increased spacing
+      rotateNE: this.getEdgeMidpointRelative(spacing * 0.75, 3), // Direction 3 = NE
+      rotateNW: this.getEdgeMidpointRelative(spacing * 0.75, 2), // Direction 2 = NW
     };
 
     // Rotate each position and translate to tile center
