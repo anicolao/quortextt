@@ -21,7 +21,7 @@ export interface VictoryResult {
 export function checkPlayerFlowVictory(
   board: Map<string, PlacedTile>,
   player: Player,
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   const targetEdge = getOppositeEdge(player.edgePosition);
   // Use hasViablePath with allowEmptyHexes=false to check victory with only placed tiles
@@ -34,7 +34,7 @@ export function checkTeamFlowVictory(
   board: Map<string, PlacedTile>,
   team: Team,
   players: Player[],
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   const player1 = players.find((p) => p.id === team.player1Id);
   const player2 = players.find((p) => p.id === team.player2Id);
@@ -60,7 +60,7 @@ export function checkFlowVictory(
   board: Map<string, PlacedTile>,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): VictoryResult {
   const winners: string[] = [];
   
@@ -101,9 +101,10 @@ export function checkConstraintVictory(
   board: Map<string, PlacedTile>,
   currentTile: TileType,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius: number
 ): boolean {
-  return !canTileBePlacedAnywhere(board, currentTile, players, teams);
+  return !canTileBePlacedAnywhere(board, currentTile, players, teams, boardRadius);
 }
 
 // Check if any player/team has won
@@ -111,8 +112,8 @@ export function checkVictory(
   board: Map<string, PlacedTile>,
   players: Player[],
   teams: Team[],
-  currentTile?: TileType,
-  boardRadius = 3
+  currentTile: TileType | undefined,
+  boardRadius: number
 ): VictoryResult {
   // First check for flow victory
   const flowVictory = checkFlowVictory(board, players, teams, boardRadius);
@@ -122,7 +123,7 @@ export function checkVictory(
   
   // Check for constraint victory if a current tile is provided
   if (currentTile !== undefined) {
-    const constraintWin = checkConstraintVictory(board, currentTile, players, teams);
+    const constraintWin = checkConstraintVictory(board, currentTile, players, teams, boardRadius);
     if (constraintWin) {
       // In constraint victory, the current player wins
       // We'll need to pass current player info for this to work properly
@@ -143,7 +144,7 @@ export function isConnectionInWinningPath(
   playerId: string,
   flows: Map<string, Set<string>>,
   flowEdges: Map<string, Map<Direction, string>>,
-  boardRadius: number = 3
+  boardRadius: number
 ): boolean {
   const posKey = positionToKey(position);
   const edgeMap = flowEdges.get(posKey);

@@ -1331,6 +1331,7 @@ export class GameplayRenderer {
       boardToUse,
       state.game.players,
       state.game.teams,
+      state.game.boardRadius,
     );
 
     // Render each player's path information
