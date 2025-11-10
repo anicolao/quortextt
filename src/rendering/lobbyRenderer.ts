@@ -13,6 +13,7 @@ import {
 import { calculateTileCountsFromRatio } from "../redux/gameReducer";
 import { TileType } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
+import { getEdgeMidpoint, getPerpendicularVector, getHexVertex } from "./hexLayout";
 
 // Tile rendering constants (matching gameplayRenderer)
 const TILE_BG = "#2a2a2a";
@@ -372,6 +373,7 @@ export class LobbyRenderer {
     this.ctx.font = "18px sans-serif";
     this.ctx.textAlign = "left";
     this.ctx.textBaseline = "middle";
+    this.ctx.fillStyle = "#ffffff"; // White text for all labels
 
     // Board Radius
     this.ctx.fillText("Board Radius:", contentX, contentY + buttonHeight / 2);
@@ -399,6 +401,7 @@ export class LobbyRenderer {
 
     // Supermove
     this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.supermove);
+    this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
     this.ctx.fillText("Supermove", contentX, contentY + checkboxSize / 2);
     controls.push({
       type: 'checkbox',
@@ -413,6 +416,7 @@ export class LobbyRenderer {
     // Tile Distribution section
     contentY += 10;
     this.ctx.font = "bold 20px sans-serif";
+    this.ctx.fillStyle = "#ffffff"; // Ensure white text
     this.ctx.fillText("Tile Distribution:", contentX, contentY);
     contentY += lineHeight + 5;
 
@@ -461,6 +465,8 @@ export class LobbyRenderer {
     contentY += 80; // Space for tiles + controls
 
     // Total tiles display
+    this.ctx.font = "18px sans-serif";
+    this.ctx.fillStyle = "#ffffff"; // White text
     const { totalTiles, numGroups } = this.calculateTotalTiles(settings.tileDistribution, settings.boardRadius);
     this.ctx.fillText(`Total: ${totalTiles} tiles (${numGroups} groups)`, contentX, contentY);
     contentY += lineHeight;
@@ -487,9 +493,10 @@ export class LobbyRenderer {
     });
     contentY += lineHeight;
 
+    // Reset text alignment and ensure white color for debug section
     this.ctx.font = "18px sans-serif";
     this.ctx.textAlign = "left";
-    this.ctx.fillStyle = "#ffffff"; // Ensure text is white
+    this.ctx.fillStyle = "#ffffff";
 
     // Debug section
     contentY += 10;
@@ -501,6 +508,7 @@ export class LobbyRenderer {
 
     // Debug Show Edge Labels
     this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugShowEdgeLabels);
+    this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
     this.ctx.fillText("Show Edge Labels", contentX, contentY + checkboxSize / 2);
     controls.push({
       type: 'checkbox',
@@ -514,6 +522,7 @@ export class LobbyRenderer {
 
     // Debug Show Victory Edges
     this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugShowVictoryEdges);
+    this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
     this.ctx.fillText("Show Victory Edges", contentX, contentY + checkboxSize / 2);
     controls.push({
       type: 'checkbox',
@@ -527,6 +536,7 @@ export class LobbyRenderer {
 
     // Debug Legality Test
     this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugLegalityTest);
+    this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
     this.ctx.fillText("Legality Test", contentX, contentY + checkboxSize / 2);
     controls.push({
       type: 'checkbox',
@@ -540,6 +550,7 @@ export class LobbyRenderer {
 
     // Debug AI Scoring
     this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugAIScoring);
+    this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
     this.ctx.fillText("Show AI Scoring", contentX, contentY + checkboxSize / 2);
     controls.push({
       type: 'checkbox',
@@ -552,6 +563,7 @@ export class LobbyRenderer {
     contentY += lineHeight;
 
     // Animation Slowdown
+    this.ctx.fillStyle = "#ffffff"; // Ensure white text
     this.ctx.fillText("Animation Slowdown:", contentX, contentY + buttonHeight / 2);
     const slowdownX = contentX + 240;
     this.renderNumberControl(slowdownX, contentY, settings.debugAnimationSlowdown, 1, 10);
@@ -688,12 +700,12 @@ export class LobbyRenderer {
     
     // Draw hexagon background
     this.ctx.fillStyle = TILE_BG;
-    this.drawSmallHexagon(centerX, centerY, size, true);
+    this.drawSmallHexagon(center, size, true);
     
     // Draw hexagon border
     this.ctx.strokeStyle = TILE_BORDER;
     this.ctx.lineWidth = 1;
-    this.drawSmallHexagon(centerX, centerY, size, false);
+    this.drawSmallHexagon(center, size, false);
 
     // Draw flow connections using the canonical tile flows
     const connections = getFlowConnections(tileType as TileType, 0); // rotation 0
@@ -712,13 +724,13 @@ export class LobbyRenderer {
     dir2: number,
     size: number
   ): void {
-    // Get edge midpoints (reusing the approach from gameplayRenderer)
-    const start = this.getSmallEdgeMidpoint(center, size, dir1);
-    const end = this.getSmallEdgeMidpoint(center, size, dir2);
+    // Get edge midpoints using the proper hexLayout functions
+    const start = getEdgeMidpoint(center, size, dir1);
+    const end = getEdgeMidpoint(center, size, dir2);
 
     // Get control points (perpendicular to edges)
-    const control1Vec = this.getSmallPerpendicularVector(dir1, size);
-    const control2Vec = this.getSmallPerpendicularVector(dir2, size);
+    const control1Vec = getPerpendicularVector(dir1, size);
+    const control2Vec = getPerpendicularVector(dir2, size);
 
     const control1 = {
       x: start.x + control1Vec.x,
@@ -742,46 +754,14 @@ export class LobbyRenderer {
     this.ctx.stroke();
   }
 
-  // Helper to get edge midpoint for small tiles (simplified version of getEdgeMidpoint)
-  private getSmallEdgeMidpoint(center: { x: number; y: number }, size: number, direction: number): { x: number; y: number } {
-    // Direction values: 0=SW, 1=W, 2=NW, 3=NE, 4=E, 5=SE
-    // For pointy-top hexagon, angles are: SW=-150°, W=-90°, NW=-30°, NE=30°, E=90°, SE=150°
-    const angleOffset = -150; // SW at -150°
-    const angleDeg = angleOffset + (direction * 60);
-    const angleRad = (Math.PI / 180) * angleDeg;
-    
-    return {
-      x: center.x + size * Math.cos(angleRad),
-      y: center.y + size * Math.sin(angleRad),
-    };
-  }
-
-  // Helper to get perpendicular vector for small tiles (simplified version of getPerpendicularVector)
-  private getSmallPerpendicularVector(direction: number, size: number): { x: number; y: number } {
-    // Get perpendicular direction pointing inward toward tile center
-    const angleOffset = -150; // SW at -150°
-    const angleDeg = angleOffset + (direction * 60);
-    const perpAngleDeg = angleDeg + 90; // Perpendicular
-    const perpAngleRad = (Math.PI / 180) * perpAngleDeg;
-    
-    const distance = size * 0.4; // Control point distance
-    
-    return {
-      x: distance * Math.cos(perpAngleRad),
-      y: distance * Math.sin(perpAngleRad),
-    };
-  }
-
-  private drawSmallHexagon(centerX: number, centerY: number, size: number, fill: boolean): void {
+  private drawSmallHexagon(center: { x: number; y: number }, size: number, fill: boolean): void {
     this.ctx.beginPath();
     for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i - Math.PI / 6; // Offset by 30° for pointy-top
-      const x = centerX + size * Math.cos(angle);
-      const y = centerY + size * Math.sin(angle);
+      const vertex = getHexVertex(center, size, i);
       if (i === 0) {
-        this.ctx.moveTo(x, y);
+        this.ctx.moveTo(vertex.x, vertex.y);
       } else {
-        this.ctx.lineTo(x, y);
+        this.ctx.lineTo(vertex.x, vertex.y);
       }
     }
     this.ctx.closePath();
