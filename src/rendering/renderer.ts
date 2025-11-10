@@ -85,6 +85,12 @@ export class Renderer {
   }
 
   private renderConfigurationScreenNew(state: RootState): UILayout {
+    // Clear gameplay renderer when returning to configuration
+    // This ensures a fresh renderer with the correct board size for the next game
+    if (this.gameplayRenderer) {
+      this.gameplayRenderer = null;
+    }
+    
     // Initialize lobby renderer if needed
     if (!this.lobbyRenderer) {
       this.lobbyRenderer = new LobbyRenderer(this.ctx);
