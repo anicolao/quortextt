@@ -1117,18 +1117,81 @@ export class GameplayRenderer {
         state.game.boardRadius
       );
 
-    // Checkmark button (to the right)
-    const checkPos = { x: center.x + buttonSpacing, y: center.y };
-    this.renderCheckmarkButton(checkPos, buttonSize, isLegal, hasSupermove);
+    // Get the current player's edge to orient buttons toward them
+    const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
+    
+    // Calculate button positions oriented toward the player's edge
+    // The buttons are positioned relative to the player's viewing angle
+    const buttonPositions = this.getOrientedButtonPositions(center, buttonSpacing, playerEdge);
+    
+    // Checkmark button (positioned to the right from player's perspective)
+    this.renderCheckmarkButton(buttonPositions.checkmark, buttonSize, isLegal, hasSupermove);
 
-    // X button (to the left)
-    const xPos = { x: center.x - buttonSpacing, y: center.y };
-    this.renderXButton(xPos, buttonSize);
+    // X button (positioned to the left from player's perspective)
+    this.renderXButton(buttonPositions.cancel, buttonSize);
+
+    // Rotation buttons at NE and NW corners
+    this.renderRotationButton(buttonPositions.rotateNE, buttonSize * 0.6, true, playerEdge);
+    this.renderRotationButton(buttonPositions.rotateNW, buttonSize * 0.6, false, playerEdge);
 
     // Show blocked players warning if move is illegal
     if (!isLegal && blockedPlayers.length > 0) {
       this.renderBlockedPlayersWarning(center, blockedPlayers);
     }
+  }
+
+  // Calculate button positions oriented toward the player's edge
+  private getOrientedButtonPositions(
+    tileCenter: Point,
+    spacing: number,
+    playerEdge: number,
+  ): {
+    checkmark: Point;
+    cancel: Point;
+    rotateNE: Point;
+    rotateNW: Point;
+  } {
+    // Map edge positions to rotation angles (in degrees)
+    // Edge 0 (bottom) = 0°, Edge 3 (top) = 180°, etc.
+    const edgeAngles = [
+      0,    // Edge 0: Bottom - no rotation needed
+      60,   // Edge 1: Bottom-right
+      120,  // Edge 2: Top-right
+      180,  // Edge 3: Top
+      240,  // Edge 4: Top-left
+      300,  // Edge 5: Bottom-left
+    ];
+
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+
+    // Define button positions relative to tile center for edge 0 (bottom player)
+    // Checkmark on right, cancel on left, rotation buttons at NE and NW
+    const basePositions = {
+      checkmark: { x: spacing, y: 0 },
+      cancel: { x: -spacing, y: 0 },
+      // NE corner: approximately at 60° from tile center
+      rotateNE: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.6, 3), // Direction 3 = NE
+      // NW corner: approximately at 120° from tile center
+      rotateNW: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.6, 2), // Direction 2 = NW
+    };
+
+    // Rotate each position around the origin and translate to tile center
+    const rotatePoint = (p: Point): Point => {
+      const cos = Math.cos(rotationRad);
+      const sin = Math.sin(rotationRad);
+      return {
+        x: tileCenter.x + (p.x * cos - p.y * sin),
+        y: tileCenter.y + (p.x * sin + p.y * cos),
+      };
+    };
+
+    return {
+      checkmark: rotatePoint(basePositions.checkmark),
+      cancel: rotatePoint(basePositions.cancel),
+      rotateNE: rotatePoint(basePositions.rotateNE),
+      rotateNW: rotatePoint(basePositions.rotateNW),
+    };
   }
 
   private renderCheckmarkButton(
@@ -1202,6 +1265,68 @@ export class GameplayRenderer {
     this.ctx.moveTo(center.x + offset, center.y - offset);
     this.ctx.lineTo(center.x - offset, center.y + offset);
     this.ctx.stroke();
+  }
+
+  private renderRotationButton(
+    center: Point,
+    size: number,
+    clockwise: boolean,
+    playerEdge: number,
+  ): void {
+    // Draw semi-transparent background
+    this.ctx.fillStyle = "rgba(100, 100, 100, 0.7)";
+    this.ctx.beginPath();
+    this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.save();
+    
+    // Rotate the icon to face the player
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+    
+    this.ctx.translate(center.x, center.y);
+    this.ctx.rotate(rotationRad);
+
+    // Draw circular arrow icon
+    this.ctx.strokeStyle = BUTTON_ICON;
+    this.ctx.lineWidth = size * 0.12;
+    this.ctx.lineCap = "round";
+    this.ctx.lineJoin = "round";
+
+    const radius = size * 0.25;
+    const startAngle = clockwise ? -Math.PI * 0.7 : Math.PI * 0.3;
+    const endAngle = clockwise ? Math.PI * 0.3 : -Math.PI * 0.7;
+
+    // Draw arc
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
+    this.ctx.stroke();
+
+    // Draw arrowhead
+    const arrowSize = size * 0.15;
+    const arrowAngle = endAngle;
+    const arrowX = radius * Math.cos(arrowAngle);
+    const arrowY = radius * Math.sin(arrowAngle);
+    
+    // Calculate arrowhead direction
+    const perpAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(arrowX, arrowY);
+    this.ctx.lineTo(
+      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? 0.5 : -0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? 0.5 : -0.5))
+    );
+    this.ctx.moveTo(arrowX, arrowY);
+    this.ctx.lineTo(
+      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? 0.5 : -0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? 0.5 : -0.5))
+    );
+    this.ctx.stroke();
+
+    this.ctx.restore();
   }
 
   private renderBlockedPlayersWarning(

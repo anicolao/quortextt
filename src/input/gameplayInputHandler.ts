@@ -26,23 +26,29 @@ export class GameplayInputHandler {
 
     // Check if tile is already placed on board
     if (state.ui.selectedPosition) {
-      // Check for checkmark button click (to the right of tile)
+      // Check for button clicks when tile is placed on board
       const tileCenter = hexToPixel(state.ui.selectedPosition, layout);
       const buttonSize = layout.size * 0.8;
       const buttonSpacing = layout.size * 2;
+      const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+      const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
       
-      const checkPos = { x: tileCenter.x + buttonSpacing, y: tileCenter.y };
-      const xPos = { x: tileCenter.x - buttonSpacing, y: tileCenter.y };
+      // Get oriented button positions (same as renderer)
+      const buttonPositions = this.getOrientedButtonPositions(
+        tileCenter,
+        buttonSpacing,
+        playerEdge
+      );
       
       // Check checkmark button
       const distToCheck = Math.sqrt(
-        Math.pow(canvasX - checkPos.x, 2) + Math.pow(canvasY - checkPos.y, 2)
+        Math.pow(canvasX - buttonPositions.checkmark.x, 2) + 
+        Math.pow(canvasY - buttonPositions.checkmark.y, 2)
       );
       if (distToCheck < buttonSize / 2) {
         // Checkmark clicked - place or replace the tile
         const posKey = positionToKey(state.ui.selectedPosition);
         const isOccupied = state.game.board.has(posKey);
-        const currentPlayer = state.game.players[state.game.currentPlayerIndex];
         
         // Check if this is a replacement move (for supermove)
         if (isOccupied && state.ui.settings.supermove && currentPlayer) {
@@ -101,7 +107,8 @@ export class GameplayInputHandler {
       
       // Check X button
       const distToX = Math.sqrt(
-        Math.pow(canvasX - xPos.x, 2) + Math.pow(canvasY - xPos.y, 2)
+        Math.pow(canvasX - buttonPositions.cancel.x, 2) + 
+        Math.pow(canvasY - buttonPositions.cancel.y, 2)
       );
       if (distToX < buttonSize / 2) {
         // X clicked - cancel placement
@@ -109,7 +116,34 @@ export class GameplayInputHandler {
         return;
       }
       
-      // Check if clicking on the tile itself to rotate
+      // Check rotation buttons
+      const rotationButtonSize = buttonSize * 0.6;
+      const distToRotateNE = Math.sqrt(
+        Math.pow(canvasX - buttonPositions.rotateNE.x, 2) + 
+        Math.pow(canvasY - buttonPositions.rotateNE.y, 2)
+      );
+      const distToRotateNW = Math.sqrt(
+        Math.pow(canvasX - buttonPositions.rotateNW.x, 2) + 
+        Math.pow(canvasY - buttonPositions.rotateNW.y, 2)
+      );
+      
+      if (distToRotateNE < rotationButtonSize / 2) {
+        // Rotate clockwise
+        const currentRotation = state.ui.currentRotation;
+        const newRotation = ((currentRotation + 1) % 6) as Rotation;
+        store.dispatch(setRotation(newRotation));
+        return;
+      }
+      
+      if (distToRotateNW < rotationButtonSize / 2) {
+        // Rotate counter-clockwise
+        const currentRotation = state.ui.currentRotation;
+        const newRotation = ((currentRotation + 5) % 6) as Rotation;
+        store.dispatch(setRotation(newRotation));
+        return;
+      }
+      
+      // Check if clicking on the tile itself to rotate (preserve existing functionality)
       if (isPointInHex({ x: canvasX, y: canvasY }, tileCenter, layout.size)) {
         this.handleTileRotation(canvasX, tileCenter.x);
         return;
@@ -148,6 +182,62 @@ export class GameplayInputHandler {
 
     // Check for exit button clicks in corners
     this.checkExitButtons(canvasX, canvasY, layout);
+  }
+
+  // Calculate button positions oriented toward the player's edge
+  // This matches the same calculation in gameplayRenderer.ts
+  private getOrientedButtonPositions(
+    tileCenter: { x: number; y: number },
+    spacing: number,
+    playerEdge: number,
+  ): {
+    checkmark: { x: number; y: number };
+    cancel: { x: number; y: number };
+    rotateNE: { x: number; y: number };
+    rotateNW: { x: number; y: number };
+  } {
+    // Map edge positions to rotation angles (in degrees)
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+
+    // Define button positions relative to tile center for edge 0 (bottom player)
+    const basePositions = {
+      checkmark: { x: spacing, y: 0 },
+      cancel: { x: -spacing, y: 0 },
+      // NE and NW corners at approximately 60° and 120° from tile center
+      rotateNE: this.getEdgeMidpointRelative(spacing * 0.6, 3), // Direction 3 = NE
+      rotateNW: this.getEdgeMidpointRelative(spacing * 0.6, 2), // Direction 2 = NW
+    };
+
+    // Rotate each position and translate to tile center
+    const rotatePoint = (p: { x: number; y: number }): { x: number; y: number } => {
+      const cos = Math.cos(rotationRad);
+      const sin = Math.sin(rotationRad);
+      return {
+        x: tileCenter.x + (p.x * cos - p.y * sin),
+        y: tileCenter.y + (p.x * sin + p.y * cos),
+      };
+    };
+
+    return {
+      checkmark: rotatePoint(basePositions.checkmark),
+      cancel: rotatePoint(basePositions.cancel),
+      rotateNE: rotatePoint(basePositions.rotateNE),
+      rotateNW: rotatePoint(basePositions.rotateNW),
+    };
+  }
+
+  // Helper to get edge midpoint relative to origin
+  private getEdgeMidpointRelative(size: number, direction: number): { x: number; y: number } {
+    // Direction 3 = NE (60°), Direction 2 = NW (120°)
+    const angles = [240, 180, 120, 60, 0, 300]; // SouthWest, West, NorthWest, NorthEast, East, SouthEast
+    const angleDeg = angles[direction];
+    const angleRad = (Math.PI / 180) * angleDeg;
+    return {
+      x: size * Math.cos(angleRad),
+      y: size * Math.sin(angleRad),
+    };
   }
 
   private handleTileRotation(clickX: number, tileCenterX: number): void {
