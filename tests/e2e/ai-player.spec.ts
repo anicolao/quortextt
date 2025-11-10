@@ -128,7 +128,8 @@ test.describe('AI Player', () => {
       expect(state.game.seatingPhase.seatingIndex).toBe(1);
       
       // Wait for AI to select edge (should happen automatically via middleware)
-      await page.waitForTimeout(1000); // AI has 500ms delay
+      // Give it a bit more time in case of delays
+      await page.waitForTimeout(2000);
       await waitForAnimationFrame(page);
       
       state = await getReduxState(page);
@@ -139,7 +140,8 @@ test.describe('AI Player', () => {
       
     } else {
       // AI goes first - it should auto-select
-      await page.waitForTimeout(1000); // AI has 500ms delay
+      // Give it more time in case of delays
+      await page.waitForTimeout(2000);
       await waitForAnimationFrame(page);
       
       state = await getReduxState(page);
