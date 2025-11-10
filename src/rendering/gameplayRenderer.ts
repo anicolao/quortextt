@@ -27,6 +27,7 @@ import {
   isLegalMove,
   getBlockedPlayers,
   getDebugPathInfo,
+  isPlayerBlocked,
 } from "../game/legality";
 
 // UI Colors from design spec
@@ -1100,9 +1101,20 @@ export class GameplayRenderer {
       );
     }
 
+    // Check if current player has supermove available
+    const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+    const hasSupermove = state.ui.settings.supermove && currentPlayer &&
+      isPlayerBlocked(
+        state.game.board,
+        currentPlayer,
+        state.game.players,
+        state.game.teams,
+        state.game.boardRadius
+      );
+
     // Checkmark button (to the right)
     const checkPos = { x: center.x + buttonSpacing, y: center.y };
-    this.renderCheckmarkButton(checkPos, buttonSize, isLegal);
+    this.renderCheckmarkButton(checkPos, buttonSize, isLegal, hasSupermove);
 
     // X button (to the left)
     const xPos = { x: center.x - buttonSpacing, y: center.y };
@@ -1118,17 +1130,43 @@ export class GameplayRenderer {
     center: Point,
     size: number,
     enabled: boolean,
+    hasSupermove: boolean = false,
   ): void {
+    // Get glow intensity for supermove animation (same as victory glow)
+    const glowIntensity = victoryAnimationState.glowIntensity;
+
+    // Golden color for supermove (similar to victory stars)
+    const goldenColor = "#FFD700"; // Gold
+
+    this.ctx.save();
+
+    // Add glow effect for supermove
+    if (hasSupermove) {
+      this.ctx.shadowBlur = 15 * glowIntensity;
+      this.ctx.shadowColor = goldenColor;
+    }
+
     // Draw button background
-    this.ctx.fillStyle = enabled
-      ? "rgba(76, 175, 80, 0.8)"
-      : "rgba(85, 85, 85, 0.8)";
+    if (hasSupermove) {
+      // Golden background with glow for supermove
+      this.ctx.fillStyle = `rgba(255, 215, 0, ${0.7 + 0.2 * glowIntensity})`;
+    } else {
+      this.ctx.fillStyle = enabled
+        ? "rgba(76, 175, 80, 0.8)"
+        : "rgba(85, 85, 85, 0.8)";
+    }
     this.ctx.beginPath();
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
 
     // Draw checkmark icon
-    this.ctx.strokeStyle = enabled ? BUTTON_ICON : "#999999";
+    if (hasSupermove) {
+      // Brighter golden checkmark with pulsing opacity
+      this.ctx.globalAlpha = 0.9 + 0.1 * glowIntensity;
+      this.ctx.strokeStyle = goldenColor;
+    } else {
+      this.ctx.strokeStyle = enabled ? BUTTON_ICON : "#999999";
+    }
     this.ctx.lineWidth = size * 0.15;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
@@ -1138,6 +1176,8 @@ export class GameplayRenderer {
     this.ctx.lineTo(center.x - size * 0.05, center.y + size * 0.2);
     this.ctx.lineTo(center.x + size * 0.3, center.y - size * 0.2);
     this.ctx.stroke();
+
+    this.ctx.restore();
   }
 
   private renderXButton(center: Point, size: number): void {
