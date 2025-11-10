@@ -8,6 +8,8 @@ import { incrementFrame } from './animation/actions';
 import { processAnimations } from './animation/processor';
 import { updateFlowPreview } from './animation/flowPreview';
 import { HexPosition, Rotation } from './game/types';
+import { positionToKey } from './game/board';
+import { isPlayerBlocked } from './game/legality';
 
 // Expose store to window for testing
 declare global {
@@ -59,6 +61,7 @@ function init() {
   let prevSelectedPosition: HexPosition | null = null;
   let prevRotation: Rotation = 0;
   let prevScreen: string | null = null;
+  let supermoveAnimationActive = false;
 
   // Subscribe to store changes
   store.subscribe(() => {
@@ -78,6 +81,45 @@ function init() {
       import('./animation/victoryAnimations').then(({ cancelVictoryAnimations }) => {
         cancelVictoryAnimations();
       });
+    }
+    
+    // Manage supermove animation during gameplay
+    if (state.game.screen === 'gameplay') {
+      // Check if supermove conditions are met
+      const selectedPos = state.ui.selectedPosition;
+      const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+      
+      let hasSupermove = false;
+      if (selectedPos && state.ui.settings.supermove && currentPlayer) {
+        const posKey = positionToKey(selectedPos);
+        const isOccupied = state.game.board.has(posKey);
+        hasSupermove = isOccupied && isPlayerBlocked(
+          state.game.board,
+          currentPlayer,
+          state.game.players,
+          state.game.teams,
+          state.game.boardRadius
+        );
+      }
+      
+      // Start or stop supermove animation
+      if (hasSupermove && !supermoveAnimationActive) {
+        import('./animation/victoryAnimations').then(({ initSupermoveAnimation }) => {
+          initSupermoveAnimation();
+        });
+        supermoveAnimationActive = true;
+      } else if (!hasSupermove && supermoveAnimationActive) {
+        import('./animation/victoryAnimations').then(({ cancelSupermoveAnimation }) => {
+          cancelSupermoveAnimation();
+        });
+        supermoveAnimationActive = false;
+      }
+    } else if (supermoveAnimationActive) {
+      // Cancel supermove animation when leaving gameplay screen
+      import('./animation/victoryAnimations').then(({ cancelSupermoveAnimation }) => {
+        cancelSupermoveAnimation();
+      });
+      supermoveAnimationActive = false;
     }
     
     prevScreen = state.game.screen;
