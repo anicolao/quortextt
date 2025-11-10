@@ -20,6 +20,12 @@ export interface HexLayout {
   canvasHeight: number;
 }
 
+// Calculate the board radius multiplier based on board size
+// For a board with radius N (default 3), the visual board radius is N * 2 + 1.2 hex sizes
+export function calculateBoardRadiusMultiplier(boardRadius: number): number {
+  return boardRadius * 2 + 1.2;
+}
+
 // Calculate optimal hex layout for the canvas
 export function calculateHexLayout(
   canvasWidth: number,
@@ -177,11 +183,12 @@ export function getPerpendicularVector(
 export function getPlayerEdgePosition(
   edgePosition: number,
   layout: HexLayout,
+  boardSizeRadius: number = 3,
 ): Point {
-  // Board extends to about 7.2 * hex size from center
+  // Board extends to boardRadius * 2 + 1.2 hex sizes from center
   // Place preview just beyond the board edge
   // Need to ensure tiles stay within canvas bounds
-  const boardRadius = layout.size * 7.2;
+  const boardRadius = layout.size * calculateBoardRadiusMultiplier(boardSizeRadius);
   
   // Calculate maximum distance that keeps tile within canvas
   // For edges at 90° and 270°, the limiting factor is canvas height

@@ -1,7 +1,7 @@
 // Seating phase renderer
 
 import { GameState, ConfigPlayer } from '../redux/types';
-import { calculateHexLayout, HexLayout, Point } from './hexLayout';
+import { calculateHexLayout, HexLayout, Point, calculateBoardRadiusMultiplier } from './hexLayout';
 
 // Edge button information for seating phase
 export interface EdgeButton {
@@ -30,7 +30,7 @@ export class SeatingRenderer {
     const hexLayout = calculateHexLayout(canvasWidth, canvasHeight);
     
     // Calculate edge button positions
-    const edgeButtons = this.calculateEdgeButtons(hexLayout, state.seatingPhase.availableEdges);
+    const edgeButtons = this.calculateEdgeButtons(hexLayout, state.seatingPhase.availableEdges, state.boardRadius);
     
     // Get selected edges with player colors
     const selectedEdges = new Map<number, string>();
@@ -52,10 +52,10 @@ export class SeatingRenderer {
     this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw the central hexagon board
-    this.drawBoard(hexLayout);
+    this.drawBoard(hexLayout, state.boardRadius);
     
     // Draw selected edge borders
-    this.drawSelectedEdges(hexLayout, selectedEdges);
+    this.drawSelectedEdges(hexLayout, selectedEdges, state.boardRadius);
     
     // Draw edge buttons for available edges
     if (state.seatingPhase.active && state.seatingPhase.seatingIndex < state.seatingPhase.seatingOrder.length) {
@@ -73,9 +73,9 @@ export class SeatingRenderer {
     return this.layout;
   }
 
-  private calculateEdgeButtons(hexLayout: HexLayout, availableEdges: number[]): EdgeButton[] {
+  private calculateEdgeButtons(hexLayout: HexLayout, availableEdges: number[], boardSizeRadius: number): EdgeButton[] {
     const buttons: EdgeButton[] = [];
-    const boardRadius = hexLayout.size * 7.2 + hexLayout.size * 0.8; // Board radius plus offset for buttons
+    const boardRadius = hexLayout.size * calculateBoardRadiusMultiplier(boardSizeRadius) + hexLayout.size * 0.8; // Board radius plus offset for buttons
     const buttonRadius = 25; // Button size (half of original 50px)
     
     // Edge midpoint angles for flat-topped hexagon
@@ -112,12 +112,12 @@ export class SeatingRenderer {
     return buttons;
   }
 
-  private drawBoard(hexLayout: HexLayout): void {
+  private drawBoard(hexLayout: HexLayout, boardSizeRadius: number): void {
     // Draw the actual game board (flat-topped hexagon matching GameplayRenderer)
     this.ctx.save();
     
     const center = hexLayout.origin;
-    const boardRadius = hexLayout.size * 7.2;
+    const boardRadius = hexLayout.size * calculateBoardRadiusMultiplier(boardSizeRadius);
     
     // Draw board as a large hexagon with flat-top orientation
     this.ctx.fillStyle = '#000000';
@@ -138,11 +138,11 @@ export class SeatingRenderer {
     this.ctx.restore();
   }
 
-  private drawSelectedEdges(hexLayout: HexLayout, selectedEdges: Map<number, string>): void {
+  private drawSelectedEdges(hexLayout: HexLayout, selectedEdges: Map<number, string>, boardSizeRadius: number): void {
     // Draw colored borders for edges that have been selected (matching GameplayRenderer)
     const centerX = hexLayout.origin.x;
     const centerY = hexLayout.origin.y;
-    const boardRadius = hexLayout.size * 7.2;
+    const boardRadius = hexLayout.size * calculateBoardRadiusMultiplier(boardSizeRadius);
     
     selectedEdges.forEach((color, edge) => {
       this.ctx.save();

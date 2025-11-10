@@ -10,6 +10,7 @@ import {
   getEdgeMidpoint,
   getPerpendicularVector,
   getPlayerEdgePosition,
+  calculateBoardRadiusMultiplier,
 } from "./hexLayout";
 import {
   getAllBoardPositions,
@@ -110,7 +111,7 @@ export class GameplayRenderer {
     const center = this.layout.origin;
     // Calculate board radius based on the game's board radius setting
     // The board background should be boardRadius * 2 + 1.2 times the hex size
-    const boardRadius = this.layout.size * (state.game.boardRadius * 2 + 1.2);
+    const boardRadius = this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
@@ -358,7 +359,7 @@ export class GameplayRenderer {
     if (winners.length === 0) return;
 
     const center = this.layout.origin;
-    const boardRadius = this.layout.size * 7.2;
+    const boardRadius = this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
     const boardVertices = this.getFlatTopHexVertices(center, boardRadius);
 
     // Get the glow intensity for pulsing effect
@@ -943,6 +944,7 @@ export class GameplayRenderer {
       const edgePos = getPlayerEdgePosition(
         currentPlayer.edgePosition,
         this.layout,
+        state.game.boardRadius,
       );
       // Use grey for preview flows (not yet placed on board)
       this.renderTileAtPosition(
