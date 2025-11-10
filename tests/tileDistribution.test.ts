@@ -1,7 +1,7 @@
 // Unit tests for tile distribution calculation based on board radius
 
 import { describe, it, expect } from 'vitest';
-import { calculateHexCount, calculateTileDistribution } from '../src/redux/gameReducer';
+import { calculateHexCount, calculateTileDistribution, calculateTileCountsFromRatio } from '../src/redux/gameReducer';
 
 describe('Tile Distribution', () => {
   describe('calculateHexCount', () => {
@@ -94,6 +94,70 @@ describe('Tile Distribution', () => {
         const distribution = calculateTileDistribution(radius);
         const totalTiles = distribution.reduce((a, b) => a + b, 0);
         expect(totalTiles - hexCount).toBeLessThanOrEqual(3);
+      }
+    });
+  });
+
+  describe('calculateTileCountsFromRatio', () => {
+    it('should calculate correct distribution for default ratio [1,1,1,1] on radius 3 board', () => {
+      const result = calculateTileCountsFromRatio(3, [1, 1, 1, 1]);
+      expect(result.totalTiles).toBe(40);
+      expect(result.numGroups).toBe(10);
+      expect(result.distribution).toEqual([10, 10, 10, 10]);
+    });
+
+    it('should calculate correct distribution for NoSharps only [1,0,0,0]', () => {
+      const result = calculateTileCountsFromRatio(3, [1, 0, 0, 0]);
+      expect(result.totalTiles).toBe(37);
+      expect(result.numGroups).toBe(37);
+      expect(result.distribution).toEqual([37, 0, 0, 0]);
+    });
+
+    it('should calculate correct distribution for extremes only [1,0,0,1]', () => {
+      const result = calculateTileCountsFromRatio(3, [1, 0, 0, 1]);
+      expect(result.totalTiles).toBe(38);
+      expect(result.numGroups).toBe(19);
+      expect(result.distribution).toEqual([19, 0, 0, 19]);
+    });
+
+    it('should calculate correct distribution for weighted curves [2,1,1,1]', () => {
+      const result = calculateTileCountsFromRatio(3, [2, 1, 1, 1]);
+      expect(result.totalTiles).toBe(40);
+      expect(result.numGroups).toBe(8);
+      expect(result.distribution).toEqual([16, 8, 8, 8]);
+    });
+
+    it('should calculate correct distribution for all ThreeSharps [0,0,0,1]', () => {
+      const result = calculateTileCountsFromRatio(3, [0, 0, 0, 1]);
+      expect(result.totalTiles).toBe(37);
+      expect(result.numGroups).toBe(37);
+      expect(result.distribution).toEqual([0, 0, 0, 37]);
+    });
+
+    it('should handle all zeros by defaulting to [1,1,1,1]', () => {
+      const result = calculateTileCountsFromRatio(3, [0, 0, 0, 0]);
+      expect(result.totalTiles).toBe(40);
+      expect(result.numGroups).toBe(10);
+      expect(result.distribution).toEqual([10, 10, 10, 10]);
+    });
+
+    it('should work with different board radii', () => {
+      const result1 = calculateTileCountsFromRatio(1, [1, 1, 1, 1]);
+      expect(result1.totalTiles).toBe(8);
+      expect(result1.numGroups).toBe(2);
+      expect(result1.distribution).toEqual([2, 2, 2, 2]);
+
+      const result2 = calculateTileCountsFromRatio(2, [1, 1, 1, 1]);
+      expect(result2.totalTiles).toBe(20);
+      expect(result2.numGroups).toBe(5);
+      expect(result2.distribution).toEqual([5, 5, 5, 5]);
+    });
+
+    it('should always produce total tiles >= board size', () => {
+      for (let radius = 1; radius <= 5; radius++) {
+        const hexCount = calculateHexCount(radius);
+        const result = calculateTileCountsFromRatio(radius, [1, 1, 1, 1]);
+        expect(result.totalTiles).toBeGreaterThanOrEqual(hexCount);
       }
     });
   });

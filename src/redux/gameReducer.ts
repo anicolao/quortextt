@@ -80,6 +80,37 @@ export function calculateTileDistribution(radius: number): [number, number, numb
   return [tilesPerType, tilesPerType, tilesPerType, tilesPerType];
 }
 
+// Helper function to calculate actual tile counts from distribution ratio
+// Based on the ratio-based filling algorithm from BAG_FILLING_DESIGN.md
+// Returns total tiles and number of groups needed
+export function calculateTileCountsFromRatio(
+  boardRadius: number,
+  distributionRatio: [number, number, number, number]
+): { totalTiles: number; numGroups: number; distribution: [number, number, number, number] } {
+  const boardSize = calculateHexCount(boardRadius);
+  const groupSize = distributionRatio.reduce((sum, count) => sum + count, 0);
+  
+  // Handle all-zeros case - default to balanced distribution
+  if (groupSize === 0) {
+    const defaultRatio: [number, number, number, number] = [1, 1, 1, 1];
+    return calculateTileCountsFromRatio(boardRadius, defaultRatio);
+  }
+  
+  const numGroups = Math.ceil(boardSize / groupSize);
+  const actualDistribution: [number, number, number, number] = [
+    distributionRatio[0] * numGroups,
+    distributionRatio[1] * numGroups,
+    distributionRatio[2] * numGroups,
+    distributionRatio[3] * numGroups,
+  ];
+  
+  return {
+    totalTiles: numGroups * groupSize,
+    numGroups,
+    distribution: actualDistribution,
+  };
+}
+
 // Helper function to create a shuffled tile deck
 // tileDistribution: [NoSharps, OneSharp, TwoSharps, ThreeSharps]
 // If not specified, calculates based on boardRadius
