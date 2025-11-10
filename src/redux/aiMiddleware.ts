@@ -131,18 +131,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           // After replacement, the REPLACE_TILE action will trigger this middleware again
           // with the replaced tile in hand, and we'll place it
         } else {
-          // Check if we're completing a supermove BEFORE placing the tile
-          // (PLACE_TILE will clear the flag, so we need to check now)
-          const wasSupermove = supermoveInProgress;
-          
           store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
           
-          // Only advance to next player if this wasn't completing a supermove
-          // (supermove completion means we just placed the replaced tile, and it's still our turn)
-          if (!wasSupermove) {
-            store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile() as any);
-          }
+          // After placing a tile (not a replacement), always advance to next player
+          // Even when completing a supermove (placing the replaced tile), we advance
+          store.dispatch(nextPlayer() as any);
+          store.dispatch(drawTile() as any);
         }
       }
     }
