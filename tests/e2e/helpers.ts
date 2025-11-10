@@ -45,12 +45,15 @@ export async function getSeatingEdgeButtonCoordinates(page: any, edgeNumber: num
     
     // Calculate hex layout (matching hexLayout.ts)
     const minDimension = Math.min(canvasWidth, canvasHeight);
-    const size = minDimension / 17;
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
     const originX = canvasWidth / 2;
     const originY = canvasHeight / 2;
     
     // Calculate edge button position
-    const boardRadius = size * 7.2 + size * 0.8; // Board radius plus offset for buttons
+    const boardRadiusMultiplier = boardRadius * 2 + 1.2; // = 7.2 for boardRadius=3
+    const boardRadiusPixels = size * boardRadiusMultiplier + size * 0.8; // Board radius plus offset for buttons
     
     // Edge midpoint angles for flat-topped hexagon (matching seatingRenderer.ts)
     // Edge 0: Bottom (270°), Edge 1: Bottom-right (330°), Edge 2: Top-right (30°)
@@ -60,8 +63,8 @@ export async function getSeatingEdgeButtonCoordinates(page: any, edgeNumber: num
     const angle = edgeAngles[edge];
     const angleRad = (angle * Math.PI) / 180;
     
-    const x = originX + boardRadius * Math.cos(angleRad);
-    const y = originY + boardRadius * Math.sin(angleRad);
+    const x = originX + boardRadiusPixels * Math.cos(angleRad);
+    const y = originY + boardRadiusPixels * Math.sin(angleRad);
     
     return { x, y };
   }, edgeNumber);

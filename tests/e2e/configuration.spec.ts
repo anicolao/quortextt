@@ -572,15 +572,18 @@ test.describe('Configuration Screen', () => {
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       const minDimension = Math.min(canvasWidth, canvasHeight);
-      const size = minDimension / 17;
+      const boardRadius = 3; // Default board size
+      const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+      const size = minDimension / canvasSizeMultiplier;
       const originX = canvasWidth / 2;
       const originY = canvasHeight / 2;
-      const boardRadius = size * 7.2 + size * 0.8;
+      const boardRadiusMultiplier = boardRadius * 2 + 1.2; // = 7.2 for boardRadius=3
+      const boardRadiusPixels = size * boardRadiusMultiplier + size * 0.8;
       const edgeAngles = [270, 330, 30, 90, 150, 210];
       const angle = edgeAngles[0]; // Edge 0
       const angleRad = (angle * Math.PI) / 180;
-      const x = originX + boardRadius * Math.cos(angleRad);
-      const y = originY + boardRadius * Math.sin(angleRad);
+      const x = originX + boardRadiusPixels * Math.cos(angleRad);
+      const y = originY + boardRadiusPixels * Math.sin(angleRad);
       return { x, y };
     });
     await page.mouse.click(box.x + seatingCoords.x, box.y + seatingCoords.y);
@@ -598,15 +601,18 @@ test.describe('Configuration Screen', () => {
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       const minDimension = Math.min(canvasWidth, canvasHeight);
-      const size = minDimension / 17;
+      const boardRadius = 3; // Default board size
+      const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+      const size = minDimension / canvasSizeMultiplier;
       const originX = canvasWidth / 2;
       const originY = canvasHeight / 2;
-      const boardRadius = size * 7.2 + size * 0.8;
+      const boardRadiusMultiplier = boardRadius * 2 + 1.2; // = 7.2 for boardRadius=3
+      const boardRadiusPixels = size * boardRadiusMultiplier + size * 0.8;
       const edgeAngles = [270, 330, 30, 90, 150, 210];
       const angle = edgeAngles[1]; // Edge 1
       const angleRad = (angle * Math.PI) / 180;
-      const x = originX + boardRadius * Math.cos(angleRad);
-      const y = originY + boardRadius * Math.sin(angleRad);
+      const x = originX + boardRadiusPixels * Math.cos(angleRad);
+      const y = originY + boardRadiusPixels * Math.sin(angleRad);
       return { x, y };
     });
     await page.mouse.click(box.x + seatingCoords.x, box.y + seatingCoords.y);

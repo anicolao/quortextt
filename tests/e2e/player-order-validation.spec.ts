@@ -113,7 +113,9 @@ async function getHexPosition(page: any, row: number, col: number) {
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     const minDimension = Math.min(canvasWidth, canvasHeight);
-    const size = minDimension / 17;
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
     const originX = canvasWidth / 2;
     const originY = canvasHeight / 2;
 

@@ -155,14 +155,16 @@ test.describe('Gameplay Screen Rendering', () => {
     });
   });
 
-  test('should have properly sized hexagons (÷17 factor)', async ({ page }) => {
+  test('should have properly sized hexagons (canvas size calculation)', async ({ page }) => {
     await setupTwoPlayerGame(page);
     
     // Verify hex size calculation
     const hexSize = await page.evaluate(() => {
       const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
       const minDimension = Math.min(canvas.width, canvas.height);
-      const expectedSize = minDimension / 17;
+      const boardRadius = 3; // Default board size
+      const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+      const expectedSize = minDimension / canvasSizeMultiplier;
       
       return { 
         canvasWidth: canvas.width,
