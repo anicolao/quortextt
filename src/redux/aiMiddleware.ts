@@ -93,13 +93,13 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         );
         
         // Group candidates by position
-        const scoringData = new Map<string, { rotation: number; score: number }[]>();
+        const scoringData: Record<string, { rotation: number; score: number }[]> = {};
         for (const candidate of candidates) {
           const key = positionToKey(candidate.position);
-          if (!scoringData.has(key)) {
-            scoringData.set(key, []);
+          if (!scoringData[key]) {
+            scoringData[key] = [];
           }
-          scoringData.get(key)!.push({
+          scoringData[key].push({
             rotation: candidate.rotation,
             score: candidate.score,
           });

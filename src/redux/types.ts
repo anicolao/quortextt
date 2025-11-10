@@ -81,7 +81,7 @@ export interface GameState {
   moveHistory: Move[];
   
   // AI debug data (when debugAIScoring is enabled)
-  aiScoringData?: Map<string, { rotation: number; score: number }[]>; // position key -> array of {rotation, score}
+  aiScoringData?: Record<string, { rotation: number; score: number }[]>; // position key -> array of {rotation, score}
 }
 
 // Game settings
