@@ -18,7 +18,7 @@ import {
   getOppositeEdge,
   positionToKey,
 } from "../game/board";
-import { victoryAnimationState, initSupermoveAnimation, cancelSupermoveAnimation } from "../animation/victoryAnimations";
+import { victoryAnimationState } from "../animation/victoryAnimations";
 import { isConnectionInWinningPath } from "../game/victory";
 import { TileType, PlacedTile, Direction } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
@@ -42,7 +42,6 @@ export class GameplayRenderer {
   private layout: HexLayout;
   private bezierLengthCache: Map<string, number> = new Map();
   private boardRadius: number;
-  private supermoveAnimationActive: boolean = false;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -1065,11 +1064,6 @@ export class GameplayRenderer {
 
   private renderActionButtons(state: RootState): void {
     if (!state.ui.selectedPosition || state.game.currentTile === null) {
-      // No action buttons shown - cancel supermove animation if active
-      if (this.supermoveAnimationActive) {
-        cancelSupermoveAnimation();
-        this.supermoveAnimationActive = false;
-      }
       return;
     }
 
@@ -1122,17 +1116,6 @@ export class GameplayRenderer {
         state.game.teams,
         state.game.boardRadius
       );
-
-    // Manage supermove animation
-    if (hasSupermove && !this.supermoveAnimationActive) {
-      // Start supermove animation
-      initSupermoveAnimation();
-      this.supermoveAnimationActive = true;
-    } else if (!hasSupermove && this.supermoveAnimationActive) {
-      // Stop supermove animation
-      cancelSupermoveAnimation();
-      this.supermoveAnimationActive = false;
-    }
 
     // Checkmark button (to the right)
     const checkPos = { x: center.x + buttonSpacing, y: center.y };
