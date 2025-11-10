@@ -752,37 +752,6 @@ export class GameplayRenderer {
         return;
       }
 
-      // Draw flow when animation is complete, even if not yet in flowEdges
-      if (animData && animData.animationProgress >= 1.0) {
-        const playerId = animData.playerId;
-        const player = state.game.players.find((p) => p.id === playerId);
-        if (player) {
-          const shouldGlow =
-            isGameOver &&
-            winnerIds.includes(playerId) &&
-            isConnectionInWinningPath(
-              tile.position,
-              animData.direction1 as Direction,
-              animData.direction2 as Direction,
-              playerId,
-              state.game.flows,
-              state.game.flowEdges,
-              state.game.boardRadius,
-            );
-
-          this.drawFlowConnection(
-            center,
-            animData.direction1,
-            animData.direction2,
-            player.color,
-            1.0,
-            false,
-            shouldGlow,
-          );
-          return; // Animation data handled, don't check flowEdges
-        }
-      }
-
       // Check for actual filled flow in game state
       if (tileFlowEdges) {
         const player1 = tileFlowEdges.get(dir1);
@@ -845,38 +814,70 @@ export class GameplayRenderer {
               'right',
             );
           }
-        } else {
-          // Unidirectional flow: use existing logic
-          const playerId = player1 || player2;
-          
-          if (playerId) {
-            const player = state.game.players.find((p) => p.id === playerId);
-            if (player) {
-              // Check if this specific connection is part of the winning path
-              const shouldGlow =
-                isGameOver &&
-                winnerIds.includes(playerId) &&
-                isConnectionInWinningPath(
-                  tile.position,
-                  dir1 as Direction,
-                  dir2 as Direction,
-                  playerId,
-                  state.game.flows,
-                  state.game.flowEdges,
-                  state.game.boardRadius,
-                );
-
-              this.drawFlowConnection(
-                center,
-                dir1,
-                dir2,
-                player.color,
-                1.0,
-                false,
-                shouldGlow,
+          return; // Bidirectional handled
+        }
+        
+        // Unidirectional flow: use existing logic
+        const playerId = player1 || player2;
+        
+        if (playerId) {
+          const player = state.game.players.find((p) => p.id === playerId);
+          if (player) {
+            // Check if this specific connection is part of the winning path
+            const shouldGlow =
+              isGameOver &&
+              winnerIds.includes(playerId) &&
+              isConnectionInWinningPath(
+                tile.position,
+                dir1 as Direction,
+                dir2 as Direction,
+                playerId,
+                state.game.flows,
+                state.game.flowEdges,
+                state.game.boardRadius,
               );
-            }
+
+            this.drawFlowConnection(
+              center,
+              dir1,
+              dir2,
+              player.color,
+              1.0,
+              false,
+              shouldGlow,
+            );
           }
+          return; // Unidirectional handled
+        }
+      }
+
+      // Fallback: Draw flow when animation is complete but not yet in flowEdges
+      if (animData && animData.animationProgress >= 1.0) {
+        const playerId = animData.playerId;
+        const player = state.game.players.find((p) => p.id === playerId);
+        if (player) {
+          const shouldGlow =
+            isGameOver &&
+            winnerIds.includes(playerId) &&
+            isConnectionInWinningPath(
+              tile.position,
+              animData.direction1 as Direction,
+              animData.direction2 as Direction,
+              playerId,
+              state.game.flows,
+              state.game.flowEdges,
+              state.game.boardRadius,
+            );
+
+          this.drawFlowConnection(
+            center,
+            animData.direction1,
+            animData.direction2,
+            player.color,
+            1.0,
+            false,
+            shouldGlow,
+          );
         }
       }
     });
