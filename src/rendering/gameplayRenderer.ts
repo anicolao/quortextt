@@ -1166,36 +1166,10 @@ export class GameplayRenderer {
     this.ctx.lineWidth = 1;
     this.drawHexagon(center, this.layout.size, false);
 
-    // Draw flow paths in player color
+    // Draw flow paths in player color using the same method as placed tiles
     const connections = getFlowConnections(tileType, rotation as any);
     connections.forEach(([dir1, dir2]) => {
-      const start = getEdgeMidpoint(center, this.layout.size, dir1);
-      const end = getEdgeMidpoint(center, this.layout.size, dir2);
-
-      const control1Vec = getPerpendicularVector(dir1, this.layout.size);
-      const control2Vec = getPerpendicularVector(dir2, this.layout.size);
-
-      const control1 = {
-        x: start.x + control1Vec.x,
-        y: start.y + control1Vec.y,
-      };
-      const control2 = { x: end.x + control2Vec.x, y: end.y + control2Vec.y };
-
-      this.ctx.strokeStyle = playerColor;
-      this.ctx.lineWidth = this.layout.size * 0.15;
-      this.ctx.lineCap = "round";
-
-      this.ctx.beginPath();
-      this.ctx.moveTo(start.x, start.y);
-      this.ctx.bezierCurveTo(
-        control1.x,
-        control1.y,
-        control2.x,
-        control2.y,
-        end.x,
-        end.y,
-      );
-      this.ctx.stroke();
+      this.drawFlowConnection(center, dir1, dir2, playerColor, 1.0, false);
     });
 
     this.ctx.globalAlpha = 1.0;
