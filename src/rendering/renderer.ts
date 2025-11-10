@@ -24,7 +24,14 @@ export class Renderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    const ctx = canvas.getContext('2d');
+    // Use willReadFrequently for better performance with frequent pixel reads
+    // and disable alpha for better performance if we don't need transparency
+    const ctx = canvas.getContext('2d', { 
+      willReadFrequently: false,
+      alpha: true,
+      // desynchronized can help with rendering performance but may affect clipping
+      desynchronized: false
+    });
     if (!ctx) {
       throw new Error('Failed to get 2D context');
     }
