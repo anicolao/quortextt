@@ -40,18 +40,21 @@ export class GameplayRenderer {
   private ctx: CanvasRenderingContext2D;
   private layout: HexLayout;
   private bezierLengthCache: Map<string, number> = new Map();
+  private boardRadius: number;
 
   constructor(
     ctx: CanvasRenderingContext2D,
     canvasWidth: number,
     canvasHeight: number,
+    boardRadius: number,
   ) {
     this.ctx = ctx;
-    this.layout = calculateHexLayout(canvasWidth, canvasHeight);
+    this.boardRadius = boardRadius;
+    this.layout = calculateHexLayout(canvasWidth, canvasHeight, boardRadius);
   }
 
   updateLayout(canvasWidth: number, canvasHeight: number): void {
-    this.layout = calculateHexLayout(canvasWidth, canvasHeight);
+    this.layout = calculateHexLayout(canvasWidth, canvasHeight, this.boardRadius);
     // Clear cache when layout changes
     this.bezierLengthCache.clear();
   }

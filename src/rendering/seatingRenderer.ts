@@ -27,7 +27,7 @@ export class SeatingRenderer {
   }
 
   render(canvasWidth: number, canvasHeight: number, state: GameState): SeatingLayout {
-    const hexLayout = calculateHexLayout(canvasWidth, canvasHeight);
+    const hexLayout = calculateHexLayout(canvasWidth, canvasHeight, state.boardRadius);
     
     // Calculate edge button positions
     const edgeButtons = this.calculateEdgeButtons(hexLayout, state.seatingPhase.availableEdges, state.boardRadius);
