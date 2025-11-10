@@ -93,6 +93,7 @@ export interface GameSettings {
   debugLegalityTest: boolean;
   debugAnimationSlowdown: number;
   debugAIScoring: boolean; // Show AI evaluation scores for tile placements
+  tileDistribution: [number, number, number, number]; // [NoSharps, OneSharp, TwoSharps, ThreeSharps]
 }
 
 // UI state for interaction

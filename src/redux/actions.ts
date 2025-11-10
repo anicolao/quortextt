@@ -251,9 +251,9 @@ export const setupGame = (players: Player[], teams: Team[]): SetupGameAction => 
   payload: { players, teams },
 });
 
-export const shuffleTiles = (seed?: number): ShuffleTilesAction => ({
+export const shuffleTiles = (seed?: number, tileDistribution?: [number, number, number, number]): ShuffleTilesAction => ({
   type: SHUFFLE_TILES,
-  payload: { seed },
+  payload: { seed, tileDistribution },
 });
 
 // Seating phase action creators

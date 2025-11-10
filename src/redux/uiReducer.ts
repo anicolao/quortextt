@@ -30,6 +30,7 @@ export const initialUIState: UIState = {
     debugLegalityTest: false,
     debugAnimationSlowdown: 1,
     debugAIScoring: false,
+    tileDistribution: [1, 1, 1, 1], // Default balanced distribution
   },
 };
 

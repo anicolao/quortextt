@@ -47,13 +47,14 @@ export interface PlayerListEntry {
 }
 
 export interface SettingsControl {
-  type: 'checkbox' | 'number' | 'close';
+  type: 'checkbox' | 'number' | 'close' | 'reset-distribution';
   x: number;
   y: number;
   width: number;
   height: number;
   settingKey?: keyof import('../redux/types').GameSettings;
   label?: string;
+  tileIndex?: number; // For tile distribution controls (0-3)
 }
 
 export interface SettingsDialogLayout {

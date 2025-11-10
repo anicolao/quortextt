@@ -14,18 +14,35 @@ import {
   selectEdge,
   setAIScoringData,
   START_GAME,
+  shuffleTiles,
 } from './actions';
 import { selectAIEdge, selectAIMove, generateMoveCandidates } from '../game/ai';
 import { positionToKey } from '../game/board';
+import { calculateTileCountsFromRatio } from './gameReducer';
 
 // Middleware to automatically handle AI player turns
 export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (action) => {
+  const gameAction = action as GameAction;
+  
+  // Before START_GAME processes, dispatch SHUFFLE_TILES with custom distribution
+  if (gameAction.type === START_GAME) {
+    const state = store.getState();
+    const { tileDistribution } = state.ui.settings;
+    const boardRadius = gameAction.payload?.boardRadius ?? state.game.boardRadius;
+    const seed = gameAction.payload?.seed;
+    
+    // Calculate the actual tile counts from the distribution ratio
+    const { distribution } = calculateTileCountsFromRatio(boardRadius, tileDistribution);
+    
+    // Dispatch SHUFFLE_TILES before START_GAME is processed
+    store.dispatch(shuffleTiles(seed, distribution) as any);
+  }
+  
   // First, let the action pass through
   const result = next(action);
   
   // After the action has been processed, check if we need AI to act
   const state = store.getState();
-  const gameAction = action as GameAction;
   
   // Handle AI edge selection during seating phase
   // Trigger on SELECT_EDGE (when a player selects and we move to next) or START_GAME (if AI goes first)
