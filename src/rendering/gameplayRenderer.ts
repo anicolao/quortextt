@@ -748,131 +748,103 @@ export class GameplayRenderer {
       const animKey2 = `flow-preview-${tileKey}-${dir2}-${dir1}`;
       const animData = flowPreviewData[animKey1] || flowPreviewData[animKey2];
 
-      // Draw if: (1) animation completed (progress >= 1.0), or (2) actual filled flow exists and not animating
-      if (animData && animData.animationProgress >= 1.0) {
-        // Animation completed - draw the completed flow using actual flow direction
-        const playerId = animData.playerId;
-        const player = state.game.players.find((p) => p.id === playerId);
-        if (player) {
-          // Check if this specific connection is part of the winning path
-          const shouldGlow =
-            isGameOver &&
-            winnerIds.includes(playerId) &&
-            isConnectionInWinningPath(
-              tile.position,
-              animData.direction1 as Direction,
-              animData.direction2 as Direction,
-              playerId,
-              state.game.flows,
-              state.game.flowEdges,
-              state.game.boardRadius,
+      // Skip if animation is still in progress (will be drawn by renderAnimatingFlows)
+      if (animData && animData.animationProgress < 1.0) {
+        return;
+      }
+
+      // Check for actual filled flow in game state
+      if (tileFlowEdges) {
+        const player1 = tileFlowEdges.get(dir1);
+        const player2 = tileFlowEdges.get(dir2);
+
+        // Check for bidirectional flow: different players flowing from each end
+        if (player1 && player2 && player1 !== player2) {
+          // Bidirectional flow: draw each player's color on their respective half
+          const player1Obj = state.game.players.find((p) => p.id === player1);
+          const player2Obj = state.game.players.find((p) => p.id === player2);
+          
+          if (player1Obj && player2Obj) {
+            // Draw player1's flow on the left half
+            const shouldGlow1 =
+              isGameOver &&
+              winnerIds.includes(player1) &&
+              isConnectionInWinningPath(
+                tile.position,
+                dir1 as Direction,
+                dir2 as Direction,
+                player1,
+                state.game.flows,
+                state.game.flowEdges,
+                state.game.boardRadius,
+              );
+            
+            this.drawFlowConnection(
+              center,
+              dir1,
+              dir2,
+              player1Obj.color,
+              1.0,
+              false,
+              shouldGlow1,
+              'left',
             );
-
-          // Use the actual flow direction from animation data
-          this.drawFlowConnection(
-            center,
-            animData.direction1,
-            animData.direction2,
-            player.color,
-            1.0,
-            false,
-            shouldGlow,
-          );
-        }
-      } else if (!animData || animData.animationProgress >= 1.0) {
-        // No animation data or animation done - check for actual filled flow
-        if (tileFlowEdges) {
-          const player1 = tileFlowEdges.get(dir1);
-          const player2 = tileFlowEdges.get(dir2);
-
-          // Check for bidirectional flow: different players flowing from each end
-          if (player1 && player2 && player1 !== player2) {
-            // Bidirectional flow: draw each player's color on their respective half
-            const player1Obj = state.game.players.find((p) => p.id === player1);
-            const player2Obj = state.game.players.find((p) => p.id === player2);
             
-            if (player1Obj && player2Obj) {
-              // Draw player1's flow on the left half
-              const shouldGlow1 =
+            // Draw player2's flow on the right half
+            const shouldGlow2 =
+              isGameOver &&
+              winnerIds.includes(player2) &&
+              isConnectionInWinningPath(
+                tile.position,
+                dir1 as Direction,
+                dir2 as Direction,
+                player2,
+                state.game.flows,
+                state.game.flowEdges,
+                state.game.boardRadius,
+              );
+            
+            this.drawFlowConnection(
+              center,
+              dir1,
+              dir2,
+              player2Obj.color,
+              1.0,
+              false,
+              shouldGlow2,
+              'right',
+            );
+          }
+        } else {
+          // Unidirectional flow: use existing logic
+          const playerId = player1 || player2;
+          
+          if (playerId) {
+            const player = state.game.players.find((p) => p.id === playerId);
+            if (player) {
+              // Check if this specific connection is part of the winning path
+              const shouldGlow =
                 isGameOver &&
-                winnerIds.includes(player1) &&
+                winnerIds.includes(playerId) &&
                 isConnectionInWinningPath(
                   tile.position,
                   dir1 as Direction,
                   dir2 as Direction,
-                  player1,
+                  playerId,
                   state.game.flows,
                   state.game.flowEdges,
                   state.game.boardRadius,
                 );
-              
-              this.drawFlowConnection(
-                center,
-                dir1,
-                dir2,
-                player1Obj.color,
-                1.0,
-                false,
-                shouldGlow1,
-                'left',
-              );
-              
-              // Draw player2's flow on the right half
-              const shouldGlow2 =
-                isGameOver &&
-                winnerIds.includes(player2) &&
-                isConnectionInWinningPath(
-                  tile.position,
-                  dir1 as Direction,
-                  dir2 as Direction,
-                  player2,
-                  state.game.flows,
-                  state.game.flowEdges,
-                  state.game.boardRadius,
-                );
-              
-              this.drawFlowConnection(
-                center,
-                dir1,
-                dir2,
-                player2Obj.color,
-                1.0,
-                false,
-                shouldGlow2,
-                'right',
-              );
-            }
-          } else {
-            // Unidirectional flow: use existing logic
-            const playerId = player1 || player2;
-            
-            if (playerId) {
-              const player = state.game.players.find((p) => p.id === playerId);
-              if (player) {
-                // Check if this specific connection is part of the winning path
-                const shouldGlow =
-                  isGameOver &&
-                  winnerIds.includes(playerId) &&
-                  isConnectionInWinningPath(
-                    tile.position,
-                    dir1 as Direction,
-                    dir2 as Direction,
-                    playerId,
-                    state.game.flows,
-                    state.game.flowEdges,
-                    state.game.boardRadius,
-                  );
 
-                this.drawFlowConnection(
-                  center,
-                  dir1,
-                  dir2,
-                  player.color,
-                  1.0,
-                  false,
-                  shouldGlow,
-                );
-              }
+              this.drawFlowConnection(
+                center,
+                dir1,
+                dir2,
+                player.color,
+                1.0,
+                false,
+                shouldGlow,
+              );
             }
           }
         }
