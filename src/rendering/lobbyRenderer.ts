@@ -10,6 +10,7 @@ import {
   PlayerListEntry,
   calculateLobbyLayout,
 } from "./lobbyLayout";
+import { calculateTileCountsFromRatio } from "../redux/gameReducer";
 
 export class LobbyRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -781,8 +782,6 @@ export class LobbyRenderer {
     distribution: [number, number, number, number],
     boardRadius: number
   ): { totalTiles: number; numGroups: number } {
-    // Import the calculation function from gameReducer
-    const { calculateTileCountsFromRatio } = require('../redux/gameReducer');
     return calculateTileCountsFromRatio(boardRadius, distribution);
   }
 }
