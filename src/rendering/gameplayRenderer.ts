@@ -109,8 +109,8 @@ export class GameplayRenderer {
   private renderBoardHexagon(state: RootState): void {
     const center = this.layout.origin;
     // Calculate board radius based on the game's board radius setting
-    // The board background should be 2.4 times the hex size per unit of radius
-    const boardRadius = this.layout.size * (state.game.boardRadius * 2.4);
+    // The board background should be boardRadius * 2 + 1.2 times the hex size
+    const boardRadius = this.layout.size * (state.game.boardRadius * 2 + 1.2);
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
