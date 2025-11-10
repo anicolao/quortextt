@@ -32,7 +32,7 @@ describe('Tile Distribution Integration', () => {
 
     // Verify tiles were distributed according to custom distribution
     const state = store.getState();
-    const totalTiles = state.game.availableTiles.length + (state.game.currentTile ? 1 : 0);
+    const totalTiles = state.game.availableTiles.length + (state.game.currentTile !== null ? 1 : 0);
     
     // With [1,0,0,0] ratio on radius 3 board (37 positions):
     // groupSize = 1, numGroups = 37, totalTiles = 37
@@ -40,7 +40,7 @@ describe('Tile Distribution Integration', () => {
 
     // Count tile types
     const allTiles = [...state.game.availableTiles];
-    if (state.game.currentTile) {
+    if (state.game.currentTile !== null) {
       allTiles.push(state.game.currentTile);
     }
 
@@ -78,7 +78,7 @@ describe('Tile Distribution Integration', () => {
 
     // Verify tiles were distributed according to custom distribution
     const state = store.getState();
-    const totalTiles = state.game.availableTiles.length + (state.game.currentTile ? 1 : 0);
+    const totalTiles = state.game.availableTiles.length + (state.game.currentTile !== null ? 1 : 0);
     
     // With [2,1,1,1] ratio on radius 3 board (37 positions):
     // groupSize = 5, numGroups = 8, totalTiles = 40
@@ -86,7 +86,7 @@ describe('Tile Distribution Integration', () => {
 
     // Count tile types
     const allTiles = [...state.game.availableTiles];
-    if (state.game.currentTile) {
+    if (state.game.currentTile !== null) {
       allTiles.push(state.game.currentTile);
     }
 
@@ -124,7 +124,7 @@ describe('Tile Distribution Integration', () => {
 
     // Verify tiles were distributed according to custom distribution
     const state = store.getState();
-    const totalTiles = state.game.availableTiles.length + (state.game.currentTile ? 1 : 0);
+    const totalTiles = state.game.availableTiles.length + (state.game.currentTile !== null ? 1 : 0);
     
     // With [1,0,0,1] ratio on radius 3 board (37 positions):
     // groupSize = 2, numGroups = 19, totalTiles = 38
@@ -132,7 +132,7 @@ describe('Tile Distribution Integration', () => {
 
     // Count tile types
     const allTiles = [...state.game.availableTiles];
-    if (state.game.currentTile) {
+    if (state.game.currentTile !== null) {
       allTiles.push(state.game.currentTile);
     }
 
@@ -170,13 +170,13 @@ describe('Tile Distribution Integration', () => {
 
     // Verify tiles were distributed with default [1,1,1,1]
     const state = store.getState();
-    const totalTiles = state.game.availableTiles.length + (state.game.currentTile ? 1 : 0);
+    const totalTiles = state.game.availableTiles.length + (state.game.currentTile !== null ? 1 : 0);
     
     expect(totalTiles).toBe(40);
 
     // Count tile types
     const allTiles = [...state.game.availableTiles];
-    if (state.game.currentTile) {
+    if (state.game.currentTile !== null) {
       allTiles.push(state.game.currentTile);
     }
 
@@ -216,13 +216,13 @@ describe('Tile Distribution Integration', () => {
     // Verify tiles were distributed correctly for radius 2
     // Radius 2 = 19 positions, with [1,1,1,1]: groupSize=4, numGroups=5, totalTiles=20
     const state = store.getState();
-    const totalTiles = state.game.availableTiles.length + (state.game.currentTile ? 1 : 0);
+    const totalTiles = state.game.availableTiles.length + (state.game.currentTile !== null ? 1 : 0);
     
     expect(totalTiles).toBe(20);
 
     // Count tile types
     const allTiles = [...state.game.availableTiles];
-    if (state.game.currentTile) {
+    if (state.game.currentTile !== null) {
       allTiles.push(state.game.currentTile);
     }
 
