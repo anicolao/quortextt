@@ -93,6 +93,23 @@ function evaluatePosition(
   
   // Evaluation: -A * (AI path length)^2 + B * (enemy min path length)^2
   // We want to minimize our path and maximize enemy's path
+  
+  // Handle infinite path lengths (no viable path)
+  if (aiPathLength === Infinity && enemyMinPathLength === Infinity) {
+    // Neither player can win - neutral score
+    return 0;
+  }
+  
+  if (aiPathLength === Infinity) {
+    // AI cannot win - very bad score
+    return -100000;
+  }
+  
+  if (enemyMinPathLength === Infinity) {
+    // Enemy cannot win - very good score (but not as good as actual victory)
+    return 50000;
+  }
+  
   const aiScore = OWN_PATH_WEIGHT * (aiPathLength * aiPathLength);
   const enemyScore = ENEMY_PATH_WEIGHT * (enemyMinPathLength * enemyMinPathLength);
   
