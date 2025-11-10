@@ -24,6 +24,9 @@ export const DRAW_TILE = 'DRAW_TILE';
 export const PLACE_TILE = 'PLACE_TILE';
 export const REPLACE_TILE = 'REPLACE_TILE';
 
+// AI debug actions
+export const SET_AI_SCORING_DATA = 'SET_AI_SCORING_DATA';
+
 // Game flow actions
 export const NEXT_PLAYER = 'NEXT_PLAYER';
 export const END_GAME = 'END_GAME';
@@ -151,6 +154,12 @@ export interface ResetGameAction {
   type: typeof RESET_GAME;
 }
 
+// AI debug action types
+export interface SetAIScoringDataAction {
+  type: typeof SET_AI_SCORING_DATA;
+  payload: Map<string, { rotation: number; score: number }[]> | undefined;
+}
+
 // UI action types
 export interface SetHoveredPositionAction {
   type: typeof SET_HOVERED_POSITION;
@@ -197,7 +206,8 @@ export type GameAction =
   | ReplaceTileAction
   | NextPlayerAction
   | EndGameAction
-  | ResetGameAction;
+  | ResetGameAction
+  | SetAIScoringDataAction;
 
 export type UIAction =
   | SetHoveredPositionAction
@@ -317,4 +327,10 @@ export const toggleSettings = (): ToggleSettingsAction => ({
 export const updateSettings = (settings: Partial<GameSettings>): UpdateSettingsAction => ({
   type: UPDATE_SETTINGS,
   payload: settings,
+});
+
+// AI debug action creators
+export const setAIScoringData = (data: Map<string, { rotation: number; score: number }[]> | undefined): SetAIScoringDataAction => ({
+  type: SET_AI_SCORING_DATA,
+  payload: data,
 });

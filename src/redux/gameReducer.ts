@@ -19,6 +19,7 @@ import {
   NEXT_PLAYER,
   END_GAME,
   RESET_GAME,
+  SET_AI_SCORING_DATA,
 } from './actions';
 import { TileType } from '../game/types';
 import { calculateFlows } from '../game/flows';
@@ -663,6 +664,13 @@ export function gameReducer(
       return {
         ...initialState,
         screen: 'configuration',
+      };
+    }
+
+    case SET_AI_SCORING_DATA: {
+      return {
+        ...state,
+        aiScoringData: action.payload,
       };
     }
 

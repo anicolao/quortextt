@@ -12,8 +12,10 @@ import {
   nextPlayer,
   drawTile,
   selectEdge,
+  setAIScoringData,
 } from './actions';
-import { selectAIEdge, selectAIMove } from '../game/ai';
+import { selectAIEdge, selectAIMove, generateMoveCandidates } from '../game/ai';
+import { positionToKey } from '../game/board';
 
 // Middleware to automatically handle AI player turns
 export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (action) => {
@@ -65,17 +67,52 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     
     // Only act if we're in playing phase and have a current tile
     if (phase !== 'playing' || !currentTile) {
+      // Clear AI scoring data if no tile
+      if (state.ui.settings.debugAIScoring && state.game.aiScoringData) {
+        store.dispatch(setAIScoringData(undefined) as any);
+      }
       return result;
     }
     
     const currentPlayer = players[currentPlayerIndex];
+    const supermoveEnabled = state.ui.settings.supermove;
+    
+    // Generate AI scoring data if debug mode is enabled (for any player)
+    if (state.ui.settings.debugAIScoring && currentPlayer) {
+      // Find an AI player to use for evaluation (or use current player if they're AI)
+      const aiPlayer = currentPlayer.isAI ? currentPlayer : players.find(p => p.isAI);
+      
+      if (aiPlayer) {
+        const candidates = generateMoveCandidates(
+          board,
+          currentTile,
+          aiPlayer,
+          players,
+          teams,
+          supermoveEnabled,
+          state.game.boardRadius
+        );
+        
+        // Group candidates by position
+        const scoringData = new Map<string, { rotation: number; score: number }[]>();
+        for (const candidate of candidates) {
+          const key = positionToKey(candidate.position);
+          if (!scoringData.has(key)) {
+            scoringData.set(key, []);
+          }
+          scoringData.get(key)!.push({
+            rotation: candidate.rotation,
+            score: candidate.score,
+          });
+        }
+        
+        store.dispatch(setAIScoringData(scoringData) as any);
+      }
+    }
     
     // Check if current player is AI
     if (currentPlayer && currentPlayer.isAI) {
       // AI needs to make a move
-      const supermoveEnabled = state.ui.settings.supermove;
-      
-      // Get AI's best move
       const aiMove = selectAIMove(
         board,
         currentTile,

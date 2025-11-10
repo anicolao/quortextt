@@ -82,6 +82,11 @@ export class GameplayRenderer {
       this.renderVictoryConditionEdges(state);
     }
 
+    // Layer 2.9: Debug - Show AI scoring data
+    if (state.ui.settings.debugAIScoring && state.game.aiScoringData) {
+      this.renderAIScoring(state);
+    }
+
     // Layer 3: Placed tiles
     this.renderPlacedTiles(state);
 
@@ -608,6 +613,51 @@ export class GameplayRenderer {
         this.ctx.fillText(dir.toString(), labelX, labelY);
       }
     });
+  }
+
+  private renderAIScoring(state: RootState): void {
+    // Debug rendering: Show AI evaluation scores for each rotation at each position
+    if (!state.game.aiScoringData) return;
+
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.font = `${this.layout.size * 0.2}px monospace`;
+
+    state.game.aiScoringData.forEach((rotationScores, posKey) => {
+      // Parse position key "row,col"
+      const [rowStr, colStr] = posKey.split(',');
+      const position = { row: parseInt(rowStr), col: parseInt(colStr) };
+      const center = hexToPixel(position, this.layout);
+
+      // Draw scores for each rotation in corners of the hexagon
+      rotationScores.forEach(({ rotation, score }) => {
+        // Get the position for this rotation
+        // Rotations 0-5 correspond to corners of the hexagon
+        const angle = (rotation * 60 - 30) * (Math.PI / 180); // Start from top corner
+        const radius = this.layout.size * 0.7; // Position near the corner
+        const x = center.x + Math.cos(angle) * radius;
+        const y = center.y + Math.sin(angle) * radius;
+
+        // Format score for display
+        const scoreText = score >= 100000 ? 'WIN!' : score.toFixed(0);
+
+        // Draw background circle
+        const bgRadius = this.layout.size * 0.15;
+        this.ctx.fillStyle = score >= 100000 ? '#00ff00' : '#ffff00';
+        this.ctx.globalAlpha = 0.7;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, bgRadius, 0, 2 * Math.PI);
+        this.ctx.fill();
+
+        // Draw score text
+        this.ctx.globalAlpha = 1.0;
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillText(scoreText, x, y);
+      });
+    });
+
+    // Reset alpha
+    this.ctx.globalAlpha = 1.0;
   }
 
   private renderPlacedTiles(state: RootState): void {

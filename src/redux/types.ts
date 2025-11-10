@@ -79,6 +79,9 @@ export interface GameState {
   
   // Move history
   moveHistory: Move[];
+  
+  // AI debug data (when debugAIScoring is enabled)
+  aiScoringData?: Map<string, { rotation: number; score: number }[]>; // position key -> array of {rotation, score}
 }
 
 // Game settings
@@ -89,6 +92,7 @@ export interface GameSettings {
   debugShowVictoryEdges: boolean;
   debugLegalityTest: boolean;
   debugAnimationSlowdown: number;
+  debugAIScoring: boolean; // Show AI evaluation scores for tile placements
 }
 
 // UI state for interaction

@@ -450,6 +450,19 @@ export class LobbyRenderer {
     });
     contentY += lineHeight;
 
+    // Debug AI Scoring
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.debugAIScoring);
+    this.ctx.fillText("Show AI Scoring", contentX, contentY + checkboxSize / 2);
+    controls.push({
+      type: 'checkbox',
+      x: contentX + dialogWidth - 80,
+      y: contentY,
+      width: checkboxSize,
+      height: checkboxSize,
+      settingKey: 'debugAIScoring',
+    });
+    contentY += lineHeight;
+
     // Animation Slowdown
     this.ctx.fillText("Animation Slowdown:", contentX, contentY + buttonHeight / 2);
     const slowdownX = contentX + 240;
