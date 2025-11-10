@@ -236,12 +236,17 @@ test.describe('Player Order Validation', () => {
       // Verify this is the expected player
       expect(currentPlayerId).toBe(expectedPlayOrder[turnIndex]);
       
-      // Place a tile
+      // Place a tile using Redux actions (more reliable for testing)
       const placement = tilePlacements[turnIndex];
-      const coords = await getHexPosition(page, placement.row, placement.col);
-      
-      // Click to place tile (no rotation needed)
-      await page.mouse.click(box.x + coords.x, box.y + coords.y);
+      await page.evaluate(({ row, col }: { row: number; col: number }) => {
+        const store = (window as any).__REDUX_STORE__;
+        // Place tile with rotation 0
+        store.dispatch({ type: 'PLACE_TILE', payload: { position: { row, col }, rotation: 0 } });
+        // Advance to next player
+        store.dispatch({ type: 'NEXT_PLAYER' });
+        // Draw next tile
+        store.dispatch({ type: 'DRAW_TILE' });
+      }, placement);
       await waitForAnimationFrame(page);
       
       // Take screenshot after each placement

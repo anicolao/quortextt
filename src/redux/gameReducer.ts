@@ -393,8 +393,14 @@ export function gameReducer(
         
         // Determine gameplay order
         const gameplayOrder = determineGameplayOrder(updatedPlayers, seatingPhase.seatingOrder);
-        const startingPlayerId = gameplayOrder[0];
-        const currentPlayerIndex = updatedPlayers.findIndex(p => p.id === startingPlayerId);
+        
+        // Reorder players array to match gameplay order (clockwise from starting player)
+        const orderedPlayers = gameplayOrder.map(id => 
+          updatedPlayers.find(p => p.id === id)!
+        );
+        
+        // Starting player is now at index 0
+        const currentPlayerIndex = 0;
         
         // Initialize the game
         // Use existing availableTiles if already shuffled (e.g., from SHUFFLE_TILES action)
@@ -408,7 +414,7 @@ export function gameReducer(
         // Transition to gameplay
         return {
           ...state,
-          players: updatedPlayers,
+          players: orderedPlayers,
           teams,
           currentPlayerIndex,
           screen: 'gameplay',
