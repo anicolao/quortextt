@@ -32,9 +32,19 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
   if (gameAction.type === SELECT_EDGE || gameAction.type === START_GAME) {
     const { seatingPhase, configPlayers } = state.game;
     
-    if (seatingPhase.active && seatingPhase.seatingIndex < seatingPhase.seatingOrder.length) {
+    console.log('[AI Middleware] Checking for AI edge selection...', {
+      action: gameAction.type,
+      hasSeatingPhase: !!seatingPhase,
+      active: seatingPhase?.active,
+      seatingIndex: seatingPhase?.seatingIndex,
+      seatingOrderLength: seatingPhase?.seatingOrder?.length
+    });
+    
+    if (seatingPhase && seatingPhase.active && seatingPhase.seatingIndex < seatingPhase.seatingOrder.length) {
       const currentPlayerId = seatingPhase.seatingOrder[seatingPhase.seatingIndex];
       const currentConfigPlayer = configPlayers.find((p: any) => p.id === currentPlayerId);
+      
+      console.log('[AI Middleware] Current player:', currentPlayerId, 'isAI:', currentConfigPlayer?.isAI);
       
       if (currentConfigPlayer && currentConfigPlayer.isAI) {
         // AI player needs to select an edge
@@ -50,12 +60,20 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           }
         }
         
+        console.log('[AI Middleware] Available edges:', seatingPhase.availableEdges, 'Human edge:', humanEdge);
+        
         // Select an edge for AI that's not opposite to human
         const aiEdge = selectAIEdge(humanEdge, seatingPhase.availableEdges);
         
+        console.log('[AI Middleware] Selected AI edge:', aiEdge);
+        
         if (aiEdge !== null) {
-          // Dispatch edge selection for AI immediately (Redux is synchronous)
-          store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
+          // Dispatch synchronously first, then add a small delay for UI updates
+          console.log('[AI Middleware] Dispatching SELECT_EDGE for AI player');
+          // Use a micro-task to dispatch after current event loop iteration
+          Promise.resolve().then(() => {
+            store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
+          });
         }
       }
     }
@@ -125,19 +143,22 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       );
       
       if (aiMove) {
-        // Dispatch the move immediately (Redux is synchronous - no setTimeout needed)
-        if (aiMove.isReplacement) {
-          store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
-          // After replacement, the REPLACE_TILE action will trigger this middleware again
-          // with the replaced tile in hand, and we'll place it
-        } else {
-          store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
-          
-          // After placing a tile (not a replacement), always advance to next player
-          // Even when completing a supermove (placing the replaced tile), we advance
-          store.dispatch(nextPlayer() as any);
-          store.dispatch(drawTile() as any);
-        }
+        // Use setTimeout to dispatch after a short delay
+        // This allows the UI to update and makes AI moves visible
+        setTimeout(() => {
+          if (aiMove.isReplacement) {
+            store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
+            // After replacement, the REPLACE_TILE action will trigger this middleware again
+            // with the replaced tile in hand, and we'll place it
+          } else {
+            store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
+            
+            // After placing a tile (not a replacement), always advance to next player
+            // Even when completing a supermove (placing the replaced tile), we advance
+            store.dispatch(nextPlayer() as any);
+            store.dispatch(drawTile() as any);
+          }
+        }, 1000);
       }
     }
   }
