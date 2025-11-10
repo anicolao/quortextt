@@ -18,6 +18,45 @@ function easeInOut(t: number): number {
 }
 
 /**
+ * Initialize supermove glow animation during gameplay
+ */
+export function initSupermoveAnimation(): void {
+  // Define breathing glow animation for supermove checkmark
+  // Uses same breathing pattern as victory animation
+  defineAnimation('supermove-glow', (t: number) => {
+    const eased = easeInOut(t);
+    const intensity = 0.5 + 0.5 * Math.sin(eased * Math.PI);
+    victoryAnimationState.glowIntensity = intensity;
+  });
+
+  // Get Redux store from window
+  const store = (window as any).__REDUX_STORE__;
+  if (!store) {
+    console.warn('Redux store not available for supermove animations');
+    return;
+  }
+
+  // Register breathing animation: 120 frames (~2 seconds) with loop enabled
+  store.dispatch(registerAnimation('supermove-glow', 120, 0, true));
+}
+
+/**
+ * Cancel supermove glow animation
+ */
+export function cancelSupermoveAnimation(): void {
+  const store = (window as any).__REDUX_STORE__;
+  if (!store) {
+    return;
+  }
+
+  // Cancel supermove glow animations
+  store.dispatch(cancelAnimationsByName('supermove-glow'));
+  
+  // Reset glow intensity to default
+  victoryAnimationState.glowIntensity = 0.5;
+}
+
+/**
  * Initialize victory animations when game over screen is shown
  */
 export function initVictoryAnimations(): void {

@@ -18,7 +18,7 @@ import {
   getOppositeEdge,
   positionToKey,
 } from "../game/board";
-import { victoryAnimationState } from "../animation/victoryAnimations";
+import { victoryAnimationState, initSupermoveAnimation, cancelSupermoveAnimation } from "../animation/victoryAnimations";
 import { isConnectionInWinningPath } from "../game/victory";
 import { TileType, PlacedTile, Direction } from "../game/types";
 import { getFlowConnections } from "../game/tiles";
@@ -42,6 +42,7 @@ export class GameplayRenderer {
   private layout: HexLayout;
   private bezierLengthCache: Map<string, number> = new Map();
   private boardRadius: number;
+  private supermoveAnimationActive: boolean = false;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -1063,7 +1064,14 @@ export class GameplayRenderer {
   }
 
   private renderActionButtons(state: RootState): void {
-    if (!state.ui.selectedPosition || state.game.currentTile === null) return;
+    if (!state.ui.selectedPosition || state.game.currentTile === null) {
+      // No action buttons shown - cancel supermove animation if active
+      if (this.supermoveAnimationActive) {
+        cancelSupermoveAnimation();
+        this.supermoveAnimationActive = false;
+      }
+      return;
+    }
 
     // Calculate button positions relative to selected hex
     const center = hexToPixel(state.ui.selectedPosition, this.layout);
@@ -1101,9 +1109,12 @@ export class GameplayRenderer {
       );
     }
 
-    // Check if current player has supermove available
+    // Check if this is a replacement move (supermove)
+    // Only show supermove checkmark if: supermove enabled, player is blocked, AND position is occupied
     const currentPlayer = state.game.players[state.game.currentPlayerIndex];
-    const hasSupermove = state.ui.settings.supermove && currentPlayer &&
+    const posKey = positionToKey(state.ui.selectedPosition);
+    const isOccupied = state.game.board.has(posKey);
+    const hasSupermove = state.ui.settings.supermove && currentPlayer && isOccupied &&
       isPlayerBlocked(
         state.game.board,
         currentPlayer,
@@ -1111,6 +1122,17 @@ export class GameplayRenderer {
         state.game.teams,
         state.game.boardRadius
       );
+
+    // Manage supermove animation
+    if (hasSupermove && !this.supermoveAnimationActive) {
+      // Start supermove animation
+      initSupermoveAnimation();
+      this.supermoveAnimationActive = true;
+    } else if (!hasSupermove && this.supermoveAnimationActive) {
+      // Stop supermove animation
+      cancelSupermoveAnimation();
+      this.supermoveAnimationActive = false;
+    }
 
     // Checkmark button (to the right)
     const checkPos = { x: center.x + buttonSpacing, y: center.y };
@@ -1135,15 +1157,13 @@ export class GameplayRenderer {
     // Get glow intensity for supermove animation (same as victory glow)
     const glowIntensity = victoryAnimationState.glowIntensity;
 
-    // Golden color for supermove (similar to victory stars)
-    const goldenColor = "#FFD700"; // Gold
-
     this.ctx.save();
 
     // Add glow effect for supermove
     if (hasSupermove) {
-      this.ctx.shadowBlur = 15 * glowIntensity;
-      this.ctx.shadowColor = goldenColor;
+      // White glow for supermove
+      this.ctx.shadowBlur = 20 * glowIntensity;
+      this.ctx.shadowColor = "#FFFFFF";
     }
 
     // Draw button background
@@ -1161,9 +1181,9 @@ export class GameplayRenderer {
 
     // Draw checkmark icon
     if (hasSupermove) {
-      // Brighter golden checkmark with pulsing opacity
+      // White checkmark with pulsing opacity
       this.ctx.globalAlpha = 0.9 + 0.1 * glowIntensity;
-      this.ctx.strokeStyle = goldenColor;
+      this.ctx.strokeStyle = "#FFFFFF";
     } else {
       this.ctx.strokeStyle = enabled ? BUTTON_ICON : "#999999";
     }
