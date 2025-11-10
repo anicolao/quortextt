@@ -21,6 +21,7 @@ export interface ConfigPlayer {
   id: string;
   color: string;
   edge: Edge; // Which edge they joined from
+  isAI: boolean; // Whether this is an AI player
 }
 
 // Move history entry

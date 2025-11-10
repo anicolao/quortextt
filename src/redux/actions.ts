@@ -43,6 +43,7 @@ export interface AddPlayerAction {
   payload?: {
     color?: string;
     edge?: number; // 0=bottom, 1=right, 2=top, 3=left
+    isAI?: boolean; // Whether this is an AI player
   };
 }
 
