@@ -926,12 +926,69 @@ export class GameplayRenderer {
     this.ctx.closePath();
     this.ctx.clip();
 
-    // If clipSide is specified, use filled polygon approach instead of nested clipping
-    // This works reliably across all platforms including macOS with hardware acceleration
+    // If clipSide is specified, add additional clipping for bidirectional flow
     if (clipSide) {
-      this.drawHalfStroke(start, control1, control2, end, color, clipSide, withGlow);
-      this.ctx.restore();
-      return;
+      // Create a clipping path along the centerline of the channel
+      // We'll clip to either the left or right half of the stroke
+      this.ctx.beginPath();
+      
+      // Calculate the centerline of the bezier curve
+      const numPoints = 30;
+      
+      // Calculate perpendicular offset for each point
+      // The direction depends on which side we're clipping
+      const offsetSign = clipSide === 'left' ? -1 : 1;
+      
+      // Start from one end, offset perpendicular
+      for (let i = 0; i <= numPoints; i++) {
+        const t = i / numPoints;
+        const pt = this.bezierPoint(t, start, control1, control2, end);
+        
+        // Calculate tangent at this point
+        let tangent: Point;
+        if (i === 0) {
+          const nextPt = this.bezierPoint((i + 1) / numPoints, start, control1, control2, end);
+          tangent = { x: nextPt.x - pt.x, y: nextPt.y - pt.y };
+        } else if (i === numPoints) {
+          const prevPt = this.bezierPoint((i - 1) / numPoints, start, control1, control2, end);
+          tangent = { x: pt.x - prevPt.x, y: pt.y - prevPt.y };
+        } else {
+          const prevPt = this.bezierPoint((i - 1) / numPoints, start, control1, control2, end);
+          const nextPt = this.bezierPoint((i + 1) / numPoints, start, control1, control2, end);
+          tangent = { x: nextPt.x - prevPt.x, y: nextPt.y - prevPt.y };
+        }
+        
+        // Normalize tangent
+        const len = Math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y);
+        if (len > 0) {
+          tangent.x /= len;
+          tangent.y /= len;
+        }
+        
+        // Perpendicular is (-y, x) for left, (y, -x) for right
+        const perpX = -tangent.y * offsetSign;
+        const perpY = tangent.x * offsetSign;
+        
+        // Offset by a large amount to ensure we clip the entire half
+        const offset = this.layout.size * 2;
+        const offsetPt = { x: pt.x + perpX * offset, y: pt.y + perpY * offset };
+        
+        if (i === 0) {
+          this.ctx.moveTo(offsetPt.x, offsetPt.y);
+        } else {
+          this.ctx.lineTo(offsetPt.x, offsetPt.y);
+        }
+      }
+      
+      // Come back along the centerline
+      for (let i = numPoints; i >= 0; i--) {
+        const t = i / numPoints;
+        const pt = this.bezierPoint(t, start, control1, control2, end);
+        this.ctx.lineTo(pt.x, pt.y);
+      }
+      
+      this.ctx.closePath();
+      this.ctx.clip();
     }
 
     // Add pulsing glow effect if this is a winning flow
@@ -977,91 +1034,6 @@ export class GameplayRenderer {
     );
     this.ctx.stroke();
     this.ctx.restore();
-  }
-
-  // Draw half of a stroke for bidirectional flows using filled polygon
-  // This avoids nested clipping which doesn't work reliably on all platforms
-  private drawHalfStroke(
-    start: Point,
-    control1: Point,
-    control2: Point,
-    end: Point,
-    color: string,
-    side: 'left' | 'right',
-    withGlow: boolean,
-  ): void {
-    const strokeWidth = this.layout.size * 0.18;
-    const numPoints = 30; // More points for smoother curves
-    
-    // Add pulsing glow effect if this is a winning flow
-    if (withGlow) {
-      const glowIntensity = victoryAnimationState.glowIntensity;
-      this.ctx.shadowBlur = 20 * glowIntensity;
-      this.ctx.shadowColor = color;
-      this.ctx.globalAlpha = 0.8 + 0.2 * glowIntensity;
-    }
-
-    // Build the polygon for one half of the stroke
-    const points: Point[] = [];
-    
-    // Sample points along the curve
-    for (let i = 0; i <= numPoints; i++) {
-      const t = i / numPoints;
-      const pt = this.bezierPoint(t, start, control1, control2, end);
-      
-      // Calculate tangent for perpendicular offset
-      let tangent: Point;
-      if (i === 0) {
-        const nextPt = this.bezierPoint((i + 1) / numPoints, start, control1, control2, end);
-        tangent = { x: nextPt.x - pt.x, y: nextPt.y - pt.y };
-      } else if (i === numPoints) {
-        const prevPt = this.bezierPoint((i - 1) / numPoints, start, control1, control2, end);
-        tangent = { x: pt.x - prevPt.x, y: pt.y - prevPt.y };
-      } else {
-        const prevPt = this.bezierPoint((i - 1) / numPoints, start, control1, control2, end);
-        const nextPt = this.bezierPoint((i + 1) / numPoints, start, control1, control2, end);
-        tangent = { x: nextPt.x - prevPt.x, y: nextPt.y - prevPt.y };
-      }
-      
-      // Normalize tangent
-      const len = Math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y);
-      if (len > 0) {
-        tangent.x /= len;
-        tangent.y /= len;
-      }
-      
-      // Calculate perpendicular (left side: -y, x; right side: y, -x)
-      const offsetSign = side === 'left' ? -1 : 1;
-      const perpX = -tangent.y * offsetSign;
-      const perpY = tangent.x * offsetSign;
-      
-      // Offset by half stroke width
-      const offsetDist = strokeWidth / 2;
-      points.push({
-        x: pt.x + perpX * offsetDist,
-        y: pt.y + perpY * offsetDist
-      });
-    }
-    
-    // Create polygon: outer edge + centerline
-    this.ctx.fillStyle = color;
-    this.ctx.beginPath();
-    
-    // Draw outer edge (offset points)
-    this.ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
-    }
-    
-    // Return along centerline
-    for (let i = numPoints; i >= 0; i--) {
-      const t = i / numPoints;
-      const pt = this.bezierPoint(t, start, control1, control2, end);
-      this.ctx.lineTo(pt.x, pt.y);
-    }
-    
-    this.ctx.closePath();
-    this.ctx.fill();
   }
 
   // Estimate Bezier curve length for animation
