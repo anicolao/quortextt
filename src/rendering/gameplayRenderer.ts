@@ -1166,11 +1166,10 @@ export class GameplayRenderer {
     const rotationRad = (rotationAngle * Math.PI) / 180;
 
     // Define button positions relative to tile center for edge 0 (bottom player)
-    // Player at edge 0 is at the BOTTOM of the screen looking UP (negative Y direction)
-    // Buttons should be BETWEEN the player and the tile (positive Y from tile toward player)
+    // Checkmark on right, cancel on left, rotation buttons at NE and NW
     const basePositions = {
-      checkmark: { x: spacing, y: spacing },   // To the right AND toward player
-      cancel: { x: -spacing, y: spacing },      // To the left AND toward player
+      checkmark: { x: spacing, y: 0 },
+      cancel: { x: -spacing, y: 0 },
       // Rotation buttons with more spacing
       rotateNE: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 3), // Direction 3 = NE
       rotateNW: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 2), // Direction 2 = NW
@@ -1304,25 +1303,25 @@ export class GameplayRenderer {
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead at the START of the arc (where rotation begins)
+    // Draw arrowhead
     const arrowSize = size * 0.15;
-    const arrowAngle = startAngle;  // Changed from endAngle to startAngle
+    const arrowAngle = endAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
     
-    // Calculate arrowhead direction (perpendicular to radius, pointing in direction of rotation)
-    const perpAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
+    // Calculate arrowhead direction
+    const perpAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
     
     this.ctx.beginPath();
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? -0.5 : 0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? -0.5 : 0.5))
+      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? 0.5 : -0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? 0.5 : -0.5))
     );
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? -0.5 : 0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? -0.5 : 0.5))
+      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? 0.5 : -0.5)),
+      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? 0.5 : -0.5))
     );
     this.ctx.stroke();
 

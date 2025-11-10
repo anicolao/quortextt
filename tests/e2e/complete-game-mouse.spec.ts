@@ -124,14 +124,13 @@ async function getConfirmationButtonCoords(page: any, hexPos: HexPosition, butto
     const rotationRad = (rotationAngle * Math.PI) / 180;
     
     // Define button positions relative to tile center for edge 0 (bottom player)
-    // Buttons should be toward the player (positive Y from tile)
     let baseX: number, baseY: number;
     if (args.button === 'check') {
       baseX = buttonSpacing;
-      baseY = buttonSpacing;
+      baseY = 0;
     } else {
       baseX = -buttonSpacing;
-      baseY = buttonSpacing;
+      baseY = 0;
     }
     
     // Rotate position around tile center

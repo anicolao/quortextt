@@ -202,11 +202,9 @@ export class GameplayInputHandler {
     const rotationRad = (rotationAngle * Math.PI) / 180;
 
     // Define button positions relative to tile center for edge 0 (bottom player)
-    // Player at edge 0 is at the BOTTOM of the screen looking UP
-    // Buttons should be between the player and the tile
     const basePositions = {
-      checkmark: { x: spacing, y: spacing },   // To the right AND toward player
-      cancel: { x: -spacing, y: spacing },      // To the left AND toward player
+      checkmark: { x: spacing, y: 0 },
+      cancel: { x: -spacing, y: 0 },
       // NE and NW corners with increased spacing
       rotateNE: this.getEdgeMidpointRelative(spacing * 0.75, 3), // Direction 3 = NE
       rotateNW: this.getEdgeMidpointRelative(spacing * 0.75, 2), // Direction 2 = NW
@@ -249,11 +247,11 @@ export class GameplayInputHandler {
     // Determine rotation direction based on which side was clicked
     let newRotation: Rotation;
     if (clickX < tileCenterX) {
-      // Left side - rotate counter-clockwise
-      newRotation = ((currentRotation + 5) % 6) as Rotation;
-    } else {
-      // Right side - rotate clockwise
+      // Left side - rotate clockwise
       newRotation = ((currentRotation + 1) % 6) as Rotation;
+    } else {
+      // Right side - rotate counter-clockwise
+      newRotation = ((currentRotation + 5) % 6) as Rotation;
     }
 
     store.dispatch(setRotation(newRotation));
