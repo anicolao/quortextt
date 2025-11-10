@@ -318,9 +318,11 @@ test.describe('Configuration Screen', () => {
     expect(state.game.screen).toBe('configuration');
     expect(state.game.configPlayers.length).toBe(1);
 
-    // Click Start button (center)
-    const startCoords = await getStartButtonCoordinates(page);
-    await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
+    // Start game with deterministic seed for reproducible screenshots
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'START_GAME', payload: { seed: 11111 } });
+    });
     await waitForAnimationFrame(page);
     
     // Verify we're now in seating phase
@@ -554,9 +556,11 @@ test.describe('Configuration Screen', () => {
     await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/011-two-players-ready.png' });
 
-    // STEP 12: Click Start Game button
-    const startCoords = await getStartButtonCoordinates(page);
-    await page.mouse.click(box.x + startCoords.x, box.y + startCoords.y);
+    // STEP 12: Start the game with a deterministic seed for reproducible screenshots
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
+    });
     await waitForAnimationFrame(page);
     
     state = await getReduxState(page);

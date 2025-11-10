@@ -145,15 +145,19 @@ test.describe('Player Order Validation', () => {
     await pauseAnimations(page);
     await page.screenshot({ path: 'tests/e2e/user-stories/player-order/001-six-players-configured.png' });
 
-    // STEP 2: Start the game (transitions to seating phase)
-    await clickStartGame(page, canvas, box);
+    // STEP 2: Start the game with a deterministic seed for reproducible screenshots
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'START_GAME', payload: { seed: 54321 } });
+    });
+    await waitForAnimationFrame(page);
     state = await getReduxState(page);
     expect(state.game.screen).toBe('seating');
     expect(state.game.seatingPhase.active).toBe(true);
     
-    // Record the seating order (this is randomized)
+    // Record the seating order (now deterministic due to seed)
     const seatingOrder = state.game.seatingPhase.seatingOrder;
-    console.log('Seating order (randomized):', seatingOrder);
+    console.log('Seating order (deterministic with seed 54321):', seatingOrder);
     
     // Take screenshot of seating phase
     await pauseAnimations(page);
