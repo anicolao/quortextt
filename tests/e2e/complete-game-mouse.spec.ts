@@ -91,12 +91,13 @@ async function getTileRotationCoords(page: any, hexPos: HexPosition | null, side
   }, { pos: hexPos, side });
 }
 
-// Helper to get coordinates for checkmark or X button
+// Helper to get coordinates for checkmark or X button (oriented to player's edge)
 async function getConfirmationButtonCoords(page: any, hexPos: HexPosition, button: 'check' | 'x') {
   return await page.evaluate((args: { pos: HexPosition, button: 'check' | 'x' }) => {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
+    const state = (window as any).__REDUX_STORE__.getState();
     
     // Calculate hex layout
     const minDimension = Math.min(canvasWidth, canvasHeight);
@@ -113,11 +114,32 @@ async function getConfirmationButtonCoords(page: any, hexPos: HexPosition, butto
     // Button spacing (from gameplayInputHandler.ts)
     const buttonSpacing = size * 2;
     
+    // Get current player's edge to orient buttons
+    const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+    const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
+    
+    // Map edge positions to rotation angles (in degrees)
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+    
+    // Define button positions relative to tile center for edge 0 (bottom player)
+    let baseX: number, baseY: number;
     if (args.button === 'check') {
-      return { x: centerX + buttonSpacing, y: centerY };
+      baseX = buttonSpacing;
+      baseY = 0;
     } else {
-      return { x: centerX - buttonSpacing, y: centerY };
+      baseX = -buttonSpacing;
+      baseY = 0;
     }
+    
+    // Rotate position around tile center
+    const cos = Math.cos(rotationRad);
+    const sin = Math.sin(rotationRad);
+    const rotatedX = centerX + (baseX * cos - baseY * sin);
+    const rotatedY = centerY + (baseX * sin + baseY * cos);
+    
+    return { x: rotatedX, y: rotatedY };
   }, { pos: hexPos, button });
 }
 
