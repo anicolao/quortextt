@@ -214,9 +214,36 @@ export function gameReducer(
         isAI,
       };
 
+      let updatedPlayers = [...state.configPlayers, newPlayer];
+      
+      // If this is the first human player added, automatically add an AI opponent
+      if (!isAI && state.configPlayers.length === 0) {
+        // Find an available color and edge for the AI
+        const usedColors = new Set(updatedPlayers.map((p) => p.color));
+        const aiColor = PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[1];
+        
+        const usedEdges = new Set(updatedPlayers.map((p) => p.edge));
+        let aiEdge: 0 | 1 | 2 | 3 = 1;
+        for (let i = 0; i < 4; i++) {
+          if (!usedEdges.has(i as 0 | 1 | 2 | 3)) {
+            aiEdge = i as 0 | 1 | 2 | 3;
+            break;
+          }
+        }
+        
+        const aiPlayer: ConfigPlayer = {
+          id: generatePlayerId(),
+          color: aiColor,
+          edge: aiEdge,
+          isAI: true,
+        };
+        
+        updatedPlayers.push(aiPlayer);
+      }
+
       return {
         ...state,
-        configPlayers: [...state.configPlayers, newPlayer],
+        configPlayers: updatedPlayers,
       };
     }
 
