@@ -1,7 +1,11 @@
 // Unit tests for Redux reducer
 
-import { describe, it, expect } from 'vitest';
-import { gameReducer, initialState, resetPlayerIdCounter } from '../src/redux/gameReducer';
+import { describe, it, expect } from "vitest";
+import {
+  gameReducer,
+  initialState,
+  resetPlayerIdCounter,
+} from "../src/redux/gameReducer";
 import {
   addPlayer,
   removePlayer,
@@ -9,19 +13,20 @@ import {
   startGame,
   returnToConfig,
   selectEdge,
-} from '../src/redux/actions';
-import { MAX_PLAYERS, PLAYER_COLORS } from '../src/redux/types';
+  setAIScoringData,
+} from "../src/redux/actions";
+import { MAX_PLAYERS, PLAYER_COLORS } from "../src/redux/types";
 
-describe('gameReducer', () => {
-  describe('ADD_PLAYER', () => {
-    it('should add a player to empty list', () => {
+describe("gameReducer", () => {
+  describe("ADD_PLAYER", () => {
+    it("should add a player to empty list", () => {
       const state = gameReducer(initialState, addPlayer(PLAYER_COLORS[0], 0));
       expect(state.configPlayers.length).toBe(1);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
       expect(state.configPlayers[0].isAI).toBe(false);
     });
 
-    it('should add multiple players with different colors', () => {
+    it("should add multiple players with different colors", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 0));
@@ -36,28 +41,31 @@ describe('gameReducer', () => {
       expect(state.configPlayers[2].isAI).toBe(false);
     });
 
-    it('should not add more than MAX_PLAYERS', () => {
+    it("should not add more than MAX_PLAYERS", () => {
       let state = initialState;
       for (let i = 0; i < MAX_PLAYERS + 2; i++) {
-        state = gameReducer(state, addPlayer(PLAYER_COLORS[i % PLAYER_COLORS.length], 0));
+        state = gameReducer(
+          state,
+          addPlayer(PLAYER_COLORS[i % PLAYER_COLORS.length], 0),
+        );
       }
 
       expect(state.configPlayers.length).toBe(MAX_PLAYERS);
     });
 
-    it('should auto-assign color and edge when no payload provided', () => {
-      const state = gameReducer(initialState, { type: 'ADD_PLAYER' });
+    it("should auto-assign color and edge when no payload provided", () => {
+      const state = gameReducer(initialState, { type: "ADD_PLAYER" });
       expect(state.configPlayers.length).toBe(1);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
       expect(state.configPlayers[0].edge).toBe(0);
       expect(state.configPlayers[0].isAI).toBe(false);
     });
 
-    it('should auto-assign next available color when no color provided', () => {
+    it("should auto-assign next available color when no color provided", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { edge: 1 } });
-      
+      state = gameReducer(state, { type: "ADD_PLAYER", payload: { edge: 1 } });
+
       expect(state.configPlayers.length).toBe(2);
       expect(state.configPlayers[0].isAI).toBe(false);
       expect(state.configPlayers[1].isAI).toBe(false);
@@ -65,81 +73,99 @@ describe('gameReducer', () => {
       expect(state.configPlayers[1].edge).toBe(1);
     });
 
-    it('should auto-assign next available edge when no edge provided', () => {
+    it("should auto-assign next available edge when no edge provided", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[1] } });
-      
+      state = gameReducer(state, {
+        type: "ADD_PLAYER",
+        payload: { color: PLAYER_COLORS[1] },
+      });
+
       expect(state.configPlayers.length).toBe(2);
       expect(state.configPlayers[1].color).toBe(PLAYER_COLORS[1]);
       expect(state.configPlayers[1].edge).toBe(1); // Edge 0 is taken, use 1
     });
 
-    it('should auto-assign edges in sequence when multiple players added without edges', () => {
+    it("should auto-assign edges in sequence when multiple players added without edges", () => {
       let state = initialState;
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[0] } });
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[1] } });
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[2] } });
-      
+      state = gameReducer(state, {
+        type: "ADD_PLAYER",
+        payload: { color: PLAYER_COLORS[0] },
+      });
+      state = gameReducer(state, {
+        type: "ADD_PLAYER",
+        payload: { color: PLAYER_COLORS[1] },
+      });
+      state = gameReducer(state, {
+        type: "ADD_PLAYER",
+        payload: { color: PLAYER_COLORS[2] },
+      });
+
       expect(state.configPlayers.length).toBe(3);
       expect(state.configPlayers[0].edge).toBe(0);
       expect(state.configPlayers[1].edge).toBe(1);
       expect(state.configPlayers[2].edge).toBe(2);
     });
 
-    it('should skip already-used edges when auto-assigning', () => {
+    it("should skip already-used edges when auto-assigning", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 2));
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[2] } });
-      
+      state = gameReducer(state, {
+        type: "ADD_PLAYER",
+        payload: { color: PLAYER_COLORS[2] },
+      });
+
       expect(state.configPlayers.length).toBe(3);
       expect(state.configPlayers[2].edge).toBe(1); // Should skip 0 and 2, use 1
     });
 
-    it('should fallback to edge 0 when all edges are taken', () => {
+    it("should fallback to edge 0 when all edges are taken", () => {
       let state = initialState;
       // Add 4 players on all 4 edges
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[2], 2));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[3], 3));
-      
+
       // Add 5th player without edge - should fallback to 0
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { color: PLAYER_COLORS[4] } });
-      
+      state = gameReducer(state, {
+        type: "ADD_PLAYER",
+        payload: { color: PLAYER_COLORS[4] },
+      });
+
       expect(state.configPlayers.length).toBe(5);
       expect(state.configPlayers[4].edge).toBe(0);
     });
 
-    it('should fallback to first color when all colors are taken', () => {
+    it("should fallback to first color when all colors are taken", () => {
       let state = initialState;
       // Add 6 players with all 6 colors
       for (let i = 0; i < PLAYER_COLORS.length; i++) {
         state = gameReducer(state, addPlayer(PLAYER_COLORS[i], 0));
       }
-      
+
       // Remove one player to make room
       const playerToRemove = state.configPlayers[0].id;
       state = gameReducer(state, removePlayer(playerToRemove));
-      
+
       // Add player without color - should get the first color (which is now available)
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: { edge: 0 } });
-      
+      state = gameReducer(state, { type: "ADD_PLAYER", payload: { edge: 0 } });
+
       expect(state.configPlayers.length).toBe(6);
       expect(state.configPlayers[5].color).toBe(PLAYER_COLORS[0]);
     });
 
-    it('should not add player when auto-assigned color is already taken', () => {
+    it("should not add player when auto-assigned color is already taken", () => {
       let state = initialState;
       // Add player with first color
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      
+
       // Try to add player without color when first color is taken
       // This should not happen in normal flow, but tests the colorTaken check
       const stateBefore = state;
-      state = gameReducer(state, { type: 'ADD_PLAYER', payload: {} });
-      
+      state = gameReducer(state, { type: "ADD_PLAYER", payload: {} });
+
       // Auto-assigns color 1 since color 0 is taken
       expect(state.configPlayers.length).toBe(2);
       expect(state.configPlayers[0].color).toBe(PLAYER_COLORS[0]);
@@ -147,21 +173,21 @@ describe('gameReducer', () => {
       expect(state.configPlayers[1].isAI).toBe(false);
     });
 
-    it('should not add player when explicitly provided color is already taken', () => {
+    it("should not add player when explicitly provided color is already taken", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      
+
       const initialLength = state.configPlayers.length;
       // Try to add another player with the same color
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 1));
-      
+
       // Should not add the player
       expect(state.configPlayers.length).toBe(initialLength);
     });
   });
 
-  describe('REMOVE_PLAYER', () => {
-    it('should remove a player by id', () => {
+  describe("REMOVE_PLAYER", () => {
+    it("should remove a player by id", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 0));
@@ -170,22 +196,24 @@ describe('gameReducer', () => {
       state = gameReducer(state, removePlayer(playerIdToRemove));
 
       expect(state.configPlayers.length).toBe(1);
-      expect(state.configPlayers.find((p) => p.id === playerIdToRemove)).toBeUndefined();
+      expect(
+        state.configPlayers.find((p) => p.id === playerIdToRemove),
+      ).toBeUndefined();
     });
 
-    it('should handle removing non-existent player', () => {
+    it("should handle removing non-existent player", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
 
       const initialLength = state.configPlayers.length;
-      state = gameReducer(state, removePlayer('non-existent-id'));
+      state = gameReducer(state, removePlayer("non-existent-id"));
 
       expect(state.configPlayers.length).toBe(initialLength);
     });
   });
 
-  describe('CHANGE_PLAYER_COLOR', () => {
-    it('should change player color when no conflict', () => {
+  describe("CHANGE_PLAYER_COLOR", () => {
+    it("should change player color when no conflict", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
 
@@ -196,7 +224,7 @@ describe('gameReducer', () => {
       expect(state.configPlayers[0].color).toBe(newColor);
     });
 
-    it('should swap colors when another player has the color', () => {
+    it("should swap colors when another player has the color", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 0));
@@ -216,69 +244,72 @@ describe('gameReducer', () => {
       expect(player2After?.color).toBe(player1Color);
     });
 
-    it('should handle non-existent player', () => {
+    it("should handle non-existent player", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
 
       const stateBefore = state;
-      state = gameReducer(state, changePlayerColor('non-existent-id', PLAYER_COLORS[0]));
+      state = gameReducer(
+        state,
+        changePlayerColor("non-existent-id", PLAYER_COLORS[0]),
+      );
 
       expect(state).toEqual(stateBefore);
     });
   });
 
-  describe('START_GAME', () => {
-    it('should transition to seating screen when players exist', () => {
+  describe("START_GAME", () => {
+    it("should transition to seating screen when players exist", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, startGame());
 
-      expect(state.screen).toBe('seating');
-      expect(state.phase).toBe('seating');
+      expect(state.screen).toBe("seating");
+      expect(state.phase).toBe("seating");
       expect(state.seatingPhase.active).toBe(true);
       expect(state.seatingPhase.availableEdges).toEqual([0, 1, 2, 3, 4, 5]);
     });
 
-    it('should add AI opponent when only one player and start game', () => {
+    it("should add AI opponent when only one player and start game", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
-      
+
       // Should have 1 player before starting
       expect(state.configPlayers.length).toBe(1);
       expect(state.configPlayers[0].isAI).toBe(false);
-      
+
       // Start the game
       state = gameReducer(state, startGame());
-      
+
       // Should have 2 players now (original + AI)
       expect(state.configPlayers.length).toBe(2);
       expect(state.configPlayers[0].isAI).toBe(false);
       expect(state.configPlayers[1].isAI).toBe(true);
-      expect(state.screen).toBe('seating');
+      expect(state.screen).toBe("seating");
     });
 
-    it('should not add AI when multiple players start game', () => {
+    it("should not add AI when multiple players start game", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
-      
+
       // Should have 2 players before starting
       expect(state.configPlayers.length).toBe(2);
-      
+
       // Start the game
       state = gameReducer(state, startGame());
-      
+
       // Should still have 2 players (no AI added)
       expect(state.configPlayers.length).toBe(2);
-      expect(state.configPlayers.every(p => !p.isAI)).toBe(true);
+      expect(state.configPlayers.every((p) => !p.isAI)).toBe(true);
     });
 
-    it('should not transition when no players exist', () => {
+    it("should not transition when no players exist", () => {
       const state = gameReducer(initialState, startGame());
-      expect(state.screen).toBe('configuration');
+      expect(state.screen).toBe("configuration");
     });
 
-    it('should assign edge positions correctly for 2 players after seating', () => {
+    it("should assign edge positions correctly for 2 players after seating", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
@@ -294,15 +325,19 @@ describe('gameReducer', () => {
 
       // Player 2 selects edge 3
       state = gameReducer(state, selectEdge(player2Id, 3));
-      
+
       // Should transition to gameplay after all players have selected
-      expect(state.screen).toBe('gameplay');
+      expect(state.screen).toBe("gameplay");
       expect(state.players.length).toBe(2);
-      expect(state.players.find(p => p.id === player1Id)?.edgePosition).toBe(0);
-      expect(state.players.find(p => p.id === player2Id)?.edgePosition).toBe(3);
+      expect(state.players.find((p) => p.id === player1Id)?.edgePosition).toBe(
+        0,
+      );
+      expect(state.players.find((p) => p.id === player2Id)?.edgePosition).toBe(
+        3,
+      );
     });
 
-    it('should assign edge positions correctly for 3 players after seating', () => {
+    it("should assign edge positions correctly for 3 players after seating", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
@@ -317,15 +352,21 @@ describe('gameReducer', () => {
       state = gameReducer(state, selectEdge(player1Id, 0));
       state = gameReducer(state, selectEdge(player2Id, 2));
       state = gameReducer(state, selectEdge(player3Id, 4));
-      
-      expect(state.screen).toBe('gameplay');
+
+      expect(state.screen).toBe("gameplay");
       expect(state.players.length).toBe(3);
-      expect(state.players.find(p => p.id === player1Id)?.edgePosition).toBe(0);
-      expect(state.players.find(p => p.id === player2Id)?.edgePosition).toBe(2);
-      expect(state.players.find(p => p.id === player3Id)?.edgePosition).toBe(4);
+      expect(state.players.find((p) => p.id === player1Id)?.edgePosition).toBe(
+        0,
+      );
+      expect(state.players.find((p) => p.id === player2Id)?.edgePosition).toBe(
+        2,
+      );
+      expect(state.players.find((p) => p.id === player3Id)?.edgePosition).toBe(
+        4,
+      );
     });
 
-    it('should create teams for 4 players after seating', () => {
+    it("should create teams for 4 players after seating", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 1));
@@ -346,7 +387,7 @@ describe('gameReducer', () => {
       // Teams should be based on sorted edge positions (opposite sides)
     });
 
-    it('should create teams for 6 players after seating', () => {
+    it("should create teams for 6 players after seating", () => {
       let state = initialState;
       for (let i = 0; i < 6; i++) {
         state = gameReducer(state, addPlayer(PLAYER_COLORS[i], i % 4));
@@ -365,81 +406,118 @@ describe('gameReducer', () => {
     });
   });
 
-  describe('RETURN_TO_CONFIG', () => {
-    it('should return to configuration screen from gameplay', () => {
+  describe("RETURN_TO_CONFIG", () => {
+    it("should return to configuration screen from gameplay", () => {
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, startGame());
       state = gameReducer(state, returnToConfig());
 
-      expect(state.screen).toBe('configuration');
+      expect(state.screen).toBe("configuration");
     });
   });
 
-  describe('resetPlayerIdCounter', () => {
-    it('should reset player ID counter for deterministic testing', () => {
+  describe("resetPlayerIdCounter", () => {
+    it("should reset player ID counter for deterministic testing", () => {
       // Add some players to increment the counter
       let state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       state = gameReducer(state, addPlayer(PLAYER_COLORS[1], 0));
       const firstPlayerId = state.configPlayers[0].id;
-      
+
       // Reset counter and add players again
       resetPlayerIdCounter();
       state = initialState;
       state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
       const secondPlayerId = state.configPlayers[0].id;
-      
+
       // After reset, player IDs should start from the beginning again
-      expect(secondPlayerId).toBe('P1');
+      expect(secondPlayerId).toBe("P1");
     });
   });
 
-  describe('Board radius and tile distribution', () => {
-    it('should use default distribution for default radius (3)', () => {
-      const state = gameReducer(initialState, { 
-        type: 'SHUFFLE_TILES', 
-        payload: { seed: 12345 } 
+  describe("Board radius and tile distribution", () => {
+    it("should use default distribution for default radius (3)", () => {
+      const state = gameReducer(initialState, {
+        type: "SHUFFLE_TILES",
+        payload: { seed: 12345 },
       });
-      
+
       // Radius 3 -> 37 hexes -> 40 tiles (10 of each type)
       expect(state.availableTiles.length).toBe(40);
     });
 
-    it('should calculate distribution for radius 2', () => {
+    it("should calculate distribution for radius 2", () => {
       let state = { ...initialState, boardRadius: 2 };
-      state = gameReducer(state, { 
-        type: 'SHUFFLE_TILES', 
-        payload: { seed: 12345 } 
+      state = gameReducer(state, {
+        type: "SHUFFLE_TILES",
+        payload: { seed: 12345 },
       });
-      
+
       // Radius 2 -> 19 hexes -> 20 tiles (5 of each type)
       expect(state.availableTiles.length).toBe(20);
     });
 
-    it('should calculate distribution for radius 4', () => {
+    it("should calculate distribution for radius 4", () => {
       let state = { ...initialState, boardRadius: 4 };
-      state = gameReducer(state, { 
-        type: 'SHUFFLE_TILES', 
-        payload: { seed: 12345 } 
+      state = gameReducer(state, {
+        type: "SHUFFLE_TILES",
+        payload: { seed: 12345 },
       });
-      
+
       // Radius 4 -> 61 hexes -> 64 tiles (16 of each type)
       expect(state.availableTiles.length).toBe(64);
     });
 
-    it('should respect explicit tile distribution over calculated one', () => {
+    it("should respect explicit tile distribution over calculated one", () => {
       let state = { ...initialState, boardRadius: 2 };
-      state = gameReducer(state, { 
-        type: 'SHUFFLE_TILES', 
-        payload: { 
+      state = gameReducer(state, {
+        type: "SHUFFLE_TILES",
+        payload: {
           seed: 12345,
-          tileDistribution: [7, 7, 7, 7] as [number, number, number, number]
-        } 
+          tileDistribution: [7, 7, 7, 7] as [number, number, number, number],
+        },
       });
-      
+
       // Should use the explicit distribution, not the calculated one
       expect(state.availableTiles.length).toBe(28);
+    });
+  });
+
+  describe("SET_AI_SCORING_DATA", () => {
+    it("should set AI scoring data", () => {
+      const scoringData = new Map<
+        string,
+        { rotation: number; score: number }[]
+      >();
+      scoringData.set("0,0", [
+        { rotation: 0, score: 100 },
+        { rotation: 1, score: 200 },
+      ]);
+
+      const state = gameReducer(initialState, setAIScoringData(scoringData));
+
+      expect(state.aiScoringData).toBe(scoringData);
+      expect(state.aiScoringData?.get("0,0")).toEqual([
+        { rotation: 0, score: 100 },
+        { rotation: 1, score: 200 },
+      ]);
+    });
+
+    it("should clear AI scoring data when set to undefined", () => {
+      let state = initialState;
+      const scoringData = new Map<
+        string,
+        { rotation: number; score: number }[]
+      >();
+      scoringData.set("0,0", [{ rotation: 0, score: 100 }]);
+      state = gameReducer(state, setAIScoringData(scoringData));
+
+      expect(state.aiScoringData).toBeDefined();
+
+      state = gameReducer(state, setAIScoringData(undefined));
+
+      expect(state.aiScoringData).toBeUndefined();
     });
   });
 });

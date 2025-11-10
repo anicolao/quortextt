@@ -29,6 +29,7 @@ export const initialUIState: UIState = {
     debugShowVictoryEdges: false,
     debugLegalityTest: false,
     debugAnimationSlowdown: 1,
+    debugAIScoring: false,
   },
 };
 
