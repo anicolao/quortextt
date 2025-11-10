@@ -121,12 +121,24 @@ function evaluatePosition(
 }
 
 // Check if a position is adjacent to any flow or starting edge for any player
+// OR if the position itself is a starting edge position
 function isAdjacentToFlowOrEdge(
   position: HexPosition,
   board: Map<string, PlacedTile>,
   players: Player[],
   boardRadius = 3
 ): boolean {
+  // First, check if this position itself is a starting edge for any player
+  for (const player of players) {
+    const edgeData = getEdgePositionsWithDirections(player.edgePosition, boardRadius);
+    const isEdgePos = edgeData.some(({ pos }) => 
+      pos.row === position.row && pos.col === position.col
+    );
+    if (isEdgePos) {
+      return true;
+    }
+  }
+  
   // Check all 6 neighbors
   for (let dir = 0; dir < 6; dir++) {
     const neighbor = getNeighborInDirection(position, dir as Direction);
@@ -138,7 +150,7 @@ function isAdjacentToFlowOrEdge(
     
     const neighborKey = positionToKey(neighbor);
     
-    // Check if neighbor has a tile (adjacent to existing tile)
+    // Check if neighbor has a tile (adjacent to existing tile/flow)
     if (board.has(neighborKey)) {
       return true;
     }
