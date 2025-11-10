@@ -46,7 +46,8 @@ function getShortestPathLength(
   targetEdge: number,
   boardRadius = 3
 ): number {
-  const result = hasViablePath(board, player, targetEdge, true, false, boardRadius);
+  // Use allowEmptyHexes=true to find potential path through empty positions
+  const result = hasViablePath(board, player, targetEdge, true, true, boardRadius);
   
   if (typeof result === 'boolean') {
     // No path exists
@@ -57,8 +58,19 @@ function getShortestPathLength(
     return Infinity;
   }
   
-  // Return the number of tiles in the path
-  return result.pathToTarget.length;
+  // Count only the EMPTY tiles in the path (tiles that need to be placed)
+  // Occupied tiles don't count toward the "distance" since they're already placed
+  let emptyTileCount = 0;
+  for (const pos of result.pathToTarget) {
+    const posKey = positionToKey(pos);
+    if (!board.has(posKey)) {
+      emptyTileCount++;
+    }
+  }
+  
+  // Return number of empty tiles (tiles needed to complete the path)
+  // If all tiles are occupied, the path is complete (distance = 0)
+  return emptyTileCount;
 }
 
 // Evaluate a board position for the AI player
