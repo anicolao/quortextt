@@ -19,7 +19,7 @@ function wouldCauseVictory(
   tile: PlacedTile,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   // Create a new board with the proposed tile
   const testBoard = new Map(board);
@@ -74,9 +74,9 @@ export function hasViablePath(
   board: Map<string, PlacedTile>,
   player: Player,
   targetEdge: number,
-  returnDebugInfo = false,
-  allowEmptyHexes = true,
-  boardRadius = 3
+  returnDebugInfo: boolean,
+  allowEmptyHexes: boolean,
+  boardRadius: number
 ): boolean | PathFindingResult {
   const startEdge = player.edgePosition;
   
@@ -294,7 +294,7 @@ function allPlayersHaveViablePath(
   board: Map<string, PlacedTile>,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   // For team games
   if (teams.length > 0) {
@@ -331,8 +331,8 @@ export function isLegalMove(
   tile: PlacedTile,
   players: Player[],
   teams: Team[],
-  boardRadius = 3,
-  supermoveEnabled = false
+  boardRadius: number,
+  supermoveEnabled: boolean
 ): boolean {
   // A move is illegal if:
   // 1. The position is already occupied
@@ -369,7 +369,7 @@ export function getBlockedPlayers(
   tile: PlacedTile,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): string[] {
   const blockedPlayerIds: string[] = [];
   
@@ -427,7 +427,7 @@ export function findLegalMoves(
   rotation: Rotation,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): HexPosition[] {
   const legalPositions: HexPosition[] = [];
   
@@ -441,7 +441,7 @@ export function findLegalMoves(
       position,
     };
     
-    if (isLegalMove(board, tile, players, teams, boardRadius)) {
+    if (isLegalMove(board, tile, players, teams, boardRadius, false)) {
       legalPositions.push(position);
     }
   }
@@ -455,11 +455,12 @@ export function canTileBePlacedAnywhere(
   board: Map<string, PlacedTile>,
   tileType: TileType,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius: number
 ): boolean {
   // Try all rotations
   for (let rotation = 0; rotation < 6; rotation++) {
-    const legalMoves = findLegalMoves(board, tileType, rotation as Rotation, players, teams);
+    const legalMoves = findLegalMoves(board, tileType, rotation as Rotation, players, teams, boardRadius);
     if (legalMoves.length > 0) {
       return true;
     }
@@ -491,7 +492,8 @@ export interface EdgeNodeInfo {
 export function getDebugPathInfo(
   board: Map<string, PlacedTile>,
   players: Player[],
-  teams: Team[]
+  teams: Team[],
+  boardRadius: number
 ): PlayerPathDebugInfo[] {
   const debugInfo: PlayerPathDebugInfo[] = [];
   
@@ -503,7 +505,7 @@ export function getDebugPathInfo(
       
       if (player1 && player2) {
         // Player 1 trying to reach player 2's edge
-        const result1 = hasViablePath(board, player1, player2.edgePosition, true) as PathFindingResult;
+        const result1 = hasViablePath(board, player1, player2.edgePosition, true, true, boardRadius) as PathFindingResult;
         debugInfo.push({
           playerId: player1.id,
           playerColor: player1.color,
@@ -517,7 +519,7 @@ export function getDebugPathInfo(
         });
         
         // Player 2 trying to reach player 1's edge
-        const result2 = hasViablePath(board, player2, player1.edgePosition, true) as PathFindingResult;
+        const result2 = hasViablePath(board, player2, player1.edgePosition, true, true, boardRadius) as PathFindingResult;
         debugInfo.push({
           playerId: player2.id,
           playerColor: player2.color,
@@ -535,7 +537,7 @@ export function getDebugPathInfo(
     // Individual games - each player to opposite edge
     for (const player of players) {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      const result = hasViablePath(board, player, targetEdge, true) as PathFindingResult;
+      const result = hasViablePath(board, player, targetEdge, true, true, boardRadius) as PathFindingResult;
       
       debugInfo.push({
         playerId: player.id,
@@ -560,7 +562,7 @@ export function isPlayerBlocked(
   player: Player,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   // For team games, check if the player's team is blocked
   if (teams.length > 0) {
@@ -593,7 +595,7 @@ export function wouldReplacementUnblock(
   player: Player,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   // First, check if player is currently blocked
   if (!isPlayerBlocked(board, player, players, teams, boardRadius)) {
@@ -624,7 +626,7 @@ export function isValidReplacementMove(
   currentPlayer: Player,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius: number
 ): boolean {
   const posKey = positionToKey(replacementPosition);
   

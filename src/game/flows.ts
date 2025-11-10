@@ -25,7 +25,7 @@ export function traceFlow(
   startPos: HexPosition,
   startDirection: Direction,
   playerId: string,
-  boardRadius: number = 3,
+  boardRadius: number,
 ): { positions: Set<string>; edges: FlowEdgeData[] } {
   const flowPositions = new Set<string>();
   const flowEdges: FlowEdgeData[] = [];
@@ -80,7 +80,7 @@ export function traceFlow(
 export function calculateFlows(
   board: Map<string, PlacedTile>,
   players: Player[],
-  boardRadius = 3,
+  boardRadius: number,
 ): {
   flows: Map<string, Set<string>>;
   flowEdges: Map<string, Map<Direction, string>>; // position key -> direction -> player ID
