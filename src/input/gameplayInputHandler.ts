@@ -118,7 +118,7 @@ export class GameplayInputHandler {
       // No tile placed - check if clicking on current tile preview to rotate
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       if (currentPlayer) {
-        const edgePos = getPlayerEdgePosition(currentPlayer.edgePosition, layout);
+        const edgePos = getPlayerEdgePosition(currentPlayer.edgePosition, layout, state.game.boardRadius);
         
         if (isPointInHex({ x: canvasX, y: canvasY }, edgePos, layout.size)) {
           this.handleTileRotation(canvasX, edgePos.x);
