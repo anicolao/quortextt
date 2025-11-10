@@ -157,7 +157,7 @@ export interface ResetGameAction {
 // AI debug action types
 export interface SetAIScoringDataAction {
   type: typeof SET_AI_SCORING_DATA;
-  payload: Map<string, { rotation: number; score: number }[]> | undefined;
+  payload: Record<string, { rotation: number; score: number }[]> | undefined;
 }
 
 // UI action types
@@ -330,7 +330,7 @@ export const updateSettings = (settings: Partial<GameSettings>): UpdateSettingsA
 });
 
 // AI debug action creators
-export const setAIScoringData = (data: Map<string, { rotation: number; score: number }[]> | undefined): SetAIScoringDataAction => ({
+export const setAIScoringData = (data: Record<string, { rotation: number; score: number }[]> | undefined): SetAIScoringDataAction => ({
   type: SET_AI_SCORING_DATA,
   payload: data,
 });

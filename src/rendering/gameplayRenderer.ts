@@ -623,7 +623,7 @@ export class GameplayRenderer {
     this.ctx.textBaseline = "middle";
     this.ctx.font = `${this.layout.size * 0.2}px monospace`;
 
-    state.game.aiScoringData.forEach((rotationScores, posKey) => {
+    Object.entries(state.game.aiScoringData).forEach(([posKey, rotationScores]) => {
       // Parse position key "row,col"
       const [rowStr, colStr] = posKey.split(',');
       const position = { row: parseInt(rowStr), col: parseInt(colStr) };
