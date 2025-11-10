@@ -101,11 +101,12 @@ function getEdgeButtonCoords(
 }
 
 /**
- * Get coordinates for tile rotation (click on left side for clockwise rotation)
+ * Get coordinates for tile rotation (click on left side in player's local coordinate system for clockwise rotation)
  */
 function getTileRotationCoords(
   canvasWidth: number,
   canvasHeight: number,
+  playerEdge: number,
   hexPos: HexPosition | null = null,
   boardRadius: number = 3
 ): { x: number; y: number } {
@@ -125,8 +126,22 @@ function getTileRotationCoords(
     centerY = canvasHeight / 2;
   }
   
-  // Click on LEFT side for clockwise rotation
-  return { x: centerX - offset, y: centerY };
+  // Calculate left side in player's local coordinate system
+  // Map edge positions to rotation angles (in degrees)
+  const edgeAngles = [0, 60, 120, 180, 240, 300];
+  const rotationAngle = edgeAngles[playerEdge];
+  const rotationRad = (rotationAngle * Math.PI) / 180;
+  
+  // In player's local coords, left is at (-offset, 0)
+  // Rotate this point to screen coords
+  const localX = -offset;
+  const localY = 0;
+  const cos = Math.cos(rotationRad);
+  const sin = Math.sin(rotationRad);
+  const screenX = centerX + (localX * cos - localY * sin);
+  const screenY = centerY + (localX * sin + localY * cos);
+  
+  return { x: screenX, y: screenY };
 }
 
 /**
@@ -297,7 +312,7 @@ export function actionsToClicks(
         // Then rotate tile to desired rotation (if needed)
         if (rotation !== 0) {
           for (let i = 0; i < rotation; i++) {
-            const rotateCoords = getTileRotationCoords(canvasWidth, canvasHeight, position);
+            const rotateCoords = getTileRotationCoords(canvasWidth, canvasHeight, currentPlayerEdge, position);
             clicks.push({
               type: 'click',
               target: 'tile-rotate',

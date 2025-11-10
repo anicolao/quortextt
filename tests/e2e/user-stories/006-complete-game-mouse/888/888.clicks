@@ -32,9 +32,9 @@
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":529.9638310485655,"y":550.5882352941177,"description":"Click hex at (3, -3)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
-{"type":"click","target":"tile-rotate","x":504.5520663426831,"y":550.5882352941177,"description":"Rotate tile (rotation 1)"}
+{"type":"click","target":"tile-rotate","x":555.3755957544478,"y":550.5882352941177,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":504.5520663426831,"y":550.5882352941177,"description":"Rotate tile (rotation 2)"}
+{"type":"click","target":"tile-rotate","x":555.3755957544478,"y":550.5882352941177,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
 {"type":"click","target":"checkmark","x":445.2579486956243,"y":550.5882352941177,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
@@ -44,9 +44,9 @@
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}
 {"type":"click","target":"hex-position","x":603.3212770161884,"y":550.5882352941177,"description":"Click hex at (3, -2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for tile placement"}
-{"type":"click","target":"tile-rotate","x":577.9095123103061,"y":550.5882352941177,"description":"Rotate tile (rotation 1)"}
+{"type":"click","target":"tile-rotate","x":628.7330417220708,"y":550.5882352941177,"description":"Rotate tile (rotation 1)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
-{"type":"click","target":"tile-rotate","x":577.9095123103061,"y":550.5882352941177,"description":"Rotate tile (rotation 2)"}
+{"type":"click","target":"tile-rotate","x":628.7330417220708,"y":550.5882352941177,"description":"Rotate tile (rotation 2)"}
 {"type":"wait","animationFrames":1,"description":"Wait for rotation"}
 {"type":"click","target":"checkmark","x":518.6153946632472,"y":550.5882352941177,"description":"Click checkmark to confirm"}
 {"type":"wait","animationFrames":1,"description":"Wait for confirmation"}

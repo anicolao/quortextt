@@ -1225,10 +1225,10 @@ export class GameplayRenderer {
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Rotate the checkmark icon to face the player
+    // Rotate the checkmark icon to face the player (plus 180 degrees to flip it upright)
     const edgeAngles = [0, 60, 120, 180, 240, 300];
     const rotationAngle = edgeAngles[playerEdge];
-    const rotationRad = (rotationAngle * Math.PI) / 180;
+    const rotationRad = (rotationAngle * Math.PI) / 180 + Math.PI;
     
     this.ctx.translate(center.x, center.y);
     this.ctx.rotate(rotationRad);
@@ -1263,10 +1263,10 @@ export class GameplayRenderer {
     this.ctx.arc(center.x, center.y, size / 2, 0, Math.PI * 2);
     this.ctx.fill();
 
-    // Rotate the X icon to face the player
+    // Rotate the X icon to face the player (plus 180 degrees to flip it upright)
     const edgeAngles = [0, 60, 120, 180, 240, 300];
     const rotationAngle = edgeAngles[playerEdge];
-    const rotationRad = (rotationAngle * Math.PI) / 180;
+    const rotationRad = (rotationAngle * Math.PI) / 180 + Math.PI;
     
     this.ctx.translate(center.x, center.y);
     this.ctx.rotate(rotationRad);
