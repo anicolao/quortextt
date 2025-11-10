@@ -65,7 +65,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     const { players, currentPlayerIndex, currentTile, board, teams, phase, supermoveInProgress } = state.game;
     
     // Only act if we're in playing phase and have a current tile
-    if (phase !== 'playing' || !currentTile) {
+    if (phase !== 'playing' || currentTile === null) {
       // Clear AI scoring data if no tile
       if (state.ui.settings.debugAIScoring && state.game.aiScoringData) {
         store.dispatch(setAIScoringData(undefined) as any);
