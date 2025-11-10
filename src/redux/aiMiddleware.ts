@@ -54,11 +54,8 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         const aiEdge = selectAIEdge(humanEdge, seatingPhase.availableEdges);
         
         if (aiEdge !== null) {
-          // Use setTimeout with 0 delay to dispatch on next event loop iteration
-          // This allows the current action to complete and UI to update
-          setTimeout(() => {
-            store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
-          }, 0);
+          // Dispatch edge selection for AI immediately (Redux is synchronous)
+          store.dispatch(selectEdge(currentPlayerId, aiEdge) as any);
         }
       }
     }
@@ -128,22 +125,19 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       );
       
       if (aiMove) {
-        // Use setTimeout to dispatch after a short delay
-        // This allows the UI to update and makes AI moves visible
-        setTimeout(() => {
-          if (aiMove.isReplacement) {
-            store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
-            // After replacement, the REPLACE_TILE action will trigger this middleware again
-            // with the replaced tile in hand, and we'll place it
-          } else {
-            store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
-            
-            // After placing a tile (not a replacement), always advance to next player
-            // Even when completing a supermove (placing the replaced tile), we advance
-            store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile() as any);
-          }
-        }, 1000);
+        // Dispatch the move immediately (Redux is synchronous - no setTimeout needed)
+        if (aiMove.isReplacement) {
+          store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
+          // After replacement, the REPLACE_TILE action will trigger this middleware again
+          // with the replaced tile in hand, and we'll place it
+        } else {
+          store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
+          
+          // After placing a tile (not a replacement), always advance to next player
+          // Even when completing a supermove (placing the replaced tile), we advance
+          store.dispatch(nextPlayer() as any);
+          store.dispatch(drawTile() as any);
+        }
       }
     }
   }
