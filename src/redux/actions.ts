@@ -134,6 +134,7 @@ export interface ReplaceTileAction {
   payload: {
     position: HexPosition;
     rotation: Rotation;
+    isSingleSupermove?: boolean; // If true, return tile to bag, shuffle, and advance to next player
   };
 }
 
@@ -281,9 +282,9 @@ export const placeTile = (position: HexPosition, rotation: Rotation): PlaceTileA
   payload: { position, rotation },
 });
 
-export const replaceTile = (position: HexPosition, rotation: Rotation): ReplaceTileAction => ({
+export const replaceTile = (position: HexPosition, rotation: Rotation, isSingleSupermove?: boolean): ReplaceTileAction => ({
   type: REPLACE_TILE,
-  payload: { position, rotation },
+  payload: { position, rotation, isSingleSupermove },
 });
 
 // Game flow action creators
