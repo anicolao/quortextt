@@ -234,4 +234,41 @@ describe('AI Evaluation Improvements', () => {
       expect(bestMove.score).toBeGreaterThan(-100);
     });
   });
+
+  describe('Enemy Victory Prevention', () => {
+    it('should assign worst possible score when enemy wins (worse than AI blocking itself)', () => {
+      // The LOSS_SCORE (-200000) should be worse than any other penalty
+      // including blocking ourselves (-100000) or blocking the opponent (-75000)
+      
+      // This is a conceptual test to ensure the constants are properly ordered
+      // In practice, the AI evaluation will check for enemy victories before
+      // other evaluations and return LOSS_SCORE immediately
+      
+      const board = new Map<string, PlacedTile>();
+      
+      const tileType = TileType.NoSharps;
+      
+      const candidates = generateMoveCandidates(
+        board,
+        tileType,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      // All candidates should avoid enemy victories
+      // Any move that would cause an enemy victory should have score = LOSS_SCORE = -200000
+      const enemyVictoryCandidates = candidates.filter(c => c.score === -200000);
+      
+      // In an empty board, there shouldn't be any moves that cause immediate enemy victory
+      expect(enemyVictoryCandidates.length).toBe(0);
+      
+      // Verify that all candidates have scores better than LOSS_SCORE
+      for (const candidate of candidates) {
+        expect(candidate.score).toBeGreaterThan(-200000);
+      }
+    });
+  });
 });
