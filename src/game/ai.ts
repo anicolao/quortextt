@@ -28,7 +28,7 @@ import { checkVictory } from './victory';
 const WIN_SCORE = 100000;
 const OWN_PATH_WEIGHT = -2;
 const ENEMY_PATH_WEIGHT = 1;
-const BLOCK_THREAT_BONUS = 50000; // Large bonus for blocking when enemy is 1 move from victory
+const BLOCK_THREAT_PENALTY = -50000; // Large penalty when enemy is 1 move from victory (urgent to block)
 const BLOCKING_PENALTY = -75000; // Heavy penalty for blocking the opponent completely
 
 // Move candidate with evaluation score
@@ -135,13 +135,14 @@ function evaluatePosition(
   const enemyScore = ENEMY_PATH_WEIGHT * (enemyMinPathLength * enemyMinPathLength);
   
   // Special case: Enemy is 1 move away from victory
-  // Add a large bonus to prioritize blocking this threat
-  let blockThreatBonus = 0;
+  // Apply a large penalty to make this situation very undesirable
+  // This motivates the AI to prevent/block the enemy from reaching this state
+  let blockThreatPenalty = 0;
   if (enemyMinPathLength === 1) {
-    blockThreatBonus = BLOCK_THREAT_BONUS;
+    blockThreatPenalty = BLOCK_THREAT_PENALTY;
   }
   
-  return aiScore + enemyScore + blockThreatBonus;
+  return aiScore + enemyScore + blockThreatPenalty;
 }
 
 // Check if a position is adjacent to any flow or starting edge for any player
