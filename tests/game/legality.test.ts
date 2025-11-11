@@ -103,7 +103,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3);
+      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3, false);
 
       // On an empty board, many positions should be legal
       expect(legalMoves.length).toBeGreaterThan(0);
@@ -121,7 +121,7 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3);
+      const legalMoves = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3, false);
 
       // Should not include the occupied position
       expect(legalMoves).not.toContainEqual({ row: 0, col: 0 });
@@ -132,8 +132,8 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const moves1 = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3);
-      const moves2 = findLegalMoves(board, TileType.ThreeSharps, 0, players, teams, 3);
+      const moves1 = findLegalMoves(board, TileType.NoSharps, 0, players, teams, 3, false);
+      const moves2 = findLegalMoves(board, TileType.ThreeSharps, 0, players, teams, 3, false);
 
       // Both should find legal moves
       expect(moves1.length).toBeGreaterThan(0);
@@ -145,8 +145,8 @@ describe('legal move validation', () => {
       const players = [createPlayer('p1', 0), createPlayer('p2', 3)];
       const teams: Team[] = [];
 
-      const moves1 = findLegalMoves(board, TileType.OneSharp, 0, players, teams, 3);
-      const moves2 = findLegalMoves(board, TileType.OneSharp, 3, players, teams, 3);
+      const moves1 = findLegalMoves(board, TileType.OneSharp, 0, players, teams, 3, false);
+      const moves2 = findLegalMoves(board, TileType.OneSharp, 3, players, teams, 3, false);
 
       // Both should find legal moves
       expect(moves1.length).toBeGreaterThan(0);

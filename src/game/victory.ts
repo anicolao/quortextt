@@ -102,9 +102,10 @@ export function checkConstraintVictory(
   currentTile: TileType,
   players: Player[],
   teams: Team[],
-  boardRadius: number
+  boardRadius: number,
+  supermoveEnabled: boolean
 ): boolean {
-  return !canTileBePlacedAnywhere(board, currentTile, players, teams, boardRadius);
+  return !canTileBePlacedAnywhere(board, currentTile, players, teams, boardRadius, supermoveEnabled);
 }
 
 // Check if any player/team has won
@@ -113,7 +114,8 @@ export function checkVictory(
   players: Player[],
   teams: Team[],
   currentTile: TileType | undefined,
-  boardRadius: number
+  boardRadius: number,
+  supermoveEnabled: boolean = false
 ): VictoryResult {
   // First check for flow victory
   const flowVictory = checkFlowVictory(board, players, teams, boardRadius);
@@ -123,7 +125,7 @@ export function checkVictory(
   
   // Check for constraint victory if a current tile is provided
   if (currentTile !== undefined) {
-    const constraintWin = checkConstraintVictory(board, currentTile, players, teams, boardRadius);
+    const constraintWin = checkConstraintVictory(board, currentTile, players, teams, boardRadius, supermoveEnabled);
     if (constraintWin) {
       // In constraint victory, the current player wins
       // We'll need to pass current player info for this to work properly

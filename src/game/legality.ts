@@ -428,7 +428,7 @@ export function findLegalMoves(
   players: Player[],
   teams: Team[],
   boardRadius: number,
-  supermoveEnabled: boolean = false
+  supermoveEnabled: boolean
 ): HexPosition[] {
   const legalPositions: HexPosition[] = [];
   
@@ -457,11 +457,12 @@ export function canTileBePlacedAnywhere(
   tileType: TileType,
   players: Player[],
   teams: Team[],
-  boardRadius: number
+  boardRadius: number,
+  supermoveEnabled: boolean
 ): boolean {
   // Try all rotations
   for (let rotation = 0; rotation < 6; rotation++) {
-    const legalMoves = findLegalMoves(board, tileType, rotation as Rotation, players, teams, boardRadius);
+    const legalMoves = findLegalMoves(board, tileType, rotation as Rotation, players, teams, boardRadius, supermoveEnabled);
     if (legalMoves.length > 0) {
       return true;
     }
