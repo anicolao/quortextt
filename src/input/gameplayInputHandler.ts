@@ -247,8 +247,8 @@ export class GameplayInputHandler {
     // getPlayerEdgePosition uses screen coordinates (0°=right, 90°=down, 180°=left, 270°=up)
     // getHexVertex uses math coordinates (0°=right, 90°=up, 180°=left, 270°=down)
     // Edge angles in screen coords: [270°, 330°, 30°, 90°, 150°, 210°]
-    // Corresponding vertices in math coords: [90°→v2, 30°→v1, 330°→v0, 270°→v5, 210°→v4, 150°→v3]
-    const edgeToApexVertex = [2, 1, 0, 5, 4, 3]; // Maps player edge to apex vertex
+    // Reversed vertex mapping based on user feedback (bottom/top were correct, sides needed reversal)
+    const edgeToApexVertex = [3, 4, 5, 0, 1, 2]; // Maps player edge to apex vertex
     const apexVertexIndex = edgeToApexVertex[playerEdge];
     
     // Get apex position in pixel coordinates
