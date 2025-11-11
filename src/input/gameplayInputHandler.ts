@@ -216,12 +216,20 @@ export class GameplayInputHandler {
     const rotationRad = (rotationAngle * Math.PI) / 180;
 
     // Define button positions relative to tile center for edge 0 (bottom player)
+    const rotationButtonDistance = spacing * 0.75;
     const basePositions = {
       checkmark: { x: spacing, y: 0 },
       cancel: { x: -spacing, y: 0 },
-      // NE and NW corners with increased spacing
-      rotateNE: this.getEdgeMidpointRelative(spacing * 0.75, 3), // Direction 3 = NE
-      rotateNW: this.getEdgeMidpointRelative(spacing * 0.75, 2), // Direction 2 = NW
+      // Rotation buttons at NE (60°) and NW (120°) positions
+      // Use direct angle calculation instead of getEdgeMidpointRelative
+      rotateNE: { 
+        x: rotationButtonDistance * Math.cos(60 * Math.PI / 180), 
+        y: rotationButtonDistance * Math.sin(60 * Math.PI / 180) 
+      },
+      rotateNW: { 
+        x: rotationButtonDistance * Math.cos(120 * Math.PI / 180), 
+        y: rotationButtonDistance * Math.sin(120 * Math.PI / 180) 
+      },
     };
 
     // Rotate each position and translate to tile center
@@ -239,18 +247,6 @@ export class GameplayInputHandler {
       cancel: rotatePoint(basePositions.cancel),
       rotateNE: rotatePoint(basePositions.rotateNE),
       rotateNW: rotatePoint(basePositions.rotateNW),
-    };
-  }
-
-  // Helper to get edge midpoint relative to origin
-  private getEdgeMidpointRelative(size: number, direction: number): { x: number; y: number } {
-    // Direction 3 = NE (60°), Direction 2 = NW (120°)
-    const angles = [240, 180, 120, 60, 0, 300]; // SouthWest, West, NorthWest, NorthEast, East, SouthEast
-    const angleDeg = angles[direction];
-    const angleRad = (Math.PI / 180) * angleDeg;
-    return {
-      x: size * Math.cos(angleRad),
-      y: size * Math.sin(angleRad),
     };
   }
 

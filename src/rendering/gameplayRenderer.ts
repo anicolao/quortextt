@@ -1285,12 +1285,20 @@ export class GameplayRenderer {
 
     // Define button positions relative to tile center for edge 0 (bottom player)
     // Checkmark on right, cancel on left, rotation buttons at NE and NW
+    const rotationButtonDistance = spacing * 0.75;
     const basePositions = {
       checkmark: { x: spacing, y: 0 },
       cancel: { x: -spacing, y: 0 },
-      // Rotation buttons with more spacing
-      rotateNE: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 3), // Direction 3 = NE
-      rotateNW: getEdgeMidpoint({ x: 0, y: 0 }, spacing * 0.75, 2), // Direction 2 = NW
+      // Rotation buttons at NE (60°) and NW (120°) positions
+      // Use direct angle calculation instead of getEdgeMidpoint
+      rotateNE: { 
+        x: rotationButtonDistance * Math.cos(60 * Math.PI / 180), 
+        y: rotationButtonDistance * Math.sin(60 * Math.PI / 180) 
+      },
+      rotateNW: { 
+        x: rotationButtonDistance * Math.cos(120 * Math.PI / 180), 
+        y: rotationButtonDistance * Math.sin(120 * Math.PI / 180) 
+      },
     };
 
     // Rotate each position around the origin and translate to tile center
