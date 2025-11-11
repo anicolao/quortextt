@@ -1838,17 +1838,21 @@ export class GameplayRenderer {
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
 
-    // Dialog box dimensions
-    const dialogWidth = Math.min(500, this.layout.canvasWidth * 0.8);
-    const dialogHeight = Math.min(700, this.layout.canvasHeight * 0.8);
-    const margin = 20;
-    
     // Calculate rotation based on edge
     // Edge 0 (bottom) = 0°, Edge 1 (right) = 270°, Edge 2 (top) = 180°, Edge 3 (left) = 90°
     let rotation = 0;
     if (corner === 1) rotation = 270;
     else if (corner === 2) rotation = 180;
     else if (corner === 3) rotation = 90;
+
+    // For 90° and 270° rotations, dimensions are swapped from the rotated perspective
+    const rotatedWidth = (rotation === 90 || rotation === 270) ? this.layout.canvasHeight : this.layout.canvasWidth;
+    const rotatedHeight = (rotation === 90 || rotation === 270) ? this.layout.canvasWidth : this.layout.canvasHeight;
+
+    // Dialog box dimensions (based on rotated space)
+    const dialogWidth = Math.min(500, rotatedWidth * 0.8);
+    const dialogHeight = Math.min(700, rotatedHeight * 0.8);
+    const margin = 20;
 
     // Save context state
     this.ctx.save();
@@ -1858,8 +1862,8 @@ export class GameplayRenderer {
     this.ctx.rotate((rotation * Math.PI) / 180);
 
     // Position dialog in rotated space (always bottom-left in rotated coordinates)
-    const dialogX = -this.layout.canvasWidth / 2 + margin;
-    const dialogY = this.layout.canvasHeight / 2 - dialogHeight - margin;
+    const dialogX = -rotatedWidth / 2 + margin;
+    const dialogY = rotatedHeight / 2 - dialogHeight - margin;
 
     // Dialog background
     this.ctx.fillStyle = "#2a2a3e";
