@@ -34,6 +34,7 @@ export const RESET_GAME = 'RESET_GAME';
 
 // UI actions
 export const SET_HOVERED_POSITION = 'SET_HOVERED_POSITION';
+export const SET_HOVERED_ELEMENT = 'SET_HOVERED_ELEMENT';
 export const SET_SELECTED_POSITION = 'SET_SELECTED_POSITION';
 export const SET_ROTATION = 'SET_ROTATION';
 export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
@@ -167,6 +168,11 @@ export interface SetHoveredPositionAction {
   payload: HexPosition | null;
 }
 
+export interface SetHoveredElementAction {
+  type: typeof SET_HOVERED_ELEMENT;
+  payload: import('./types').HoveredElementType;
+}
+
 export interface SetSelectedPositionAction {
   type: typeof SET_SELECTED_POSITION;
   payload: HexPosition | null;
@@ -212,6 +218,7 @@ export type GameAction =
 
 export type UIAction =
   | SetHoveredPositionAction
+  | SetHoveredElementAction
   | SetSelectedPositionAction
   | SetRotationAction
   | ToggleLegalMovesAction
@@ -305,6 +312,11 @@ export const resetGame = (): ResetGameAction => ({
 export const setHoveredPosition = (position: HexPosition | null): SetHoveredPositionAction => ({
   type: SET_HOVERED_POSITION,
   payload: position,
+});
+
+export const setHoveredElement = (element: import('./types').HoveredElementType): SetHoveredElementAction => ({
+  type: SET_HOVERED_ELEMENT,
+  payload: element,
 });
 
 export const setSelectedPosition = (position: HexPosition | null): SetSelectedPositionAction => ({

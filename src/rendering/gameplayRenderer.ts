@@ -109,6 +109,11 @@ export class GameplayRenderer {
     if (state.ui.settings.debugLegalityTest) {
       this.renderDebugLegalityPaths(state);
     }
+
+    // Layer 8: Debug hit test visualization
+    if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
+      this.renderDebugHitTestOutline(state.ui.hoveredElement);
+    }
   }
 
   private renderBackground(): void {
@@ -1856,5 +1861,37 @@ export class GameplayRenderer {
 
   getLayout(): HexLayout {
     return this.layout;
+  }
+
+  private renderDebugHitTestOutline(element: import('../redux/types').HoveredElementType): void {
+    if (!element) return;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = '#ff0000'; // Red outline
+    this.ctx.lineWidth = 2;
+    this.ctx.setLineDash([5, 5]); // Dashed line
+
+    switch (element.type) {
+      case 'hexagon': {
+        const center = hexToPixel(element.position, this.layout);
+        this.drawHexagon(center, this.layout.size, false);
+        break;
+      }
+      case 'rotation-button':
+      case 'action-button': {
+        // Draw circle outline
+        this.ctx.beginPath();
+        this.ctx.arc(element.position.x, element.position.y, element.radius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        break;
+      }
+      case 'exit-button': {
+        // Draw rectangle outline
+        this.ctx.strokeRect(element.x, element.y, element.width, element.height);
+        break;
+      }
+    }
+
+    this.ctx.restore();
   }
 }
