@@ -1437,8 +1437,8 @@ export class GameplayRenderer {
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead at the START of the arc as a filled triangle
-    const arrowSize = size * 0.18; // Increased from 0.12
+    // Draw arrowhead at the START of the arc as a stroked triangle
+    const arrowSize = size * 0.25; // Made larger for visibility
     const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
@@ -1448,8 +1448,7 @@ export class GameplayRenderer {
     // Tangent points in direction of rotation: +90° for clockwise, -90° for counter-clockwise
     const tangentAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
     
-    // Draw arrowhead as a filled triangle pointing along the tangent
-    this.ctx.fillStyle = BUTTON_ICON;
+    // Draw arrowhead as a stroked and filled triangle for better visibility
     this.ctx.beginPath();
     
     // Tip of the arrow
@@ -1459,21 +1458,29 @@ export class GameplayRenderer {
     );
     
     // Left side of the arrow base (perpendicular to tangent)
-    const baseAngle1 = tangentAngle + Math.PI * 0.6; // Adjusted angle
+    const baseAngle1 = tangentAngle + Math.PI * 0.65;
     this.ctx.lineTo(
       arrowX + arrowSize * 0.4 * Math.cos(baseAngle1),
       arrowY + arrowSize * 0.4 * Math.sin(baseAngle1)
     );
     
     // Right side of the arrow base (perpendicular to tangent)
-    const baseAngle2 = tangentAngle - Math.PI * 0.6; // Adjusted angle
+    const baseAngle2 = tangentAngle - Math.PI * 0.65;
     this.ctx.lineTo(
       arrowX + arrowSize * 0.4 * Math.cos(baseAngle2),
       arrowY + arrowSize * 0.4 * Math.sin(baseAngle2)
     );
     
     this.ctx.closePath();
+    
+    // Fill the arrowhead
+    this.ctx.fillStyle = BUTTON_ICON;
     this.ctx.fill();
+    
+    // Stroke the arrowhead for better visibility
+    this.ctx.strokeStyle = BUTTON_ICON;
+    this.ctx.lineWidth = size * 0.08;
+    this.ctx.stroke();
 
     this.ctx.restore();
   }
