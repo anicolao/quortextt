@@ -132,16 +132,7 @@ function createShuffledDeck(
     ...Array(threeSharps).fill(TileType.ThreeSharps),
   ];
 
-  // Fisher-Yates shuffle
-  const shuffled = [...tiles];
-  const random = seed !== undefined ? seededRandom(seed) : Math.random;
-  
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  return shuffled;
+  return shuffleArray(tiles, seed);
 }
 
 // Seeded random number generator
@@ -170,14 +161,7 @@ function shuffleArray<T>(array: T[], seed?: number): T[] {
 // Uses Fisher-Yates shuffle for uniform distribution
 // If seed is provided, uses seeded random for deterministic behavior
 function randomizePlayerOrder(playerIds: string[], seed?: number): string[] {
-  const shuffled = [...playerIds];
-  const random = seed !== undefined ? seededRandom(seed) : Math.random;
-  
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+  return shuffleArray(playerIds, seed);
 }
 
 // Helper function to determine gameplay order after seating is complete
