@@ -55,7 +55,11 @@ export class GameplayRenderer {
   }
 
   updateLayout(canvasWidth: number, canvasHeight: number): void {
-    this.layout = calculateHexLayout(canvasWidth, canvasHeight, this.boardRadius);
+    this.layout = calculateHexLayout(
+      canvasWidth,
+      canvasHeight,
+      this.boardRadius,
+    );
     // Clear cache when layout changes
     this.bezierLengthCache.clear();
   }
@@ -130,7 +134,8 @@ export class GameplayRenderer {
     const center = this.layout.origin;
     // Calculate board radius based on the game's board radius setting
     // The board background should be boardRadius * 2 + 1.2 times the hex size
-    const boardRadius = this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
+    const boardRadius =
+      this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
 
     // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
     this.ctx.fillStyle = BOARD_HEX_BG;
@@ -161,7 +166,10 @@ export class GameplayRenderer {
     // Create a polygon from the zig-zag of source edges plus perpendiculars to board boundary
 
     // Get all source edge positions and their vertices (the zig-zag)
-    const sourceEdges = getEdgePositionsWithDirections(edgePosition, boardRadius);
+    const sourceEdges = getEdgePositionsWithDirections(
+      edgePosition,
+      boardRadius,
+    );
     if (sourceEdges.length === 0) return;
 
     // Collect all the edge vertices that form the zig-zag pattern
@@ -378,7 +386,8 @@ export class GameplayRenderer {
     if (winners.length === 0) return;
 
     const center = this.layout.origin;
-    const boardRadius = this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
+    const boardRadius =
+      this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
     const boardVertices = this.getFlatTopHexVertices(center, boardRadius);
 
     // Get the glow intensity for pulsing effect
@@ -412,7 +421,7 @@ export class GameplayRenderer {
       const [v1Index, v2Index] = vertexMap[edgePosition];
       const v1 = boardVertices[v1Index];
       const v2 = boardVertices[v2Index];
-      
+
       // Calculate midpoint of the edge
       const edgeMidpoint = {
         x: (v1.x + v2.x) / 2,
@@ -425,7 +434,7 @@ export class GameplayRenderer {
       const dy = edgeMidpoint.y - center.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       const offsetDistance = this.layout.size * 0.8; // Move star outward
-      
+
       const starPosition = {
         x: edgeMidpoint.x + (dx / distance) * offsetDistance,
         y: edgeMidpoint.y + (dy / distance) * offsetDistance,
@@ -441,13 +450,23 @@ export class GameplayRenderer {
         const activePlayerId = playerIds[activePlayerIndex % playerIds.length];
         const player = players.find((p) => p.id === activePlayerId);
         if (player) {
-          this.drawStar(starPosition, this.layout.size * 0.4, player.color, glowIntensity);
+          this.drawStar(
+            starPosition,
+            this.layout.size * 0.4,
+            player.color,
+            glowIntensity,
+          );
         }
       } else {
         // Single winner on this edge
         const player = players.find((p) => p.id === playerIds[0]);
         if (player) {
-          this.drawStar(starPosition, this.layout.size * 0.4, player.color, glowIntensity);
+          this.drawStar(
+            starPosition,
+            this.layout.size * 0.4,
+            player.color,
+            glowIntensity,
+          );
         }
       }
     });
@@ -458,7 +477,7 @@ export class GameplayRenderer {
     center: Point,
     size: number,
     color: string,
-    pulseIntensity: number
+    pulseIntensity: number,
   ): void {
     const points = 5;
     const outerRadius = size * (0.9 + 0.1 * pulseIntensity);
@@ -549,8 +568,6 @@ export class GameplayRenderer {
     });
   }
 
-
-
   private renderVictoryConditionEdges(state: RootState): void {
     // Debug rendering: Highlight the victory condition edges
     // Victory edges are the same as the start edges for a player on the opposite side
@@ -558,7 +575,10 @@ export class GameplayRenderer {
 
     state.game.players.forEach((player) => {
       const targetEdge = getOppositeEdge(player.edgePosition);
-      const targetEdgeData = getEdgePositionsWithDirections(targetEdge, state.game.boardRadius);
+      const targetEdgeData = getEdgePositionsWithDirections(
+        targetEdge,
+        state.game.boardRadius,
+      );
 
       // Draw the same edges as start edges, but for the opposite side
       // These are the edges where flow must exit to win
@@ -634,38 +654,40 @@ export class GameplayRenderer {
     this.ctx.textBaseline = "middle";
     this.ctx.font = `${this.layout.size * 0.2}px monospace`;
 
-    Object.entries(state.game.aiScoringData).forEach(([posKey, rotationScores]) => {
-      // Parse position key "row,col"
-      const [rowStr, colStr] = posKey.split(',');
-      const position = { row: parseInt(rowStr), col: parseInt(colStr) };
-      const center = hexToPixel(position, this.layout);
+    Object.entries(state.game.aiScoringData).forEach(
+      ([posKey, rotationScores]) => {
+        // Parse position key "row,col"
+        const [rowStr, colStr] = posKey.split(",");
+        const position = { row: parseInt(rowStr), col: parseInt(colStr) };
+        const center = hexToPixel(position, this.layout);
 
-      // Draw scores for each rotation in corners of the hexagon
-      rotationScores.forEach(({ rotation, score }) => {
-        // Get the position for this rotation
-        // Rotations 0-5 correspond to corners of the hexagon
-        const angle = (rotation * 60 - 30) * (Math.PI / 180); // Start from top corner
-        const radius = this.layout.size * 0.7; // Position near the corner
-        const x = center.x + Math.cos(angle) * radius;
-        const y = center.y + Math.sin(angle) * radius;
+        // Draw scores for each rotation in corners of the hexagon
+        rotationScores.forEach(({ rotation, score }) => {
+          // Get the position for this rotation
+          // Rotations 0-5 correspond to corners of the hexagon
+          const angle = (rotation * 60 - 30) * (Math.PI / 180); // Start from top corner
+          const radius = this.layout.size * 0.7; // Position near the corner
+          const x = center.x + Math.cos(angle) * radius;
+          const y = center.y + Math.sin(angle) * radius;
 
-        // Format score for display
-        const scoreText = score >= 100000 ? 'WIN!' : score.toFixed(0);
+          // Format score for display
+          const scoreText = score >= 100000 ? "WIN!" : score.toFixed(0);
 
-        // Draw background circle
-        const bgRadius = this.layout.size * 0.15;
-        this.ctx.fillStyle = score >= 100000 ? '#00ff00' : '#ffff00';
-        this.ctx.globalAlpha = 0.7;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, bgRadius, 0, 2 * Math.PI);
-        this.ctx.fill();
+          // Draw background circle
+          const bgRadius = this.layout.size * 0.15;
+          this.ctx.fillStyle = score >= 100000 ? "#00ff00" : "#ffff00";
+          this.ctx.globalAlpha = 0.7;
+          this.ctx.beginPath();
+          this.ctx.arc(x, y, bgRadius, 0, 2 * Math.PI);
+          this.ctx.fill();
 
-        // Draw score text
-        this.ctx.globalAlpha = 1.0;
-        this.ctx.fillStyle = '#000000';
-        this.ctx.fillText(scoreText, x, y);
-      });
-    });
+          // Draw score text
+          this.ctx.globalAlpha = 1.0;
+          this.ctx.fillStyle = "#000000";
+          this.ctx.fillText(scoreText, x, y);
+        });
+      },
+    );
 
     // Reset alpha
     this.ctx.globalAlpha = 1.0;
@@ -773,7 +795,7 @@ export class GameplayRenderer {
           // Bidirectional flow: draw each player's color on their respective half
           const player1Obj = state.game.players.find((p) => p.id === player1);
           const player2Obj = state.game.players.find((p) => p.id === player2);
-          
+
           if (player1Obj && player2Obj) {
             // Draw player1's flow on the left half
             const shouldGlow1 =
@@ -788,7 +810,7 @@ export class GameplayRenderer {
                 state.game.flowEdges,
                 state.game.boardRadius,
               );
-            
+
             this.drawFlowConnection(
               center,
               dir1,
@@ -797,9 +819,9 @@ export class GameplayRenderer {
               1.0,
               false,
               shouldGlow1,
-              'left',
+              "left",
             );
-            
+
             // Draw player2's flow on the right half
             const shouldGlow2 =
               isGameOver &&
@@ -813,7 +835,7 @@ export class GameplayRenderer {
                 state.game.flowEdges,
                 state.game.boardRadius,
               );
-            
+
             this.drawFlowConnection(
               center,
               dir1,
@@ -822,15 +844,15 @@ export class GameplayRenderer {
               1.0,
               false,
               shouldGlow2,
-              'right',
+              "right",
             );
           }
           return; // Bidirectional handled
         }
-        
+
         // Unidirectional flow: use existing logic
         const playerId = player1 || player2;
-        
+
         if (playerId) {
           const player = state.game.players.find((p) => p.id === playerId);
           if (player) {
@@ -894,8 +916,6 @@ export class GameplayRenderer {
     });
   }
 
-
-
   private renderAnimatingFlows(tile: PlacedTile, state: RootState): void {
     const center = hexToPixel(tile.position, this.layout);
     const connections = getFlowConnections(tile.type, tile.rotation);
@@ -938,7 +958,7 @@ export class GameplayRenderer {
     progress: number,
     isAnimating: boolean,
     withGlow: boolean = false,
-    clipSide?: 'left' | 'right',
+    clipSide?: "left" | "right",
   ): void {
     // Get edge midpoints
     const start = getEdgeMidpoint(center, this.layout.size, dir1);
@@ -974,62 +994,86 @@ export class GameplayRenderer {
       // Create a clipping path along the centerline of the channel
       // We'll clip to either the left or right half of the stroke
       this.ctx.beginPath();
-      
+
       // Calculate the centerline of the bezier curve
       const numPoints = 30;
-      
+
       // Calculate perpendicular offset for each point
       // The direction depends on which side we're clipping
-      const offsetSign = clipSide === 'left' ? -1 : 1;
-      
+      const offsetSign = clipSide === "left" ? -1 : 1;
+
       // Start from one end, offset perpendicular
       for (let i = 0; i <= numPoints; i++) {
         const t = i / numPoints;
         const pt = this.bezierPoint(t, start, control1, control2, end);
-        
+
         // Calculate tangent at this point
         let tangent: Point;
         if (i === 0) {
-          const nextPt = this.bezierPoint((i + 1) / numPoints, start, control1, control2, end);
+          const nextPt = this.bezierPoint(
+            (i + 1) / numPoints,
+            start,
+            control1,
+            control2,
+            end,
+          );
           tangent = { x: nextPt.x - pt.x, y: nextPt.y - pt.y };
         } else if (i === numPoints) {
-          const prevPt = this.bezierPoint((i - 1) / numPoints, start, control1, control2, end);
+          const prevPt = this.bezierPoint(
+            (i - 1) / numPoints,
+            start,
+            control1,
+            control2,
+            end,
+          );
           tangent = { x: pt.x - prevPt.x, y: pt.y - prevPt.y };
         } else {
-          const prevPt = this.bezierPoint((i - 1) / numPoints, start, control1, control2, end);
-          const nextPt = this.bezierPoint((i + 1) / numPoints, start, control1, control2, end);
+          const prevPt = this.bezierPoint(
+            (i - 1) / numPoints,
+            start,
+            control1,
+            control2,
+            end,
+          );
+          const nextPt = this.bezierPoint(
+            (i + 1) / numPoints,
+            start,
+            control1,
+            control2,
+            end,
+          );
           tangent = { x: nextPt.x - prevPt.x, y: nextPt.y - prevPt.y };
         }
-        
+
         // Normalize tangent
         const len = Math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y);
         if (len > 0) {
           tangent.x /= len;
           tangent.y /= len;
         }
-        
+
         // Perpendicular is (-y, x) for left, (y, -x) for right
         const perpX = -tangent.y * offsetSign;
         const perpY = tangent.x * offsetSign;
-        
+
         // Offset by a large amount to ensure we clip the entire half
         const offset = this.layout.size * 2;
         const offsetPt = { x: pt.x + perpX * offset, y: pt.y + perpY * offset };
-        
+
         if (i === 0) {
           this.ctx.moveTo(offsetPt.x, offsetPt.y);
         } else {
           this.ctx.lineTo(offsetPt.x, offsetPt.y);
         }
       }
-      
+
       // Come back along the centerline
       for (let i = numPoints; i >= 0; i--) {
         const t = i / numPoints;
         const pt = this.bezierPoint(t, start, control1, control2, end);
         this.ctx.lineTo(pt.x, pt.y);
       }
-      
+
       this.ctx.closePath();
       this.ctx.clip();
     }
@@ -1231,31 +1275,54 @@ export class GameplayRenderer {
     const currentPlayer = state.game.players[state.game.currentPlayerIndex];
     const posKey = positionToKey(state.ui.selectedPosition);
     const isOccupied = state.game.board.has(posKey);
-    const hasSupermove = state.ui.settings.supermove && currentPlayer && isOccupied &&
+    const hasSupermove =
+      state.ui.settings.supermove &&
+      currentPlayer &&
+      isOccupied &&
       isPlayerBlocked(
         state.game.board,
         currentPlayer,
         state.game.players,
         state.game.teams,
-        state.game.boardRadius
+        state.game.boardRadius,
       );
 
     // Get the current player's edge to orient buttons toward them
     const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
-    
+
     // Calculate button positions oriented toward the player's edge
     // The buttons are positioned relative to the player's viewing angle
-    const buttonPositions = this.getOrientedButtonPositions(center, buttonSpacing, playerEdge);
-    
+    const buttonPositions = this.getOrientedButtonPositions(
+      center,
+      buttonSpacing,
+      playerEdge,
+    );
+
     // Checkmark button (positioned to the right from player's perspective)
-    this.renderCheckmarkButton(buttonPositions.checkmark, buttonSize, isLegal, hasSupermove, playerEdge);
+    this.renderCheckmarkButton(
+      buttonPositions.checkmark,
+      buttonSize,
+      isLegal,
+      hasSupermove,
+      playerEdge,
+    );
 
     // X button (positioned to the left from player's perspective)
     this.renderXButton(buttonPositions.cancel, buttonSize, playerEdge);
 
     // Rotation buttons at NE and NW corners
-    this.renderRotationButton(buttonPositions.rotateNE, buttonSize * 0.6, true, playerEdge);
-    this.renderRotationButton(buttonPositions.rotateNW, buttonSize * 0.6, false, playerEdge);
+    this.renderRotationButton(
+      buttonPositions.rotateNE,
+      buttonSize * 0.6,
+      true,
+      playerEdge,
+    );
+    this.renderRotationButton(
+      buttonPositions.rotateNW,
+      buttonSize * 0.6,
+      false,
+      playerEdge,
+    );
 
     // Show blocked players warning if move is illegal
     if (!isLegal && blockedPlayers.length > 0) {
@@ -1277,12 +1344,12 @@ export class GameplayRenderer {
     // Map edge positions to rotation angles (in degrees)
     // Edge 0 (bottom) = 0°, Edge 3 (top) = 180°, etc.
     const edgeAngles = [
-      0,    // Edge 0: Bottom - no rotation needed
-      60,   // Edge 1: Bottom-right
-      120,  // Edge 2: Top-right
-      180,  // Edge 3: Top
-      240,  // Edge 4: Top-left
-      300,  // Edge 5: Bottom-left
+      0, // Edge 0: Bottom - no rotation needed
+      60, // Edge 1: Bottom-right
+      120, // Edge 2: Top-right
+      180, // Edge 3: Top
+      240, // Edge 4: Top-left
+      300, // Edge 5: Bottom-left
     ];
 
     const rotationAngle = edgeAngles[playerEdge];
@@ -1296,13 +1363,13 @@ export class GameplayRenderer {
       cancel: { x: -spacing, y: 0 },
       // Rotation buttons at NE (60°) and NW (120°) positions
       // Use direct angle calculation instead of getEdgeMidpoint
-      rotateNE: { 
-        x: rotationButtonDistance * Math.cos(60 * Math.PI / 180), 
-        y: rotationButtonDistance * Math.sin(60 * Math.PI / 180) 
+      rotateNE: {
+        x: rotationButtonDistance * Math.cos((60 * Math.PI) / 180),
+        y: rotationButtonDistance * Math.sin((60 * Math.PI) / 180),
       },
-      rotateNW: { 
-        x: rotationButtonDistance * Math.cos(120 * Math.PI / 180), 
-        y: rotationButtonDistance * Math.sin(120 * Math.PI / 180) 
+      rotateNW: {
+        x: rotationButtonDistance * Math.cos((120 * Math.PI) / 180),
+        y: rotationButtonDistance * Math.sin((120 * Math.PI) / 180),
       },
     };
 
@@ -1360,7 +1427,7 @@ export class GameplayRenderer {
     const edgeAngles = [0, 60, 120, 180, 240, 300];
     const rotationAngle = edgeAngles[playerEdge];
     const rotationRad = (rotationAngle * Math.PI) / 180 + Math.PI;
-    
+
     this.ctx.translate(center.x, center.y);
     this.ctx.rotate(rotationRad);
 
@@ -1385,9 +1452,13 @@ export class GameplayRenderer {
     this.ctx.restore();
   }
 
-  private renderXButton(center: Point, size: number, playerEdge: number = 0): void {
+  private renderXButton(
+    center: Point,
+    size: number,
+    playerEdge: number = 0,
+  ): void {
     this.ctx.save();
-    
+
     // Draw button background
     this.ctx.fillStyle = "rgba(211, 47, 47, 0.8)";
     this.ctx.beginPath();
@@ -1398,7 +1469,7 @@ export class GameplayRenderer {
     const edgeAngles = [0, 60, 120, 180, 240, 300];
     const rotationAngle = edgeAngles[playerEdge];
     const rotationRad = (rotationAngle * Math.PI) / 180 + Math.PI;
-    
+
     this.ctx.translate(center.x, center.y);
     this.ctx.rotate(rotationRad);
 
@@ -1414,7 +1485,7 @@ export class GameplayRenderer {
     this.ctx.moveTo(offset, -offset);
     this.ctx.lineTo(-offset, offset);
     this.ctx.stroke();
-    
+
     this.ctx.restore();
   }
 
@@ -1431,12 +1502,12 @@ export class GameplayRenderer {
     this.ctx.fill();
 
     this.ctx.save();
-    
+
     // Rotate the icon to face the player
     const edgeAngles = [0, 60, 120, 180, 240, 300];
     const rotationAngle = edgeAngles[playerEdge];
     const rotationRad = (rotationAngle * Math.PI) / 180;
-    
+
     this.ctx.translate(center.x, center.y);
     this.ctx.rotate(rotationRad);
 
@@ -1461,41 +1532,41 @@ export class GameplayRenderer {
     const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
-    
+
     // Calculate tangent direction at the start of the arc
     // For a circle, the tangent is perpendicular to the radius
     // Tangent points in direction of rotation: -90° for clockwise, +90° for counter-clockwise
     const tangentAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
-    
+
     // Draw arrowhead as a stroked and filled triangle for better visibility
     this.ctx.beginPath();
-    
+
     // Tip of the arrow
     this.ctx.moveTo(
       arrowX + arrowLength * Math.cos(tangentAngle),
-      arrowY + arrowLength * Math.sin(tangentAngle)
+      arrowY + arrowLength * Math.sin(tangentAngle),
     );
-    
+
     // Left side of the arrow base (perpendicular to tangent)
     const baseAngle1 = tangentAngle + Math.PI * 0.5;
     this.ctx.lineTo(
       arrowX + arrowWidth * Math.cos(baseAngle1),
-      arrowY + arrowWidth * Math.sin(baseAngle1)
+      arrowY + arrowWidth * Math.sin(baseAngle1),
     );
-    
+
     // Right side of the arrow base (perpendicular to tangent)
     const baseAngle2 = tangentAngle - Math.PI * 0.5;
     this.ctx.lineTo(
       arrowX + arrowWidth * Math.cos(baseAngle2),
-      arrowY + arrowWidth * Math.sin(baseAngle2)
+      arrowY + arrowWidth * Math.sin(baseAngle2),
     );
-    
+
     this.ctx.closePath();
-    
+
     // Fill the arrowhead
     this.ctx.fillStyle = BUTTON_ICON;
     this.ctx.fill();
-    
+
     // Stroke the arrowhead for better visibility
     this.ctx.strokeStyle = BUTTON_ICON;
     this.ctx.lineWidth = size * 0.08;
@@ -1876,31 +1947,44 @@ export class GameplayRenderer {
     return this.layout;
   }
 
-  private renderDebugHitTestOutline(element: import('../redux/types').HoveredElementType): void {
+  private renderDebugHitTestOutline(
+    element: import("../redux/types").HoveredElementType,
+  ): void {
     if (!element) return;
 
     this.ctx.save();
-    this.ctx.strokeStyle = '#ff0000'; // Red outline
+    this.ctx.strokeStyle = "#ff0000"; // Red outline
     this.ctx.lineWidth = 2;
     this.ctx.setLineDash([5, 5]); // Dashed line
 
     switch (element.type) {
-      case 'hexagon': {
+      case "hexagon": {
         const center = hexToPixel(element.position, this.layout);
         this.drawHexagon(center, this.layout.size, false);
         break;
       }
-      case 'rotation-button':
-      case 'action-button': {
+      case "rotation-button":
+      case "action-button": {
         // Draw circle outline
         this.ctx.beginPath();
-        this.ctx.arc(element.position.x, element.position.y, element.radius, 0, Math.PI * 2);
+        this.ctx.arc(
+          element.position.x,
+          element.position.y,
+          element.radius,
+          0,
+          Math.PI * 2,
+        );
         this.ctx.stroke();
         break;
       }
-      case 'exit-button': {
+      case "exit-button": {
         // Draw rectangle outline
-        this.ctx.strokeRect(element.x, element.y, element.width, element.height);
+        this.ctx.strokeRect(
+          element.x,
+          element.y,
+          element.width,
+          element.height,
+        );
         break;
       }
     }
@@ -1914,40 +1998,48 @@ export class GameplayRenderer {
     if (!currentPlayer) return;
 
     let tileCenter: Point | null = null;
-    
+
     // Check if tile is placed on board
     if (state.ui.selectedPosition) {
       tileCenter = hexToPixel(state.ui.selectedPosition, this.layout);
     } else if (state.game.currentTile !== null) {
       // Tile is at player's edge preview position
-      tileCenter = getPlayerEdgePosition(currentPlayer.edgePosition, this.layout, state.game.boardRadius);
+      tileCenter = getPlayerEdgePosition(
+        currentPlayer.edgePosition,
+        this.layout,
+        state.game.boardRadius,
+      );
     }
 
     if (!tileCenter) return;
 
     // Calculate the apex vertex (same logic as in gameplayInputHandler)
-    const edgeToApexVertex = [3, 4, 5, 0, 1, 2];
+    const edgeToApexVertex = [2, 3, 4, 5, 0, 1];
     const apexVertexIndex = edgeToApexVertex[currentPlayer.edgePosition];
-    const apex = this.getHexVertex(tileCenter, this.layout.size, apexVertexIndex);
+    const apex = this.getHexVertex(
+      tileCenter,
+      this.layout.size,
+      apexVertexIndex,
+    );
 
     // Draw a circle around the apex vertex
     this.ctx.save();
-    this.ctx.strokeStyle = '#00ff00'; // Green color for apex
-    this.ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'; // Semi-transparent green fill
+    this.ctx.strokeStyle = "#00ff00"; // Green color for apex
+    this.ctx.fillStyle = "rgba(0, 255, 0, 0.3)"; // Semi-transparent green fill
     this.ctx.lineWidth = 3;
-    
+
     this.ctx.beginPath();
     this.ctx.arc(apex.x, apex.y, this.layout.size * 0.15, 0, Math.PI * 2);
     this.ctx.fill();
     this.ctx.stroke();
-    
+
     // Add vertex index label
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 14px sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 14px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
     this.ctx.fillText(`V${apexVertexIndex}`, apex.x, apex.y);
-    
+
     this.ctx.restore();
   }
 
