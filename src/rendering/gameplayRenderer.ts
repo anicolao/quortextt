@@ -1758,34 +1758,39 @@ export class GameplayRenderer {
 
   private renderHelpButtons(): void {
     // Render ? buttons next to X buttons in each corner
+    // Each button represents one edge's lower-left position
     const cornerSize = 50;
     const margin = 10;
     const spacing = cornerSize * 0.15;
 
     const corners = [
       { 
-        // Top-left: help to the right of X
+        // Edge 0 (bottom): lower-left from bottom perspective = bottom-left corner
         x: margin + cornerSize / 2 + cornerSize + spacing, 
-        y: margin + cornerSize / 2, 
-        corner: 3 
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+        edge: 0, // Bottom edge
       },
       {
-        // Top-right: help to the left of X
-        x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
-        y: margin + cornerSize / 2,
-        corner: 2,
-      },
-      {
-        // Bottom-right: help to the left of X
+        // Edge 1 (right): lower-left from right perspective = bottom-right corner
         x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
         y: this.layout.canvasHeight - margin - cornerSize / 2,
         corner: 1,
+        edge: 1, // Right edge
       },
       {
-        // Bottom-left: help to the right of X
+        // Edge 2 (top): lower-left from top perspective = top-right corner
+        x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
+        y: margin + cornerSize / 2,
+        corner: 2,
+        edge: 2, // Top edge
+      },
+      {
+        // Edge 3 (left): lower-left from left perspective = top-left corner
         x: margin + cornerSize / 2 + cornerSize + spacing,
-        y: this.layout.canvasHeight - margin - cornerSize / 2,
-        corner: 0,
+        y: margin + cornerSize / 2, 
+        corner: 3,
+        edge: 3, // Left edge
       },
     ];
 
@@ -1805,12 +1810,21 @@ export class GameplayRenderer {
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
 
-      // Draw ? symbol
+      // Draw ? symbol with rotation so it's readable from the edge's perspective
+      // Edge 0 (bottom) = 0°, Edge 1 (right) = 90°, Edge 2 (top) = 180°, Edge 3 (left) = 270°
+      const rotation = corner.edge * 90;
+      
+      this.ctx.save();
+      this.ctx.translate(centerX, centerY);
+      this.ctx.rotate((rotation * Math.PI) / 180);
+      
       this.ctx.fillStyle = "#ffffff";
       this.ctx.font = `bold ${radius * 1.2}px sans-serif`;
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
-      this.ctx.fillText("?", centerX, centerY);
+      this.ctx.fillText("?", 0, 0);
+      
+      this.ctx.restore();
     });
   }
 

@@ -228,12 +228,21 @@ export class LobbyRenderer {
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
 
-      // Draw ? symbol
+      // Draw ? symbol with rotation so it's readable from the edge's perspective
+      // Edge 0 (bottom) = 0°, Edge 1 (right) = 90°, Edge 2 (top) = 180°, Edge 3 (left) = 270°
+      const rotation = button.edge * 90;
+      
+      this.ctx.save();
+      this.ctx.translate(centerX, centerY);
+      this.ctx.rotate((rotation * Math.PI) / 180);
+      
       this.ctx.fillStyle = "#ffffff";
       this.ctx.font = `bold ${radius * 1.2}px sans-serif`;
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
-      this.ctx.fillText("?", centerX, centerY);
+      this.ctx.fillText("?", 0, 0);
+      
+      this.ctx.restore();
     });
   }
 
