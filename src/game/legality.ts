@@ -427,7 +427,8 @@ export function findLegalMoves(
   rotation: Rotation,
   players: Player[],
   teams: Team[],
-  boardRadius: number
+  boardRadius: number,
+  supermoveEnabled: boolean = false
 ): HexPosition[] {
   const legalPositions: HexPosition[] = [];
   
@@ -441,7 +442,7 @@ export function findLegalMoves(
       position,
     };
     
-    if (isLegalMove(board, tile, players, teams, boardRadius, false)) {
+    if (isLegalMove(board, tile, players, teams, boardRadius, supermoveEnabled)) {
       legalPositions.push(position);
     }
   }
