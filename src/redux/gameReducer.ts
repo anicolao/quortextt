@@ -51,6 +51,7 @@ export const initialState: GameState = {
   winType: null,
   moveHistory: [],
   supermoveInProgress: false,
+  lastPlacedTilePosition: null,
 };
 
 // Helper function to generate unique player ID
@@ -589,6 +590,7 @@ export function gameReducer(
         flowEdges: newFlowEdges,
         moveHistory: [...state.moveHistory, move],
         supermoveInProgress: false, // Clear supermove flag after placing tile
+        lastPlacedTilePosition: position,
       };
 
       // If there's a winner, update game state
@@ -661,6 +663,7 @@ export function gameReducer(
           flowEdges: newFlowEdges,
           moveHistory: [...state.moveHistory, move],
           supermoveInProgress: false, // Single supermove completes immediately
+          lastPlacedTilePosition: position,
         };
 
         // If there's a winner, update game state
@@ -686,6 +689,7 @@ export function gameReducer(
         flowEdges: newFlowEdges,
         moveHistory: [...state.moveHistory, move],
         supermoveInProgress: true, // Mark that we're in the middle of a supermove
+        lastPlacedTilePosition: position,
       };
 
       // If there's a winner, update game state
