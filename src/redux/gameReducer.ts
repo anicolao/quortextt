@@ -153,6 +153,19 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+// Helper function to shuffle an array using Fisher-Yates algorithm
+// If seed is provided, uses seeded random for deterministic behavior
+function shuffleArray<T>(array: T[], seed?: number): T[] {
+  const shuffled = [...array];
+  const random = seed !== undefined ? seededRandom(seed) : Math.random;
+  
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Helper function to randomize player order for seating selection
 // Uses Fisher-Yates shuffle for uniform distribution
 // If seed is provided, uses seeded random for deterministic behavior
@@ -652,13 +665,8 @@ export function gameReducer(
         // Return the replaced tile to the bag
         const newAvailableTiles = [...state.availableTiles, oldTile.type];
         
-        // Shuffle the bag (use current timestamp as seed for randomness)
-        const random = Math.random;
-        const shuffled = [...newAvailableTiles];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
+        // Shuffle the bag using the same seeded shuffle as tile distribution
+        const shuffled = shuffleArray(newAvailableTiles, state.seed);
 
         const newState: GameState = {
           ...state,
