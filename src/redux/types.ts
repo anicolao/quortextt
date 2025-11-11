@@ -93,14 +93,24 @@ export interface GameSettings {
   debugLegalityTest: boolean;
   debugAnimationSlowdown: number;
   debugAIScoring: boolean; // Show AI evaluation scores for tile placements
+  debugHitTest: boolean; // Show hit test areas with red outlines on hover
   tileDistribution: [number, number, number, number]; // [NoSharps, OneSharp, TwoSharps, ThreeSharps]
 }
 
 // UI state for interaction
+// Hovered element type for debug visualization
+export type HoveredElementType = 
+  | { type: 'hexagon'; position: HexPosition }
+  | { type: 'rotation-button'; position: { x: number; y: number }; radius: number; clockwise: boolean }
+  | { type: 'action-button'; position: { x: number; y: number }; radius: number; action: 'checkmark' | 'cancel' }
+  | { type: 'exit-button'; x: number; y: number; width: number; height: number }
+  | null;
+
 export interface UIState {
   // Interaction state
   selectedPosition: HexPosition | null;
   hoveredPosition: HexPosition | null;
+  hoveredElement: HoveredElementType;
   currentRotation: Rotation;
   
   // Visual preferences
