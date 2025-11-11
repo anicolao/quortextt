@@ -1,12 +1,20 @@
 // Input handler for the redesigned lobby
 
 import { store } from '../redux/store';
-import { addPlayer, removePlayer, startGame, toggleSettings, updateSettings } from '../redux/actions';
+import { addPlayer, removePlayer, startGame, toggleSettings, updateSettings, showHelp, hideHelp } from '../redux/actions';
 import { LobbyLayout, isPointInButton, isPointInCircle } from '../rendering/lobbyLayout';
 
 export class LobbyInputHandler {
   handleClick(x: number, y: number, layout: LobbyLayout | null): void {
     if (!layout) return;
+
+    const state = store.getState();
+
+    // If help dialog is open, close it on any click
+    if (state.ui.showHelp) {
+      store.dispatch(hideHelp());
+      return;
+    }
 
     // If settings dialog is open, check for clicks on dialog controls
     if (layout.settingsDialog) {
@@ -118,6 +126,14 @@ export class LobbyInputHandler {
       if (isPointInCircle(x, y, exitBtn.x, exitBtn.y, exitBtn.size / 2)) {
         // In lobby, exit means close the window
         window.close();
+        return;
+      }
+    }
+
+    // Check help buttons
+    for (const helpBtn of layout.helpButtons) {
+      if (isPointInCircle(x, y, helpBtn.x, helpBtn.y, helpBtn.size / 2)) {
+        store.dispatch(showHelp(helpBtn.corner));
         return;
       }
     }

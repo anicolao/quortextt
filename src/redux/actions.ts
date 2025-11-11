@@ -40,6 +40,8 @@ export const SET_ROTATION = 'SET_ROTATION';
 export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
 export const TOGGLE_SETTINGS = 'TOGGLE_SETTINGS';
 export const UPDATE_SETTINGS = 'UPDATE_SETTINGS';
+export const SHOW_HELP = 'SHOW_HELP';
+export const HIDE_HELP = 'HIDE_HELP';
 
 // Configuration action types
 export interface AddPlayerAction {
@@ -196,6 +198,17 @@ export interface UpdateSettingsAction {
   payload: Partial<GameSettings>;
 }
 
+export interface ShowHelpAction {
+  type: typeof SHOW_HELP;
+  payload: {
+    corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+  };
+}
+
+export interface HideHelpAction {
+  type: typeof HIDE_HELP;
+}
+
 // Combined action type
 export type GameAction =
   | AddPlayerAction
@@ -223,7 +236,9 @@ export type UIAction =
   | SetRotationAction
   | ToggleLegalMovesAction
   | ToggleSettingsAction
-  | UpdateSettingsAction;
+  | UpdateSettingsAction
+  | ShowHelpAction
+  | HideHelpAction;
 
 // Configuration action creators
 export const addPlayer = (color: string, edge: number): AddPlayerAction => ({
@@ -340,6 +355,15 @@ export const toggleSettings = (): ToggleSettingsAction => ({
 export const updateSettings = (settings: Partial<GameSettings>): UpdateSettingsAction => ({
   type: UPDATE_SETTINGS,
   payload: settings,
+});
+
+export const showHelp = (corner: 0 | 1 | 2 | 3): ShowHelpAction => ({
+  type: SHOW_HELP,
+  payload: { corner },
+});
+
+export const hideHelp = (): HideHelpAction => ({
+  type: HIDE_HELP,
 });
 
 // AI debug action creators

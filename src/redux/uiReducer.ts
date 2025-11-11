@@ -10,6 +10,8 @@ import {
   TOGGLE_LEGAL_MOVES,
   TOGGLE_SETTINGS,
   UPDATE_SETTINGS,
+  SHOW_HELP,
+  HIDE_HELP,
 } from './actions';
 
 // Initial UI state
@@ -24,6 +26,8 @@ export const initialUIState: UIState = {
   zoom: 1.0,
   panOffset: { x: 0, y: 0 },
   showSettings: false,
+  showHelp: false,
+  helpCorner: null,
   settings: {
     boardRadius: 3,
     supermove: true,
@@ -93,6 +97,22 @@ export function uiReducer(
           ...state.settings,
           ...action.payload,
         },
+      };
+    }
+
+    case SHOW_HELP: {
+      return {
+        ...state,
+        showHelp: true,
+        helpCorner: action.payload.corner,
+      };
+    }
+
+    case HIDE_HELP: {
+      return {
+        ...state,
+        showHelp: false,
+        helpCorner: null,
       };
     }
 
