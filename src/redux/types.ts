@@ -88,6 +88,7 @@ export interface GameState {
 export interface GameSettings {
   boardRadius: number;
   supermove: boolean;
+  singleSupermove: boolean; // If true with supermove, replaced tile returns to bag and turn passes to next player
   debugShowEdgeLabels: boolean;
   debugShowVictoryEdges: boolean;
   debugLegalityTest: boolean;

@@ -414,6 +414,23 @@ export class LobbyRenderer {
     });
     contentY += lineHeight;
 
+    // Single Supermove (only show if supermove is enabled)
+    if (settings.supermove) {
+      this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.singleSupermove);
+      this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
+      this.ctx.textAlign = "left"; // Ensure left alignment
+      this.ctx.fillText("Single Supermove", contentX, contentY + checkboxSize / 2);
+      controls.push({
+        type: 'checkbox',
+        x: contentX + dialogWidth - 80,
+        y: contentY,
+        width: checkboxSize,
+        height: checkboxSize,
+        settingKey: 'singleSupermove',
+      });
+      contentY += lineHeight;
+    }
+
     // Tile Distribution section
     contentY += 10;
     this.ctx.font = "bold 20px sans-serif";

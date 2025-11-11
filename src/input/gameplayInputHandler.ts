@@ -61,14 +61,24 @@ export class GameplayInputHandler {
             return;
           }
           
+          // Check if this is a single supermove
+          const isSingleSupermove = state.ui.settings.singleSupermove;
+          
           // Perform replacement
           store.dispatch(replaceTile(
             state.ui.selectedPosition,
-            state.ui.currentRotation
+            state.ui.currentRotation,
+            isSingleSupermove
           ));
           store.dispatch(setSelectedPosition(null));
           store.dispatch(setRotation(0));
-          // Don't advance to next player - they get to place the replaced tile
+          
+          // If single supermove, advance to next player and draw a tile
+          if (isSingleSupermove) {
+            store.dispatch(nextPlayer());
+            store.dispatch(drawTile());
+          }
+          // Otherwise, don't advance to next player - they get to place the replaced tile
           return;
         }
         

@@ -25,6 +25,7 @@ export const initialUIState: UIState = {
   settings: {
     boardRadius: 3,
     supermove: true,
+    singleSupermove: false,
     debugShowEdgeLabels: false,
     debugShowVictoryEdges: false,
     debugLegalityTest: false,

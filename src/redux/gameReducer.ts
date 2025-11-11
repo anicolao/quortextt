@@ -614,7 +614,7 @@ export function gameReducer(
         return state;
       }
 
-      const { position, rotation } = action.payload;
+      const { position, rotation, isSingleSupermove } = action.payload;
       const posKey = positionToKey(position);
 
       // Position must be occupied for replacement
@@ -647,6 +647,45 @@ export function gameReducer(
         timestamp: Date.now(),
       };
 
+      // Handle single supermove: return tile to bag, shuffle, clear current tile, don't set supermoveInProgress
+      if (isSingleSupermove) {
+        // Return the replaced tile to the bag
+        const newAvailableTiles = [...state.availableTiles, oldTile.type];
+        
+        // Shuffle the bag (use current timestamp as seed for randomness)
+        const random = Math.random;
+        const shuffled = [...newAvailableTiles];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        const newState: GameState = {
+          ...state,
+          board: newBoard,
+          currentTile: null, // No tile in hand after single supermove
+          availableTiles: shuffled,
+          flows: newFlows,
+          flowEdges: newFlowEdges,
+          moveHistory: [...state.moveHistory, move],
+          supermoveInProgress: false, // Single supermove completes immediately
+        };
+
+        // If there's a winner, update game state
+        if (victoryResult.winners.length > 0) {
+          return {
+            ...newState,
+            phase: 'finished',
+            winners: victoryResult.winners,
+            winType: victoryResult.winType,
+            screen: 'game-over',
+          };
+        }
+
+        return newState;
+      }
+
+      // Regular supermove: keep tile in hand for placement
       const newState: GameState = {
         ...state,
         board: newBoard,
