@@ -232,9 +232,9 @@ export function calculateLobbyLayout(
       corner: 0,
     },
     {
-      // Edge 1 (right): lower-left from right perspective = bottom-right corner (rotated 90° CW)
-      x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
-      y: canvasHeight - exitButtonSize / 2,
+      // Edge 1 (right): lower-left from right perspective = along right edge, centered vertically
+      x: canvasWidth - exitButtonSize / 2,
+      y: canvasHeight / 2,
       size: helpButtonSize,
       edge: 1,
       corner: 1,
@@ -248,9 +248,9 @@ export function calculateLobbyLayout(
       corner: 2,
     },
     {
-      // Edge 3 (left): lower-left from left perspective = top-left corner (rotated 270° CW)
-      x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
-      y: exitButtonSize / 2,
+      // Edge 3 (left): lower-left from left perspective = along left edge, centered vertically
+      x: exitButtonSize / 2,
+      y: canvasHeight / 2,
       size: helpButtonSize,
       edge: 3,
       corner: 3,

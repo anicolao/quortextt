@@ -229,8 +229,13 @@ export class LobbyRenderer {
       this.ctx.stroke();
 
       // Draw ? symbol with rotation so it's readable from the edge's perspective
-      // Edge 0 (bottom) = 0°, Edge 1 (right) = 90°, Edge 2 (top) = 180°, Edge 3 (left) = 270°
-      const rotation = button.edge * 90;
+      // Edge 0 (bottom) = 0°, Edge 1 (right) = 270° (90° + 180°), 
+      // Edge 2 (top) = 180°, Edge 3 (left) = 90° (270° + 180°)
+      // Edges 1 and 3 need additional 180° flip to be upright from their perspective
+      let rotation = button.edge * 90;
+      if (button.edge === 1 || button.edge === 3) {
+        rotation += 180;
+      }
       
       this.ctx.save();
       this.ctx.translate(centerX, centerY);
