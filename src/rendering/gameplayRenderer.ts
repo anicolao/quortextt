@@ -1445,8 +1445,8 @@ export class GameplayRenderer {
     
     // Calculate tangent direction at the start of the arc
     // For a circle, the tangent is perpendicular to the radius
-    // Tangent points in direction of rotation: +90° for clockwise, -90° for counter-clockwise
-    const tangentAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
+    // Tangent points in direction of rotation: -90° for clockwise, +90° for counter-clockwise
+    const tangentAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
     
     // Draw arrowhead as a stroked and filled triangle for better visibility
     this.ctx.beginPath();
