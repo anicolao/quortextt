@@ -250,33 +250,56 @@ export class GameplayInputHandler {
   private handleTileRotation(clickX: number, clickY: number, tileCenterX: number, tileCenterY: number, playerEdge: number): void {
     const state = store.getState();
     const currentRotation = state.ui.currentRotation;
+    const layout = this.renderer.getLayout();
 
-    // Map edge positions to rotation angles (in degrees)
-    const edgeAngles = [0, 60, 120, 180, 240, 300];
-    const rotationAngle = edgeAngles[playerEdge];
-    const rotationRad = (rotationAngle * Math.PI) / 180;
+    // Get the apex of the hexagon (the vertex pointing toward the player)
+    // Map edge positions to the vertex index that points toward that edge
+    // getPlayerEdgePosition uses screen coordinates (0°=right, 90°=down, 180°=left, 270°=up)
+    // getHexVertex uses math coordinates (0°=right, 90°=up, 180°=left, 270°=down)
+    // Edge angles in screen coords: [270°, 330°, 30°, 90°, 150°, 210°]
+    // Corresponding vertices in math coords: [90°→v2, 30°→v1, 330°→v0, 270°→v5, 210°→v4, 150°→v3]
+    const edgeToApexVertex = [2, 1, 0, 5, 4, 3]; // Maps player edge to apex vertex
+    const apexVertexIndex = edgeToApexVertex[playerEdge];
+    
+    // Get apex position in pixel coordinates
+    const tileCenter = { x: tileCenterX, y: tileCenterY };
+    const apex = this.getHexVertex(tileCenter, layout.size, apexVertexIndex);
 
-    // Calculate the click position relative to tile center
-    const relX = clickX - tileCenterX;
-    const relY = clickY - tileCenterY;
+    // Calculate vectors from apex to click location and from apex to center
+    const apexToClick = {
+      x: clickX - apex.x,
+      y: clickY - apex.y,
+    };
+    const apexToCenter = {
+      x: tileCenterX - apex.x,
+      y: tileCenterY - apex.y,
+    };
 
-    // Rotate the click position back by the player's edge angle
-    // This gives us the click position in the player's local coordinate system
-    const cos = Math.cos(-rotationRad);
-    const sin = Math.sin(-rotationRad);
-    const localX = relX * cos - relY * sin;
+    // Calculate 2D cross product (z component of 3D cross product)
+    // Cross product = apexToClick.x * apexToCenter.y - apexToClick.y * apexToCenter.x
+    const crossProduct = apexToClick.x * apexToCenter.y - apexToClick.y * apexToCenter.x;
 
-    // In player's local coordinate system, left side (negative X) = clockwise, right side (positive X) = counter-clockwise
+    // Apply right-hand rule: positive = counter-clockwise, negative = clockwise
     let newRotation: Rotation;
-    if (localX < 0) {
-      // Left side - rotate clockwise
-      newRotation = ((currentRotation + 1) % 6) as Rotation;
-    } else {
-      // Right side - rotate counter-clockwise
+    if (crossProduct > 0) {
+      // Counter-clockwise
       newRotation = ((currentRotation + 5) % 6) as Rotation;
+    } else {
+      // Clockwise
+      newRotation = ((currentRotation + 1) % 6) as Rotation;
     }
 
     store.dispatch(setRotation(newRotation));
+  }
+
+  // Helper to get hex vertex position
+  private getHexVertex(center: { x: number; y: number }, size: number, vertex: number): { x: number; y: number } {
+    const angleDeg = 60 * vertex - 30; // Offset by -30 for pointy-top
+    const angleRad = (Math.PI / 180) * angleDeg;
+    return {
+      x: center.x + size * Math.cos(angleRad),
+      y: center.y + size * Math.sin(angleRad),
+    };
   }
 
   private checkExitButtons(
