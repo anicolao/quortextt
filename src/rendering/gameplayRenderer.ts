@@ -114,6 +114,11 @@ export class GameplayRenderer {
     if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
       this.renderDebugHitTestOutline(state.ui.hoveredElement);
     }
+
+    // Layer 9: Debug apex vertex visualization
+    if (state.ui.settings.debugHitTest) {
+      this.renderDebugApexVertex(state);
+    }
   }
 
   private renderBackground(): void {
@@ -1901,5 +1906,57 @@ export class GameplayRenderer {
     }
 
     this.ctx.restore();
+  }
+
+  private renderDebugApexVertex(state: RootState): void {
+    // Only show apex vertex when a tile is selected or in preview position
+    const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+    if (!currentPlayer) return;
+
+    let tileCenter: Point | null = null;
+    
+    // Check if tile is placed on board
+    if (state.ui.selectedPosition) {
+      tileCenter = hexToPixel(state.ui.selectedPosition, this.layout);
+    } else if (state.game.currentTile !== null) {
+      // Tile is at player's edge preview position
+      tileCenter = getPlayerEdgePosition(currentPlayer.edgePosition, this.layout, state.game.boardRadius);
+    }
+
+    if (!tileCenter) return;
+
+    // Calculate the apex vertex (same logic as in gameplayInputHandler)
+    const edgeToApexVertex = [2, 1, 0, 5, 4, 3];
+    const apexVertexIndex = edgeToApexVertex[currentPlayer.edgePosition];
+    const apex = this.getHexVertex(tileCenter, this.layout.size, apexVertexIndex);
+
+    // Draw a circle around the apex vertex
+    this.ctx.save();
+    this.ctx.strokeStyle = '#00ff00'; // Green color for apex
+    this.ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'; // Semi-transparent green fill
+    this.ctx.lineWidth = 3;
+    
+    this.ctx.beginPath();
+    this.ctx.arc(apex.x, apex.y, this.layout.size * 0.15, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+    
+    // Add vertex index label
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 14px sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(`V${apexVertexIndex}`, apex.x, apex.y);
+    
+    this.ctx.restore();
+  }
+
+  private getHexVertex(center: Point, size: number, vertex: number): Point {
+    const angleDeg = 60 * vertex - 30; // Offset by -30 for pointy-top
+    const angleRad = (Math.PI / 180) * angleDeg;
+    return {
+      x: center.x + size * Math.cos(angleRad),
+      y: center.y + size * Math.sin(angleRad),
+    };
   }
 }
