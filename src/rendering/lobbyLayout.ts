@@ -224,7 +224,7 @@ export function calculateLobbyLayout(
   const helpButtonSpacing = exitButtonSize * 0.15;
   const helpButtons: HelpButton[] = [
     {
-      // Edge 0 (bottom): lower-left from bottom perspective = bottom-left corner
+      // Edge 0 (bottom): lower-left from bottom perspective = bottom-left corner, next to exit
       x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
       y: canvasHeight - exitButtonSize / 2,
       size: helpButtonSize,
@@ -232,15 +232,15 @@ export function calculateLobbyLayout(
       corner: 0,
     },
     {
-      // Edge 1 (right): lower-left from right perspective = along right edge, centered vertically
+      // Edge 1 (right): lower-left from right perspective = bottom-right, next to exit button
       x: canvasWidth - exitButtonSize / 2,
-      y: canvasHeight / 2,
+      y: canvasHeight - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
       size: helpButtonSize,
       edge: 1,
       corner: 1,
     },
     {
-      // Edge 2 (top): lower-left from top perspective = top-right corner (rotated 180°)
+      // Edge 2 (top): lower-left from top perspective = top-right corner, next to exit
       x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
       y: exitButtonSize / 2,
       size: helpButtonSize,
@@ -248,9 +248,9 @@ export function calculateLobbyLayout(
       corner: 2,
     },
     {
-      // Edge 3 (left): lower-left from left perspective = along left edge, centered vertically
+      // Edge 3 (left): lower-left from left perspective = top-left, next to exit button
       x: exitButtonSize / 2,
-      y: canvasHeight / 2,
+      y: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
       size: helpButtonSize,
       edge: 3,
       corner: 3,
