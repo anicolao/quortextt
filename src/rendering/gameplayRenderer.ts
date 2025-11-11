@@ -1437,9 +1437,9 @@ export class GameplayRenderer {
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead at the END of the arc, pointing in direction of rotation
+    // Draw arrowhead at the START of the arc, pointing in direction of rotation
     const arrowSize = size * 0.15;
-    const arrowAngle = endAngle;
+    const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
     
