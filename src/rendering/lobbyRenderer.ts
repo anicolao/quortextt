@@ -912,21 +912,17 @@ export class LobbyRenderer {
     // Lobby-specific help
     const helpLines = [
       "Adding Players:",
-      "• Click the colored + buttons on each edge",
-      "• Players join from their chosen edge",
-      "• Each player gets a unique color",
+      "• Tap a coloured + button to choose your colour",
       "",
       "Starting the Game:",
-      "• Need at least 2 players to start",
-      "• Click the ▶ play button in the center",
-      "• Players will select their board edges",
+      "• 1 player starts a game vs AI",
+      "• 2+ players starts an all-human game",
+      "• Tap the ▶ play button in the center",
       "",
       "Game Settings:",
-      "• Click the ⚙ gear icon for options",
-      "• Adjust board size, tile distribution",
-      "• Enable/disable special moves",
+      "• Choose rule variants",
       "",
-      "Click anywhere to close this help",
+      "Tap to dismiss",
     ];
 
     helpLines.forEach((line, index) => {
