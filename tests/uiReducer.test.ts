@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { uiReducer, initialUIState } from '../src/redux/uiReducer';
 import {
   setHoveredPosition,
+  setHoveredElement,
   setSelectedPosition,
   setRotation,
   toggleLegalMoves,
@@ -25,6 +26,62 @@ describe('uiReducer', () => {
       state = uiReducer(state, setHoveredPosition(null));
 
       expect(state.hoveredPosition).toBeNull();
+    });
+  });
+
+  describe('SET_HOVERED_ELEMENT', () => {
+    it('should set hovered element for hexagon', () => {
+      const element = { type: 'hexagon' as const, position: { row: 1, col: 2 } };
+      const state = uiReducer(initialUIState, setHoveredElement(element));
+
+      expect(state.hoveredElement).toEqual(element);
+    });
+
+    it('should set hovered element for rotation button', () => {
+      const element = { 
+        type: 'rotation-button' as const, 
+        position: { x: 100, y: 200 }, 
+        radius: 30, 
+        clockwise: true 
+      };
+      const state = uiReducer(initialUIState, setHoveredElement(element));
+
+      expect(state.hoveredElement).toEqual(element);
+    });
+
+    it('should set hovered element for action button', () => {
+      const element = { 
+        type: 'action-button' as const, 
+        position: { x: 100, y: 200 }, 
+        radius: 40, 
+        action: 'checkmark' as const 
+      };
+      const state = uiReducer(initialUIState, setHoveredElement(element));
+
+      expect(state.hoveredElement).toEqual(element);
+    });
+
+    it('should set hovered element for exit button', () => {
+      const element = { 
+        type: 'exit-button' as const, 
+        x: 10, 
+        y: 10, 
+        width: 50, 
+        height: 50 
+      };
+      const state = uiReducer(initialUIState, setHoveredElement(element));
+
+      expect(state.hoveredElement).toEqual(element);
+    });
+
+    it('should clear hovered element with null', () => {
+      let state = uiReducer(initialUIState, setHoveredElement({ 
+        type: 'hexagon', 
+        position: { row: 1, col: 2 } 
+      }));
+      state = uiReducer(state, setHoveredElement(null));
+
+      expect(state.hoveredElement).toBeNull();
     });
   });
 
@@ -80,6 +137,7 @@ describe('uiReducer', () => {
     it('should have correct initial values', () => {
       expect(initialUIState.selectedPosition).toBeNull();
       expect(initialUIState.hoveredPosition).toBeNull();
+      expect(initialUIState.hoveredElement).toBeNull();
       expect(initialUIState.currentRotation).toBe(0);
       expect(initialUIState.showLegalMoves).toBe(false);
       expect(initialUIState.showFlowMarkers).toBe(true);
@@ -120,12 +178,13 @@ describe('uiReducer', () => {
     it('should update multiple settings at once', () => {
       const state = uiReducer(
         initialUIState,
-        updateSettings({ boardRadius: 4, supermove: true, debugShowEdgeLabels: true })
+        updateSettings({ boardRadius: 4, supermove: true, debugShowEdgeLabels: true, debugHitTest: true })
       );
 
       expect(state.settings.boardRadius).toBe(4);
       expect(state.settings.supermove).toBe(true);
       expect(state.settings.debugShowEdgeLabels).toBe(true);
+      expect(state.settings.debugHitTest).toBe(true);
     });
 
     it('should preserve other settings when updating', () => {
