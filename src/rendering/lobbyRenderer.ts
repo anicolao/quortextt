@@ -862,32 +862,25 @@ export class LobbyRenderer {
     // Dialog box dimensions
     const dialogWidth = Math.min(500, canvasWidth * 0.8);
     const dialogHeight = Math.min(600, canvasHeight * 0.8);
-    
-    // Position dialog based on which corner was clicked
-    let dialogX: number, dialogY: number;
     const margin = 20;
     
-    switch (corner) {
-      case 0: // bottom-left
-        dialogX = margin;
-        dialogY = canvasHeight - dialogHeight - margin;
-        break;
-      case 1: // bottom-right
-        dialogX = canvasWidth - dialogWidth - margin;
-        dialogY = canvasHeight - dialogHeight - margin;
-        break;
-      case 2: // top-right
-        dialogX = canvasWidth - dialogWidth - margin;
-        dialogY = margin;
-        break;
-      case 3: // top-left
-        dialogX = margin;
-        dialogY = margin;
-        break;
-      default:
-        dialogX = (canvasWidth - dialogWidth) / 2;
-        dialogY = (canvasHeight - dialogHeight) / 2;
-    }
+    // Calculate rotation based on edge
+    // Edge 0 (bottom) = 0°, Edge 1 (right) = 270°, Edge 2 (top) = 180°, Edge 3 (left) = 90°
+    let rotation = 0;
+    if (corner === 1) rotation = 270;
+    else if (corner === 2) rotation = 180;
+    else if (corner === 3) rotation = 90;
+
+    // Save context state
+    this.ctx.save();
+
+    // Translate to screen center, rotate, then position dialog
+    this.ctx.translate(canvasWidth / 2, canvasHeight / 2);
+    this.ctx.rotate((rotation * Math.PI) / 180);
+
+    // Position dialog in rotated space (always bottom-left in rotated coordinates)
+    const dialogX = -canvasWidth / 2 + margin;
+    const dialogY = canvasHeight / 2 - dialogHeight - margin;
 
     // Dialog background
     this.ctx.fillStyle = "#2a2a3e";
@@ -946,5 +939,8 @@ export class LobbyRenderer {
         this.ctx.font = "16px sans-serif";
       }
     });
+
+    // Restore context state
+    this.ctx.restore();
   }
 }

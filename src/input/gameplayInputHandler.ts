@@ -368,28 +368,28 @@ export class GameplayInputHandler {
 
     const helpButtons = [
       { 
-        // Top-left: help to the right of X
+        // Edge 0 (bottom): bottom-left, next to exit
         centerX: margin + cornerSize / 2 + cornerSize + spacing, 
-        centerY: margin + cornerSize / 2, 
-        corner: 3 
+        centerY: layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
       },
       {
-        // Top-right: help to the left of X
+        // Edge 1 (right): bottom-right, next to exit
+        centerX: layout.canvasWidth - margin - cornerSize / 2,
+        centerY: layout.canvasHeight - margin - cornerSize / 2 - cornerSize - spacing,
+        corner: 1,
+      },
+      {
+        // Edge 2 (top): top-right, next to exit
         centerX: layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
         centerY: margin + cornerSize / 2,
         corner: 2,
       },
       {
-        // Bottom-right: help to the left of X
-        centerX: layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
-        centerY: layout.canvasHeight - margin - cornerSize / 2,
-        corner: 1,
-      },
-      {
-        // Bottom-left: help to the right of X
-        centerX: margin + cornerSize / 2 + cornerSize + spacing,
-        centerY: layout.canvasHeight - margin - cornerSize / 2,
-        corner: 0,
+        // Edge 3 (left): top-left, next to exit
+        centerX: margin + cornerSize / 2,
+        centerY: margin + cornerSize / 2 + cornerSize + spacing,
+        corner: 3,
       },
     ];
 
