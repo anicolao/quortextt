@@ -345,7 +345,7 @@ export class LobbyRenderer {
 
     // Dialog box
     const dialogWidth = Math.min(500, canvasWidth * 0.8);
-    const dialogHeight = Math.min(750, canvasHeight * 0.9);
+    const dialogHeight = Math.min(795, canvasHeight * 0.9); // Increased from 750 to accommodate Single Supermove line
     const dialogX = (canvasWidth - dialogWidth) / 2;
     const dialogY = (canvasHeight - dialogHeight) / 2;
 
@@ -414,12 +414,13 @@ export class LobbyRenderer {
     });
     contentY += lineHeight;
 
-    // Single Supermove (only show if supermove is enabled)
-    if (settings.supermove) {
-      this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.singleSupermove);
-      this.ctx.fillStyle = "#ffffff"; // Reset to white after checkbox
-      this.ctx.textAlign = "left"; // Ensure left alignment
-      this.ctx.fillText("Single Supermove", contentX, contentY + checkboxSize / 2);
+    // Single Supermove (always shown, but greyed out when supermove is disabled)
+    const singleSupermoveDisabled = !settings.supermove;
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.singleSupermove, singleSupermoveDisabled);
+    this.ctx.fillStyle = singleSupermoveDisabled ? "#666666" : "#ffffff"; // Grey text when disabled
+    this.ctx.textAlign = "left"; // Ensure left alignment
+    this.ctx.fillText("Single Supermove", contentX, contentY + checkboxSize / 2);
+    if (!singleSupermoveDisabled) {
       controls.push({
         type: 'checkbox',
         x: contentX + dialogWidth - 80,
@@ -428,8 +429,8 @@ export class LobbyRenderer {
         height: checkboxSize,
         settingKey: 'singleSupermove',
       });
-      contentY += lineHeight;
     }
+    contentY += lineHeight;
 
     // Tile Distribution section
     contentY += 10;
@@ -657,17 +658,17 @@ export class LobbyRenderer {
     };
   }
 
-  private renderCheckbox(x: number, y: number, size: number, checked: boolean): void {
+  private renderCheckbox(x: number, y: number, size: number, checked: boolean, disabled: boolean = false): void {
     // Checkbox background
-    this.ctx.fillStyle = "#1a1a2e";
+    this.ctx.fillStyle = disabled ? "#0d0d16" : "#1a1a2e";
     this.ctx.fillRect(x, y, size, size);
-    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.strokeStyle = disabled ? "#555555" : "#ffffff";
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(x, y, size, size);
 
     // Checkmark if checked
     if (checked) {
-      this.ctx.strokeStyle = "#4CAF50";
+      this.ctx.strokeStyle = disabled ? "#2a5a2e" : "#4CAF50";
       this.ctx.lineWidth = 3;
       this.ctx.beginPath();
       this.ctx.moveTo(x + size * 0.2, y + size * 0.5);
