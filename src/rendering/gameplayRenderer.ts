@@ -95,6 +95,9 @@ export class GameplayRenderer {
     // Layer 3: Placed tiles
     this.renderPlacedTiles(state);
 
+    // Layer 3.5: Highlight most recently placed tile
+    this.renderLastPlacedTileHighlight(state);
+
     // Layer 4: Current tile preview
     this.renderCurrentTilePreview(state);
 
@@ -714,6 +717,42 @@ export class GameplayRenderer {
     state.game.board.forEach((tile) => {
       this.renderAnimatingFlows(tile, state);
     });
+  }
+
+  private renderLastPlacedTileHighlight(state: RootState): void {
+    // Don't show highlight during game-over screen
+    if (state.game.screen === "game-over") {
+      return;
+    }
+
+    // Don't show highlight if no tile has been placed yet
+    if (!state.game.lastPlacedTilePosition) {
+      return;
+    }
+
+    // Don't show highlight if there are no moves in history
+    if (state.game.moveHistory.length === 0) {
+      return;
+    }
+
+    // Get the player who placed the last tile from move history
+    const lastMove = state.game.moveHistory[state.game.moveHistory.length - 1];
+    const placingPlayer = state.game.players.find((p) => p.id === lastMove.playerId);
+    
+    if (!placingPlayer) {
+      return;
+    }
+
+    const center = hexToPixel(state.game.lastPlacedTilePosition, this.layout);
+
+    // Draw dashed border in the placing player's color
+    this.ctx.save();
+    this.ctx.strokeStyle = placingPlayer.color;
+    this.ctx.lineWidth = 2;
+    this.ctx.setLineDash([8, 4]); // Dashed pattern
+    this.ctx.lineCap = "round";
+    this.drawHexagon(center, this.layout.size, false);
+    this.ctx.restore();
   }
 
   private renderTile(

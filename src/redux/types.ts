@@ -80,6 +80,9 @@ export interface GameState {
   // Move history
   moveHistory: Move[];
   
+  // Last placed tile (for highlighting)
+  lastPlacedTilePosition: HexPosition | null;
+  
   // AI debug data (when debugAIScoring is enabled)
   aiScoringData?: Record<string, { rotation: number; score: number }[]>; // position key -> array of {rotation, score}
 }
