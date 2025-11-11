@@ -1772,9 +1772,9 @@ export class GameplayRenderer {
         edge: 0, // Bottom edge
       },
       {
-        // Edge 1 (right): lower-left from right perspective = bottom-right corner
-        x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
-        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        // Edge 1 (right): lower-left from right perspective = along right edge, centered
+        x: this.layout.canvasWidth - margin - cornerSize / 2,
+        y: this.layout.canvasHeight / 2,
         corner: 1,
         edge: 1, // Right edge
       },
@@ -1786,9 +1786,9 @@ export class GameplayRenderer {
         edge: 2, // Top edge
       },
       {
-        // Edge 3 (left): lower-left from left perspective = top-left corner
-        x: margin + cornerSize / 2 + cornerSize + spacing,
-        y: margin + cornerSize / 2, 
+        // Edge 3 (left): lower-left from left perspective = along left edge, centered
+        x: margin + cornerSize / 2,
+        y: this.layout.canvasHeight / 2, 
         corner: 3,
         edge: 3, // Left edge
       },
@@ -1811,8 +1811,13 @@ export class GameplayRenderer {
       this.ctx.stroke();
 
       // Draw ? symbol with rotation so it's readable from the edge's perspective
-      // Edge 0 (bottom) = 0°, Edge 1 (right) = 90°, Edge 2 (top) = 180°, Edge 3 (left) = 270°
-      const rotation = corner.edge * 90;
+      // Edge 0 (bottom) = 0°, Edge 1 (right) = 270° (90° + 180°), 
+      // Edge 2 (top) = 180°, Edge 3 (left) = 90° (270° + 180°)
+      // Edges 1 and 3 need additional 180° flip to be upright from their perspective
+      let rotation = corner.edge * 90;
+      if (corner.edge === 1 || corner.edge === 3) {
+        rotation += 180;
+      }
       
       this.ctx.save();
       this.ctx.translate(centerX, centerY);
