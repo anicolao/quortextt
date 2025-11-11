@@ -1438,7 +1438,7 @@ export class GameplayRenderer {
     this.ctx.stroke();
 
     // Draw arrowhead at the START of the arc as a filled triangle
-    const arrowSize = size * 0.12;
+    const arrowSize = size * 0.18; // Increased from 0.12
     const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
@@ -1458,18 +1458,18 @@ export class GameplayRenderer {
       arrowY + arrowSize * Math.sin(tangentAngle)
     );
     
-    // Left side of the arrow base
-    const baseAngle1 = tangentAngle + Math.PI * 0.7;
+    // Left side of the arrow base (perpendicular to tangent)
+    const baseAngle1 = tangentAngle + Math.PI * 0.6; // Adjusted angle
     this.ctx.lineTo(
-      arrowX + arrowSize * 0.5 * Math.cos(baseAngle1),
-      arrowY + arrowSize * 0.5 * Math.sin(baseAngle1)
+      arrowX + arrowSize * 0.4 * Math.cos(baseAngle1),
+      arrowY + arrowSize * 0.4 * Math.sin(baseAngle1)
     );
     
-    // Right side of the arrow base
-    const baseAngle2 = tangentAngle - Math.PI * 0.7;
+    // Right side of the arrow base (perpendicular to tangent)
+    const baseAngle2 = tangentAngle - Math.PI * 0.6; // Adjusted angle
     this.ctx.lineTo(
-      arrowX + arrowSize * 0.5 * Math.cos(baseAngle2),
-      arrowY + arrowSize * 0.5 * Math.sin(baseAngle2)
+      arrowX + arrowSize * 0.4 * Math.cos(baseAngle2),
+      arrowY + arrowSize * 0.4 * Math.sin(baseAngle2)
     );
     
     this.ctx.closePath();
