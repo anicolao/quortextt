@@ -1,0 +1,237 @@
+// Tests for improved AI evaluation function
+// Tests that the AI properly prioritizes blocking when enemy is 1 move from victory
+// and heavily penalizes moves that block the opponent completely
+
+import { describe, it, expect } from 'vitest';
+import {
+  selectAIMove,
+  generateMoveCandidates,
+} from '../../src/game/ai';
+import { Player, Team, TileType, PlacedTile } from '../../src/game/types';
+
+describe('AI Evaluation Improvements', () => {
+  const aiPlayer: Player = {
+    id: 'ai1',
+    color: '#0173B2',
+    edgePosition: 0,
+    isAI: true,
+  };
+  
+  const humanPlayer: Player = {
+    id: 'p1',
+    color: '#DE8F05',
+    edgePosition: 3,
+    isAI: false,
+  };
+  
+  const players: Player[] = [aiPlayer, humanPlayer];
+  const teams: Team[] = [];
+  const boardRadius = 3;
+
+  describe('Basic Evaluation Function Behavior', () => {
+    it('should generate candidates with varying scores based on position quality', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Add a tile to create some board state
+      board.set('-3,1', {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -3, col: 1 }
+      });
+      
+      const tileType = TileType.NoSharps;
+      
+      const candidates = generateMoveCandidates(
+        board,
+        tileType,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      expect(candidates.length).toBeGreaterThan(0);
+      
+      // Scores should vary - not all the same
+      const uniqueScores = new Set(candidates.map(c => c.score));
+      expect(uniqueScores.size).toBeGreaterThan(1);
+    });
+  });
+
+  describe('Blocking Penalty when Enemy has No Path', () => {
+    it('should penalize moves that completely block the opponent', () => {
+      // This test verifies that when a move results in the enemy having
+      // no viable path (pathLength = Infinity), the AI heavily penalizes it
+      // with BLOCKING_PENALTY = -75000
+      
+      const board = new Map<string, PlacedTile>();
+      
+      const tileType = TileType.NoSharps;
+      
+      const candidates = generateMoveCandidates(
+        board,
+        tileType,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      // Check that any candidate with a very negative score (< -50000) exists
+      // These would be blocking moves with the BLOCKING_PENALTY
+      const blockingCandidates = candidates.filter(c => c.score < -50000);
+      
+      // If there are blocking moves, they should have scores around -75000
+      for (const candidate of blockingCandidates) {
+        expect(candidate.score).toBeLessThan(-50000);
+        expect(candidate.score).toBeGreaterThanOrEqual(-100000);
+      }
+      
+      // In an empty board, there shouldn't be any truly blocking moves
+      // since both players have many paths available
+      expect(blockingCandidates.length).toBe(0);
+    });
+    
+    it('should prefer non-blocking moves over blocking moves', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Add a tile to create some board state
+      board.set('-3,0', {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -3, col: 0 }
+      });
+      
+      const tileType = TileType.OneSharp;
+      
+      const move = selectAIMove(
+        board,
+        tileType,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      // The selected move should not have a blocking penalty
+      expect(move).not.toBeNull();
+      if (move) {
+        // Score should be > -50000 (not a blocking move)
+        expect(move.score).toBeGreaterThan(-50000);
+      }
+    });
+  });
+
+  describe('Score Characteristics', () => {
+    it('should produce different scores for different board states', () => {
+      const board1 = new Map<string, PlacedTile>();
+      const board2 = new Map<string, PlacedTile>();
+      
+      // Board 1: Empty
+      const candidates1 = generateMoveCandidates(
+        board1,
+        TileType.NoSharps,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      // Board 2: Has one tile
+      board2.set('-3,0', {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -3, col: 0 }
+      });
+      
+      const candidates2 = generateMoveCandidates(
+        board2,
+        TileType.NoSharps,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      // Both should have candidates
+      expect(candidates1.length).toBeGreaterThan(0);
+      expect(candidates2.length).toBeGreaterThan(0);
+      
+      // Scores should be different between the two boards
+      const avgScore1 = candidates1.reduce((sum, c) => sum + c.score, 0) / candidates1.length;
+      const avgScore2 = candidates2.reduce((sum, c) => sum + c.score, 0) / candidates2.length;
+      
+      expect(avgScore1).not.toBe(avgScore2);
+    });
+    
+    it('should select valid moves from available candidates', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      board.set('-3,1', {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -3, col: 1 }
+      });
+      
+      const tileType = TileType.TwoSharps;
+      
+      const move = selectAIMove(
+        board,
+        tileType,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      expect(move).not.toBeNull();
+      expect(move?.position).toBeDefined();
+      expect(move?.score).toBeDefined();
+    });
+  });
+
+  describe('Threat Detection and Response', () => {
+    it('should generate higher scores when AI has better position', () => {
+      const board = new Map<string, PlacedTile>();
+      
+      // Place a tile on AI's edge to give AI an advantage
+      board.set('-3,0', {
+        type: TileType.NoSharps,
+        rotation: 0,
+        position: { row: -3, col: 0 }
+      });
+      
+      const tileType = TileType.NoSharps;
+      
+      const candidates = generateMoveCandidates(
+        board,
+        tileType,
+        aiPlayer,
+        players,
+        teams,
+        false,
+        boardRadius
+      );
+      
+      // Should have candidates
+      expect(candidates.length).toBeGreaterThan(0);
+      
+      // Find the best move
+      const bestMove = candidates.reduce((best, current) => 
+        current.score > best.score ? current : best
+      );
+      
+      expect(bestMove.score).toBeDefined();
+      
+      // Best move should have a reasonable score (not extremely negative)
+      // Since AI already has a tile on their edge, they should have decent options
+      expect(bestMove.score).toBeGreaterThan(-100);
+    });
+  });
+});

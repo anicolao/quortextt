@@ -28,6 +28,8 @@ import { checkVictory } from './victory';
 const WIN_SCORE = 100000;
 const OWN_PATH_WEIGHT = -2;
 const ENEMY_PATH_WEIGHT = 1;
+const BLOCK_THREAT_BONUS = 50000; // Large bonus for blocking when enemy is 1 move from victory
+const BLOCKING_PENALTY = -75000; // Heavy penalty for blocking the opponent completely
 
 // Move candidate with evaluation score
 export interface MoveCandidate {
@@ -109,6 +111,7 @@ function evaluatePosition(
   
   // Evaluation: -A * (AI path length)^2 + B * (enemy min path length)^2
   // We want to minimize our path and maximize enemy's path
+  // Plus special bonuses/penalties for critical situations
   
   // Handle infinite path lengths (no viable path)
   if (aiPathLength === Infinity && enemyMinPathLength === Infinity) {
@@ -121,23 +124,24 @@ function evaluatePosition(
     return -100000;
   }
   
+  // Special case: Enemy is blocked (no viable path)
   if (enemyMinPathLength === Infinity) {
-    // Enemy has no viable path currently
-    // If there are tiles on the board, they could use supermove to create a path
-    // Treat them as 0.5 moves away from victory in that case
-    if (board.size > 0) {
-      // Supermove is available - treat enemy as 0.5 moves away
-      enemyMinPathLength = 0.5;
-    } else {
-      // No tiles on board, enemy truly cannot win
-      return 50000;
-    }
+    // Blocking the opponent is very bad - we want a competitive game
+    // Apply a heavy penalty to discourage blocking
+    return BLOCKING_PENALTY;
   }
   
   const aiScore = OWN_PATH_WEIGHT * (aiPathLength * aiPathLength);
   const enemyScore = ENEMY_PATH_WEIGHT * (enemyMinPathLength * enemyMinPathLength);
   
-  return aiScore + enemyScore;
+  // Special case: Enemy is 1 move away from victory
+  // Add a large bonus to prioritize blocking this threat
+  let blockThreatBonus = 0;
+  if (enemyMinPathLength === 1) {
+    blockThreatBonus = BLOCK_THREAT_BONUS;
+  }
+  
+  return aiScore + enemyScore + blockThreatBonus;
 }
 
 // Check if a position is adjacent to any flow or starting edge for any player
