@@ -1429,41 +1429,51 @@ export class GameplayRenderer {
     this.ctx.lineJoin = "round";
 
     const radius = size * 0.25;
-    const startAngle = clockwise ? -Math.PI * 0.7 : Math.PI * 0.3;
-    const endAngle = clockwise ? Math.PI * 0.3 : -Math.PI * 0.7;
+    const startAngle = clockwise ? Math.PI * 0.1 : Math.PI * 0.8;
+    const endAngle = clockwise ? Math.PI * 0.8 : Math.PI * 0.1;
 
     // Draw arc
     this.ctx.beginPath();
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead at the START of the arc, pointing in direction of rotation
-    const arrowSize = size * 0.15;
+    // Draw arrowhead at the START of the arc as a filled triangle
+    const arrowSize = size * 0.12;
     const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
     
-    // Calculate tangent direction at the end of the arc
+    // Calculate tangent direction at the start of the arc
     // For a circle, the tangent is perpendicular to the radius
     // Tangent points in direction of rotation: +90° for clockwise, -90° for counter-clockwise
     const tangentAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
     
-    // Draw arrowhead pointing along the tangent (direction of rotation)
-    const arrowAngle1 = tangentAngle - 0.5; // One side of the arrow
-    const arrowAngle2 = tangentAngle + 0.5; // Other side of the arrow
-    
+    // Draw arrowhead as a filled triangle pointing along the tangent
+    this.ctx.fillStyle = BUTTON_ICON;
     this.ctx.beginPath();
-    this.ctx.moveTo(arrowX, arrowY);
-    this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(arrowAngle1),
-      arrowY + arrowSize * Math.sin(arrowAngle1)
+    
+    // Tip of the arrow
+    this.ctx.moveTo(
+      arrowX + arrowSize * Math.cos(tangentAngle),
+      arrowY + arrowSize * Math.sin(tangentAngle)
     );
-    this.ctx.moveTo(arrowX, arrowY);
+    
+    // Left side of the arrow base
+    const baseAngle1 = tangentAngle + Math.PI * 0.7;
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(arrowAngle2),
-      arrowY + arrowSize * Math.sin(arrowAngle2)
+      arrowX + arrowSize * 0.5 * Math.cos(baseAngle1),
+      arrowY + arrowSize * 0.5 * Math.sin(baseAngle1)
     );
-    this.ctx.stroke();
+    
+    // Right side of the arrow base
+    const baseAngle2 = tangentAngle - Math.PI * 0.7;
+    this.ctx.lineTo(
+      arrowX + arrowSize * 0.5 * Math.cos(baseAngle2),
+      arrowY + arrowSize * 0.5 * Math.sin(baseAngle2)
+    );
+    
+    this.ctx.closePath();
+    this.ctx.fill();
 
     this.ctx.restore();
   }
