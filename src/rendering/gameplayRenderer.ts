@@ -1926,7 +1926,7 @@ export class GameplayRenderer {
     if (!tileCenter) return;
 
     // Calculate the apex vertex (same logic as in gameplayInputHandler)
-    const edgeToApexVertex = [2, 1, 0, 5, 4, 3];
+    const edgeToApexVertex = [3, 4, 5, 0, 1, 2];
     const apexVertexIndex = edgeToApexVertex[currentPlayer.edgePosition];
     const apex = this.getHexVertex(tileCenter, this.layout.size, apexVertexIndex);
 
