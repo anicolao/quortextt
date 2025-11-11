@@ -27,6 +27,7 @@ import { checkVictory } from './victory';
 // Evaluation constants
 const WIN_SCORE = 100000;
 const LOSS_SCORE = -200000; // Huge penalty when enemy wins - worse than blocking self
+const SELF_BLOCK_BONUS = 25000; // Bonus when AI blocks itself WITH supermove enabled (strategic advantage)
 const OWN_PATH_WEIGHT = -2;
 const ENEMY_PATH_WEIGHT = 1;
 const BLOCK_THREAT_PENALTY = -50000; // Large penalty when enemy is 1 move from victory (urgent to block)
@@ -83,7 +84,8 @@ function evaluatePosition(
   aiPlayer: Player,
   players: Player[],
   teams: Team[],
-  boardRadius = 3
+  boardRadius = 3,
+  supermoveEnabled = false
 ): number {
   // Check if this is a winning position for the AI
   const victoryResult = checkVictory(board, players, teams, undefined, boardRadius);
@@ -127,8 +129,15 @@ function evaluatePosition(
   }
   
   if (aiPathLength === Infinity) {
-    // AI cannot win - very bad score
-    return -100000;
+    // AI cannot win immediately
+    if (supermoveEnabled) {
+      // With supermove, blocking ourselves is actually strategic!
+      // We can use supermove to unblock, and this often leads to victory
+      return SELF_BLOCK_BONUS;
+    } else {
+      // Without supermove, blocking ourselves is very bad
+      return -100000;
+    }
   }
   
   // Special case: Enemy is blocked (no viable path)
@@ -237,7 +246,7 @@ export function generateMoveCandidates(
       testBoard.set(positionToKey(position), tile);
       
       // Evaluate this position
-      const score = evaluatePosition(testBoard, aiPlayer, players, teams, boardRadius);
+      const score = evaluatePosition(testBoard, aiPlayer, players, teams, boardRadius, supermoveEnabled);
       const isWinning = score >= WIN_SCORE;
       
       candidates.push({
@@ -275,7 +284,7 @@ export function generateMoveCandidates(
         testBoard.set(posKey, newTile);
         
         // Check if the replacement itself causes victory
-        let replacementScore = evaluatePosition(testBoard, aiPlayer, players, teams, boardRadius);
+        let replacementScore = evaluatePosition(testBoard, aiPlayer, players, teams, boardRadius, supermoveEnabled);
         const replacementWins = replacementScore >= WIN_SCORE;
         
         // If replacement wins, that's the score
@@ -325,7 +334,8 @@ export function generateMoveCandidates(
               aiPlayer, 
               players, 
               teams, 
-              boardRadius
+              boardRadius,
+              supermoveEnabled
             );
             
             if (followupScore > bestFollowupScore) {
