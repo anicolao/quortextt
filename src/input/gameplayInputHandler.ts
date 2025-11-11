@@ -159,9 +159,6 @@ export class GameplayInputHandler {
         this.handleTileRotation(canvasX, canvasY, tileCenter.x, tileCenter.y, playerEdge);
         return;
       }
-      
-      // When tile is selected, don't allow clicking other hexagons - early return
-      return;
     } else {
       // No tile placed - check if clicking on current tile preview to rotate
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
