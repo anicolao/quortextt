@@ -144,8 +144,15 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       if (aiMove) {
         // Dispatch the move immediately (Redux is synchronous - no setTimeout needed)
         if (aiMove.isReplacement) {
-          store.dispatch(replaceTile(aiMove.position, aiMove.rotation) as any);
-          // After replacement, the REPLACE_TILE action will trigger this middleware again
+          const isSingleSupermove = state.ui.settings.singleSupermove;
+          store.dispatch(replaceTile(aiMove.position, aiMove.rotation, isSingleSupermove) as any);
+          
+          // If single supermove, advance to next player and draw a tile
+          if (isSingleSupermove) {
+            store.dispatch(nextPlayer() as any);
+            store.dispatch(drawTile() as any);
+          }
+          // Otherwise, the REPLACE_TILE action will trigger this middleware again
           // with the replaced tile in hand, and we'll place it
         } else {
           store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
