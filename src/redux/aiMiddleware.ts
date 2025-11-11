@@ -78,6 +78,49 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     }
   }
   
+  // Handle transition to playing phase (after SELECT_EDGE completes seating)
+  // If we just transitioned to playing phase and current player is AI, make a move
+  if (gameAction.type === SELECT_EDGE) {
+    const { phase, players, currentPlayerIndex, currentTile } = state.game;
+    
+    if (phase === 'playing' && currentTile !== null && players.length > 0) {
+      const currentPlayer = players[currentPlayerIndex];
+      
+      if (currentPlayer && currentPlayer.isAI) {
+        // AI is first player and needs to make the first move
+        // Trigger AI move logic by manually calling the AI move handler
+        const { board, teams, supermoveInProgress } = state.game;
+        const supermoveEnabled = state.ui.settings.supermove;
+        
+        const aiMove = selectAIMove(
+          board,
+          currentTile,
+          currentPlayer,
+          players,
+          teams,
+          supermoveEnabled && !supermoveInProgress,
+          state.game.boardRadius
+        );
+        
+        if (aiMove) {
+          if (aiMove.isReplacement) {
+            const isSingleSupermove = state.ui.settings.singleSupermove;
+            store.dispatch(replaceTile(aiMove.position, aiMove.rotation, isSingleSupermove) as any);
+            
+            if (isSingleSupermove) {
+              store.dispatch(nextPlayer() as any);
+              store.dispatch(drawTile() as any);
+            }
+          } else {
+            store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
+            store.dispatch(nextPlayer() as any);
+            store.dispatch(drawTile() as any);
+          }
+        }
+      }
+    }
+  }
+  
   // Handle AI move during gameplay - respond to DRAW_TILE or REPLACE_TILE (for supermoves)
   if (gameAction.type === DRAW_TILE || gameAction.type === REPLACE_TILE) {
     const { players, currentPlayerIndex, currentTile, board, teams, phase, supermoveInProgress } = state.game;

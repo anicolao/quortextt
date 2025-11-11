@@ -206,13 +206,21 @@ export function generateMoveCandidates(
   for (let rotation = 0; rotation < 6; rotation++) {
     const rot = rotation as Rotation;
     
-    // 1. Regular placements - only positions adjacent to flows or starting edges
+    // 1. Regular placements
     const allLegalPositions = findLegalMoves(board, tileType, rot, players, teams, boardRadius);
     
-    // Filter to only positions adjacent to flows or starting edges
-    const legalPositions = allLegalPositions.filter(pos => 
+    // As a performance optimization, prefer positions adjacent to flows or starting edges
+    // However, if no such positions exist (e.g., when opponent is blocked and board has disconnected regions),
+    // fall back to considering all legal positions
+    let legalPositions = allLegalPositions.filter(pos => 
       isAdjacentToFlowOrEdge(pos, board, players, boardRadius)
     );
+    
+    // If no adjacent positions found but there are legal positions, use all legal positions
+    // This handles cases where the opponent is blocked and AI needs to expand into disconnected areas
+    if (legalPositions.length === 0 && allLegalPositions.length > 0) {
+      legalPositions = allLegalPositions;
+    }
     
     for (const position of legalPositions) {
       // Create test board with this move
