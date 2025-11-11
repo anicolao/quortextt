@@ -26,6 +26,7 @@ import { checkVictory } from './victory';
 
 // Evaluation constants
 const WIN_SCORE = 100000;
+const LOSS_SCORE = -200000; // Huge penalty when enemy wins - worse than blocking self
 const OWN_PATH_WEIGHT = -2;
 const ENEMY_PATH_WEIGHT = 1;
 const BLOCK_THREAT_PENALTY = -50000; // Large penalty when enemy is 1 move from victory (urgent to block)
@@ -89,6 +90,12 @@ function evaluatePosition(
   
   if (victoryResult.winners.includes(aiPlayer.id)) {
     return WIN_SCORE;
+  }
+  
+  // Check if any enemy wins - this is VERY BAD (worse than blocking ourselves)
+  const enemyWins = victoryResult.winners.some(winnerId => winnerId !== aiPlayer.id);
+  if (enemyWins) {
+    return LOSS_SCORE;
   }
   
   // Calculate shortest path for AI
