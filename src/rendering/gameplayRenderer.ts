@@ -1437,25 +1437,31 @@ export class GameplayRenderer {
     this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
     this.ctx.stroke();
 
-    // Draw arrowhead at the START of the arc
+    // Draw arrowhead at the END of the arc, pointing in direction of rotation
     const arrowSize = size * 0.15;
-    const arrowAngle = startAngle;
+    const arrowAngle = endAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
     
-    // Calculate arrowhead direction (pointing in direction of rotation)
-    const perpAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
+    // Calculate tangent direction at the end of the arc
+    // For a circle, the tangent is perpendicular to the radius
+    // Tangent points in direction of rotation: +90° for clockwise, -90° for counter-clockwise
+    const tangentAngle = arrowAngle + (clockwise ? Math.PI / 2 : -Math.PI / 2);
+    
+    // Draw arrowhead pointing along the tangent (direction of rotation)
+    const arrowAngle1 = tangentAngle - 0.5; // One side of the arrow
+    const arrowAngle2 = tangentAngle + 0.5; // Other side of the arrow
     
     this.ctx.beginPath();
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle + (clockwise ? -0.5 : 0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle + (clockwise ? -0.5 : 0.5))
+      arrowX + arrowSize * Math.cos(arrowAngle1),
+      arrowY + arrowSize * Math.sin(arrowAngle1)
     );
     this.ctx.moveTo(arrowX, arrowY);
     this.ctx.lineTo(
-      arrowX + arrowSize * Math.cos(perpAngle - (clockwise ? -0.5 : 0.5)),
-      arrowY + arrowSize * Math.sin(perpAngle - (clockwise ? -0.5 : 0.5))
+      arrowX + arrowSize * Math.cos(arrowAngle2),
+      arrowY + arrowSize * Math.sin(arrowAngle2)
     );
     this.ctx.stroke();
 
