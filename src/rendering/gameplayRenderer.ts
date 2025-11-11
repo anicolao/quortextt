@@ -1438,7 +1438,8 @@ export class GameplayRenderer {
     this.ctx.stroke();
 
     // Draw arrowhead at the START of the arc as a stroked triangle
-    const arrowSize = size * 0.25; // Made larger for visibility
+    const arrowLength = size * 0.15;
+    const arrowWidth = size * 0.08;
     const arrowAngle = startAngle;
     const arrowX = radius * Math.cos(arrowAngle);
     const arrowY = radius * Math.sin(arrowAngle);
@@ -1453,22 +1454,22 @@ export class GameplayRenderer {
     
     // Tip of the arrow
     this.ctx.moveTo(
-      arrowX + arrowSize * Math.cos(tangentAngle),
-      arrowY + arrowSize * Math.sin(tangentAngle)
+      arrowX + arrowLength * Math.cos(tangentAngle),
+      arrowY + arrowLength * Math.sin(tangentAngle)
     );
     
     // Left side of the arrow base (perpendicular to tangent)
-    const baseAngle1 = tangentAngle + Math.PI * 0.65;
+    const baseAngle1 = tangentAngle + Math.PI * 0.5;
     this.ctx.lineTo(
-      arrowX + arrowSize * 0.4 * Math.cos(baseAngle1),
-      arrowY + arrowSize * 0.4 * Math.sin(baseAngle1)
+      arrowX + arrowWidth * Math.cos(baseAngle1),
+      arrowY + arrowWidth * Math.sin(baseAngle1)
     );
     
     // Right side of the arrow base (perpendicular to tangent)
-    const baseAngle2 = tangentAngle - Math.PI * 0.65;
+    const baseAngle2 = tangentAngle - Math.PI * 0.5;
     this.ctx.lineTo(
-      arrowX + arrowSize * 0.4 * Math.cos(baseAngle2),
-      arrowY + arrowSize * 0.4 * Math.sin(baseAngle2)
+      arrowX + arrowWidth * Math.cos(baseAngle2),
+      arrowY + arrowWidth * Math.sin(baseAngle2)
     );
     
     this.ctx.closePath();
