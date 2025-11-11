@@ -1,12 +1,13 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, placeTile, replaceTile, nextPlayer, drawTile, resetGame } from '../redux/actions';
+import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
 import { isValidPosition, positionToKey } from '../game/board';
 import { isLegalMove, isValidReplacementMove } from '../game/legality';
+import { HoveredElementType } from '../redux/types';
 
 export class GameplayInputHandler {
   private renderer: GameplayRenderer;
@@ -314,5 +315,155 @@ export class GameplayInputHandler {
         return;
       }
     }
+  }
+
+  handleMouseMove(canvasX: number, canvasY: number): void {
+    const state = store.getState();
+    
+    // Only track hover if debug mode is enabled
+    if (!state.ui.settings.debugHitTest) {
+      store.dispatch(setHoveredElement(null));
+      return;
+    }
+
+    // Check if we're in gameplay mode
+    if (state.game.screen !== 'gameplay') return;
+    if (state.game.currentTile == null) return;
+
+    const layout = this.renderer.getLayout();
+    let hoveredElement: HoveredElementType = null;
+
+    // Check if tile is already placed on board
+    if (state.ui.selectedPosition) {
+      // Check for button hovers when tile is placed on board
+      const tileCenter = hexToPixel(state.ui.selectedPosition, layout);
+      const buttonSize = layout.size * 0.8;
+      const buttonSpacing = layout.size * 2;
+      const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+      const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
+      
+      // Get oriented button positions
+      const buttonPositions = this.getOrientedButtonPositions(
+        tileCenter,
+        buttonSpacing,
+        playerEdge
+      );
+      
+      // Check rotation buttons first (smaller)
+      const rotationButtonSize = buttonSize * 0.6;
+      const distToRotateNE = Math.sqrt(
+        Math.pow(canvasX - buttonPositions.rotateNE.x, 2) + 
+        Math.pow(canvasY - buttonPositions.rotateNE.y, 2)
+      );
+      const distToRotateNW = Math.sqrt(
+        Math.pow(canvasX - buttonPositions.rotateNW.x, 2) + 
+        Math.pow(canvasY - buttonPositions.rotateNW.y, 2)
+      );
+      
+      if (distToRotateNE < rotationButtonSize / 2) {
+        hoveredElement = {
+          type: 'rotation-button',
+          position: buttonPositions.rotateNE,
+          radius: rotationButtonSize / 2,
+          clockwise: true,
+        };
+      } else if (distToRotateNW < rotationButtonSize / 2) {
+        hoveredElement = {
+          type: 'rotation-button',
+          position: buttonPositions.rotateNW,
+          radius: rotationButtonSize / 2,
+          clockwise: false,
+        };
+      } else {
+        // Check checkmark button
+        const distToCheck = Math.sqrt(
+          Math.pow(canvasX - buttonPositions.checkmark.x, 2) + 
+          Math.pow(canvasY - buttonPositions.checkmark.y, 2)
+        );
+        if (distToCheck < buttonSize / 2) {
+          hoveredElement = {
+            type: 'action-button',
+            position: buttonPositions.checkmark,
+            radius: buttonSize / 2,
+            action: 'checkmark',
+          };
+        } else {
+          // Check X button
+          const distToX = Math.sqrt(
+            Math.pow(canvasX - buttonPositions.cancel.x, 2) + 
+            Math.pow(canvasY - buttonPositions.cancel.y, 2)
+          );
+          if (distToX < buttonSize / 2) {
+            hoveredElement = {
+              type: 'action-button',
+              position: buttonPositions.cancel,
+              radius: buttonSize / 2,
+              action: 'cancel',
+            };
+          }
+        }
+      }
+    }
+
+    // If not hovering over a button, check if hovering over a hex position
+    if (!hoveredElement) {
+      const hexPos = pixelToHex({ x: canvasX, y: canvasY }, layout);
+      
+      // Verify this is a valid board position
+      if (isValidPosition(hexPos, state.game.boardRadius)) {
+        hoveredElement = {
+          type: 'hexagon',
+          position: hexPos,
+        };
+      }
+    }
+
+    // Check for exit button hovers
+    if (!hoveredElement) {
+      const cornerSize = 50;
+      const margin = 10;
+
+      const corners = [
+        { x: margin, y: margin, width: cornerSize, height: cornerSize },
+        {
+          x: layout.canvasWidth - margin - cornerSize,
+          y: margin,
+          width: cornerSize,
+          height: cornerSize,
+        },
+        {
+          x: layout.canvasWidth - margin - cornerSize,
+          y: layout.canvasHeight - margin - cornerSize,
+          width: cornerSize,
+          height: cornerSize,
+        },
+        {
+          x: margin,
+          y: layout.canvasHeight - margin - cornerSize,
+          width: cornerSize,
+          height: cornerSize,
+        },
+      ];
+
+      for (const corner of corners) {
+        if (
+          canvasX >= corner.x &&
+          canvasX <= corner.x + corner.width &&
+          canvasY >= corner.y &&
+          canvasY <= corner.y + corner.height
+        ) {
+          hoveredElement = {
+            type: 'exit-button',
+            x: corner.x,
+            y: corner.y,
+            width: corner.width,
+            height: corner.height,
+          };
+          break;
+        }
+      }
+    }
+
+    store.dispatch(setHoveredElement(hoveredElement));
   }
 }

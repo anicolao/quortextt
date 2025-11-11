@@ -4,6 +4,7 @@ import { UIState } from './types';
 import {
   UIAction,
   SET_HOVERED_POSITION,
+  SET_HOVERED_ELEMENT,
   SET_SELECTED_POSITION,
   SET_ROTATION,
   TOGGLE_LEGAL_MOVES,
@@ -15,6 +16,7 @@ import {
 export const initialUIState: UIState = {
   selectedPosition: null,
   hoveredPosition: null,
+  hoveredElement: null,
   currentRotation: 0,
   showLegalMoves: false,
   showFlowMarkers: true,
@@ -30,6 +32,7 @@ export const initialUIState: UIState = {
     debugLegalityTest: false,
     debugAnimationSlowdown: 1,
     debugAIScoring: false,
+    debugHitTest: true, // Enable by default for testing
     tileDistribution: [1, 1, 1, 1], // Default balanced distribution
   },
 };
@@ -44,6 +47,13 @@ export function uiReducer(
       return {
         ...state,
         hoveredPosition: action.payload,
+      };
+    }
+
+    case SET_HOVERED_ELEMENT: {
+      return {
+        ...state,
+        hoveredElement: action.payload,
       };
     }
 

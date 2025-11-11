@@ -52,6 +52,10 @@ export class InputHandler {
       }
       event.preventDefault();
     });
+
+    canvas.addEventListener('mousemove', (event) => {
+      this.handleMouseMove(event.clientX, event.clientY);
+    });
   }
 
   private handleClick(clientX: number, clientY: number): void {
@@ -140,6 +144,22 @@ export class InputHandler {
         this.renderer.showColorPicker(entry.player.id);
         return;
       }
+    }
+  }
+
+  private handleMouseMove(clientX: number, clientY: number): void {
+    const canvas = this.renderer.getCanvas();
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    // Check if in gameplay mode
+    const state = store.getState();
+    if (state.game.screen === 'gameplay' && this.gameplayInputHandler) {
+      this.gameplayInputHandler.handleMouseMove(x, y);
+      return;
     }
   }
 
