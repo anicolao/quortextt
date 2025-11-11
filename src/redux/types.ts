@@ -126,6 +126,10 @@ export interface UIState {
   // Settings dialog
   showSettings: boolean;
   settings: GameSettings;
+  
+  // Help dialog
+  showHelp: boolean;
+  helpCorner: 0 | 1 | 2 | 3 | null; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
 }
 
 // Root state combining all state slices

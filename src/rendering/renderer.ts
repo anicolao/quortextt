@@ -109,7 +109,9 @@ export class Renderer {
       this.canvas.height,
       state.game.configPlayers,
       state.ui.showSettings,
-      state.ui.settings
+      state.ui.settings,
+      state.ui.showHelp,
+      state.ui.helpCorner
     );
 
     // Return empty UILayout for compatibility (new input handler will use LobbyLayout)

@@ -25,6 +25,13 @@ export interface ExitButton {
   corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
 }
 
+export interface HelpButton {
+  x: number;
+  y: number;
+  size: number;
+  corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+}
+
 export interface SettingsButton {
   x: number;
   y: number;
@@ -69,6 +76,7 @@ export interface LobbyLayout {
   edgeButtons: EdgeButton[];
   startButton: StartButton;
   exitButtons: ExitButton[];
+  helpButtons: HelpButton[];
   settingsButton: SettingsButton;
   playerLists: PlayerListEntry[][]; // One list per edge [bottom, right, top, left]
   settingsDialog: SettingsDialogLayout | null;
@@ -210,6 +218,36 @@ export function calculateLobbyLayout(
     },
   ];
 
+  // Help buttons (? buttons) - positioned next to exit buttons
+  const helpButtonSize = exitButtonSize;
+  const helpButtonSpacing = exitButtonSize * 0.15;
+  const helpButtons: HelpButton[] = [
+    {
+      x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
+      y: canvasHeight - exitButtonSize / 2,
+      size: helpButtonSize,
+      corner: 0, // bottom-left (help button to the right of exit)
+    },
+    {
+      x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
+      y: canvasHeight - exitButtonSize / 2,
+      size: helpButtonSize,
+      corner: 1, // bottom-right (help button to the left of exit)
+    },
+    {
+      x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
+      y: exitButtonSize / 2,
+      size: helpButtonSize,
+      corner: 2, // top-right (help button to the left of exit)
+    },
+    {
+      x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
+      y: exitButtonSize / 2,
+      size: helpButtonSize,
+      corner: 3, // top-left (help button to the right of exit)
+    },
+  ];
+
   // Player lists (one per edge, showing all players)
   const playerLists: PlayerListEntry[][] = [[], [], [], []];
   const entryWidth = minDim * 0.18; // Smaller to fit two columns
@@ -302,6 +340,7 @@ export function calculateLobbyLayout(
     edgeButtons,
     startButton,
     exitButtons,
+    helpButtons,
     settingsButton,
     playerLists,
     settingsDialog: null,

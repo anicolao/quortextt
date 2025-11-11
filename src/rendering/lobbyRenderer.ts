@@ -33,6 +33,8 @@ export class LobbyRenderer {
     players: ConfigPlayer[],
     showSettings: boolean = false,
     settings?: import("../redux/types").GameSettings,
+    showHelp: boolean = false,
+    helpCorner: number | null = null,
   ): LobbyLayout {
     this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players);
 
@@ -45,6 +47,7 @@ export class LobbyRenderer {
     this.renderStartButton(this.layout.startButton);
     this.renderSettingsButton(this.layout.settingsButton);
     this.renderExitButtons(this.layout.exitButtons);
+    this.renderHelpButtons(this.layout.helpButtons);
     this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
 
     // Render settings dialog if open
@@ -52,6 +55,11 @@ export class LobbyRenderer {
       this.layout.settingsDialog = this.renderSettingsDialog(canvasWidth, canvasHeight, settings);
     } else {
       this.layout.settingsDialog = null;
+    }
+
+    // Render help dialog if open
+    if (showHelp && helpCorner !== null) {
+      this.renderHelpDialog(canvasWidth, canvasHeight, helpCorner);
     }
 
     return this.layout;
@@ -200,6 +208,32 @@ export class LobbyRenderer {
       this.ctx.moveTo(centerX + xSize, centerY - xSize);
       this.ctx.lineTo(centerX - xSize, centerY + xSize);
       this.ctx.stroke();
+    });
+  }
+
+  private renderHelpButtons(buttons: import("./lobbyLayout").HelpButton[]): void {
+    buttons.forEach((button) => {
+      const centerX = button.x;
+      const centerY = button.y;
+      const radius = button.size / 2;
+
+      // Draw circle background
+      this.ctx.fillStyle = "#2196F3"; // Blue for help
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      this.ctx.fill();
+
+      // Draw border
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // Draw ? symbol
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.font = `bold ${radius * 1.2}px sans-serif`;
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillText("?", centerX, centerY);
     });
   }
 
@@ -800,5 +834,103 @@ export class LobbyRenderer {
     boardRadius: number
   ): { totalTiles: number; numGroups: number } {
     return calculateTileCountsFromRatio(boardRadius, distribution);
+  }
+
+  private renderHelpDialog(
+    canvasWidth: number,
+    canvasHeight: number,
+    corner: number, // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+  ): void {
+    // Semi-transparent overlay
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Dialog box dimensions
+    const dialogWidth = Math.min(500, canvasWidth * 0.8);
+    const dialogHeight = Math.min(600, canvasHeight * 0.8);
+    
+    // Position dialog based on which corner was clicked
+    let dialogX: number, dialogY: number;
+    const margin = 20;
+    
+    switch (corner) {
+      case 0: // bottom-left
+        dialogX = margin;
+        dialogY = canvasHeight - dialogHeight - margin;
+        break;
+      case 1: // bottom-right
+        dialogX = canvasWidth - dialogWidth - margin;
+        dialogY = canvasHeight - dialogHeight - margin;
+        break;
+      case 2: // top-right
+        dialogX = canvasWidth - dialogWidth - margin;
+        dialogY = margin;
+        break;
+      case 3: // top-left
+        dialogX = margin;
+        dialogY = margin;
+        break;
+      default:
+        dialogX = (canvasWidth - dialogWidth) / 2;
+        dialogY = (canvasHeight - dialogHeight) / 2;
+    }
+
+    // Dialog background
+    this.ctx.fillStyle = "#2a2a3e";
+    this.ctx.fillRect(dialogX, dialogY, dialogWidth, dialogHeight);
+    this.ctx.strokeStyle = "#2196F3";
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(dialogX, dialogY, dialogWidth, dialogHeight);
+
+    // Title
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 24px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
+    this.ctx.fillText("How to Play", dialogX + dialogWidth / 2, dialogY + 20);
+
+    // Help content
+    const contentX = dialogX + 30;
+    let contentY = dialogY + 70;
+    const lineHeight = 30;
+
+    this.ctx.font = "16px sans-serif";
+    this.ctx.textAlign = "left";
+    this.ctx.fillStyle = "#ffffff";
+
+    // Lobby-specific help
+    const helpLines = [
+      "Adding Players:",
+      "• Click the colored + buttons on each edge",
+      "• Players join from their chosen edge",
+      "• Each player gets a unique color",
+      "",
+      "Starting the Game:",
+      "• Need at least 2 players to start",
+      "• Click the ▶ play button in the center",
+      "• Players will select their board edges",
+      "",
+      "Game Settings:",
+      "• Click the ⚙ gear icon for options",
+      "• Adjust board size, tile distribution",
+      "• Enable/disable special moves",
+      "",
+      "Click anywhere to close this help",
+    ];
+
+    helpLines.forEach((line, index) => {
+      const y = contentY + index * lineHeight;
+      if (line.startsWith("•")) {
+        // Indent bullet points
+        this.ctx.fillText(line, contentX + 20, y);
+      } else if (line === "") {
+        // Skip empty lines
+      } else {
+        // Headers
+        this.ctx.font = "bold 16px sans-serif";
+        this.ctx.fillText(line, contentX, y);
+        this.ctx.font = "16px sans-serif";
+      }
+    });
   }
 }

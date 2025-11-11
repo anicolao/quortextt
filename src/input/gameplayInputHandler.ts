@@ -1,7 +1,7 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame } from '../redux/actions';
+import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, showHelp, hideHelp } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
@@ -19,11 +19,22 @@ export class GameplayInputHandler {
   handleClick(canvasX: number, canvasY: number): void {
     const state = store.getState();
     
+    // If help dialog is open, close it on any click
+    if (state.ui.showHelp) {
+      store.dispatch(hideHelp());
+      return;
+    }
+
     // Check if we're in gameplay mode
     if (state.game.screen !== 'gameplay') return;
     if (state.game.currentTile == null) return;
 
     const layout = this.renderer.getLayout();
+
+    // Check for help button clicks first
+    if (this.checkHelpButtons(canvasX, canvasY, layout)) {
+      return;
+    }
 
     // Check if tile is already placed on board
     if (state.ui.selectedPosition) {
@@ -344,6 +355,58 @@ export class GameplayInputHandler {
         return;
       }
     }
+  }
+
+  private checkHelpButtons(
+    x: number,
+    y: number,
+    layout: { canvasWidth: number; canvasHeight: number }
+  ): boolean {
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+
+    const helpButtons = [
+      { 
+        // Top-left: help to the right of X
+        centerX: margin + cornerSize / 2 + cornerSize + spacing, 
+        centerY: margin + cornerSize / 2, 
+        corner: 3 
+      },
+      {
+        // Top-right: help to the left of X
+        centerX: layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
+        centerY: margin + cornerSize / 2,
+        corner: 2,
+      },
+      {
+        // Bottom-right: help to the left of X
+        centerX: layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
+        centerY: layout.canvasHeight - margin - cornerSize / 2,
+        corner: 1,
+      },
+      {
+        // Bottom-left: help to the right of X
+        centerX: margin + cornerSize / 2 + cornerSize + spacing,
+        centerY: layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+      },
+    ];
+
+    const radius = cornerSize / 2;
+
+    for (const button of helpButtons) {
+      const dist = Math.sqrt(
+        Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
+      );
+      if (dist <= radius) {
+        // Help button clicked
+        store.dispatch(showHelp(button.corner as 0 | 1 | 2 | 3));
+        return true;
+      }
+    }
+
+    return false;
   }
 
   handleMouseMove(canvasX: number, canvasY: number): void {

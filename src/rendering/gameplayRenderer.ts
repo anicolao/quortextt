@@ -109,6 +109,14 @@ export class GameplayRenderer {
     // Layer 6: Exit buttons in corners
     this.renderExitButtons();
 
+    // Layer 6.5: Help buttons in corners
+    this.renderHelpButtons();
+
+    // Layer 6.7: Help dialog if open
+    if (state.ui.showHelp && state.ui.helpCorner !== null) {
+      this.renderHelpDialog(state.ui.helpCorner);
+    }
+
     // Layer 7: Debug legality test - show winning paths
     if (state.ui.settings.debugLegalityTest) {
       this.renderDebugLegalityPaths(state);
@@ -1706,6 +1714,165 @@ export class GameplayRenderer {
       this.ctx.stroke();
 
       this.ctx.restore();
+    });
+  }
+
+  private renderHelpButtons(): void {
+    // Render ? buttons next to X buttons in each corner
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+
+    const corners = [
+      { 
+        // Top-left: help to the right of X
+        x: margin + cornerSize / 2 + cornerSize + spacing, 
+        y: margin + cornerSize / 2, 
+        corner: 3 
+      },
+      {
+        // Top-right: help to the left of X
+        x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
+        y: margin + cornerSize / 2,
+        corner: 2,
+      },
+      {
+        // Bottom-right: help to the left of X
+        x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        corner: 1,
+      },
+      {
+        // Bottom-left: help to the right of X
+        x: margin + cornerSize / 2 + cornerSize + spacing,
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+      },
+    ];
+
+    corners.forEach((corner) => {
+      const centerX = corner.x;
+      const centerY = corner.y;
+      const radius = cornerSize / 2;
+
+      // Draw circle background
+      this.ctx.fillStyle = "#2196F3"; // Blue for help
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      this.ctx.fill();
+
+      // Draw border
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // Draw ? symbol
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.font = `bold ${radius * 1.2}px sans-serif`;
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillText("?", centerX, centerY);
+    });
+  }
+
+  private renderHelpDialog(corner: number): void {
+    // Semi-transparent overlay
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
+
+    // Dialog box dimensions
+    const dialogWidth = Math.min(500, this.layout.canvasWidth * 0.8);
+    const dialogHeight = Math.min(700, this.layout.canvasHeight * 0.8);
+    
+    // Position dialog based on which corner was clicked
+    let dialogX: number, dialogY: number;
+    const margin = 20;
+    
+    switch (corner) {
+      case 0: // bottom-left
+        dialogX = margin;
+        dialogY = this.layout.canvasHeight - dialogHeight - margin;
+        break;
+      case 1: // bottom-right
+        dialogX = this.layout.canvasWidth - dialogWidth - margin;
+        dialogY = this.layout.canvasHeight - dialogHeight - margin;
+        break;
+      case 2: // top-right
+        dialogX = this.layout.canvasWidth - dialogWidth - margin;
+        dialogY = margin;
+        break;
+      case 3: // top-left
+        dialogX = margin;
+        dialogY = margin;
+        break;
+      default:
+        dialogX = (this.layout.canvasWidth - dialogWidth) / 2;
+        dialogY = (this.layout.canvasHeight - dialogHeight) / 2;
+    }
+
+    // Dialog background
+    this.ctx.fillStyle = "#2a2a3e";
+    this.ctx.fillRect(dialogX, dialogY, dialogWidth, dialogHeight);
+    this.ctx.strokeStyle = "#2196F3";
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(dialogX, dialogY, dialogWidth, dialogHeight);
+
+    // Title
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 24px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
+    this.ctx.fillText("How to Play", dialogX + dialogWidth / 2, dialogY + 20);
+
+    // Help content
+    const contentX = dialogX + 30;
+    let contentY = dialogY + 70;
+    const lineHeight = 28;
+
+    this.ctx.font = "16px sans-serif";
+    this.ctx.textAlign = "left";
+    this.ctx.fillStyle = "#ffffff";
+
+    // Gameplay-specific help
+    const helpLines = [
+      "Game Rules:",
+      "• Connect your edge to the opposite edge",
+      "• Place tiles to build flowing paths",
+      "• Each tile must keep paths open for all players",
+      "",
+      "Your Turn:",
+      "• Click a hex to place your current tile",
+      "• Rotate with buttons near the tile",
+      "• Click ✓ to confirm, ✗ to cancel",
+      "",
+      "Winning:",
+      "• Flow completion: connect your edges",
+      "• Constraint: force opponent to draw",
+      "  an unplayable tile",
+      "",
+      "Special Rules:",
+      "• Supermove: replace existing tiles when",
+      "  you have no legal moves",
+      "",
+      "Click anywhere to close this help",
+    ];
+
+    helpLines.forEach((line, index) => {
+      const y = contentY + index * lineHeight;
+      if (line.startsWith("•")) {
+        // Indent bullet points
+        this.ctx.fillText(line, contentX + 20, y);
+      } else if (line === "") {
+        // Skip empty lines
+      } else if (line.startsWith("  ")) {
+        // Double indent for sub-bullets
+        this.ctx.fillText(line, contentX + 40, y);
+      } else {
+        // Headers
+        this.ctx.font = "bold 16px sans-serif";
+        this.ctx.fillText(line, contentX, y);
+        this.ctx.font = "16px sans-serif";
+      }
     });
   }
 

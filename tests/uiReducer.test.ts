@@ -10,6 +10,8 @@ import {
   toggleLegalMoves,
   toggleSettings,
   updateSettings,
+  showHelp,
+  hideHelp,
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
@@ -192,6 +194,46 @@ describe('uiReducer', () => {
 
       expect(state.settings.supermove).toBe(true); // Should remain unchanged
       expect(state.settings.debugShowEdgeLabels).toBe(false); // Should remain unchanged
+    });
+  });
+
+  describe('SHOW_HELP', () => {
+    it('should show help dialog at bottom-left corner', () => {
+      const state = uiReducer(initialUIState, showHelp(0));
+
+      expect(state.showHelp).toBe(true);
+      expect(state.helpCorner).toBe(0);
+    });
+
+    it('should show help dialog at bottom-right corner', () => {
+      const state = uiReducer(initialUIState, showHelp(1));
+
+      expect(state.showHelp).toBe(true);
+      expect(state.helpCorner).toBe(1);
+    });
+
+    it('should show help dialog at top-right corner', () => {
+      const state = uiReducer(initialUIState, showHelp(2));
+
+      expect(state.showHelp).toBe(true);
+      expect(state.helpCorner).toBe(2);
+    });
+
+    it('should show help dialog at top-left corner', () => {
+      const state = uiReducer(initialUIState, showHelp(3));
+
+      expect(state.showHelp).toBe(true);
+      expect(state.helpCorner).toBe(3);
+    });
+  });
+
+  describe('HIDE_HELP', () => {
+    it('should hide help dialog', () => {
+      let state = uiReducer(initialUIState, showHelp(1));
+      state = uiReducer(state, hideHelp());
+
+      expect(state.showHelp).toBe(false);
+      expect(state.helpCorner).toBeNull();
     });
   });
 
