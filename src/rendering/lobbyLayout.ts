@@ -29,6 +29,7 @@ export interface HelpButton {
   x: number;
   y: number;
   size: number;
+  edge: Edge; // Which edge this help button belongs to (0=bottom, 1=right, 2=top, 3=left)
   corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
 }
 
@@ -218,33 +219,41 @@ export function calculateLobbyLayout(
     },
   ];
 
-  // Help buttons (? buttons) - positioned next to exit buttons
+  // Help buttons (? buttons) - one per edge, positioned in lower-left from each edge's perspective
   const helpButtonSize = exitButtonSize;
   const helpButtonSpacing = exitButtonSize * 0.15;
   const helpButtons: HelpButton[] = [
     {
+      // Edge 0 (bottom): lower-left from bottom perspective = bottom-left corner
       x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
       y: canvasHeight - exitButtonSize / 2,
       size: helpButtonSize,
-      corner: 0, // bottom-left (help button to the right of exit)
+      edge: 0,
+      corner: 0,
     },
     {
+      // Edge 1 (right): lower-left from right perspective = bottom-right corner (rotated 90° CW)
       x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
       y: canvasHeight - exitButtonSize / 2,
       size: helpButtonSize,
-      corner: 1, // bottom-right (help button to the left of exit)
+      edge: 1,
+      corner: 1,
     },
     {
+      // Edge 2 (top): lower-left from top perspective = top-right corner (rotated 180°)
       x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing,
       y: exitButtonSize / 2,
       size: helpButtonSize,
-      corner: 2, // top-right (help button to the left of exit)
+      edge: 2,
+      corner: 2,
     },
     {
+      // Edge 3 (left): lower-left from left perspective = top-left corner (rotated 270° CW)
       x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing,
       y: exitButtonSize / 2,
       size: helpButtonSize,
-      corner: 3, // top-left (help button to the right of exit)
+      edge: 3,
+      corner: 3,
     },
   ];
 
