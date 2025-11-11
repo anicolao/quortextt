@@ -114,7 +114,7 @@ export class GameplayRenderer {
 
     // Layer 6.7: Help dialog if open
     if (state.ui.showHelp && state.ui.helpCorner !== null) {
-      this.renderHelpDialog(state.ui.helpCorner);
+      this.renderHelpDialog(state.ui.helpCorner, state);
     }
 
     // Layer 7: Debug legality test - show winning paths
@@ -1794,7 +1794,7 @@ export class GameplayRenderer {
     });
   }
 
-  private renderHelpDialog(corner: number): void {
+  private renderHelpDialog(corner: number, state: RootState): void {
     // Semi-transparent overlay
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
@@ -1849,29 +1849,43 @@ export class GameplayRenderer {
     this.ctx.textAlign = "left";
     this.ctx.fillStyle = "#ffffff";
 
-    // Gameplay-specific help
-    const helpLines = [
+    // Build help lines based on game settings
+    const helpLines: string[] = [
       "Game Rules:",
       "• Connect your edge to the opposite edge",
       "• Place tiles to build flowing paths",
       "• Each tile must keep paths open for all players",
       "",
       "Your Turn:",
-      "• Click a hex to place your current tile",
-      "• Rotate with buttons near the tile",
-      "• Click ✓ to confirm, ✗ to cancel",
+      "• Tap a hex to place your current tile",
+      "• Rotate with buttons near the tile, or by",
+      "  tapping on the tile",
+      "• Tap ✓ to confirm, ✗ to cancel",
       "",
       "Winning:",
       "• Flow completion: connect your edges",
-      "• Constraint: force opponent to draw",
-      "  an unplayable tile",
+      "• Constraint: if you draw an unplayable tile",
       "",
-      "Special Rules:",
-      "• Supermove: replace existing tiles when",
-      "  you have no legal moves",
-      "",
-      "Click anywhere to close this help",
     ];
+
+    // Add supermove help based on settings
+    const settings = state.ui.settings;
+    if (settings.supermove) {
+      helpLines.push("Special Rules:");
+      if (settings.singleSupermove) {
+        helpLines.push("• If a player is blocked, they may replace a");
+        helpLines.push("  tile on the board to get unblocked and");
+        helpLines.push("  return it to the bag");
+      } else {
+        helpLines.push("• If a player is blocked, they have a super");
+        helpLines.push("  move that allows replacing a tile on the");
+        helpLines.push("  board that unblocks them and placing");
+        helpLines.push("  that tile in one turn");
+      }
+      helpLines.push("");
+    }
+
+    helpLines.push("Tap to dismiss");
 
     helpLines.forEach((line, index) => {
       const y = contentY + index * lineHeight;
