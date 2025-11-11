@@ -32,7 +32,7 @@ export const initialUIState: UIState = {
     debugLegalityTest: false,
     debugAnimationSlowdown: 1,
     debugAIScoring: false,
-    debugHitTest: true, // Enable by default for testing
+    debugHitTest: false, // Disabled by default - can be enabled in settings
     tileDistribution: [1, 1, 1, 1], // Default balanced distribution
   },
 };
