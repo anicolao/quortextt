@@ -224,20 +224,6 @@ function isAdjacentToFlowOrEdge(
     if (board.has(neighborKey)) {
       return true;
     }
-
-    // Check if neighbor is a starting edge position for any player
-    for (const player of players) {
-      const edgeData = getEdgePositionsWithDirections(
-        player.edgePosition,
-        boardRadius,
-      );
-      const isEdgePos = edgeData.some(
-        ({ pos }) => pos.row === neighbor.row && pos.col === neighbor.col,
-      );
-      if (isEdgePos) {
-        return true;
-      }
-    }
   }
 
   return false;
