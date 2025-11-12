@@ -30,6 +30,7 @@ import {
   isPlayerBlocked,
 } from "../game/legality";
 import { drawCircularArrow } from "./circularArrow";
+import { formatMoveHistory } from "../game/notation";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -754,8 +755,10 @@ export class GameplayRenderer {
 
     // Get the player who placed the last tile from move history
     const lastMove = state.game.moveHistory[state.game.moveHistory.length - 1];
-    const placingPlayer = state.game.players.find((p) => p.id === lastMove.playerId);
-    
+    const placingPlayer = state.game.players.find(
+      (p) => p.id === lastMove.playerId,
+    );
+
     if (!placingPlayer) {
       return;
     }
@@ -1573,7 +1576,16 @@ export class GameplayRenderer {
     const endAngle = clockwise ? Math.PI * 0.8 : Math.PI * 0.1;
 
     // Use shared circular arrow drawing function
-    drawCircularArrow(this.ctx, 0, 0, radius, startAngle, endAngle, clockwise, size);
+    drawCircularArrow(
+      this.ctx,
+      0,
+      0,
+      radius,
+      startAngle,
+      endAngle,
+      clockwise,
+      size,
+    );
 
     this.ctx.restore();
   }
@@ -1720,9 +1732,9 @@ export class GameplayRenderer {
     const spacing = cornerSize * 0.15;
 
     const corners = [
-      { 
+      {
         // Edge 0 (bottom): lower-left from bottom perspective = bottom-left corner, next to exit
-        x: margin + cornerSize / 2 + cornerSize + spacing, 
+        x: margin + cornerSize / 2 + cornerSize + spacing,
         y: this.layout.canvasHeight - margin - cornerSize / 2,
         corner: 0,
         edge: 0, // Bottom edge
@@ -1730,13 +1742,23 @@ export class GameplayRenderer {
       {
         // Edge 1 (right): lower-left from right perspective = bottom-right, next to exit
         x: this.layout.canvasWidth - margin - cornerSize / 2,
-        y: this.layout.canvasHeight - margin - cornerSize / 2 - cornerSize - spacing,
+        y:
+          this.layout.canvasHeight -
+          margin -
+          cornerSize / 2 -
+          cornerSize -
+          spacing,
         corner: 1,
         edge: 1, // Right edge
       },
       {
         // Edge 2 (top): lower-left from top perspective = top-right corner, next to exit
-        x: this.layout.canvasWidth - margin - cornerSize / 2 - cornerSize - spacing,
+        x:
+          this.layout.canvasWidth -
+          margin -
+          cornerSize / 2 -
+          cornerSize -
+          spacing,
         y: margin + cornerSize / 2,
         corner: 2,
         edge: 2, // Top edge
@@ -1744,7 +1766,7 @@ export class GameplayRenderer {
       {
         // Edge 3 (left): lower-left from left perspective = top-left, next to exit
         x: margin + cornerSize / 2,
-        y: margin + cornerSize / 2 + cornerSize + spacing, 
+        y: margin + cornerSize / 2 + cornerSize + spacing,
         corner: 3,
         edge: 3, // Left edge
       },
@@ -1767,24 +1789,24 @@ export class GameplayRenderer {
       this.ctx.stroke();
 
       // Draw ? symbol with rotation so it's readable from the edge's perspective
-      // Edge 0 (bottom) = 0°, Edge 1 (right) = 270° (90° + 180°), 
+      // Edge 0 (bottom) = 0°, Edge 1 (right) = 270° (90° + 180°),
       // Edge 2 (top) = 180°, Edge 3 (left) = 90° (270° + 180°)
       // Edges 1 and 3 need additional 180° flip to be upright from their perspective
       let rotation = corner.edge * 90;
       if (corner.edge === 1 || corner.edge === 3) {
         rotation += 180;
       }
-      
+
       this.ctx.save();
       this.ctx.translate(centerX, centerY);
       this.ctx.rotate((rotation * Math.PI) / 180);
-      
+
       this.ctx.fillStyle = "#ffffff";
       this.ctx.font = `bold ${radius * 1.2}px sans-serif`;
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
       this.ctx.fillText("?", 0, 0);
-      
+
       this.ctx.restore();
     });
   }
@@ -1802,8 +1824,14 @@ export class GameplayRenderer {
     else if (corner === 3) rotation = 90;
 
     // For 90° and 270° rotations, dimensions are swapped from the rotated perspective
-    const rotatedWidth = (rotation === 90 || rotation === 270) ? this.layout.canvasHeight : this.layout.canvasWidth;
-    const rotatedHeight = (rotation === 90 || rotation === 270) ? this.layout.canvasWidth : this.layout.canvasHeight;
+    const rotatedWidth =
+      rotation === 90 || rotation === 270
+        ? this.layout.canvasHeight
+        : this.layout.canvasWidth;
+    const rotatedHeight =
+      rotation === 90 || rotation === 270
+        ? this.layout.canvasWidth
+        : this.layout.canvasHeight;
 
     // Dialog box dimensions (based on rotated space)
     const dialogWidth = Math.min(500, rotatedWidth * 0.8);
@@ -1814,7 +1842,10 @@ export class GameplayRenderer {
     this.ctx.save();
 
     // Translate to screen center, rotate, then position dialog
-    this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
+    this.ctx.translate(
+      this.layout.canvasWidth / 2,
+      this.layout.canvasHeight / 2,
+    );
     this.ctx.rotate((rotation * Math.PI) / 180);
 
     // Position dialog in rotated space (always bottom-left in rotated coordinates)
@@ -1879,7 +1910,7 @@ export class GameplayRenderer {
       "• Flow completion: connect your edges",
       "• Constraint: if you draw an unplayable tile",
       "",
-      "Tap to dismiss"
+      "Tap to dismiss",
     );
 
     helpLines.forEach((line, index) => {
@@ -1912,9 +1943,9 @@ export class GameplayRenderer {
     const doubleSpacing = 2 * (cornerSize + spacing);
 
     const corners = [
-      { 
+      {
         // Edge 0 (bottom): positioned after exit and help buttons
-        x: margin + cornerSize / 2 + doubleSpacing, 
+        x: margin + cornerSize / 2 + doubleSpacing,
         y: this.layout.canvasHeight - margin - cornerSize / 2,
         corner: 0,
         edge: 0,
@@ -1936,7 +1967,7 @@ export class GameplayRenderer {
       {
         // Edge 3 (left): positioned after exit and help buttons
         x: margin + cornerSize / 2,
-        y: margin + cornerSize / 2 + doubleSpacing, 
+        y: margin + cornerSize / 2 + doubleSpacing,
         corner: 3,
         edge: 3,
       },
@@ -1963,34 +1994,31 @@ export class GameplayRenderer {
       if (corner.edge === 1 || corner.edge === 3) {
         rotation += 180;
       }
-      
+
       this.ctx.save();
       this.ctx.translate(centerX, centerY);
       this.ctx.rotate((rotation * Math.PI) / 180);
-      
+
       // Draw a simple list icon (three horizontal lines)
       this.ctx.strokeStyle = "#ffffff";
       this.ctx.lineWidth = 3;
       this.ctx.lineCap = "round";
-      
+
       const lineLength = radius * 0.8;
       const lineSpacing = radius * 0.4;
-      
+
       for (let i = -1; i <= 1; i++) {
         this.ctx.beginPath();
         this.ctx.moveTo(-lineLength / 2, i * lineSpacing);
         this.ctx.lineTo(lineLength / 2, i * lineSpacing);
         this.ctx.stroke();
       }
-      
+
       this.ctx.restore();
     });
   }
 
   private renderMoveListDialog(corner: number, state: RootState): void {
-    // Import notation module
-    const { formatMoveHistory } = require('../game/notation');
-    
     // Semi-transparent overlay
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
@@ -2002,8 +2030,14 @@ export class GameplayRenderer {
     else if (corner === 3) rotation = 90;
 
     // For 90° and 270° rotations, dimensions are swapped
-    const rotatedWidth = (rotation === 90 || rotation === 270) ? this.layout.canvasHeight : this.layout.canvasWidth;
-    const rotatedHeight = (rotation === 90 || rotation === 270) ? this.layout.canvasWidth : this.layout.canvasHeight;
+    const rotatedWidth =
+      rotation === 90 || rotation === 270
+        ? this.layout.canvasHeight
+        : this.layout.canvasWidth;
+    const rotatedHeight =
+      rotation === 90 || rotation === 270
+        ? this.layout.canvasWidth
+        : this.layout.canvasHeight;
 
     // Dialog box dimensions
     const dialogWidth = Math.min(500, rotatedWidth * 0.8);
@@ -2014,7 +2048,10 @@ export class GameplayRenderer {
     this.ctx.save();
 
     // Translate to screen center, rotate, then position dialog
-    this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
+    this.ctx.translate(
+      this.layout.canvasWidth / 2,
+      this.layout.canvasHeight / 2,
+    );
     this.ctx.rotate((rotation * Math.PI) / 180);
 
     // Position dialog in rotated space (always bottom-left in rotated coordinates)
@@ -2038,20 +2075,25 @@ export class GameplayRenderer {
     // Get move history
     const moves = state.game.moveHistory;
     const players = state.game.players;
-    
+
     // Format moves
-    const moveNotations = formatMoveHistory(moves, players, state.game.boardRadius);
+    const moveNotations = formatMoveHistory(
+      moves,
+      players,
+      state.game.boardRadius,
+    );
 
     // Navigation controls area
     const controlsY = dialogY + 60;
     const controlsHeight = 40;
-    
+
     // Draw navigation info
     this.ctx.font = "14px sans-serif";
     this.ctx.textAlign = "left";
     this.ctx.fillStyle = "#cccccc";
-    
-    const viewingIndex = state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
+
+    const viewingIndex =
+      state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
     const statusText = `Viewing: ${viewingIndex} of ${moves.length} moves`;
     this.ctx.fillText(statusText, dialogX + 20, controlsY + 20);
 
@@ -2059,7 +2101,9 @@ export class GameplayRenderer {
     const contentX = dialogX + 20;
     let contentY = controlsY + controlsHeight + 10;
     const lineHeight = 24;
-    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - 60) / lineHeight);
+    const maxLines = Math.floor(
+      (dialogHeight - (contentY - dialogY) - 60) / lineHeight,
+    );
 
     this.ctx.font = "16px monospace";
     this.ctx.textAlign = "left";
@@ -2069,26 +2113,32 @@ export class GameplayRenderer {
       this.ctx.fillText("No moves yet", contentX, contentY);
     } else {
       // Show moves up to the current view index
-      const visibleMoves = state.ui.moveListIndex === -1 
-        ? moveNotations 
-        : moveNotations.slice(0, state.ui.moveListIndex);
-      
+      const visibleMoves =
+        state.ui.moveListIndex === -1
+          ? moveNotations
+          : moveNotations.slice(0, state.ui.moveListIndex);
+
       // Calculate starting index for pagination
       const startIndex = Math.max(0, visibleMoves.length - maxLines);
-      
-      visibleMoves.slice(startIndex).forEach((notation: string, index: number) => {
-        const moveNumber = startIndex + index + 1;
-        const y = contentY + index * lineHeight;
-        
-        // Highlight current move if navigating
-        if (state.ui.moveListIndex !== -1 && moveNumber === state.ui.moveListIndex) {
-          this.ctx.fillStyle = "#4CAF50";
-        } else {
-          this.ctx.fillStyle = "#ffffff";
-        }
-        
-        this.ctx.fillText(`${moveNumber}. ${notation}`, contentX, y);
-      });
+
+      visibleMoves
+        .slice(startIndex)
+        .forEach((notation: string, index: number) => {
+          const moveNumber = startIndex + index + 1;
+          const y = contentY + index * lineHeight;
+
+          // Highlight current move if navigating
+          if (
+            state.ui.moveListIndex !== -1 &&
+            moveNumber === state.ui.moveListIndex
+          ) {
+            this.ctx.fillStyle = "#4CAF50";
+          } else {
+            this.ctx.fillStyle = "#ffffff";
+          }
+
+          this.ctx.fillText(`${moveNumber}. ${notation}`, contentX, y);
+        });
     }
 
     // Instructions at bottom
