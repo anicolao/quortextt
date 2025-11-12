@@ -18,39 +18,51 @@ describe('Game Notation', () => {
     it('should convert position to notation for player on edge 0', () => {
       // This repo uses axial coordinates from -radius to +radius
       // For player on edge 0 with radius=3:
-      // Row -3 (A row) has columns 0-3, so col 0 is position 1
-      expect(positionToNotation({ row: -3, col: 0 }, 0, 3)).toBe('A1');
-      // Row 0 (D row) has columns -3 to 3, so col -3 is position 1, col 0 is position 4
-      expect(positionToNotation({ row: 0, col: -3 }, 0, 3)).toBe('D1');
+      // Row -3 (A row) has columns 0-3, counting right to left
+      // Col 3 is position 1, col 2 is position 2, col 1 is position 3, col 0 is position 4
+      expect(positionToNotation({ row: -3, col: 3 }, 0, 3)).toBe('A1');
+      expect(positionToNotation({ row: -3, col: 1 }, 0, 3)).toBe('A3');
+      expect(positionToNotation({ row: -3, col: 0 }, 0, 3)).toBe('A4');
+      // Row 0 (D row) has columns -3 to 3, counting right to left
+      // Col 3 is position 1, col 0 is position 4, col -3 is position 7
+      expect(positionToNotation({ row: 0, col: 3 }, 0, 3)).toBe('D1');
       expect(positionToNotation({ row: 0, col: 0 }, 0, 3)).toBe('D4');
-      // Row 3 (G row) has columns -3 to 0, so col -3 is position 1, col 0 is position 4
-      expect(positionToNotation({ row: 3, col: -3 }, 0, 3)).toBe('G1');
-      expect(positionToNotation({ row: 3, col: 0 }, 0, 3)).toBe('G4');
+      expect(positionToNotation({ row: 0, col: -3 }, 0, 3)).toBe('D7');
+      // Row 3 (G row) has columns -3 to 0, counting right to left
+      // Col 0 is position 1, col -3 is position 4
+      expect(positionToNotation({ row: 3, col: 0 }, 0, 3)).toBe('G1');
+      expect(positionToNotation({ row: 3, col: -3 }, 0, 3)).toBe('G4');
     });
 
     it('should convert center position correctly', () => {
       // Center of the board in axial coordinates is (0,0)
-      // For row 0, columns range from -3 to 3, so col 0 is the 4th column
+      // For row 0, columns range from -3 to 3, with col 0 being the 4th column
       expect(positionToNotation({ row: 0, col: 0 }, 0, 3)).toBe('D4');
     });
   });
 
   describe('rotationToOrientation', () => {
-    it('should convert rotation 0 to N for edge 0', () => {
-      expect(rotationToOrientation(0, 0)).toBe('N');
+    it('should convert rotation 0 to NW for edge 0', () => {
+      expect(rotationToOrientation(0, 0)).toBe('NW');
     });
 
-    it('should convert rotation 1 to NE for edge 0', () => {
-      expect(rotationToOrientation(1, 0)).toBe('NE');
+    it('should convert rotation 1 to N for edge 0', () => {
+      expect(rotationToOrientation(1, 0)).toBe('N');
     });
 
-    it('should convert rotation 3 to S for edge 0', () => {
-      expect(rotationToOrientation(3, 0)).toBe('S');
+    it('should convert rotation 3 to SE for edge 0', () => {
+      expect(rotationToOrientation(3, 0)).toBe('SE');
     });
 
     it('should adjust for player perspective', () => {
-      // For edge 1, rotation 0 should appear as NW from their perspective
-      expect(rotationToOrientation(0, 1)).toBe('NW');
+      // For edge 1, rotation 0 should appear as SW from their perspective
+      expect(rotationToOrientation(0, 1)).toBe('SW');
+    });
+
+    it('should handle rotation 5 correctly for different edges', () => {
+      // Rotation 5 should be SW for edge 0 and N for edge 4
+      expect(rotationToOrientation(5, 0)).toBe('SW');
+      expect(rotationToOrientation(5, 4)).toBe('N');
     });
   });
 
@@ -70,13 +82,13 @@ describe('Game Notation', () => {
         tile: {
           type: TileType.NoSharps,
           rotation: 0 as Rotation,
-          position: { row: -3, col: 0 },  // Edge position for player 0
+          position: { row: -3, col: 3 },  // Rightmost position on edge 0 = A1
         },
         timestamp: Date.now(),
       };
 
       const notation = formatMoveNotation(move, 1, 0, 3);
-      expect(notation).toBe('P1A1T0N');
+      expect(notation).toBe('P1A1T0NW');
     });
 
     it('should handle different tiles and rotations', () => {
@@ -119,7 +131,7 @@ describe('Game Notation', () => {
           tile: {
             type: TileType.NoSharps,
             rotation: 0 as Rotation,
-            position: { row: -3, col: 0 },
+            position: { row: -3, col: 3 },
           },
           timestamp: 1,
         },
@@ -157,7 +169,7 @@ describe('Game Notation', () => {
           tile: {
             type: TileType.NoSharps,
             rotation: 0 as Rotation,
-            position: { row: -3, col: 0 },
+            position: { row: -3, col: 3 },
           },
           timestamp: 1,
         },
@@ -180,7 +192,7 @@ describe('Game Notation', () => {
           tile: {
             type: TileType.NoSharps,
             rotation: 0 as Rotation,
-            position: { row: -3, col: 0 },
+            position: { row: -3, col: 3 },
           },
           timestamp: 1,
         },
