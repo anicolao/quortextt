@@ -73,7 +73,437 @@ This document outlines the comprehensive design for delivering Quortex as an iOS
 - Difficult Game Center integration
 - Poor canvas performance on older devices
 
-**Decision:** Native Swift/SwiftUI for best user experience and full iOS platform integration.
+#### Option D: Native Swift Shell with Embedded WebView (Hybrid Approach)
+
+**Overview:**
+This approach combines a native Swift application shell with the existing web-based game embedded in a WKWebView. The native layer handles iOS platform integration (authentication, Game Center, IAP, push notifications) while the game itself runs in a WebView using the existing TypeScript/Canvas implementation.
+
+**Pros:**
+- Reuses 100% of existing game code (no porting required)
+- Native iOS UI for menus, lobbies, and settings
+- Full access to iOS APIs (Game Center, CloudKit, StoreKit, APNs)
+- Faster time to market than full native rewrite
+- Easy to maintain parity with web version
+- Native performance for UI elements
+- Can progressively migrate components to native as needed
+
+**Cons:**
+- WebView has some performance overhead vs. pure native
+- JavaScript bridge adds complexity
+- Requires careful memory management
+- Debugging across native/web boundary
+- Some WKWebView limitations (e.g., IndexedDB quotas)
+
+**Tech Stack:**
+- Language: Swift 5.9+
+- Native UI: SwiftUI (for shell, menus, lobbies)
+- Game Rendering: WKWebView embedding existing web game
+- Bridge: WKWebView message handlers for native ↔ JavaScript communication
+- Persistence: CoreData (native) + localStorage (WebView)
+- Networking: Native URLSession for API + existing web networking
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Native Swift/SwiftUI Shell                  │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │         Native UI Components                       │     │
+│  │  - Launch Screen (SwiftUI)                        │     │
+│  │  - Authentication Screen (SwiftUI)                │     │
+│  │  - Lobby/Matchmaking (SwiftUI)                    │     │
+│  │  - Settings/Profile (SwiftUI)                     │     │
+│  │  - Leaderboards (Native or WebView)              │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │         WKWebView Container                        │     │
+│  │  ┌──────────────────────────────────────────┐     │     │
+│  │  │   Existing Web Game (TypeScript/Canvas)  │     │     │
+│  │  │   - Game board rendering                 │     │     │
+│  │  │   - Tile placement logic                 │     │     │
+│  │  │   - Flow visualization                   │     │     │
+│  │  │   - Game state management (Redux)        │     │     │
+│  │  └──────────────────────────────────────────┘     │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │       JavaScript Bridge (Message Handlers)         │     │
+│  │  Native → Web:                                     │     │
+│  │  - injectAuthToken()                               │     │
+│  │  - updateGameState()                               │     │
+│  │  - notifyPlayerJoined()                            │     │
+│  │                                                     │     │
+│  │  Web → Native:                                     │     │
+│  │  - requestAuthToken()                              │     │
+│  │  - submitMove()                                    │     │
+│  │  - gameCompleted()                                 │     │
+│  │  - shareScore()                                    │     │
+│  │  - reportAchievement()                             │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │         Native Services Layer                      │     │
+│  │  - AuthenticationService (Sign in with Apple)      │     │
+│  │  - GameCenterService (Leaderboards, Achievements)  │     │
+│  │  - StoreKitService (IAP)                           │     │
+│  │  - NotificationService (APNs)                      │     │
+│  │  - CloudSyncService (iCloud)                       │     │
+│  └────────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Implementation Example:**
+
+```swift
+import SwiftUI
+import WebKit
+
+// MARK: - WebView Container
+struct GameWebView: UIViewRepresentable {
+    let url: URL
+    @Binding var isLoading: Bool
+    let messageHandler: WebViewMessageHandler
+    
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        
+        // Enable required features
+        config.preferences.javaScriptEnabled = true
+        config.allowsInlineMediaPlayback = true
+        
+        // Register message handlers for native ↔ web communication
+        config.userContentController.add(
+            messageHandler,
+            name: "nativeApp"
+        )
+        
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = context.coordinator
+        webView.scrollView.isScrollEnabled = false
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        
+        // Load the game
+        webView.load(URLRequest(url: url))
+        
+        return webView
+    }
+    
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        // Update if needed
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, WKNavigationDelegate {
+        let parent: GameWebView
+        
+        init(_ parent: GameWebView) {
+            self.parent = parent
+        }
+        
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.isLoading = false
+            
+            // Inject authentication token
+            if let token = AuthService.shared.currentToken {
+                let script = "window.setAuthToken('\(token)');"
+                webView.evaluateJavaScript(script)
+            }
+        }
+    }
+}
+
+// MARK: - Message Handler (Web → Native)
+class WebViewMessageHandler: NSObject, WKScriptMessageHandler {
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard let body = message.body as? [String: Any],
+              let action = body["action"] as? String else {
+            return
+        }
+        
+        switch action {
+        case "requestAuthToken":
+            handleAuthTokenRequest(message.webView)
+            
+        case "submitMove":
+            if let moveData = body["data"] as? [String: Any] {
+                handleMoveSubmission(moveData)
+            }
+            
+        case "gameCompleted":
+            if let result = body["data"] as? [String: Any] {
+                handleGameCompletion(result)
+            }
+            
+        case "shareScore":
+            if let score = body["score"] as? Int {
+                handleScoreSharing(score)
+            }
+            
+        case "reportAchievement":
+            if let achievementId = body["achievementId"] as? String {
+                GameCenterService.shared.reportAchievement(achievementId, percentComplete: 100.0)
+            }
+            
+        case "playHaptic":
+            if let style = body["style"] as? String {
+                playHapticFeedback(style)
+            }
+            
+        default:
+            print("Unknown action: \(action)")
+        }
+    }
+    
+    private func handleAuthTokenRequest(_ webView: WKWebView?) {
+        guard let token = AuthService.shared.currentToken else { return }
+        let script = "window.receiveAuthToken('\(token)');"
+        webView?.evaluateJavaScript(script)
+    }
+    
+    private func handleMoveSubmission(_ moveData: [String: Any]) {
+        // Send move to backend via native networking
+        Task {
+            await NetworkService.shared.submitMove(moveData)
+        }
+    }
+    
+    private func handleGameCompletion(_ result: [String: Any]) {
+        // Update Game Center, show native completion screen
+        if let won = result["won"] as? Bool, won {
+            GameCenterService.shared.reportScore(1, leaderboard: "wins")
+        }
+    }
+    
+    private func handleScoreSharing(_ score: Int) {
+        // Present native share sheet
+        let text = "I scored \(score) points in Quortex!"
+        let activityVC = UIActivityViewController(
+            activityItems: [text],
+            applicationActivities: nil
+        )
+        // Present...
+    }
+    
+    private func playHapticFeedback(_ style: String) {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+    }
+}
+
+// MARK: - Native → Web Communication
+extension WKWebView {
+    func sendMessageToGame(_ message: [String: Any]) {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: message),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
+        }
+        
+        let script = "window.receiveNativeMessage(\(jsonString));"
+        evaluateJavaScript(script)
+    }
+    
+    func injectAuthToken(_ token: String) {
+        let script = "window.setAuthToken('\(token)');"
+        evaluateJavaScript(script)
+    }
+    
+    func notifyPlayerJoined(_ playerData: [String: Any]) {
+        sendMessageToGame([
+            "type": "playerJoined",
+            "data": playerData
+        ])
+    }
+    
+    func updateMultiplayerGameState(_ gameState: [String: Any]) {
+        sendMessageToGame([
+            "type": "gameStateUpdate",
+            "data": gameState
+        ])
+    }
+}
+
+// MARK: - Main App Structure
+struct ContentView: View {
+    @StateObject private var authService = AuthService.shared
+    @State private var showingGame = false
+    @State private var isLoadingGame = false
+    
+    var body: some View {
+        NavigationView {
+            if authService.isAuthenticated {
+                LobbyView(showingGame: $showingGame)
+            } else {
+                AuthenticationView()
+            }
+        }
+        .sheet(isPresented: $showingGame) {
+            GameViewContainer(isLoading: $isLoadingGame)
+        }
+    }
+}
+
+struct GameViewContainer: View {
+    @Binding var isLoading: Bool
+    @StateObject private var messageHandler = WebViewMessageHandler()
+    
+    var body: some View {
+        ZStack {
+            // Embed the web game
+            GameWebView(
+                url: URL(string: "https://anicolao.github.io/quortextt/")!,
+                isLoading: $isLoading,
+                messageHandler: messageHandler
+            )
+            
+            // Show loading indicator
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(2)
+            }
+        }
+    }
+}
+```
+
+**Web-Side Integration (JavaScript):**
+
+```javascript
+// Add to existing web game code
+
+// Detect if running in native iOS app
+window.isNativeApp = () => {
+  return window.webkit?.messageHandlers?.nativeApp !== undefined;
+};
+
+// Send message to native app
+window.sendToNative = (action, data = {}) => {
+  if (!window.isNativeApp()) return;
+  
+  window.webkit.messageHandlers.nativeApp.postMessage({
+    action: action,
+    data: data
+  });
+};
+
+// Receive messages from native app
+window.receiveNativeMessage = (message) => {
+  const { type, data } = message;
+  
+  switch (type) {
+    case 'playerJoined':
+      store.dispatch({ type: 'PLAYER_JOINED', payload: data });
+      break;
+    case 'gameStateUpdate':
+      store.dispatch({ type: 'SYNC_GAME_STATE', payload: data });
+      break;
+    // ... handle other message types
+  }
+};
+
+// Request auth token from native app
+window.requestAuthToken = () => {
+  if (window.isNativeApp()) {
+    window.sendToNative('requestAuthToken');
+  }
+};
+
+// Receive auth token from native app
+window.receiveAuthToken = (token) => {
+  localStorage.setItem('authToken', token);
+  // Initialize authenticated session
+};
+
+// Notify native app of game events
+window.notifyGameCompleted = (won, stats) => {
+  window.sendToNative('gameCompleted', { won, stats });
+};
+
+window.notifyMoveSubmitted = (move) => {
+  window.sendToNative('submitMove', move);
+};
+
+window.notifyAchievementUnlocked = (achievementId) => {
+  window.sendToNative('reportAchievement', { achievementId });
+};
+
+// Request haptic feedback
+window.playHaptic = (style = 'medium') => {
+  window.sendToNative('playHaptic', { style });
+};
+
+// Example: Integration in existing Redux action
+export function placeTile(position, rotation) {
+  return (dispatch) => {
+    // Existing game logic
+    dispatch({ type: 'PLACE_TILE', position, rotation });
+    
+    // Notify native app
+    if (window.isNativeApp()) {
+      window.playHaptic('medium');
+      window.notifyMoveSubmitted({ position, rotation });
+    }
+  };
+}
+```
+
+**Performance Considerations:**
+
+1. **WebView Optimization:**
+   - Enable WKWebView hardware acceleration
+   - Use `WKContentWorld` for isolated JavaScript execution
+   - Implement resource caching
+   - Optimize JavaScript bundle size
+
+2. **Memory Management:**
+   - Monitor WebView memory usage
+   - Clear cache periodically
+   - Release resources when backgrounded
+   - Use `WKProcessPool` for shared resources
+
+3. **Bridge Performance:**
+   - Batch multiple messages when possible
+   - Avoid sending large data payloads
+   - Use efficient serialization (JSON)
+   - Debounce high-frequency events
+
+**Comparison Matrix:**
+
+| Feature | Pure Native | Native + WebView | Pure WebView |
+|---------|-------------|------------------|--------------|
+| Time to Market | 20 weeks | 12-14 weeks | 8-10 weeks |
+| Performance | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Code Reuse | 0% | 90% | 100% |
+| iOS Integration | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+| Maintenance | Complex | Moderate | Easy |
+| Native Feel | Best | Very Good | Poor |
+| Development Cost | $74k-108k | $45k-65k | $25k-35k |
+
+**Recommendation:**
+
+The **Native Swift Shell with Embedded WebView** (Option D) offers the best balance for Quortex:
+
+1. **90% code reuse** - Leverage existing TypeScript game implementation
+2. **Faster time to market** - 12-14 weeks vs. 20 weeks for pure native
+3. **Full iOS integration** - Native authentication, Game Center, IAP, push notifications
+4. **Good performance** - Modern WKWebView performs well for canvas-based games
+5. **Progressive enhancement** - Can migrate critical components to native later if needed
+6. **Lower cost** - ~40% cheaper than pure native ($45k-65k vs. $74k-108k)
+
+**When to choose pure native instead:**
+- Need absolute maximum performance (60+ FPS with complex 3D)
+- Plan to significantly diverge iOS features from web
+- Have budget and timeline for full native development
+- Target competitive esports/tournament play
+
+**Decision:** Native Swift/SwiftUI shell with embedded WebView provides optimal balance of performance, development speed, and iOS platform integration while maximizing code reuse.
 
 ### 1.2 Architecture Components
 
