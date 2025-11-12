@@ -50,11 +50,14 @@ export function positionToNotation(
   // Internal row -radius maps to A, +radius maps to G
   const rowLetter = String.fromCharCode('A'.charCodeAt(0) + transformedRow + boardRadius);
   
-  // Map column to number (1-based from player's left)
-  // Calculate the starting column for this row (depends on the diamond shape)
+  // Map column to number (1-based from player's left to right)
+  // Calculate the starting and ending columns for this row (depends on the diamond shape)
   const colStart = Math.max(-boardRadius, -boardRadius - transformedRow);
+  const colEnd = Math.min(boardRadius, boardRadius - transformedRow);
+  const rowWidth = colEnd - colStart + 1;
   // Convert to 1-based position relative to the row's starting column
-  const colNumber = transformedCol - colStart + 1;
+  // Flip left/right: rightmost column becomes 1, leftmost becomes rowWidth
+  const colNumber = rowWidth - (transformedCol - colStart);
   
   return `${rowLetter}${colNumber}`;
 }
@@ -65,10 +68,15 @@ export function positionToNotation(
  * 
  * The rotation needs to be adjusted based on the player's edge position
  * so that the notation is always relative to the player's view
+ * 
+ * Note: Need to flip N/S because the game board has S at top (rotation 0 points up)
+ * but notation expects N at top from player's perspective
  */
 export function rotationToOrientation(rotation: Rotation, playerEdge: number): OrientationName {
   // Adjust rotation for player's perspective
-  const adjustedRotation = (rotation - playerEdge + 6) % 6;
+  let adjustedRotation = (rotation - playerEdge + 6) % 6;
+  // Flip N/S: 0->3, 1->2, 2->1, 3->0, 4->5, 5->4
+  adjustedRotation = (adjustedRotation + 3) % 6;
   return ORIENTATION_NAMES[adjustedRotation];
 }
 

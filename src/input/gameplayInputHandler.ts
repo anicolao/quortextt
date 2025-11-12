@@ -708,19 +708,23 @@ export class GameplayInputHandler {
     const controlsY = dialogY + 60;
     const controlsHeight = 40;
     const contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 38; // Increased from 32 for better spacing
+    const lineHeight = 44; // Match rendering: increased to prevent overlap
     const bottomMargin = 85; // Increased to accommodate navigation buttons
     const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     
     const moves = state.game.moveHistory;
-    const startIndex = Math.max(0, moves.length - maxLines);
+    const currentMoveIndex = state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
+    
+    // Center the current move in the view when possible (match rendering logic)
+    let startIndex = currentMoveIndex - Math.floor(maxLines / 2);
+    startIndex = Math.max(0, Math.min(startIndex, moves.length - maxLines));
     
     // Check which move line was clicked
-    if (rotatedY >= contentY && rotatedY < contentY + (moves.length - startIndex) * lineHeight) {
+    if (rotatedY >= contentY && rotatedY < contentY + Math.min(moves.length, maxLines) * lineHeight) {
       const clickedIndex = Math.floor((rotatedY - contentY) / lineHeight);
       const moveNumber = startIndex + clickedIndex + 1;
       
-      if (moveNumber <= moves.length) {
+      if (moveNumber >= 1 && moveNumber <= moves.length) {
         // Navigate to this move
         if (moveNumber === moves.length) {
           store.dispatch(navigateMoveList('last'));
@@ -788,28 +792,31 @@ export class GameplayInputHandler {
     const controlsY = dialogY + 60;
     const controlsHeight = 40;
     const contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 38; // Match click detection
+    const lineHeight = 44; // Match click detection and rendering
     const bottomMargin = 85; // Match click detection
     const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     
     const moves = state.game.moveHistory;
-    const startIndex = Math.max(0, moves.length - maxLines);
+    const currentMoveIndex = state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
+    
+    // Center the current move in the view when possible (match rendering logic)
+    let startIndex = currentMoveIndex - Math.floor(maxLines / 2);
+    startIndex = Math.max(0, Math.min(startIndex, moves.length - maxLines));
     
     // Check which move line is being hovered
-    if (rotatedY >= contentY && rotatedY < contentY + (moves.length - startIndex) * lineHeight) {
+    if (rotatedY >= contentY && rotatedY < contentY + Math.min(moves.length, maxLines) * lineHeight) {
       const hoveredIndex = Math.floor((rotatedY - contentY) / lineHeight);
       const moveNumber = startIndex + hoveredIndex + 1;
       
-      if (moveNumber <= moves.length) {
-        // Return hover info for this move - bounds should match the green highlight position
+      if (moveNumber >= 1 && moveNumber <= moves.length) {
         return {
           type: 'move-list-item',
           moveNumber: moveNumber,
           bounds: {
-            x: dialogX + contentX - 5, // Match green box x position
-            y: contentY + hoveredIndex * lineHeight - 16, // Match green box y position 
+            x: dialogX + contentX,
+            y: contentY + hoveredIndex * lineHeight - 12, // Match highlight position
             width: dialogWidth - 40,
-            height: lineHeight - 4,
+            height: lineHeight - 10, // Match highlight height
           },
         };
       }
