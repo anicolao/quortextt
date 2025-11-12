@@ -50,12 +50,12 @@ export function positionToNotation(
   // Internal row -radius maps to A, +radius maps to G
   const rowLetter = String.fromCharCode('A'.charCodeAt(0) + transformedRow + boardRadius);
   
-  // Map column to number (1-based from player's left to right)
-  // Calculate the starting column for this row (depends on the diamond shape)
-  const colStart = Math.max(-boardRadius, -boardRadius - transformedRow);
-  // Convert to 1-based position relative to the row's starting column
-  // Left to right: leftmost column is 1
-  const colNumber = transformedCol - colStart + 1;
+  // Map column to number (1-based from player's right to left)
+  // Calculate the ending column for this row (depends on the diamond shape)
+  const colEnd = Math.min(boardRadius, boardRadius - transformedRow);
+  // Convert to 1-based position relative to the row's ending column
+  // Right to left: rightmost column is 1
+  const colNumber = colEnd - transformedCol + 1;
   
   return `${rowLetter}${colNumber}`;
 }
@@ -69,7 +69,8 @@ export function positionToNotation(
  */
 export function rotationToOrientation(rotation: Rotation, playerEdge: number): OrientationName {
   // Adjust rotation for player's perspective
-  const adjustedRotation = (rotation - playerEdge + 6) % 6;
+  // The -1 offset accounts for the player viewing the board from their edge
+  const adjustedRotation = (rotation - playerEdge + 5) % 6;
   return ORIENTATION_NAMES[adjustedRotation];
 }
 
