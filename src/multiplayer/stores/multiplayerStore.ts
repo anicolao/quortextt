@@ -10,7 +10,8 @@ export interface Room {
   id: string;
   name: string;
   hostId: string;
-  players: Player[];
+  players?: Player[]; // Optional, may not be present in room list API
+  playerCount?: number; // Alternative count from API
   maxPlayers: number;
   status: 'waiting' | 'playing' | 'finished';
 }
