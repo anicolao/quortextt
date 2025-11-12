@@ -54,39 +54,40 @@ export class GameOverRenderer {
   }
 
   private renderRematchButtons(canvasWidth: number, canvasHeight: number): RematchButton[] {
-    // Render circular rematch buttons next to help buttons in each corner
+    // Render circular rematch buttons after move list buttons in each corner
     // Each button has a counter-clockwise circular arrow
     const cornerSize = 50;
     const margin = 10;
     const spacing = cornerSize * 0.15;
     const radius = cornerSize / 2;
+    const tripleSpacing = (cornerSize + spacing) * 3; // Position after exit, help, and move list buttons
 
     const buttons = [
       { 
-        // Edge 0 (bottom): next to help button on the left side
-        x: margin + cornerSize / 2 + (cornerSize + spacing) * 2, 
+        // Edge 0 (bottom): after exit, help, and move list buttons
+        x: margin + cornerSize / 2 + tripleSpacing, 
         y: canvasHeight - margin - cornerSize / 2,
         corner: 0,
         edge: 0, // Bottom edge
       },
       {
-        // Edge 1 (right): next to help button above
+        // Edge 1 (right): after exit, help, and move list buttons
         x: canvasWidth - margin - cornerSize / 2,
-        y: canvasHeight - margin - cornerSize / 2 - (cornerSize + spacing) * 2,
+        y: canvasHeight - margin - cornerSize / 2 - tripleSpacing,
         corner: 1,
         edge: 1, // Right edge
       },
       {
-        // Edge 2 (top): next to help button on the left side
-        x: canvasWidth - margin - cornerSize / 2 - (cornerSize + spacing) * 2,
+        // Edge 2 (top): after exit, help, and move list buttons
+        x: canvasWidth - margin - cornerSize / 2 - tripleSpacing,
         y: margin + cornerSize / 2,
         corner: 2,
         edge: 2, // Top edge
       },
       {
-        // Edge 3 (left): next to help button below
+        // Edge 3 (left): after exit, help, and move list buttons
         x: margin + cornerSize / 2,
-        y: margin + cornerSize / 2 + (cornerSize + spacing) * 2, 
+        y: margin + cornerSize / 2 + tripleSpacing, 
         corner: 3,
         edge: 3, // Left edge
       },

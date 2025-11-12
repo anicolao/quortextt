@@ -49,7 +49,7 @@ test.describe('Rematch Button', () => {
     const cornerSize = 50;
     const margin = 10;
     const spacing = cornerSize * 0.15;
-    const buttonX = margin + cornerSize / 2 + (cornerSize + spacing) * 2;
+    const buttonX = margin + cornerSize / 2 + (cornerSize + spacing) * 3; // Rematch button is now at position 3
     const buttonY = canvasSize.height - margin - cornerSize / 2;
     
     await page.mouse.click(box.x + buttonX, box.y + buttonY);
@@ -121,7 +121,7 @@ test.describe('Rematch Button', () => {
     const cornerSize = 50;
     const margin = 10;
     const spacing = cornerSize * 0.15;
-    const buttonX = margin + cornerSize / 2 + (cornerSize + spacing) * 2;
+    const buttonX = margin + cornerSize / 2 + (cornerSize + spacing) * 3; // Rematch button is now at position 3
     const buttonY = canvasSize.height - margin - cornerSize / 2;
     
     await page.mouse.click(box.x + buttonX, box.y + buttonY);
