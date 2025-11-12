@@ -2133,7 +2133,7 @@ export class GameplayRenderer {
     // Content area
     const contentX = dialogX + 20;
     let contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 38; // Increased from 32 for better spacing
+    const lineHeight = 44; // Increased to 44 to prevent tile overlap
     const bottomMargin = 85; // Increased space for navigation buttons
     const maxLines = Math.floor(
       (dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight,
@@ -2151,12 +2151,17 @@ export class GameplayRenderer {
       const currentMoveIndex =
         state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
 
-      // Simple pagination - show the most recent moves that fit
-      const startIndex = Math.max(0, moveNotations.length - maxLines);
-      const hasMore = startIndex > 0;
+      // Center the current move in the view when possible
+      let startIndex = currentMoveIndex - Math.floor(maxLines / 2);
+      startIndex = Math.max(
+        0,
+        Math.min(startIndex, moveNotations.length - maxLines),
+      );
+      const hasMore =
+        startIndex > 0 || startIndex + maxLines < moveNotations.length;
 
       moveNotations
-        .slice(startIndex)
+        .slice(startIndex, startIndex + maxLines)
         .forEach((notation: string, index: number) => {
           const moveNumber = startIndex + index + 1;
           const y = contentY + index * lineHeight;
@@ -2169,12 +2174,12 @@ export class GameplayRenderer {
           // Draw background highlight for selected move
           if (isSelected) {
             this.ctx.fillStyle = "rgba(76, 175, 80, 0.3)";
-            // For 16px font with line height 38, align highlight with text
+            // Align highlight with text: y is baseline, text is ~12px above baseline for 16px font
             this.ctx.fillRect(
               contentX - 5,
-              y - 16,
+              y - 12,
               dialogWidth - 40,
-              lineHeight - 4,
+              lineHeight - 10,
             );
           }
 
@@ -2196,21 +2201,21 @@ export class GameplayRenderer {
           this.ctx.fillText(notation, contentX + numberColumnWidth + 5, y);
 
           // Draw tile preview if we have the move data
-          // Center tile vertically in the line
+          // Center tile vertically on the text centerline
           if (move) {
-            const previewSize = 22; // Slightly larger for better visibility
+            const previewSize = 24; // Slightly larger for better visibility
             const previewX =
               contentX +
               numberColumnWidth +
               5 +
               this.ctx.measureText(notation).width +
               10;
-            // Center tile in the line (baseline is at y, center preview vertically in lineHeight)
-            const previewY = y - lineHeight / 2;
+            // Center tile on text centerline: y is baseline, subtract 6px to get to center of 16px text
+            const previewY = y - 6;
             this.renderSmallTile(
               move.tile,
               previewX + previewSize / 2,
-              previewY + previewSize / 2,
+              previewY,
               previewSize,
             );
           }
@@ -2222,8 +2227,9 @@ export class GameplayRenderer {
         this.ctx.textAlign = "center";
         this.ctx.fillStyle = "#888888";
         const paginationY = dialogY + dialogHeight - 70;
+        const displayedMoves = Math.min(maxLines, moveNotations.length);
         this.ctx.fillText(
-          `Showing last ${maxLines} of ${moveNotations.length} moves`,
+          `Showing ${displayedMoves} of ${moveNotations.length} moves (centered on current)`,
           dialogX + dialogWidth / 2,
           paginationY,
         );
