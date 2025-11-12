@@ -11,6 +11,7 @@ import {
   getPerpendicularVector,
   getPlayerEdgePosition,
   calculateBoardRadiusMultiplier,
+  getHexVertex,
 } from "./hexLayout";
 import {
   getAllBoardPositions,
@@ -2041,10 +2042,8 @@ export class GameplayRenderer {
   }
 
   private renderMoveListDialog(corner: number, state: RootState): void {
-    // Semi-transparent overlay
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
-
+    // NO overlay - we want to see the board
+    
     // Calculate rotation based on edge
     let rotation = 0;
     if (corner === 1) rotation = 270;
@@ -2055,9 +2054,9 @@ export class GameplayRenderer {
     const rotatedWidth = (rotation === 90 || rotation === 270) ? this.layout.canvasHeight : this.layout.canvasWidth;
     const rotatedHeight = (rotation === 90 || rotation === 270) ? this.layout.canvasWidth : this.layout.canvasHeight;
 
-    // Dialog box dimensions - make it narrower as moves don't need much width
+    // Dialog box dimensions - make it narrower and half the height
     const dialogWidth = Math.min(300, rotatedWidth * 0.5);
-    const dialogHeight = Math.min(700, rotatedHeight * 0.8);
+    const dialogHeight = Math.min(350, rotatedHeight * 0.4); // Half of previous 700
     const margin = 20;
 
     // Save context state
@@ -2109,7 +2108,8 @@ export class GameplayRenderer {
     const contentX = dialogX + 20;
     let contentY = controlsY + controlsHeight + 10;
     const lineHeight = 28;
-    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - 60) / lineHeight);
+    const bottomMargin = 60; // Space for pagination buttons
+    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     const numberColumnWidth = 35; // Width for right-justified numbers
 
     this.ctx.font = "16px monospace";
@@ -2122,8 +2122,9 @@ export class GameplayRenderer {
       // Show all moves but grey out ones after the selected index
       const currentMoveIndex = state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
       
-      // Calculate starting index for pagination
+      // Simple pagination - show the most recent moves that fit
       const startIndex = Math.max(0, moveNotations.length - maxLines);
+      const hasMore = startIndex > 0;
       
       moveNotations.slice(startIndex).forEach((notation: string, index: number) => {
         const moveNumber = startIndex + index + 1;
@@ -2137,7 +2138,7 @@ export class GameplayRenderer {
         // Draw background highlight for selected move
         if (isSelected) {
           this.ctx.fillStyle = "rgba(76, 175, 80, 0.3)";
-          this.ctx.fillRect(contentX - 5, y - lineHeight + 6, dialogWidth - 40, lineHeight);
+          this.ctx.fillRect(contentX - 5, y - lineHeight * 0.7, dialogWidth - 40, lineHeight);
         }
         
         // Set text color based on state
@@ -2159,65 +2160,118 @@ export class GameplayRenderer {
         
         // Draw tile preview if we have the move data
         if (move) {
-          const previewSize = 16;
+          const previewSize = 18; // Slightly larger for better visibility
           const previewX = contentX + numberColumnWidth + 5 + this.ctx.measureText(notation).width + 10;
-          const previewY = y - previewSize / 2 - 2;
-          this.drawTilePreview(move.tile, previewX, previewY, previewSize);
+          const previewY = y - previewSize / 2 - 4;
+          this.renderSmallTile(move.tile, previewX + previewSize/2, previewY + previewSize/2, previewSize);
         }
       });
+      
+      // Show pagination indicator if there are more moves
+      if (hasMore) {
+        this.ctx.font = "12px sans-serif";
+        this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "#888888";
+        const paginationY = dialogY + dialogHeight - 45;
+        this.ctx.fillText(`Showing last ${maxLines} of ${moveNotations.length} moves`, dialogX + dialogWidth / 2, paginationY);
+      }
     }
 
     // Instructions at bottom
     this.ctx.font = "14px sans-serif";
     this.ctx.textAlign = "center";
     this.ctx.fillStyle = "#cccccc";
-    const instructY = dialogY + dialogHeight - 30;
+    const instructY = dialogY + dialogHeight - 25;
     this.ctx.fillText("Click move to view, tap outside to dismiss", dialogX + dialogWidth / 2, instructY);
 
     // Restore context state
     this.ctx.restore();
   }
 
-  private drawTilePreview(tile: PlacedTile, x: number, y: number, size: number): void {
-    // Draw a small preview of the tile with its type and rotation
+  private renderSmallTile(tile: PlacedTile, centerX: number, centerY: number, size: number): void {
+    const center = { x: centerX, y: centerY };
+    
     this.ctx.save();
     
-    // Background circle
-    this.ctx.fillStyle = "#2a2a2a";
-    this.ctx.beginPath();
-    this.ctx.arc(x + size / 2, y + size / 2, size / 2, 0, 2 * Math.PI);
-    this.ctx.fill();
-    
-    // Border
-    this.ctx.strokeStyle = "#444444";
-    this.ctx.lineWidth = 1;
-    this.ctx.stroke();
-    
-    // Draw simplified tile pattern based on type
-    this.ctx.translate(x + size / 2, y + size / 2);
+    // Rotate context for tile rotation
+    this.ctx.translate(centerX, centerY);
     this.ctx.rotate((tile.rotation * 60 * Math.PI) / 180);
+    this.ctx.translate(-centerX, -centerY);
     
-    this.ctx.strokeStyle = "#ffffff";
-    this.ctx.lineWidth = 1.5;
-    const r = size * 0.35;
+    // Draw hexagon background
+    this.ctx.fillStyle = TILE_BG;
+    this.drawSmallHexagon(center, size, true);
     
-    // Draw flow paths based on tile type (pass rotation 0 since we're rotating the context)
+    // Draw hexagon border
+    this.ctx.strokeStyle = TILE_BORDER;
+    this.ctx.lineWidth = 1;
+    this.drawSmallHexagon(center, size, false);
+
+    // Draw flow connections using the canonical tile flows (rotation 0 since we rotated context)
     const connections = getFlowConnections(tile.type, 0);
+    this.ctx.strokeStyle = "#888888";
+    this.ctx.lineWidth = size * 0.15; // Proportional to tile size
+    this.ctx.lineCap = "round";
+
     connections.forEach(([dir1, dir2]) => {
-      const angle1 = dir1 * 60 * Math.PI / 180;
-      const angle2 = dir2 * 60 * Math.PI / 180;
-      const x1 = Math.cos(angle1) * r;
-      const y1 = Math.sin(angle1) * r;
-      const x2 = Math.cos(angle2) * r;
-      const y2 = Math.sin(angle2) * r;
-      
-      this.ctx.beginPath();
-      this.ctx.moveTo(x1, y1);
-      this.ctx.lineTo(x2, y2);
-      this.ctx.stroke();
+      this.drawSmallFlowConnection(center, dir1, dir2, size);
     });
     
     this.ctx.restore();
+  }
+
+  private drawSmallFlowConnection(
+    center: { x: number; y: number },
+    dir1: number,
+    dir2: number,
+    size: number
+  ): void {
+    // Get edge midpoints using the proper hexLayout functions
+    const start = getEdgeMidpoint(center, size, dir1);
+    const end = getEdgeMidpoint(center, size, dir2);
+
+    // Get control points (perpendicular to edges)
+    const control1Vec = getPerpendicularVector(dir1, size);
+    const control2Vec = getPerpendicularVector(dir2, size);
+
+    const control1 = {
+      x: start.x + control1Vec.x,
+      y: start.y + control1Vec.y,
+    };
+    const control2 = {
+      x: end.x + control2Vec.x,
+      y: end.y + control2Vec.y,
+    };
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(start.x, start.y);
+    this.ctx.bezierCurveTo(
+      control1.x,
+      control1.y,
+      control2.x,
+      control2.y,
+      end.x,
+      end.y,
+    );
+    this.ctx.stroke();
+  }
+
+  private drawSmallHexagon(center: { x: number; y: number }, size: number, fill: boolean): void {
+    this.ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const vertex = getHexVertex(center, size, i);
+      if (i === 0) {
+        this.ctx.moveTo(vertex.x, vertex.y);
+      } else {
+        this.ctx.lineTo(vertex.x, vertex.y);
+      }
+    }
+    this.ctx.closePath();
+    if (fill) {
+      this.ctx.fill();
+    } else {
+      this.ctx.stroke();
+    }
   }
 
   private drawHexagon(center: Point, size: number, fill: boolean): void {
