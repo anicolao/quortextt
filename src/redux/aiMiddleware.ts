@@ -7,6 +7,7 @@ import {
   SELECT_EDGE,
   DRAW_TILE,
   REPLACE_TILE,
+  REMATCH_GAME,
   placeTile,
   replaceTile,
   nextPlayer,
@@ -204,6 +205,52 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           // Even when completing a supermove (placing the replaced tile), we advance
           store.dispatch(nextPlayer() as any);
           store.dispatch(drawTile() as any);
+        }
+      }
+    }
+  }
+  
+  // Handle AI move after REMATCH_GAME
+  // When a rematch happens, it directly transitions to playing phase with a current tile
+  // If the first player is AI, we need to trigger their move
+  if (gameAction.type === REMATCH_GAME) {
+    const { players, currentPlayerIndex, currentTile, board, teams, phase, supermoveInProgress } = state.game;
+    
+    // Only act if we're in playing phase and have a current tile
+    if (phase === 'playing' && currentTile !== null && players.length > 0) {
+      const currentPlayer = players[currentPlayerIndex];
+      
+      // Check if current player is AI
+      if (currentPlayer && currentPlayer.isAI) {
+        const supermoveEnabled = state.ui.settings.supermove;
+        
+        // AI needs to make a move
+        const aiMove = selectAIMove(
+          board,
+          currentTile,
+          currentPlayer,
+          players,
+          teams,
+          supermoveEnabled && !supermoveInProgress,
+          state.game.boardRadius
+        );
+        
+        if (aiMove) {
+          // Dispatch the move immediately (Redux is synchronous)
+          if (aiMove.isReplacement) {
+            const isSingleSupermove = state.ui.settings.singleSupermove;
+            store.dispatch(replaceTile(aiMove.position, aiMove.rotation, isSingleSupermove) as any);
+            
+            // If single supermove, advance to next player and draw a tile
+            if (isSingleSupermove) {
+              store.dispatch(nextPlayer() as any);
+              store.dispatch(drawTile() as any);
+            }
+          } else {
+            store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
+            store.dispatch(nextPlayer() as any);
+            store.dispatch(drawTile() as any);
+          }
         }
       }
     }
