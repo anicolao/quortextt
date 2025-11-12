@@ -720,7 +720,9 @@ export class GameplayInputHandler {
     startIndex = Math.max(0, Math.min(startIndex, moves.length - maxLines));
     
     // Check which move line was clicked
-    if (rotatedY >= contentY && rotatedY < contentY + Math.min(moves.length, maxLines) * lineHeight) {
+    // Each line is lineHeight pixels tall, starting from contentY
+    const endY = contentY + Math.min(moves.length - startIndex, maxLines) * lineHeight;
+    if (rotatedY >= contentY && rotatedY < endY) {
       const clickedIndex = Math.floor((rotatedY - contentY) / lineHeight);
       const moveNumber = startIndex + clickedIndex + 1;
       
@@ -804,7 +806,8 @@ export class GameplayInputHandler {
     startIndex = Math.max(0, Math.min(startIndex, moves.length - maxLines));
     
     // Check which move line is being hovered
-    if (rotatedY >= contentY && rotatedY < contentY + Math.min(moves.length, maxLines) * lineHeight) {
+    const endY = contentY + Math.min(moves.length - startIndex, maxLines) * lineHeight;
+    if (rotatedY >= contentY && rotatedY < endY) {
       const hoveredIndex = Math.floor((rotatedY - contentY) / lineHeight);
       const moveNumber = startIndex + hoveredIndex + 1;
       
@@ -813,10 +816,10 @@ export class GameplayInputHandler {
           type: 'move-list-item',
           moveNumber: moveNumber,
           bounds: {
-            x: dialogX + contentX,
-            y: contentY + hoveredIndex * lineHeight - 12, // Match highlight position
+            x: dialogX + contentX - 5,
+            y: contentY + hoveredIndex * lineHeight + 2, // Match highlight position
             width: dialogWidth - 40,
-            height: lineHeight - 10, // Match highlight height
+            height: lineHeight - 4, // Match highlight height
           },
         };
       }

@@ -780,10 +780,12 @@ export class GameplayRenderer {
       return;
     }
 
-    // If viewing history, don't show the highlight
+    // If viewing history (not at current/last move), don't show the highlight
+    // moveListIndex === -1 means current state (show highlight)
+    // moveListIndex === moves.length also means current state (show highlight)
     if (
       state.ui.moveListIndex !== -1 &&
-      state.ui.moveListIndex < state.game.moveHistory.length
+      state.ui.moveListIndex !== state.game.moveHistory.length
     ) {
       return;
     }
@@ -2172,14 +2174,18 @@ export class GameplayRenderer {
           const isFuture = moveNumber > currentMoveIndex;
 
           // Draw background highlight for selected move
+          // lineHeight is 44px total per move entry
+          // y is positioned at top of each line
+          const textY = y + lineHeight / 2 + 5; // Center text in the 44px line (slightly lower)
+
           if (isSelected) {
             this.ctx.fillStyle = "rgba(76, 175, 80, 0.3)";
-            // Align highlight with text: y is baseline, text is ~12px above baseline for 16px font
+            // Highlight box covers the full line height
             this.ctx.fillRect(
               contentX - 5,
-              y - 12,
+              y + 2,
               dialogWidth - 40,
-              lineHeight - 10,
+              lineHeight - 4,
             );
           }
 
@@ -2194,14 +2200,19 @@ export class GameplayRenderer {
 
           // Draw move number (right-justified)
           this.ctx.textAlign = "right";
-          this.ctx.fillText(`${moveNumber}.`, contentX + numberColumnWidth, y);
+          this.ctx.textBaseline = "middle"; // Use middle for vertical centering
+          this.ctx.fillText(
+            `${moveNumber}.`,
+            contentX + numberColumnWidth,
+            textY,
+          );
 
           // Draw move notation (left-justified after number)
           this.ctx.textAlign = "left";
-          this.ctx.fillText(notation, contentX + numberColumnWidth + 5, y);
+          this.ctx.fillText(notation, contentX + numberColumnWidth + 5, textY);
 
           // Draw tile preview if we have the move data
-          // Center tile vertically on the text centerline
+          // Center tile vertically in the 44px line
           if (move) {
             const previewSize = 24; // Slightly larger for better visibility
             const previewX =
@@ -2210,8 +2221,8 @@ export class GameplayRenderer {
               5 +
               this.ctx.measureText(notation).width +
               10;
-            // Center tile on text centerline: y is baseline, subtract 6px to get to center of 16px text
-            const previewY = y - 6;
+            // Center tile in the 44px line
+            const previewY = y + lineHeight / 2;
             this.renderSmallTile(
               move.tile,
               previewX + previewSize / 2,
