@@ -29,6 +29,7 @@ import {
   getDebugPathInfo,
   isPlayerBlocked,
 } from "../game/legality";
+import { formatMoveHistory } from "../game/notation";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -2040,9 +2041,6 @@ export class GameplayRenderer {
   }
 
   private renderMoveListDialog(corner: number, state: RootState): void {
-    // Import notation module
-    const { formatMoveHistory } = require('../game/notation');
-    
     // Semi-transparent overlay
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
