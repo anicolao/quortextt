@@ -1,48 +1,49 @@
 // Redux action types and action creators
 
-import { HexPosition, Rotation, Player, Team } from '../game/types';
-import { GameSettings } from './types';
+import { HexPosition, Rotation, Player, Team } from "../game/types";
+import { GameSettings } from "./types";
 
 // Configuration actions
-export const ADD_PLAYER = 'ADD_PLAYER';
-export const REMOVE_PLAYER = 'REMOVE_PLAYER';
-export const CHANGE_PLAYER_COLOR = 'CHANGE_PLAYER_COLOR';
-export const START_GAME = 'START_GAME';
-export const RETURN_TO_CONFIG = 'RETURN_TO_CONFIG';
+export const ADD_PLAYER = "ADD_PLAYER";
+export const REMOVE_PLAYER = "REMOVE_PLAYER";
+export const CHANGE_PLAYER_COLOR = "CHANGE_PLAYER_COLOR";
+export const START_GAME = "START_GAME";
+export const RETURN_TO_CONFIG = "RETURN_TO_CONFIG";
 
 // Game setup actions
-export const SETUP_GAME = 'SETUP_GAME';
-export const SHUFFLE_TILES = 'SHUFFLE_TILES';
+export const SETUP_GAME = "SETUP_GAME";
+export const SHUFFLE_TILES = "SHUFFLE_TILES";
 
 // Seating phase actions
-export const START_SEATING_PHASE = 'START_SEATING_PHASE';
-export const SELECT_EDGE = 'SELECT_EDGE';
-export const COMPLETE_SEATING_PHASE = 'COMPLETE_SEATING_PHASE';
+export const START_SEATING_PHASE = "START_SEATING_PHASE";
+export const SELECT_EDGE = "SELECT_EDGE";
+export const COMPLETE_SEATING_PHASE = "COMPLETE_SEATING_PHASE";
 
 // Gameplay actions
-export const DRAW_TILE = 'DRAW_TILE';
-export const PLACE_TILE = 'PLACE_TILE';
-export const REPLACE_TILE = 'REPLACE_TILE';
+export const DRAW_TILE = "DRAW_TILE";
+export const PLACE_TILE = "PLACE_TILE";
+export const REPLACE_TILE = "REPLACE_TILE";
 
 // AI debug actions
-export const SET_AI_SCORING_DATA = 'SET_AI_SCORING_DATA';
+export const SET_AI_SCORING_DATA = "SET_AI_SCORING_DATA";
 
 // Game flow actions
-export const NEXT_PLAYER = 'NEXT_PLAYER';
-export const END_GAME = 'END_GAME';
-export const RESET_GAME = 'RESET_GAME';
-export const RESTORE_GAME = 'RESTORE_GAME';
+export const NEXT_PLAYER = "NEXT_PLAYER";
+export const END_GAME = "END_GAME";
+export const RESET_GAME = "RESET_GAME";
+export const REMATCH_GAME = "REMATCH_GAME";
+export const RESTORE_GAME = "RESTORE_GAME";
 
 // UI actions
-export const SET_HOVERED_POSITION = 'SET_HOVERED_POSITION';
-export const SET_HOVERED_ELEMENT = 'SET_HOVERED_ELEMENT';
-export const SET_SELECTED_POSITION = 'SET_SELECTED_POSITION';
-export const SET_ROTATION = 'SET_ROTATION';
-export const TOGGLE_LEGAL_MOVES = 'TOGGLE_LEGAL_MOVES';
-export const TOGGLE_SETTINGS = 'TOGGLE_SETTINGS';
-export const UPDATE_SETTINGS = 'UPDATE_SETTINGS';
-export const SHOW_HELP = 'SHOW_HELP';
-export const HIDE_HELP = 'HIDE_HELP';
+export const SET_HOVERED_POSITION = "SET_HOVERED_POSITION";
+export const SET_HOVERED_ELEMENT = "SET_HOVERED_ELEMENT";
+export const SET_SELECTED_POSITION = "SET_SELECTED_POSITION";
+export const SET_ROTATION = "SET_ROTATION";
+export const TOGGLE_LEGAL_MOVES = "TOGGLE_LEGAL_MOVES";
+export const TOGGLE_SETTINGS = "TOGGLE_SETTINGS";
+export const UPDATE_SETTINGS = "UPDATE_SETTINGS";
+export const SHOW_HELP = "SHOW_HELP";
+export const HIDE_HELP = "HIDE_HELP";
 
 // Configuration action types
 export interface AddPlayerAction {
@@ -104,7 +105,7 @@ export interface ShuffleTilesAction {
 export interface StartSeatingPhaseAction {
   type: typeof START_SEATING_PHASE;
   payload: {
-    seatingOrder: string[];  // Randomized player IDs
+    seatingOrder: string[]; // Randomized player IDs
   };
 }
 
@@ -112,7 +113,7 @@ export interface SelectEdgeAction {
   type: typeof SELECT_EDGE;
   payload: {
     playerId: string;
-    edgeNumber: number;      // 0-5
+    edgeNumber: number; // 0-5
   };
 }
 
@@ -151,12 +152,16 @@ export interface EndGameAction {
   type: typeof END_GAME;
   payload: {
     winners: string[];
-    winType: 'flow' | 'constraint' | 'tie';
+    winType: "flow" | "constraint" | "tie";
   };
 }
 
 export interface ResetGameAction {
   type: typeof RESET_GAME;
+}
+
+export interface RematchGameAction {
+  type: typeof REMATCH_GAME;
 }
 
 export interface RestoreGameAction {
@@ -177,7 +182,7 @@ export interface SetHoveredPositionAction {
 
 export interface SetHoveredElementAction {
   type: typeof SET_HOVERED_ELEMENT;
-  payload: import('./types').HoveredElementType;
+  payload: import("./types").HoveredElementType;
 }
 
 export interface SetSelectedPositionAction {
@@ -232,6 +237,7 @@ export type GameAction =
   | NextPlayerAction
   | EndGameAction
   | ResetGameAction
+  | RematchGameAction
   | RestoreGameAction
   | SetAIScoringDataAction;
 
@@ -259,7 +265,7 @@ export const removePlayer = (playerId: string): RemovePlayerAction => ({
 
 export const changePlayerColor = (
   playerId: string,
-  color: string
+  color: string,
 ): ChangePlayerColorAction => ({
   type: CHANGE_PLAYER_COLOR,
   payload: { playerId, color },
@@ -275,23 +281,34 @@ export const returnToConfig = (): ReturnToConfigAction => ({
 });
 
 // Game setup action creators
-export const setupGame = (players: Player[], teams: Team[]): SetupGameAction => ({
+export const setupGame = (
+  players: Player[],
+  teams: Team[],
+): SetupGameAction => ({
   type: SETUP_GAME,
   payload: { players, teams },
 });
 
-export const shuffleTiles = (seed?: number, tileDistribution?: [number, number, number, number]): ShuffleTilesAction => ({
+export const shuffleTiles = (
+  seed?: number,
+  tileDistribution?: [number, number, number, number],
+): ShuffleTilesAction => ({
   type: SHUFFLE_TILES,
   payload: { seed, tileDistribution },
 });
 
 // Seating phase action creators
-export const startSeatingPhase = (seatingOrder: string[]): StartSeatingPhaseAction => ({
+export const startSeatingPhase = (
+  seatingOrder: string[],
+): StartSeatingPhaseAction => ({
   type: START_SEATING_PHASE,
   payload: { seatingOrder },
 });
 
-export const selectEdge = (playerId: string, edgeNumber: number): SelectEdgeAction => ({
+export const selectEdge = (
+  playerId: string,
+  edgeNumber: number,
+): SelectEdgeAction => ({
   type: SELECT_EDGE,
   payload: { playerId, edgeNumber },
 });
@@ -305,12 +322,19 @@ export const drawTile = (): DrawTileAction => ({
   type: DRAW_TILE,
 });
 
-export const placeTile = (position: HexPosition, rotation: Rotation): PlaceTileAction => ({
+export const placeTile = (
+  position: HexPosition,
+  rotation: Rotation,
+): PlaceTileAction => ({
   type: PLACE_TILE,
   payload: { position, rotation },
 });
 
-export const replaceTile = (position: HexPosition, rotation: Rotation, isSingleSupermove?: boolean): ReplaceTileAction => ({
+export const replaceTile = (
+  position: HexPosition,
+  rotation: Rotation,
+  isSingleSupermove?: boolean,
+): ReplaceTileAction => ({
   type: REPLACE_TILE,
   payload: { position, rotation, isSingleSupermove },
 });
@@ -320,7 +344,10 @@ export const nextPlayer = (): NextPlayerAction => ({
   type: NEXT_PLAYER,
 });
 
-export const endGame = (winners: string[], winType: 'flow' | 'constraint' | 'tie'): EndGameAction => ({
+export const endGame = (
+  winners: string[],
+  winType: "flow" | "constraint" | "tie",
+): EndGameAction => ({
   type: END_GAME,
   payload: { winners, winType },
 });
@@ -329,22 +356,32 @@ export const resetGame = (): ResetGameAction => ({
   type: RESET_GAME,
 });
 
+export const rematchGame = (): RematchGameAction => ({
+  type: REMATCH_GAME,
+});
+
 export const restoreGame = (): RestoreGameAction => ({
   type: RESTORE_GAME,
 });
 
 // UI action creators
-export const setHoveredPosition = (position: HexPosition | null): SetHoveredPositionAction => ({
+export const setHoveredPosition = (
+  position: HexPosition | null,
+): SetHoveredPositionAction => ({
   type: SET_HOVERED_POSITION,
   payload: position,
 });
 
-export const setHoveredElement = (element: import('./types').HoveredElementType): SetHoveredElementAction => ({
+export const setHoveredElement = (
+  element: import("./types").HoveredElementType,
+): SetHoveredElementAction => ({
   type: SET_HOVERED_ELEMENT,
   payload: element,
 });
 
-export const setSelectedPosition = (position: HexPosition | null): SetSelectedPositionAction => ({
+export const setSelectedPosition = (
+  position: HexPosition | null,
+): SetSelectedPositionAction => ({
   type: SET_SELECTED_POSITION,
   payload: position,
 });
@@ -362,7 +399,9 @@ export const toggleSettings = (): ToggleSettingsAction => ({
   type: TOGGLE_SETTINGS,
 });
 
-export const updateSettings = (settings: Partial<GameSettings>): UpdateSettingsAction => ({
+export const updateSettings = (
+  settings: Partial<GameSettings>,
+): UpdateSettingsAction => ({
   type: UPDATE_SETTINGS,
   payload: settings,
 });
@@ -377,7 +416,9 @@ export const hideHelp = (): HideHelpAction => ({
 });
 
 // AI debug action creators
-export const setAIScoringData = (data: Record<string, { rotation: number; score: number }[]> | undefined): SetAIScoringDataAction => ({
+export const setAIScoringData = (
+  data: Record<string, { rotation: number; score: number }[]> | undefined,
+): SetAIScoringDataAction => ({
   type: SET_AI_SCORING_DATA,
   payload: data,
 });
