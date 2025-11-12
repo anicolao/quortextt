@@ -108,6 +108,7 @@ export type HoveredElementType =
   | { type: 'rotation-button'; position: { x: number; y: number }; radius: number; clockwise: boolean }
   | { type: 'action-button'; position: { x: number; y: number }; radius: number; action: 'checkmark' | 'cancel' }
   | { type: 'exit-button'; x: number; y: number; width: number; height: number }
+  | { type: 'move-list-item'; moveNumber: number; bounds: { x: number; y: number; width: number; height: number } }
   | null;
 
 export interface UIState {

@@ -1,6 +1,7 @@
 // Gameplay screen renderer for Phase 3
 
 import { RootState } from "../redux/types";
+import { store } from "../redux/store";
 import {
   HexLayout,
   Point,
@@ -2099,7 +2100,7 @@ export class GameplayRenderer {
     // Content area
     const contentX = dialogX + 20;
     let contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 28;
+    const lineHeight = 32; // Increased from 28 to accommodate tile preview
     const bottomMargin = 60; // Space for pagination buttons
     const maxLines = Math.floor(
       (dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight,
@@ -2133,13 +2134,15 @@ export class GameplayRenderer {
           const isFuture = moveNumber > currentMoveIndex;
 
           // Draw background highlight for selected move
+          // Text baseline is at y, so highlight should go from y - textHeight to y + descent
           if (isSelected) {
             this.ctx.fillStyle = "rgba(76, 175, 80, 0.3)";
+            // For 16px font, text sits about 12px above baseline and 4px below
             this.ctx.fillRect(
               contentX - 5,
-              y - lineHeight * 0.7,
+              y - 14,
               dialogWidth - 40,
-              lineHeight,
+              lineHeight - 4,
             );
           }
 
@@ -2161,15 +2164,17 @@ export class GameplayRenderer {
           this.ctx.fillText(notation, contentX + numberColumnWidth + 5, y);
 
           // Draw tile preview if we have the move data
+          // Center tile vertically with text (text baseline is at y)
           if (move) {
-            const previewSize = 18; // Slightly larger for better visibility
+            const previewSize = 20; // Slightly larger for better visibility
             const previewX =
               contentX +
               numberColumnWidth +
               5 +
               this.ctx.measureText(notation).width +
               10;
-            const previewY = y - previewSize / 2 - 4;
+            // Center tile on text baseline (text is ~12px above baseline for 16px font)
+            const previewY = y - previewSize / 2 - 6; // Adjusted to center with text
             this.renderSmallTile(
               move.tile,
               previewX + previewSize / 2,
@@ -2579,6 +2584,35 @@ export class GameplayRenderer {
           element.width,
           element.height,
         );
+        break;
+      }
+      case "move-list-item": {
+        // Draw rectangle outline for move list item
+        // Need to transform coordinates because they're in rotated space
+        const state = store.getState();
+        if (state.ui.moveListCorner !== null) {
+          const corner = state.ui.moveListCorner;
+          let rotation = 0;
+          if (corner === 1) rotation = 270;
+          else if (corner === 2) rotation = 180;
+          else if (corner === 3) rotation = 90;
+
+          this.ctx.save();
+          this.ctx.translate(
+            this.layout.canvasWidth / 2,
+            this.layout.canvasHeight / 2,
+          );
+          this.ctx.rotate((rotation * Math.PI) / 180);
+
+          this.ctx.strokeRect(
+            element.bounds.x,
+            element.bounds.y,
+            element.bounds.width,
+            element.bounds.height,
+          );
+
+          this.ctx.restore();
+        }
         break;
       }
     }
