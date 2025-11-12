@@ -24,7 +24,8 @@
 
   async function refreshRooms() {
     refreshing = true;
-    rooms = await socket.fetchRooms();
+    const fetchedRooms = await socket.fetchRooms();
+    rooms = fetchedRooms || [];
     multiplayerStore.setAvailableRooms(rooms);
     refreshing = false;
   }
@@ -79,7 +80,7 @@
     <div class="rooms-section">
       <h2>Available Rooms</h2>
       
-      {#if rooms.length === 0}
+      {#if !rooms || rooms.length === 0}
         <div class="no-rooms">
           <p>No rooms available</p>
           <p class="hint">Create a new room to start playing!</p>

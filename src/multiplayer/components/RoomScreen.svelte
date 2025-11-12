@@ -4,6 +4,7 @@
 
   $: room = $multiplayerStore.currentRoom;
   $: canStart = $isHost && room && room.players.length >= 2;
+  $: emptySlots = room ? Array.from({ length: room.maxPlayers - room.players.length }) : [];
 
   function leaveRoom() {
     if (room) {
@@ -65,7 +66,7 @@
               </div>
             {/each}
             
-            {#each Array(room.maxPlayers - room.players.length) as _, i}
+            {#each emptySlots as _, i}
               <div class="player-card empty">
                 <span class="waiting-text">Waiting for player...</span>
               </div>

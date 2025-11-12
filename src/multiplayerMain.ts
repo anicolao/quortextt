@@ -1,4 +1,5 @@
 // Multiplayer entry point
+import { mount } from 'svelte';
 import App from './multiplayer/App.svelte';
 import { store } from './redux/store';
 import { Renderer } from './rendering/renderer';
@@ -26,7 +27,7 @@ if (!svelteRoot) {
   throw new Error('Multiplayer UI root element not found');
 }
 
-const app = new App({
+const app = mount(App, {
   target: svelteRoot,
 });
 
