@@ -24,16 +24,24 @@ For Type 1 (OneSharp) tiles:
 ### 001-initial-state.png
 Initial game state after seating phase completes, showing both players on their respective edges with an empty board.
 
+![Initial State](001-initial-state.png)
+
 ### 002-first-player-placed.png
 First player (P2 on edge 0) has placed a Type 1 tile at position (-3, 1) with rotation 5.
 
+![First Player Placed](002-first-player-placed.png)
+
 ### 003-second-player-placed.png
 Second player (P1 on edge 4) has placed a Type 1 tile at position (1, -3) with rotation 5.
+
+![Second Player Placed](003-second-player-placed.png)
 
 ### 004-move-list-opened.png
 **The key screenshot** showing the move list dialog with the notation for both moves:
 - **Move 1**: P1A2T1NW (Player on edge 0, position A2, Type 1, NW orientation)
 - **Move 2**: P2A3T1NE (Player on edge 4, position A3, Type 1, NE orientation)
+
+![Move List Opened](004-move-list-opened.png)
 
 ## Notable Findings
 
