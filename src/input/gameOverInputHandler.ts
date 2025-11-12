@@ -1,7 +1,7 @@
 // Input handling for game-over screen
 
 import { store } from '../redux/store';
-import { resetGame, showHelp, hideHelp, showMoveList, hideMoveList } from '../redux/actions';
+import { resetGame, rematchGame, showHelp, hideHelp, showMoveList, hideMoveList } from '../redux/actions';
 import { GameOverLayout } from '../rendering/gameOverRenderer';
 
 export class GameOverInputHandler {
@@ -38,6 +38,18 @@ export class GameOverInputHandler {
     }
 
     if (!layout) return;
+
+    // Check if click is on any of the rematch buttons (circular buttons)
+    for (const button of layout.rematchButtons) {
+      const distance = Math.sqrt(
+        Math.pow(x - button.x, 2) + Math.pow(y - button.y, 2)
+      );
+      if (distance <= button.radius) {
+        // Rematch button clicked - start a rematch with the same players
+        store.dispatch(rematchGame());
+        return;
+      }
+    }
 
     const button = layout.playAgainButton;
 
