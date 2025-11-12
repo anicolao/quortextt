@@ -497,4 +497,49 @@ describe('AI Move Selection', () => {
     
     expect(move).not.toBeNull();
   });
+
+  it('should only score positions directly adjacent to flows, not 2-hop neighbors', () => {
+    // This test verifies the fix for the AI scoring bug where isAdjacentToFlowOrEdge
+    // was incorrectly including positions that were 2 hops away from flows
+    const board = new Map<string, PlacedTile>();
+    
+    // Place a single tile adjacent to AI's starting edge
+    // AI is at edge 0 (positions at row -3)
+    board.set('-3,0', {
+      type: TileType.NoSharps,
+      rotation: 0,
+      position: { row: -3, col: 0 }
+    });
+    
+    const tileType = TileType.NoSharps;
+    
+    const candidates = generateMoveCandidates(
+      board,
+      tileType,
+      aiPlayer,
+      players,
+      teams,
+      false, // no supermove
+      boardRadius
+    );
+    
+    // Count unique positions (candidates can have multiple rotations per position)
+    const uniquePositions = new Set(
+      candidates.map(c => `${c.position.row},${c.position.col}`)
+    );
+    
+    // With correct adjacency logic:
+    // - Positions at edge 0 (starting edge): ~4-6 positions
+    // - Position (-3,0) has 6 neighbors, but only ~3-4 are on the board
+    // - Adjacent to the placed tile at (-3,0): positions like (-2,-1), (-2,0), (-3,1), (-3,-1)
+    // Total should be around 6-10 unique positions, NOT 13+
+    
+    console.log('Unique positions evaluated:', uniquePositions.size);
+    console.log('Positions:', Array.from(uniquePositions).sort());
+    
+    // The bug would cause ~13 positions to be evaluated (2-hop adjacency)
+    // The fix should result in ~6-10 positions (1-hop adjacency only)
+    expect(uniquePositions.size).toBeLessThan(13);
+    expect(uniquePositions.size).toBeGreaterThanOrEqual(6);
+  });
 });
