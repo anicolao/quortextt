@@ -1,7 +1,7 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, showHelp, hideHelp, showMoveList, hideMoveList } from '../redux/actions';
+import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, showHelp, hideHelp, showMoveList, hideMoveList, navigateMoveList } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
@@ -25,9 +25,13 @@ export class GameplayInputHandler {
       return;
     }
 
-    // If move list dialog is open, close it on any click
+    // If move list dialog is open, check if clicking on a move or outside
     if (state.ui.showMoveList) {
-      store.dispatch(hideMoveList());
+      const moveClicked = this.checkMoveListItemClick(canvasX, canvasY);
+      if (!moveClicked) {
+        // Click outside move list or not on a move - close and return to present
+        store.dispatch(hideMoveList());
+      }
       return;
     }
 
@@ -621,5 +625,84 @@ export class GameplayInputHandler {
     }
 
     return false;
+  }
+
+  private checkMoveListItemClick(canvasX: number, canvasY: number): boolean {
+    const state = store.getState();
+    const layout = this.renderer.getLayout();
+    
+    if (state.ui.moveListCorner === null) return false;
+    
+    const corner = state.ui.moveListCorner;
+    
+    // Calculate rotation based on corner
+    let rotation = 0;
+    if (corner === 1) rotation = 270;
+    else if (corner === 2) rotation = 180;
+    else if (corner === 3) rotation = 90;
+    
+    // Transform click coordinates to rotated space
+    const centerX = layout.canvasWidth / 2;
+    const centerY = layout.canvasHeight / 2;
+    
+    // Translate to origin
+    let x = canvasX - centerX;
+    let y = canvasY - centerY;
+    
+    // Rotate back
+    const rad = -(rotation * Math.PI / 180);
+    const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
+    const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
+    
+    // Translate back
+    x = rotatedX + centerX;
+    y = rotatedY + centerY;
+    
+    // Calculate dialog dimensions in rotated space
+    const rotatedWidth = (rotation === 90 || rotation === 270) ? layout.canvasHeight : layout.canvasWidth;
+    const rotatedHeight = (rotation === 90 || rotation === 270) ? layout.canvasWidth : layout.canvasHeight;
+    const dialogWidth = Math.min(300, rotatedWidth * 0.5);
+    const dialogHeight = Math.min(700, rotatedHeight * 0.8);
+    const margin = 20;
+    
+    const dialogX = rotatedWidth / 2 - dialogWidth / 2 - (rotatedWidth / 2 - margin - dialogWidth);
+    const dialogY = rotatedHeight / 2 - dialogHeight / 2 + (rotatedHeight / 2 - margin - dialogHeight);
+    
+    // Check if click is inside dialog
+    if (x < dialogX || x > dialogX + dialogWidth || y < dialogY || y > dialogY + dialogHeight) {
+      return false; // Click outside dialog
+    }
+    
+    // Calculate move list area
+    const controlsY = dialogY + 60;
+    const controlsHeight = 40;
+    const contentY = controlsY + controlsHeight + 10;
+    const lineHeight = 28;
+    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - 60) / lineHeight);
+    
+    const moves = state.game.moveHistory;
+    const startIndex = Math.max(0, moves.length - maxLines);
+    
+    // Check which move line was clicked
+    if (y >= contentY && y < contentY + (moves.length - startIndex) * lineHeight) {
+      const clickedIndex = Math.floor((y - contentY) / lineHeight);
+      const moveNumber = startIndex + clickedIndex + 1;
+      
+      if (moveNumber <= moves.length) {
+        // Navigate to this move
+        if (moveNumber === moves.length) {
+          store.dispatch(navigateMoveList('last'));
+        } else {
+          // Set to specific move by navigating to first then forward
+          store.dispatch(navigateMoveList('first'));
+          for (let i = 0; i < moveNumber - 1; i++) {
+            store.dispatch(navigateMoveList('next'));
+          }
+        }
+        return true;
+      }
+    }
+    
+    return true; // Click inside dialog but not on a move
   }
 }

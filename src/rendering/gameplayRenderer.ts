@@ -2055,8 +2055,8 @@ export class GameplayRenderer {
     const rotatedWidth = (rotation === 90 || rotation === 270) ? this.layout.canvasHeight : this.layout.canvasWidth;
     const rotatedHeight = (rotation === 90 || rotation === 270) ? this.layout.canvasWidth : this.layout.canvasHeight;
 
-    // Dialog box dimensions
-    const dialogWidth = Math.min(500, rotatedWidth * 0.8);
+    // Dialog box dimensions - make it narrower as moves don't need much width
+    const dialogWidth = Math.min(300, rotatedWidth * 0.5);
     const dialogHeight = Math.min(700, rotatedHeight * 0.8);
     const margin = 20;
 
@@ -2108,36 +2108,62 @@ export class GameplayRenderer {
     // Content area
     const contentX = dialogX + 20;
     let contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 24;
+    const lineHeight = 28;
     const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - 60) / lineHeight);
+    const numberColumnWidth = 35; // Width for right-justified numbers
 
     this.ctx.font = "16px monospace";
-    this.ctx.textAlign = "left";
     this.ctx.fillStyle = "#ffffff";
 
     if (moveNotations.length === 0) {
+      this.ctx.textAlign = "left";
       this.ctx.fillText("No moves yet", contentX, contentY);
     } else {
-      // Show moves up to the current view index
-      const visibleMoves = state.ui.moveListIndex === -1 
-        ? moveNotations 
-        : moveNotations.slice(0, state.ui.moveListIndex);
+      // Show all moves but grey out ones after the selected index
+      const currentMoveIndex = state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
       
       // Calculate starting index for pagination
-      const startIndex = Math.max(0, visibleMoves.length - maxLines);
+      const startIndex = Math.max(0, moveNotations.length - maxLines);
       
-      visibleMoves.slice(startIndex).forEach((notation: string, index: number) => {
+      moveNotations.slice(startIndex).forEach((notation: string, index: number) => {
         const moveNumber = startIndex + index + 1;
         const y = contentY + index * lineHeight;
+        const move = moves[moveNumber - 1];
         
-        // Highlight current move if navigating
-        if (state.ui.moveListIndex !== -1 && moveNumber === state.ui.moveListIndex) {
-          this.ctx.fillStyle = "#4CAF50";
-        } else {
-          this.ctx.fillStyle = "#ffffff";
+        // Determine if this move is selected, future, or past
+        const isSelected = moveNumber === currentMoveIndex;
+        const isFuture = moveNumber > currentMoveIndex;
+        
+        // Draw background highlight for selected move
+        if (isSelected) {
+          this.ctx.fillStyle = "rgba(76, 175, 80, 0.3)";
+          this.ctx.fillRect(contentX - 5, y - lineHeight + 6, dialogWidth - 40, lineHeight);
         }
         
-        this.ctx.fillText(`${moveNumber}. ${notation}`, contentX, y);
+        // Set text color based on state
+        if (isFuture) {
+          this.ctx.fillStyle = "#666666"; // Grey out future moves
+        } else if (isSelected) {
+          this.ctx.fillStyle = "#4CAF50"; // Highlight selected
+        } else {
+          this.ctx.fillStyle = "#ffffff"; // Normal color
+        }
+        
+        // Draw move number (right-justified)
+        this.ctx.textAlign = "right";
+        this.ctx.fillText(`${moveNumber}.`, contentX + numberColumnWidth, y);
+        
+        // Draw move notation (left-justified after number)
+        this.ctx.textAlign = "left";
+        this.ctx.fillText(notation, contentX + numberColumnWidth + 5, y);
+        
+        // Draw tile preview if we have the move data
+        if (move) {
+          const previewSize = 16;
+          const previewX = contentX + numberColumnWidth + 5 + this.ctx.measureText(notation).width + 10;
+          const previewY = y - previewSize / 2 - 2;
+          this.drawTilePreview(move.tile, previewX, previewY, previewSize);
+        }
       });
     }
 
@@ -2146,9 +2172,51 @@ export class GameplayRenderer {
     this.ctx.textAlign = "center";
     this.ctx.fillStyle = "#cccccc";
     const instructY = dialogY + dialogHeight - 30;
-    this.ctx.fillText("Tap to dismiss", dialogX + dialogWidth / 2, instructY);
+    this.ctx.fillText("Click move to view, tap outside to dismiss", dialogX + dialogWidth / 2, instructY);
 
     // Restore context state
+    this.ctx.restore();
+  }
+
+  private drawTilePreview(tile: PlacedTile, x: number, y: number, size: number): void {
+    // Draw a small preview of the tile with its type and rotation
+    this.ctx.save();
+    
+    // Background circle
+    this.ctx.fillStyle = "#2a2a2a";
+    this.ctx.beginPath();
+    this.ctx.arc(x + size / 2, y + size / 2, size / 2, 0, 2 * Math.PI);
+    this.ctx.fill();
+    
+    // Border
+    this.ctx.strokeStyle = "#444444";
+    this.ctx.lineWidth = 1;
+    this.ctx.stroke();
+    
+    // Draw simplified tile pattern based on type
+    this.ctx.translate(x + size / 2, y + size / 2);
+    this.ctx.rotate((tile.rotation * 60 * Math.PI) / 180);
+    
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1.5;
+    const r = size * 0.35;
+    
+    // Draw flow paths based on tile type (pass rotation 0 since we're rotating the context)
+    const connections = getFlowConnections(tile.type, 0);
+    connections.forEach(([dir1, dir2]) => {
+      const angle1 = dir1 * 60 * Math.PI / 180;
+      const angle2 = dir2 * 60 * Math.PI / 180;
+      const x1 = Math.cos(angle1) * r;
+      const y1 = Math.sin(angle1) * r;
+      const x2 = Math.cos(angle2) * r;
+      const y2 = Math.sin(angle2) * r;
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
+    });
+    
     this.ctx.restore();
   }
 
