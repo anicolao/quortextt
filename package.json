@@ -15,7 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "postinstall": "node scripts/patch-playwright.cjs",
+    "postinstall": "node scripts/patch-playwright.cjs && cd server && npm install",
     "prepare": "husky"
   },
   "keywords": [],
