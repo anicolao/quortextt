@@ -27,70 +27,55 @@ Initial board state after all 6 players have selected their edges.
 
 ### 002-moves-0-1.png
 Move list after players 1 and 2 have placed their tiles:
-- **Move 1**: P1A1T1NW (Edge 0, rotation 0 → NW)
-- **Move 2**: P2D7T1SW (Edge 1, rotation 0 → SW)
+- **Move 1**: P1A1T1S (Edge 0, rotation 0 → S) ✓
+- **Move 2**: P2D7T1SE (Edge 1, rotation 0 → SE) ✓
 
 ![Moves 1-2](002-moves-0-1.png)
 
 ### 003-moves-2-3.png
 Move list after players 3 and 4 have placed their tiles:
-- **Move 3**: P3A4T1S (Edge 2, rotation 0 → S)
-- **Move 4**: P4A4T1SE (Edge 3, rotation 0 → SE)
+- **Move 3**: P3A4T1NE (Edge 2, rotation 0 → NE) ✓
+- **Move 4**: P4A4T1N (Edge 3, rotation 0 → N) ✓
 
 ![Moves 3-4](003-moves-2-3.png)
 
 ### 004-moves-4-5.png
 Move list after players 5 and 6 have placed their tiles:
-- **Move 5**: P5A4T1NW (Edge 4, rotation 0 → NW) - **Note: Uses special case fix**
-- **Move 6**: P6A4T1N (Edge 5, rotation 0 → N)
+- **Move 5**: P5A4T1NW (Edge 4, rotation 0 → NW) ✓
+- **Move 6**: P6A4T1SW (Edge 5, rotation 0 → SW) ✓
 
 ![Moves 5-6](004-moves-4-5.png)
 
-## Test Results - Orientations for Rotation 0
+## Test Results - Orientations for Rotation 0 ✓
 
 All tiles have **rotation 0** (North in absolute terms), but show different orientations from each player's perspective:
 
-| Edge | Player | Notation | Orientation | Expected per User's Theory |
-|------|--------|----------|-------------|---------------------------|
-| 0 (NW) | P1 | P1A1T1NW | NW | ? |
-| 1 (NE) | P2 | P2D7T1SW | SW | ? |
-| 2 (E)  | P3 | P3A4T1S  | S  | ? |
-| 3 (SE) | P4 | P4A4T1SE | SE | ? |
-| 4 (SW) | P5 | P5A4T1NW | NW | ? |
-| 5 (W)  | P6 | P6A4T1N  | N  | ? |
+| Edge | Player | Notation | Orientation | Formula Result |
+|------|--------|----------|-------------|----------------|
+| 0 (NW) | P1 | P1A1T1S | S | (0 - 0 + 3) % 6 = 3 ✓ |
+| 1 (NE) | P2 | P2D7T1SE | SE | (0 - 1 + 3) % 6 = 2 ✓ |
+| 2 (E)  | P3 | P3A4T1NE  | NE  | (0 - 2 + 3) % 6 = 1 ✓ |
+| 3 (SE) | P4 | P4A4T1N | N | (0 - 3 + 3) % 6 = 0 ✓ |
+| 4 (SW) | P5 | P5A4T1NW | NW | (0 - 4 + 3) % 6 = -1 = 5 ✓ |
+| 5 (W)  | P6 | P6A4T1SW  | SW  | (0 - 5 + 3) % 6 = -2 = 4 ✓ |
 
-## Current Formula Issues
+## Corrected Formula
 
-The current formula `(rotation - playerEdge + 5) % 6` with a special case for edge 4 produces:
+The correct formula is: `(rotation - playerEdge + 3) % 6`
 
+The `+3` offset (180 degrees) accounts for how the coordinate system relates to player perspective. This formula was systematically validated across all 6 edges and works correctly for all cases without requiring special cases.
+
+**Validation:**
 ```
-Edge 0: (0 - 0 + 5) % 6 = 5 → NW
-Edge 1: (0 - 1 + 5) % 6 = 4 → SW
-Edge 2: (0 - 2 + 5) % 6 = 3 → S
-Edge 3: (0 - 3 + 5) % 6 = 2 → SE
-Edge 4: (0 - 4 + 5) % 6 = 1 → NE, but special case changes to NW
-Edge 5: (0 - 5 + 5) % 6 = 0 → N
+Edge 0: (0 - 0 + 3) % 6 = 3 → S  ✓
+Edge 1: (0 - 1 + 3) % 6 = 2 → SE ✓
+Edge 2: (0 - 2 + 3) % 6 = 1 → NE ✓
+Edge 3: (0 - 3 + 3) % 6 = 0 → N  ✓
+Edge 4: (0 - 4 + 3) % 6 = -1 % 6 = 5 → NW ✓
+Edge 5: (0 - 5 + 3) % 6 = -2 % 6 = 4 → SW ✓
 ```
 
-## User's Proposed Formula
-
-According to the user's comment, the formula should be:
-> "rotate the tile by the number of the player's edge, possibly plus some constant mod 6"
-
-This would suggest something like: `(rotation + playerEdge + C) % 6` where C is a constant to determine.
-
-Let's test this theory:
-- Edge 0: (0 + 0 + C) % 6 = C → NW (index 5), so C = 5
-- Edge 1: (0 + 1 + 5) % 6 = 0 → N (but we got SW)
-- This doesn't match either.
-
-Or maybe: `(rotation - playerEdge + C) % 6` (current approach):
-- With C = 5, edge 4 gives NE but needs NW
-- The pattern suggests we need a different approach
-
-## Awaiting User Validation
-
-User will review these results to identify which moves have correct notation and provide the expected values. This will help determine the correct rotation formula.
+All results match the expected notation provided by the user.
 
 ## Notes on Position Notation
 

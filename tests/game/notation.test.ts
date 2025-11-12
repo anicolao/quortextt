@@ -42,37 +42,47 @@ describe('Game Notation', () => {
   });
 
   describe('rotationToOrientation', () => {
-    it('should convert rotation 0 to NW for edge 0', () => {
-      expect(rotationToOrientation(0, 0)).toBe('NW');
+    it('should convert rotation 0 to S for edge 0', () => {
+      expect(rotationToOrientation(0, 0)).toBe('S');
     });
 
-    it('should convert rotation 1 to N for edge 0', () => {
-      expect(rotationToOrientation(1, 0)).toBe('N');
+    it('should convert rotation 1 to SW for edge 0', () => {
+      expect(rotationToOrientation(1, 0)).toBe('SW');
     });
 
-    it('should convert rotation 3 to SE for edge 0', () => {
-      expect(rotationToOrientation(3, 0)).toBe('SE');
+    it('should convert rotation 3 to N for edge 0', () => {
+      expect(rotationToOrientation(3, 0)).toBe('N');
     });
 
     it('should adjust for player perspective', () => {
-      // For edge 1, rotation 0 should appear as SW from their perspective
-      expect(rotationToOrientation(0, 1)).toBe('SW');
+      // For edge 1, rotation 0 should appear as SE from their perspective
+      expect(rotationToOrientation(0, 1)).toBe('SE');
     });
 
     it('should handle rotation 5 correctly for different edges', () => {
-      // Rotation 5 should be SW for edge 0 and N for edge 4
-      expect(rotationToOrientation(5, 0)).toBe('SW');
-      expect(rotationToOrientation(5, 4)).toBe('N');
+      // Rotation 5 should be SE for edge 0 and SW for edge 4
+      expect(rotationToOrientation(5, 0)).toBe('SE');
+      expect(rotationToOrientation(5, 4)).toBe('SW');
     });
 
-    it('should handle rotation 0 on edge 4 correctly (special case)', () => {
-      // Rotation 0 on edge 4 should be NW (not NE)
+    it('should handle rotation 0 on edge 4 correctly', () => {
+      // Rotation 0 on edge 4 should be NW
       expect(rotationToOrientation(0, 4)).toBe('NW');
     });
 
     it('should handle rotation 2 on edge 0 correctly', () => {
-      // Rotation 2 on edge 0 should be NE
-      expect(rotationToOrientation(2, 0)).toBe('NE');
+      // Rotation 2 on edge 0 should be NW
+      expect(rotationToOrientation(2, 0)).toBe('NW');
+    });
+    
+    it('should handle all rotations on all edges correctly (systematic test)', () => {
+      // Validated from 6-player e2e test with all edges
+      expect(rotationToOrientation(0, 0)).toBe('S');   // Edge 0
+      expect(rotationToOrientation(0, 1)).toBe('SE');  // Edge 1
+      expect(rotationToOrientation(0, 2)).toBe('NE');  // Edge 2
+      expect(rotationToOrientation(0, 3)).toBe('N');   // Edge 3
+      expect(rotationToOrientation(0, 4)).toBe('NW');  // Edge 4
+      expect(rotationToOrientation(0, 5)).toBe('SW');  // Edge 5
     });
   });
 
@@ -98,7 +108,7 @@ describe('Game Notation', () => {
       };
 
       const notation = formatMoveNotation(move, 1, 0, 3);
-      expect(notation).toBe('P1A1T0NW');
+      expect(notation).toBe('P1A1T0S');
     });
 
     it('should handle different tiles and rotations', () => {

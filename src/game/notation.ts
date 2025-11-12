@@ -65,19 +65,21 @@ export function positionToNotation(
  * Rotation 0 = North (N), 1 = NE, 2 = SE, 3 = S, 4 = SW, 5 = NW
  * 
  * The rotation needs to be adjusted based on the player's edge position
- * so that the notation is always relative to the player's view
+ * so that the notation is always relative to the player's view.
+ * 
+ * Formula derived from systematic 6-player test: (rotation - playerEdge + 3) % 6
+ * This rotates the tile's orientation by subtracting the player's edge offset,
+ * then adds 3 (180 degrees) to account for the coordinate system conventions.
  */
 export function rotationToOrientation(rotation: Rotation, playerEdge: number): OrientationName {
   // Adjust rotation for player's perspective
-  // NOTE: The +5 offset (equivalent to -1 mod 6) was empirically determined
-  // but doesn't have a clear geometric justification. This formula works for
-  // most cases but needs refinement.
-  let adjustedRotation = (rotation - playerEdge + 5) % 6;
+  // The +3 offset (180 degrees) accounts for how the coordinate system relates
+  // to player perspective. Validated with 6-player systematic test.
+  let adjustedRotation = (rotation - playerEdge + 3) % 6;
   
-  // Special case: rotation 0 on edge 4 gives NE but should give NW
-  // This suggests the formula may need reconsideration for certain edge/rotation combinations
-  if (rotation === 0 && playerEdge === 4 && adjustedRotation === 1) {
-    adjustedRotation = 5; // Change NE (1) to NW (5)
+  // Handle negative modulo results
+  if (adjustedRotation < 0) {
+    adjustedRotation += 6;
   }
   
   return ORIENTATION_NAMES[adjustedRotation];

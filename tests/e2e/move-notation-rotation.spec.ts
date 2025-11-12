@@ -323,12 +323,12 @@ test.describe('Move Notation with Rotation', () => {
     
     // Validate specific expected notation for first 2 moves
     // First move: Player on edge 0, position (-3, 1), rotation 5
-    // Expected: P1A3T1SW (columns count right-to-left, rotation adjusted for perspective)
-    expect(moveNotations[0]).toBe('P1A3T1SW');
+    // With formula (rotation - playerEdge + 3) % 6: (5 - 0 + 3) % 6 = 2 (SE)
+    expect(moveNotations[0]).toBe('P1A3T1SE');
     
     // Second move: Player on edge 4, position (1, -3), rotation 5
-    // Expected: P2A2T1N (columns count right-to-left, rotation adjusted for perspective)
-    expect(moveNotations[1]).toBe('P2A2T1N');
+    // With formula (rotation - playerEdge + 3) % 6: (5 - 4 + 3) % 6 = 4 (SW)
+    expect(moveNotations[1]).toBe('P2A2T1SW');
     
     // === STEP 12: Close move list and continue with third move ===
     await page.evaluate(() => {
@@ -460,11 +460,11 @@ test.describe('Move Notation with Rotation', () => {
     expect(state.game.moveHistory[2].tile.rotation).toBe(2);
     expect(state.game.moveHistory[3].tile.rotation).toBe(0);
     
-    // Validate all expected notations
-    expect(allMoveNotations[0]).toBe('P1A3T1SW'); // Move 1: edge 0, rot 5
-    expect(allMoveNotations[1]).toBe('P2A2T1N');  // Move 2: edge 4, rot 5
-    expect(allMoveNotations[2]).toBe('P1A2T1NE'); // Move 3: edge 0, rot 2
-    expect(allMoveNotations[3]).toBe('P2A1T1NW'); // Move 4: edge 4, rot 0 (was NE, now fixed to NW)
+    // Validate all expected notations with corrected formula: (rotation - playerEdge + 3) % 6
+    expect(allMoveNotations[0]).toBe('P1A3T1SE'); // Move 1: edge 0, rot 5 → (5-0+3)%6=2 (SE)
+    expect(allMoveNotations[1]).toBe('P2A2T1SW'); // Move 2: edge 4, rot 5 → (5-4+3)%6=4 (SW)
+    expect(allMoveNotations[2]).toBe('P1A2T1NW'); // Move 3: edge 0, rot 2 → (2-0+3)%6=5 (NW)
+    expect(allMoveNotations[3]).toBe('P2A1T1NW'); // Move 4: edge 4, rot 0 → (0-4+3)%6=5 (NW)
     
     // Log detailed information for all moves for user validation
     console.log('\n=== DETAILED MOVE INFORMATION ===');
