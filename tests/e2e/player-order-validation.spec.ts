@@ -2,6 +2,10 @@
 // This test creates 6 players, has them select seats, and validates that
 // the play order is clockwise from the starting player, not based on
 // the randomized seating order or join order.
+//
+// IMPORTANT: This test uses a deterministic seed (54321) to ensure reproducible
+// results and consistent screenshots across test runs. All screenshots in
+// tests/e2e/user-stories/player-order/ are from a single continuous test execution.
 
 import { test, expect } from '@playwright/test';
 import { getReduxState, getSeatingEdgeButtonCoordinates, waitForAnimationFrame, pauseAnimations } from './helpers';
