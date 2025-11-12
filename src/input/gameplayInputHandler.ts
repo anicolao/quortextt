@@ -662,11 +662,11 @@ export class GameplayInputHandler {
     const rotatedWidth = (rotation === 90 || rotation === 270) ? layout.canvasHeight : layout.canvasWidth;
     const rotatedHeight = (rotation === 90 || rotation === 270) ? layout.canvasWidth : layout.canvasHeight;
     const dialogWidth = Math.min(300, rotatedWidth * 0.5);
-    const dialogHeight = Math.min(700, rotatedHeight * 0.8);
+    const dialogHeight = Math.min(350, rotatedHeight * 0.4); // Match rendering
     const margin = 20;
     
-    const dialogX = rotatedWidth / 2 - dialogWidth / 2 - (rotatedWidth / 2 - margin - dialogWidth);
-    const dialogY = rotatedHeight / 2 - dialogHeight / 2 + (rotatedHeight / 2 - margin - dialogHeight);
+    const dialogX = -rotatedWidth / 2 + margin;
+    const dialogY = rotatedHeight / 2 - dialogHeight - margin;
     
     // Check if click is inside dialog
     if (x < dialogX || x > dialogX + dialogWidth || y < dialogY || y > dialogY + dialogHeight) {
@@ -678,7 +678,8 @@ export class GameplayInputHandler {
     const controlsHeight = 40;
     const contentY = controlsY + controlsHeight + 10;
     const lineHeight = 28;
-    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - 60) / lineHeight);
+    const bottomMargin = 60; // Match rendering
+    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     
     const moves = state.game.moveHistory;
     const startIndex = Math.max(0, moves.length - maxLines);
