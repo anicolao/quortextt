@@ -68,28 +68,35 @@ class MultiplayerSocket {
       console.log('Player disconnected:', data.username);
     });
 
-    // Game events
-    this.socket.on('game_started', (data: { roomId: string; players: Player[] }) => {
-      console.log('Game started!');
+    // Game events (event sourcing architecture)
+    this.socket.on('game_ready', (data: { gameId: string; players: any[] }) => {
+      console.log('Game ready! Players should now start posting actions.');
       multiplayerStore.setScreen('game');
+      multiplayerStore.setGameId(data.gameId);
       
-      // Trigger game initialization event
-      window.dispatchEvent(new CustomEvent('multiplayer:game-start', {
-        detail: { roomId: data.roomId, players: data.players }
+      // Trigger game ready event - clients should initialize and subscribe to actions
+      window.dispatchEvent(new CustomEvent('multiplayer:game-ready', {
+        detail: { gameId: data.gameId, players: data.players }
       }));
     });
 
-    this.socket.on('game_state_update', (data: { state: any }) => {
-      // Broadcast game state updates
-      window.dispatchEvent(new CustomEvent('multiplayer:game-state', {
-        detail: data.state
+    // Action posted - broadcast to all clients for event replay
+    this.socket.on('action_posted', (action: any) => {
+      console.log('Action received:', action.type);
+      
+      // Broadcast action to be replayed through Redux
+      window.dispatchEvent(new CustomEvent('multiplayer:action', {
+        detail: action
       }));
     });
 
-    this.socket.on('move_made', (data: { playerId: string; move: any }) => {
-      // Broadcast move events
-      window.dispatchEvent(new CustomEvent('multiplayer:move', {
-        detail: { playerId: data.playerId, move: data.move }
+    // Response to get_actions request
+    this.socket.on('actions_list', (data: { gameId: string; actions: any[] }) => {
+      console.log(`Received ${data.actions.length} actions for game ${data.gameId}`);
+      
+      // Broadcast all actions for replay
+      window.dispatchEvent(new CustomEvent('multiplayer:actions-sync', {
+        detail: { gameId: data.gameId, actions: data.actions }
       }));
     });
 
@@ -146,14 +153,15 @@ class MultiplayerSocket {
     this.socket.emit('start_game', { roomId });
   }
 
-  sendGameState(roomId: string, state: any) {
+  // Event sourcing methods
+  postAction(gameId: string, action: any) {
     if (!this.socket) return;
-    this.socket.emit('game_state', { roomId, state });
+    this.socket.emit('post_action', { gameId, action });
   }
 
-  sendMove(roomId: string, move: any) {
+  getActions(gameId: string) {
     if (!this.socket) return;
-    this.socket.emit('make_move', { roomId, move });
+    this.socket.emit('get_actions', { gameId });
   }
 
   disconnect() {

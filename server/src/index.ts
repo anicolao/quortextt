@@ -1,4 +1,4 @@
-// Simple multiplayer server for Quortex MVP
+// Simple multiplayer server for Quortex MVP - Event Sourcing Architecture
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -39,11 +39,21 @@ interface GameRoom {
   players: Player[];
   maxPlayers: number;
   status: 'waiting' | 'playing' | 'finished';
-  gameState?: any; // Will sync with Redux state
+}
+
+// Game actions (event log) - each game has its own action stream
+interface GameAction {
+  type: string;
+  payload: any;
+  playerId: string;
+  timestamp: number;
+  sequence: number; // Sequential number for ordering
 }
 
 const rooms = new Map<string, GameRoom>();
 const players = new Map<string, Player>();
+// Actions collection: gameId -> array of actions
+const gameActions = new Map<string, GameAction[]>();
 
 // REST API endpoints
 
@@ -192,7 +202,7 @@ io.on('connection', (socket) => {
     console.log(`Player ${player.username} left room ${room.name}`);
   });
 
-  // Start game
+  // Start game (host posts START_GAME action with seed)
   socket.on('start_game', (data: { roomId: string }) => {
     const { roomId } = data;
     const room = rooms.get(roomId);
@@ -212,44 +222,68 @@ io.on('connection', (socket) => {
     }
 
     room.status = 'playing';
+    
+    // Initialize actions log for this game
+    if (!gameActions.has(roomId)) {
+      gameActions.set(roomId, []);
+    }
 
-    // Notify all players to start the game
-    io.to(roomId).emit('game_started', {
-      roomId: room.id,
-      players: room.players.map(p => ({ id: p.id, username: p.username }))
+    // Host should now post START_GAME action with seed via post_action event
+    // We just notify clients that the game is ready to start
+    io.to(roomId).emit('game_ready', {
+      gameId: room.id,
+      players: room.players.map((p, index) => ({ 
+        id: p.id, 
+        username: p.username,
+        playerIndex: index // Assign player indices for the game
+      }))
     });
 
-    console.log(`Game started in room ${room.name}`);
+    console.log(`Game ready in room ${room.name}, waiting for host to post START_GAME action`);
   });
 
-  // Game state sync
-  socket.on('game_state', (data: { roomId: string; state: any }) => {
-    const { roomId, state } = data;
-    const room = rooms.get(roomId);
-
-    if (!room) return;
-
-    room.gameState = state;
-
-    // Broadcast state to all other players in the room
-    socket.to(roomId).emit('game_state_update', { state });
-  });
-
-  // Handle moves
-  socket.on('make_move', (data: { roomId: string; move: any }) => {
-    const { roomId, move } = data;
-    const room = rooms.get(roomId);
+  // Post a game action (event sourcing)
+  socket.on('post_action', (data: { gameId: string; action: any }) => {
+    const { gameId, action } = data;
     const player = players.get(socket.id);
+    const room = rooms.get(gameId);
 
     if (!room || !player) return;
 
-    // Broadcast move to all players in the room
-    io.to(roomId).emit('move_made', {
+    // Get or create actions array for this game
+    if (!gameActions.has(gameId)) {
+      gameActions.set(gameId, []);
+    }
+    
+    const actions = gameActions.get(gameId)!;
+    
+    // Create the action with metadata
+    const gameAction: GameAction = {
+      type: action.type,
+      payload: action.payload || {},
       playerId: player.id,
-      move
-    });
+      timestamp: Date.now(),
+      sequence: actions.length
+    };
 
-    console.log(`Move made by ${player.username} in room ${room.name}`);
+    // Append to action log
+    actions.push(gameAction);
+
+    // Broadcast action to all players in the game
+    io.to(gameId).emit('action_posted', gameAction);
+
+    console.log(`Action ${gameAction.type} posted to game ${gameId} by ${player.username}`);
+  });
+
+  // Get all actions for a game (for new players or reconnection)
+  socket.on('get_actions', (data: { gameId: string }) => {
+    const { gameId } = data;
+    const actions = gameActions.get(gameId) || [];
+    
+    socket.emit('actions_list', {
+      gameId,
+      actions
+    });
   });
 
   // Disconnect

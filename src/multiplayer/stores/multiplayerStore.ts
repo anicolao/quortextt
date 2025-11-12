@@ -23,6 +23,7 @@ export interface MultiplayerState {
   currentRoom: Room | null;
   availableRooms: Room[];
   screen: 'login' | 'lobby' | 'room' | 'game';
+  gameId: string | null;
 }
 
 const initialState: MultiplayerState = {
@@ -32,6 +33,7 @@ const initialState: MultiplayerState = {
   currentRoom: null,
   availableRooms: [],
   screen: 'login',
+  gameId: null,
 };
 
 // Create the main store
@@ -64,6 +66,9 @@ function createMultiplayerStore() {
           currentRoom: { ...state.currentRoom, ...updates }
         };
       }),
+    
+    setGameId: (gameId: string | null) =>
+      update(state => ({ ...state, gameId })),
     
     reset: () => set(initialState),
   };
