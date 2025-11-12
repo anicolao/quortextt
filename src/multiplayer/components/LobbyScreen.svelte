@@ -92,15 +92,15 @@
               <div class="room-info">
                 <h3>{room.name}</h3>
                 <p class="room-players">
-                  👥 {room.players.length}/{room.maxPlayers} players
+                  👥 {room.playerCount || room.players?.length || 0}/{room.maxPlayers} players
                 </p>
               </div>
               <button 
                 class="join-btn" 
                 on:click={() => joinRoom(room)}
-                disabled={room.players.length >= room.maxPlayers}
+                disabled={(room.playerCount || room.players?.length || 0) >= room.maxPlayers}
               >
-                {room.players.length >= room.maxPlayers ? 'Full' : 'Join'}
+                {(room.playerCount || room.players?.length || 0) >= room.maxPlayers ? 'Full' : 'Join'}
               </button>
             </div>
           {/each}
