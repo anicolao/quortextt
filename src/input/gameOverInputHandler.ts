@@ -15,17 +15,16 @@ export class GameOverInputHandler {
 
     if (!layout) return;
 
-    // Check if click is on the Rematch button
-    const rematchButton = layout.rematchButton;
-    if (
-      x >= rematchButton.x &&
-      x <= rematchButton.x + rematchButton.width &&
-      y >= rematchButton.y &&
-      y <= rematchButton.y + rematchButton.height
-    ) {
-      // Start a rematch with the same players
-      store.dispatch(rematchGame());
-      return;
+    // Check if click is on any of the rematch buttons (circular buttons)
+    for (const button of layout.rematchButtons) {
+      const distance = Math.sqrt(
+        Math.pow(x - button.x, 2) + Math.pow(y - button.y, 2)
+      );
+      if (distance <= button.radius) {
+        // Rematch button clicked - start a rematch with the same players
+        store.dispatch(rematchGame());
+        return;
+      }
     }
 
     const button = layout.playAgainButton;
