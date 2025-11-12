@@ -500,7 +500,8 @@ describe('AI Move Selection', () => {
 
   it('should only score positions directly adjacent to flows, not 2-hop neighbors', () => {
     // This test verifies the fix for the AI scoring bug where isAdjacentToFlowOrEdge
-    // was incorrectly including positions that were 2 hops away from flows
+    // was incorrectly including positions that were 2 hops away from flows.
+    // Fixed: Removed check for neighbors being starting edges (was causing 2-hop evaluation)
     const board = new Map<string, PlacedTile>();
     
     // Place a single tile adjacent to AI's starting edge
