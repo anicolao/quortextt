@@ -20,9 +20,11 @@ This design integrates the following platform-specific implementations:
 
 1. **Single Backend** - One Node.js/TypeScript backend serves all platforms
 2. **Shared Game Core** - 100% reuse of existing `src/game/` TypeScript logic
-3. **WebSocket Protocol** - Common real-time communication across all platforms
-4. **Hybrid Mobile** - Native shell + WebView for maximum web code reuse
-5. **OAuth Federation** - Support multiple identity providers (Google, Apple, Facebook, Discord)
+3. **Redux Action Storage** - Server stores Redux actions, clients replay to build state
+4. **Generic Server** - Server is game-agnostic, works for any Redux-based game
+5. **WebSocket Protocol** - Real-time action streaming to all connected clients
+6. **Hybrid Mobile** - Native shell + WebView for maximum web code reuse
+7. **OAuth Federation** - Support multiple identity providers (Google, Apple, Facebook, Discord)
 
 ---
 
@@ -66,11 +68,11 @@ This design integrates the following platform-specific implementations:
 │  └──────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │           Game State Manager (TypeScript)                    │  │
-│  │  • Reuses src/game/ logic server-side                       │  │
-│  │  • Validates moves                                           │  │
-│  │  • Manages active games                                      │  │
-│  │  • Broadcasts state updates                                 │  │
+│  │        Action Collection Manager (Generic)                   │  │
+│  │  • Creates action collections by type                        │  │
+│  │  • Appends actions to collections                            │  │
+│  │  • Streams actions to subscribed clients                     │  │
+│  │  • NO game-specific logic or validation                      │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐  │
@@ -88,9 +90,9 @@ This design integrates the following platform-specific implementations:
 │  ┌────────────────────┐              ┌────────────────────┐        │
 │  │     MongoDB        │              │       Redis        │        │
 │  │  • Users           │              │  • Sessions        │        │
-│  │  • Games           │              │  • Real-time cache │        │
-│  │  • Moves           │              │  • Pub/Sub         │        │
-│  │  • Leaderboards    │              │  • Matchmaking Q   │        │
+│  │  • Action          │              │  • Real-time cache │        │
+│  │    Collections     │              │  • Pub/Sub         │        │
+│  │    (generic)       │              │                    │        │
 │  └────────────────────┘              └────────────────────┘        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -155,63 +157,81 @@ Essential features for the MVP:
 **Client-Side (Existing Vite App + Multiplayer Module):**
 
 ```typescript
-// src/multiplayer/client.ts - New multiplayer module
+// src/multiplayer/client.ts - Action-based multiplayer
 
 import { io, Socket } from 'socket.io-client';
 import { store } from '../redux/store';
-import { gameActions } from '../redux/gameActions';
 
 export class MultiplayerClient {
   private socket: Socket | null = null;
-  private gameId: string | null = null;
+  private collectionId: string | null = null;
 
   async connect(authToken: string): Promise<void> {
     this.socket = io(import.meta.env.VITE_SERVER_URL, {
       auth: { token: authToken }
     });
 
-    this.socket.on('game:state', (state) => {
-      store.dispatch(gameActions.syncState(state));
-    });
-
-    this.socket.on('game:move', (move) => {
-      store.dispatch(gameActions.applyOpponentMove(move));
-    });
-
-    this.socket.on('game:over', (result) => {
-      store.dispatch(gameActions.gameOver(result));
+    // Subscribe to action stream
+    this.socket.on('action', (action) => {
+      // Dispatch received action directly to Redux store
+      store.dispatch(action);
     });
   }
 
-  async quickMatch(): Promise<string> {
+  async createGame(): Promise<string> {
+    // Create an action collection for a new game
     return new Promise((resolve) => {
-      this.socket?.emit('matchmaking:quick', {}, (gameId: string) => {
-        this.gameId = gameId;
-        resolve(gameId);
+      this.socket?.emit('collection:create', { type: 'quortex-game' }, (collectionId: string) => {
+        this.collectionId = collectionId;
+        this.subscribeToCollection(collectionId);
+        resolve(collectionId);
       });
     });
   }
 
-  async makeMove(position: HexPosition, rotation: number): Promise<void> {
-    this.socket?.emit('game:move', {
-      gameId: this.gameId,
-      position,
-      rotation
+  async joinGame(collectionId: string): Promise<void> {
+    this.collectionId = collectionId;
+    await this.subscribeToCollection(collectionId);
+  }
+
+  private async subscribeToCollection(collectionId: string): Promise<void> {
+    this.socket?.emit('collection:subscribe', { collectionId });
+  }
+
+  async dispatchAction(action: any): Promise<void> {
+    // Append action to the collection
+    this.socket?.emit('collection:append', {
+      collectionId: this.collectionId,
+      action
     });
   }
 }
+
+// Middleware to sync local actions to server
+export const multiplayerMiddleware = (client: MultiplayerClient) => 
+  (store: any) => (next: any) => (action: any) => {
+    // Dispatch locally first
+    const result = next(action);
+    
+    // Then sync to server for other clients
+    if (client && action.meta?.multiplayer) {
+      client.dispatchAction(action);
+    }
+    
+    return result;
+  };
 ```
 
 **Backend (New Node.js Service):**
 
 ```typescript
-// backend/src/server.ts - Minimal backend for MVP
+// backend/src/server.ts - Generic action collection backend
 
 import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIO } from 'socket.io';
 import mongoose from 'mongoose';
-import { GameStateManager } from './game/manager';
+import { ActionCollectionManager } from './collections/manager';
 import { authRouter } from './routes/auth';
 
 const app = express();
@@ -226,24 +246,34 @@ app.use(express.static('../dist'));
 // Auth endpoints
 app.use('/api/auth', authRouter);
 
-// WebSocket game logic
-const gameManager = new GameStateManager();
+// Generic action collection manager
+const collectionManager = new ActionCollectionManager();
 
 io.on('connection', (socket) => {
-  socket.on('matchmaking:quick', async (_, callback) => {
-    const gameId = await gameManager.findOrCreateMatch(socket.userId);
-    socket.join(gameId);
-    callback(gameId);
+  // Create a new action collection
+  socket.on('collection:create', async ({ type }, callback) => {
+    const collectionId = await collectionManager.createCollection(type, socket.userId);
+    callback(collectionId);
   });
 
-  socket.on('game:move', async ({ gameId, position, rotation }) => {
-    const result = await gameManager.applyMove(
-      gameId, socket.userId, position, rotation
-    );
-    io.to(gameId).emit('game:state', result.state);
-    if (result.gameOver) {
-      io.to(gameId).emit('game:over', result.winner);
-    }
+  // Subscribe to action collection
+  socket.on('collection:subscribe', async ({ collectionId }) => {
+    socket.join(collectionId);
+    
+    // Send existing actions
+    const actions = await collectionManager.getActions(collectionId);
+    actions.forEach(action => {
+      socket.emit('action', action);
+    });
+  });
+
+  // Append action to collection
+  socket.on('collection:append', async ({ collectionId, action }) => {
+    // Store action in MongoDB
+    await collectionManager.appendAction(collectionId, action, socket.userId);
+    
+    // Broadcast to all subscribers
+    io.to(collectionId).emit('action', action);
   });
 });
 
@@ -253,45 +283,88 @@ httpServer.listen(3000);
 **Database Schema (Minimal for MVP):**
 
 ```typescript
-// backend/src/models/Game.ts
+// backend/src/models/ActionCollection.ts
 
-interface Game {
+interface ActionCollection {
   _id: ObjectId;
-  gameId: string;
-  players: [
-    { userId: string; playerIndex: 0 | 1; edge: number },
-    { userId: string; playerIndex: 0 | 1; edge: number }
-  ];
-  currentPlayerIndex: 0 | 1;
-  boardState: {
-    tiles: Map<string, { type: TileType; rotation: number }>;
-    currentTile: TileType | null;
-    availableTiles: TileType[];
-  };
-  status: 'waiting' | 'active' | 'completed';
-  winner?: { playerIndex: number; winType: 'flow' | 'constraint' };
+  collectionId: string;          // Auto-generated ID
+  type: string;                  // e.g., 'quortex-game', 'quortex-lobby'
+  createdBy: string;             // User ID
   createdAt: Date;
-  updatedAt: Date;
+  metadata?: any;                // Optional app-specific metadata
 }
+
+// backend/src/models/Action.ts
+
+interface Action {
+  _id: ObjectId;
+  collectionId: string;          // Reference to ActionCollection
+  sequenceNumber: number;        // Auto-incremented per collection
+  action: any;                   // The Redux action (stored as JSON)
+  userId: string;                // Who dispatched this action
+  timestamp: Date;
+}
+
+// MongoDB indexes for performance
+db.actions.createIndex({ collectionId: 1, sequenceNumber: 1 });
+db.action_collections.createIndex({ collectionId: 1 });
+db.action_collections.createIndex({ type: 1 });
 ```
 
-### 2.4 MVP Implementation Timeline
+**Key Points:**
+- Server stores **Redux actions**, not game state
+- Clients replay actions to reconstruct state
+- Server is **game-agnostic** - works for any Redux-based app
+- Actions are ordered by sequence number for deterministic replay
+
+### 2.4 Action-Based Architecture Explained
+
+This architecture uses **Redux actions as the source of truth** rather than storing game state:
+
+**How It Works:**
+
+1. **Client dispatches action** (e.g., "PLACE_TILE" with position and rotation)
+2. **Action sent to server** via WebSocket
+3. **Server stores action** in MongoDB action collection
+4. **Server broadcasts action** to all subscribed clients
+5. **All clients replay action** through their Redux reducers
+6. **State stays synchronized** because everyone processes same actions in same order
+
+**Benefits:**
+
+- ✅ **Game-agnostic server** - Works for any Redux app, not just Quortex
+- ✅ **Perfect synchronization** - All clients have identical state
+- ✅ **Natural undo/replay** - Just replay actions to any point
+- ✅ **Simpler server** - No game logic, just action storage and relay
+- ✅ **Debugging** - Complete action history for every game
+- ✅ **Extensibility** - Easy to add features like spectator mode
+
+**Lobby Management:**
+
+The lobby itself is another action collection:
+- **Type:** `quortex-lobby`
+- **Actions:** `CREATE_TABLE`, `JOIN_TABLE`, `START_GAME`, etc.
+- **Clients subscribe** to lobby collection to see available tables
+- When game starts, clients create a new `quortex-game` collection
+
+### 2.5 MVP Implementation Timeline
 
 **Week 1: Backend Foundation**
 - Set up Node.js/Express server
 - Implement Google OAuth authentication
-- Set up MongoDB schemas
-- Create WebSocket server structure
+- Set up MongoDB schemas (ActionCollection, Action)
+- Create generic WebSocket action relay
 
-**Week 2: Game State Management**
-- Port `src/game/` logic to run server-side
-- Implement move validation
-- Create matchmaking system
-- Build state synchronization
+**Week 2: Action Collection Manager**
+- Implement collection creation/subscription
+- Build action append and broadcast logic
+- Add action history retrieval
+- Create lobby action collection system
 
 **Week 3: Client Integration & Testing**
-- Integrate multiplayer client with existing UI
-- Add lobby and matchmaking UI
+- Add multiplayer middleware to Redux store
+- Create lobby UI with action subscriptions
+- Integrate action dispatch for game moves
 - End-to-end testing
 - Deploy MVP to production
 
@@ -420,10 +493,44 @@ Mirrors the iOS approach—native Android shell with embedded WebView for maximu
 All five platforms connect to a single Node.js backend service that provides:
 
 1. **Authentication** - Multi-provider OAuth (Google, Apple, Facebook, Discord)
-2. **Game State Management** - Authoritative server for all game logic
-3. **Real-time Communication** - WebSocket connections for all platforms
-4. **Data Persistence** - MongoDB for games, users, and history
-5. **API Gateway** - RESTful API for game management
+2. **Action Collection Management** - Generic storage and streaming of Redux actions
+3. **Real-time Communication** - WebSocket connections for action broadcasting
+4. **Data Persistence** - MongoDB for action collections and user data
+5. **API Gateway** - RESTful API for collection management
+
+**Core Backend Operations:**
+
+```typescript
+// Five fundamental operations for any Redux-based multiplayer game
+
+1. createCollection(type: string): collectionId
+   // Creates a new action collection with auto-generated ID
+   
+2. getCollection(collectionId: string): CollectionMetadata
+   // Retrieves metadata about an action collection
+   
+3. listCollections(type: string): CollectionMetadata[]
+   // Lists all collections of a specific type (e.g., all lobbies)
+   
+4. subscribeToCollection(collectionId: string): ActionStream
+   // Real-time stream of actions as they're appended
+   
+5. appendAction(collectionId: string, action: ReduxAction): void
+   // Appends an action to the collection, broadcasts to subscribers
+```
+
+**Generic Design Philosophy:**
+
+The server **never needs to understand** what actions mean:
+- No game-specific validation logic
+- No knowledge of game rules
+- No state reconstruction server-side
+- Works for any Redux-based game
+
+**Optional Future Enhancements** (not needed for Quortex MVP):
+- Server-side action validation for specific action types
+- Private actions (e.g., drawing cards in card games)
+- Action filtering per subscriber
 
 ### 4.2 Authentication Flow (All Platforms)
 
@@ -511,90 +618,212 @@ export async function authenticateUser(
 
 ### 4.3 WebSocket Protocol (All Platforms)
 
-All platforms use the same WebSocket protocol for real-time gameplay:
+All platforms use the same **action-based WebSocket protocol**:
 
 **Client → Server Events:**
 ```typescript
-'matchmaking:quick'     // Find/create match
-'matchmaking:private'   // Create private game
-'game:join'            // Join specific game
-'game:move'            // Submit move
-'game:leave'           // Leave game
-'game:resign'          // Forfeit game
+'collection:create'      // Create new action collection
+  { type: string } → collectionId
+  
+'collection:subscribe'   // Subscribe to action stream
+  { collectionId: string }
+  
+'collection:append'      // Append action to collection
+  { collectionId: string, action: ReduxAction }
+  
+'collection:get'         // Get collection metadata
+  { collectionId: string } → CollectionMetadata
+  
+'collection:list'        // List collections by type
+  { type: string } → CollectionMetadata[]
 ```
 
 **Server → Client Events:**
 ```typescript
-'game:state'           // Full game state sync
-'game:move'            // Opponent made move
-'game:player-joined'   // Player joined game
-'game:player-left'     // Player left game
-'game:over'            // Game ended
-'error'                // Error occurred
+'action'                 // New action in subscribed collection
+  { collectionId: string, action: ReduxAction, sequenceNumber: number }
+  
+'error'                  // Error occurred
+  { message: string, code: string }
 ```
 
-**Example Move Handling:**
+**Example: Placing a Tile**
 
 ```typescript
-// backend/src/game/manager.ts
+// Client-side: User places a tile
 
-export class GameStateManager {
-  async applyMove(
-    gameId: string,
-    userId: string,
-    position: HexPosition,
-    rotation: number
-  ): Promise<GameUpdateResult> {
+// 1. Local Redux action
+const action = {
+  type: 'PLACE_TILE',
+  payload: {
+    position: { row: 0, col: 0 },
+    rotation: 2,
+    playerId: currentPlayer.id
+  },
+  meta: { multiplayer: true }  // Mark for sync
+};
+
+// 2. Dispatch locally (updates local state immediately)
+store.dispatch(action);
+
+// 3. Multiplayer middleware sends to server
+socket.emit('collection:append', {
+  collectionId: gameCollectionId,
+  action
+});
+
+// 4. Server stores and broadcasts to all clients
+// 5. Other clients receive via 'action' event and dispatch to their stores
+socket.on('action', (receivedAction) => {
+  store.dispatch(receivedAction);
+});
+```
+
+**Example: Action Collection Manager**
+
+```typescript
+// backend/src/collections/manager.ts
+
+export class ActionCollectionManager {
+  async createCollection(type: string, userId: string): Promise<string> {
+    const collectionId = generateId();
     
-    const game = await Game.findOne({ gameId });
+    await ActionCollection.create({
+      collectionId,
+      type,
+      createdBy: userId,
+      createdAt: new Date()
+    });
     
-    // Validate turn
-    if (game.players[game.currentPlayerIndex].userId !== userId) {
-      throw new Error('Not your turn');
-    }
+    return collectionId;
+  }
+  
+  async appendAction(
+    collectionId: string, 
+    action: any, 
+    userId: string
+  ): Promise<void> {
+    const collection = await ActionCollection.findOne({ collectionId });
+    if (!collection) throw new Error('Collection not found');
     
-    // Validate move using shared game core
-    import { isLegalMove } from '../../src/game/legality';
-    if (!isLegalMove(game.boardState, position, rotation, game.players)) {
-      throw new Error('Illegal move');
-    }
+    // Get next sequence number
+    const lastAction = await Action.findOne({ collectionId })
+      .sort({ sequenceNumber: -1 });
+    const sequenceNumber = (lastAction?.sequenceNumber ?? -1) + 1;
     
-    // Apply move using shared game core
-    import { applyTilePlacement } from '../../src/game/board';
-    const newBoardState = applyTilePlacement(
-      game.boardState, 
-      position, 
-      rotation
-    );
-    
-    // Check victory using shared game core
-    import { checkVictoryConditions } from '../../src/game/victory';
-    const victoryResult = checkVictoryConditions(
-      newBoardState, 
-      game.players
-    );
-    
-    // Update game
-    game.boardState = newBoardState;
-    game.currentPlayerIndex = (game.currentPlayerIndex + 1) % 2;
-    
-    if (victoryResult.winner !== null) {
-      game.status = 'completed';
-      game.winner = victoryResult;
-    }
-    
-    await game.save();
-    
-    return {
-      state: game,
-      gameOver: victoryResult.winner !== null,
-      winner: victoryResult
-    };
+    // Store action
+    await Action.create({
+      collectionId,
+      sequenceNumber,
+      action,
+      userId,
+      timestamp: new Date()
+    });
+  }
+  
+  async getActions(collectionId: string): Promise<any[]> {
+    const actions = await Action.find({ collectionId })
+      .sort({ sequenceNumber: 1 });
+    return actions.map(a => a.action);
   }
 }
 ```
 
-### 4.4 Technology Stack (Backend)
+### 4.4 Lobby Management with Action Collections
+
+The lobby itself is an action collection, demonstrating the generic nature of the architecture:
+
+**Lobby as Action Collection:**
+
+```typescript
+// Create a lobby collection
+const lobbyCollectionId = await socket.emit('collection:create', { 
+  type: 'quortex-lobby' 
+});
+
+// Subscribe to see all lobby activity
+socket.emit('collection:subscribe', { collectionId: lobbyCollectionId });
+
+// Lobby actions dispatched by clients
+const lobbyActions = {
+  CREATE_TABLE: {
+    type: 'CREATE_TABLE',
+    payload: {
+      tableId: generateId(),
+      createdBy: userId,
+      maxPlayers: 4,
+      isPublic: true
+    }
+  },
+  
+  JOIN_TABLE: {
+    type: 'JOIN_TABLE',
+    payload: {
+      tableId: 'table-123',
+      userId: 'user-456'
+    }
+  },
+  
+  START_GAME: {
+    type: 'START_GAME',
+    payload: {
+      tableId: 'table-123',
+      gameCollectionId: 'game-789'  // New game collection
+    }
+  }
+};
+
+// Lobby reducer on client side
+function lobbyReducer(state: LobbyState, action: any): LobbyState {
+  switch (action.type) {
+    case 'CREATE_TABLE':
+      return {
+        ...state,
+        tables: [...state.tables, action.payload]
+      };
+      
+    case 'JOIN_TABLE':
+      return {
+        ...state,
+        tables: state.tables.map(table =>
+          table.tableId === action.payload.tableId
+            ? { ...table, players: [...table.players, action.payload.userId] }
+            : table
+        )
+      };
+      
+    case 'START_GAME':
+      // Remove table and navigate to game
+      return {
+        ...state,
+        tables: state.tables.filter(t => t.tableId !== action.payload.tableId)
+      };
+      
+    default:
+      return state;
+  }
+}
+```
+
+**Game Flow:**
+
+1. **List lobbies:** `collection:list { type: 'quortex-lobby' }`
+2. **Join lobby:** `collection:subscribe { collectionId: lobbyId }`
+3. **Create table:** Dispatch `CREATE_TABLE` action to lobby collection
+4. **Join table:** Dispatch `JOIN_TABLE` action to lobby collection
+5. **Start game:** 
+   - Create new game collection: `collection:create { type: 'quortex-game' }`
+   - Dispatch `START_GAME` action with new game collection ID
+   - All table players subscribe to game collection
+   - Begin dispatching game actions
+
+**Benefits:**
+- Server doesn't know what a "table" or "lobby" is
+- All lobby logic in client-side reducers
+- Easy to modify lobby behavior without server changes
+- Multiple lobby types possible (public, private, tournament)
+
+### 4.5 Technology Stack (Backend)
 
 **Server Runtime:**
 - **Primary:** Node.js 20+ LTS
@@ -622,11 +851,11 @@ export class GameStateManager {
 
 ### 5.1 Game Core Reuse Strategy
 
-The existing `src/game/` directory contains all game logic in TypeScript. This code is **100% reusable** across:
+The existing `src/game/` directory contains all game logic in TypeScript. This code is **100% reusable** across all platforms in **client-side Redux reducers**:
 
-1. **Client-side** - Browser, Discord, Facebook (directly)
-2. **Server-side** - Backend validation (import as Node.js module)
-3. **Mobile** - iOS/Android WebView (via web bundle)
+1. **Client-side only** - Browser, Discord, Facebook, iOS WebView, Android WebView
+2. **No server-side game logic** - Server doesn't need to import or run game code
+3. **Deterministic reducers** - Same actions produce same state on all clients
 
 **Key Shared Modules:**
 
@@ -635,31 +864,53 @@ src/game/
 ├── types.ts           # Shared type definitions
 ├── board.ts           # Board representation & operations
 ├── tiles.ts           # Tile types and rotations
-├── legality.ts        # Move validation rules
+├── legality.ts        # Move validation rules (client-side)
 ├── flows.ts           # Flow propagation logic
 ├── victory.ts         # Win condition checking
 ├── bag.ts             # Tile bag management
 └── ai.ts              # AI opponent (optional)
 ```
 
-**Server-Side Usage:**
+**Redux Reducer Usage:**
 
 ```typescript
-// backend/src/game/validation.ts
+// src/redux/gameReducer.ts
 
-// Import shared game core
-import { isLegalMove } from '../../src/game/legality';
-import { GameState, HexPosition } from '../../src/game/types';
+import { isLegalMove } from '../game/legality';
+import { applyTilePlacement } from '../game/board';
+import { checkVictoryConditions } from '../game/victory';
 
-export function validatePlayerMove(
-  gameState: GameState,
-  position: HexPosition,
-  rotation: number
-): boolean {
-  // Use exact same validation logic as client
-  return isLegalMove(gameState.board, position, rotation, gameState.players);
+export function gameReducer(state: GameState, action: any): GameState {
+  switch (action.type) {
+    case 'PLACE_TILE':
+      const { position, rotation } = action.payload;
+      
+      // Client-side validation
+      if (!isLegalMove(state.board, position, rotation, state.players)) {
+        console.warn('Illegal move attempted');
+        return state;
+      }
+      
+      // Apply tile
+      const newBoard = applyTilePlacement(state.board, position, rotation);
+      
+      // Check victory
+      const victory = checkVictoryConditions(newBoard, state.players);
+      
+      return {
+        ...state,
+        board: newBoard,
+        winner: victory.winner,
+        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length
+      };
+      
+    default:
+      return state;
+  }
 }
 ```
+
+**Note:** Server doesn't validate game logic - it trusts clients to dispatch valid actions. Optional future enhancement could add server-side validation for specific actions if needed.
 
 ### 5.2 WebView Integration Pattern (iOS/Android)
 
