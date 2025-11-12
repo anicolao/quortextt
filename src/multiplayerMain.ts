@@ -11,6 +11,8 @@ import { updateFlowPreview } from './animation/flowPreview';
 import { HexPosition, Rotation } from './game/types';
 import { positionToKey } from './game/board';
 import { isPlayerBlocked } from './game/legality';
+import { multiplayerStore } from './multiplayer/stores/multiplayerStore';
+import { GameCoordinator } from './multiplayer/gameCoordinator';
 
 // Expose store to window for testing
 declare global {
@@ -39,23 +41,39 @@ if (!canvas) {
 
 let renderer: Renderer | null = null;
 let inputHandler: InputHandler | null = null;
+let gameCoordinator: GameCoordinator | null = null;
 
-// Listen for game start event
-window.addEventListener('multiplayer:game-start', ((event: CustomEvent) => {
-  console.log('Starting multiplayer game', event.detail);
-  
-  // Hide Svelte UI, show canvas
-  if (svelteRoot) svelteRoot.style.display = 'none';
-  canvas.style.display = 'block';
-  
-  // Initialize game if not already done
-  if (!renderer) {
-    initializeGame();
+// Listen for game state changes
+multiplayerStore.subscribe((state) => {
+  if (state.screen === 'game' && state.gameId) {
+    console.log('Starting multiplayer game with gameId:', state.gameId);
+    
+    // Hide Svelte UI, show canvas
+    if (svelteRoot) svelteRoot.style.display = 'none';
+    canvas.classList.add('active');
+    
+    // Initialize game if not already done
+    if (!renderer) {
+      initializeGame();
+    }
+    
+    // Initialize game coordinator to subscribe to actions
+    if (!gameCoordinator) {
+      gameCoordinator = new GameCoordinator(store, state.gameId);
+      gameCoordinator.start();
+    }
+  } else {
+    // Show Svelte UI, hide canvas
+    if (svelteRoot) svelteRoot.style.display = 'block';
+    canvas.classList.remove('active');
+    
+    // Clean up coordinator if leaving game
+    if (gameCoordinator && state.screen !== 'game') {
+      gameCoordinator.stop();
+      gameCoordinator = null;
+    }
   }
-  
-  // TODO: Initialize game state from multiplayer data
-  // For now, start a local game (will be enhanced to sync with server)
-}) as EventListener);
+});
 
 function initializeGame() {
   if (!canvas) return;

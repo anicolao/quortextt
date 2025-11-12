@@ -1,17 +1,26 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
 import { multiplayerStore } from './stores/multiplayerStore';
-import { get } from 'svelte/store';
 
-export class MultiplayerGameCoordinator {
-  private store: any | null = null; // Redux store
-  private gameId: string | null = null;
+export class GameCoordinator {
+  private store: any; // Redux store
+  private gameId: string;
   private isHostPlayer: boolean = false;
   private localActionsProcessed = 0;
 
-  initialize(reduxStore: any) {
+  constructor(reduxStore: any, gameId: string) {
     this.store = reduxStore;
+    this.gameId = gameId;
+  }
+
+  start() {
     this.setupEventListeners();
+    // Request game actions to sync state
+    socket.getActions(this.gameId);
+  }
+
+  stop() {
+    this.cleanup();
   }
 
   private setupEventListeners() {
@@ -30,8 +39,12 @@ export class MultiplayerGameCoordinator {
     const { gameId, players } = customEvent.detail;
     this.gameId = gameId;
     
-    const state = get(multiplayerStore);
-    this.isHostPlayer = state.playerId === state.currentRoom?.hostId;
+    // Get current multiplayer state to check if we're host
+    let isHost = false;
+    multiplayerStore.subscribe((state) => {
+      isHost = state.playerId === state.currentRoom?.hostId;
+    })();
+    this.isHostPlayer = isHost;
     
     console.log(`Game ready! GameId: ${gameId}, IsHost: ${this.isHostPlayer}`);
     
@@ -136,16 +149,11 @@ export class MultiplayerGameCoordinator {
     });
   }
 
-  cleanup() {
+  private cleanup() {
     window.removeEventListener('multiplayer:game-ready', this.handleGameReady.bind(this) as EventListener);
     window.removeEventListener('multiplayer:action', this.handleActionReceived.bind(this) as EventListener);
     window.removeEventListener('multiplayer:actions-sync', this.handleActionsSync.bind(this) as EventListener);
     
-    this.store = null;
-    this.gameId = null;
     this.localActionsProcessed = 0;
   }
 }
-
-// Export singleton
-export const gameCoordinator = new MultiplayerGameCoordinator();
