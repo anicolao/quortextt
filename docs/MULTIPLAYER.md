@@ -16,6 +16,13 @@ The multiplayer implementation consists of:
 - Node.js v18 or later
 - npm v9 or later
 
+### Installation
+
+First, install all dependencies (this automatically installs both client and server dependencies):
+```bash
+npm install
+```
+
 ### Running the Multiplayer Server
 
 1. Start the server:
