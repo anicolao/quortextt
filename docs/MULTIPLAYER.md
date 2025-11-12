@@ -27,15 +27,19 @@ The server will start on `http://localhost:3001` by default.
 
 ### Running the Client
 
-1. Start the development server:
+**For single-player (original game):**
 ```bash
 npm run dev
 ```
+Then open: `http://localhost:5173/quortextt/`
 
-2. Open your browser and navigate to:
+**For multiplayer:**
+```bash
+npm run dev:multiplayer
 ```
-http://localhost:5173/quortextt/multiplayer.html
-```
+Then open: `http://localhost:5173/quortextt/multiplayer.html`
+
+**Note:** The multiplayer mode requires a separate Vite configuration (`vite.multiplayer.config.ts`) to enable Svelte support. The default `npm run dev` command runs the original single-player game without Svelte to avoid dependency conflicts.
 
 ### Playing Multiplayer
 
@@ -134,15 +138,22 @@ Planned features for future releases:
 
 ### Building
 
-Build the client:
+Build the single-player client:
 ```bash
 npm run build
+```
+
+Build the multiplayer client:
+```bash
+npm run build:multiplayer
 ```
 
 Build the server:
 ```bash
 npm run build:server
 ```
+
+**Note:** Use `build:multiplayer` to include Svelte support for the multiplayer UI. The default `build` command builds only the single-player game.
 
 ### Testing
 
