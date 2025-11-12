@@ -111,7 +111,8 @@ export class Renderer {
       state.ui.showSettings,
       state.ui.settings,
       state.ui.showHelp,
-      state.ui.helpCorner
+      state.ui.helpCorner,
+      state.ui.savedGameState !== null
     );
 
     // Return empty UILayout for compatibility (new input handler will use LobbyLayout)

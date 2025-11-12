@@ -14,8 +14,11 @@ import {
   returnToConfig,
   selectEdge,
   setAIScoringData,
+  resetGame,
+  restoreGame,
 } from "../src/redux/actions";
 import { MAX_PLAYERS, PLAYER_COLORS } from "../src/redux/types";
+import { rootReducer } from "../src/redux/reducer";
 
 describe("gameReducer", () => {
   describe("ADD_PLAYER", () => {
@@ -554,6 +557,64 @@ describe("gameReducer", () => {
       state = gameReducer(state, setAIScoringData(undefined));
 
       expect(state.aiScoringData).toBeUndefined();
+    });
+  });
+
+  describe("RESET_GAME and RESTORE_GAME", () => {
+    it("should reset game to configuration screen", () => {
+      // Create a state with some game data
+      let state = initialState;
+      state = gameReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+      state = { ...state, screen: 'gameplay' as const, phase: 'playing' as const };
+
+      // Dispatch resetGame
+      state = gameReducer(state, resetGame());
+
+      // Should be back at configuration
+      expect(state.screen).toBe('configuration');
+      expect(state.configPlayers.length).toBe(0);
+    });
+
+    it("should save and restore game state through root reducer", () => {
+      // Create initial state with a player
+      let state = rootReducer(undefined, { type: '@@INIT' });
+      state = rootReducer(state, addPlayer(PLAYER_COLORS[0], 0));
+
+      // Simulate moving to gameplay
+      state = {
+        ...state,
+        game: { ...state.game, screen: 'gameplay' as const, phase: 'playing' as const }
+      };
+
+      const gameplayState = state.game;
+
+      // Reset the game (this should save the state)
+      state = rootReducer(state, resetGame());
+
+      // Verify game was reset
+      expect(state.game.screen).toBe('configuration');
+      expect(state.ui.savedGameState).toBeDefined();
+      expect(state.ui.savedGameState).toEqual(gameplayState);
+
+      // Restore the game
+      state = rootReducer(state, restoreGame());
+
+      // Verify game was restored
+      expect(state.game.screen).toBe('gameplay');
+      expect(state.game.phase).toBe('playing');
+      expect(state.ui.savedGameState).toBeNull();
+    });
+
+    it("should not restore if no saved game exists", () => {
+      // Create initial state with no saved game
+      let state = rootReducer(undefined, { type: '@@INIT' });
+
+      // Try to restore (should do nothing)
+      const beforeState = state;
+      state = rootReducer(state, restoreGame());
+
+      // State should be unchanged
+      expect(state).toEqual(beforeState);
     });
   });
 });

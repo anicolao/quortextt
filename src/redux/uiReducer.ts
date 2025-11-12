@@ -28,6 +28,7 @@ export const initialUIState: UIState = {
   showSettings: false,
   showHelp: false,
   helpCorner: null,
+  savedGameState: null,
   settings: {
     boardRadius: 3,
     supermove: true,

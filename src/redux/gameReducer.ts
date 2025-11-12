@@ -19,6 +19,7 @@ import {
   NEXT_PLAYER,
   END_GAME,
   RESET_GAME,
+  RESTORE_GAME,
   SET_AI_SCORING_DATA,
 } from './actions';
 import { TileType } from '../game/types';
@@ -731,6 +732,12 @@ export function gameReducer(
         ...initialState,
         screen: 'configuration',
       };
+    }
+
+    case RESTORE_GAME: {
+      // This is handled in the reducer.ts to restore from UIState
+      // The gameReducer just returns current state
+      return state;
     }
 
     case SET_AI_SCORING_DATA: {

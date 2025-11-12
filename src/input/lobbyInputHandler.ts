@@ -1,7 +1,7 @@
 // Input handler for the redesigned lobby
 
 import { store } from '../redux/store';
-import { addPlayer, removePlayer, startGame, toggleSettings, updateSettings, showHelp, hideHelp } from '../redux/actions';
+import { addPlayer, removePlayer, startGame, toggleSettings, updateSettings, showHelp, hideHelp, restoreGame } from '../redux/actions';
 import { LobbyLayout, isPointInButton, isPointInCircle } from '../rendering/lobbyLayout';
 
 export class LobbyInputHandler {
@@ -134,6 +134,14 @@ export class LobbyInputHandler {
     for (const helpBtn of layout.helpButtons) {
       if (isPointInCircle(x, y, helpBtn.x, helpBtn.y, helpBtn.size / 2)) {
         store.dispatch(showHelp(helpBtn.corner));
+        return;
+      }
+    }
+
+    // Check back buttons (restore saved game)
+    for (const backBtn of layout.backButtons) {
+      if (isPointInCircle(x, y, backBtn.x, backBtn.y, backBtn.size / 2)) {
+        store.dispatch(restoreGame());
         return;
       }
     }
