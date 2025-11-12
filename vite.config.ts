@@ -1,13 +1,6 @@
 import { defineConfig } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig({
-  plugins: [
-    svelte({
-      // Only process .svelte files
-      include: /\.svelte$/,
-    })
-  ],
   base: '/quortextt/',
   build: {
     outDir: 'dist',
