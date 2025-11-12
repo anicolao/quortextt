@@ -119,6 +119,27 @@ This story helps diagnose rendering bugs by providing:
 - Documentation of expected connections for each tile/rotation combination
 - Visual reference to verify curve paths align with edge positions
 
+### 007-move-notation
+**As a developer, I want to verify move notation with specific tile rotations**
+
+Screenshots demonstrate:
+1. Initial game state with two players seated on different edges
+2. First player (on edge 0/NW) places Type 1 tile with rotation 5
+3. Second player (on edge 4/SW) places Type 1 tile with rotation 5
+4. Move list showing notation for both moves
+
+This story helps validate the notation system by:
+- Using only Type 1 (OneSharp) tiles to make rotation visually obvious
+- Placing tiles with the same internal rotation (5) on different player edges
+- Showing how rotation notation adjusts based on player perspective
+- Documenting actual notation output: P1A2T1NW and P2A3T1NE
+
+Key findings:
+- Both tiles have internal rotation 5
+- Player on edge 0: shows as NW orientation in notation
+- Player on edge 4: shows as NE orientation in notation
+- This demonstrates the rotation notation is player-perspective relative
+
 ## Testing Strategy
 
 ### Creating New User Stories
@@ -164,6 +185,7 @@ Contributors can verify test expectations by:
 - `multi-tile-flow.spec.ts` → `004-multi-tile-flow/`
 - `complete-game.spec.ts` → `005-complete-game/`
 - `tile-rendering.spec.ts` → `006-tile-rendering/`
+- `move-notation-rotation.spec.ts` → `007-move-notation/`
 
 ## Running E2E Tests
 
