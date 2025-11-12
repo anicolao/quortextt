@@ -1,6 +1,6 @@
 // Redux reducer for game state management
 
-import { GameState, ConfigPlayer, MAX_PLAYERS, PLAYER_COLORS } from './types';
+import { GameState, ConfigPlayer, MAX_PLAYERS, PLAYER_COLORS } from "./types";
 import {
   GameAction,
   ADD_PLAYER,
@@ -19,17 +19,18 @@ import {
   NEXT_PLAYER,
   END_GAME,
   RESET_GAME,
+  REMATCH_GAME,
   RESTORE_GAME,
   SET_AI_SCORING_DATA,
-} from './actions';
-import { TileType } from '../game/types';
-import { calculateFlows } from '../game/flows';
-import { checkVictory } from '../game/victory';
-import { positionToKey } from '../game/board';
+} from "./actions";
+import { TileType } from "../game/types";
+import { calculateFlows } from "../game/flows";
+import { checkVictory } from "../game/victory";
+import { positionToKey } from "../game/board";
 
 // Initial state
 export const initialState: GameState = {
-  screen: 'configuration',
+  screen: "configuration",
   configPlayers: [],
   boardRadius: 3,
   seatingPhase: {
@@ -47,7 +48,7 @@ export const initialState: GameState = {
   currentTile: null,
   flows: new Map(),
   flowEdges: new Map(),
-  phase: 'setup',
+  phase: "setup",
   winners: [],
   winType: null,
   moveHistory: [],
@@ -75,7 +76,9 @@ export function calculateHexCount(radius: number): number {
 // Helper function to calculate tile distribution for a given board radius
 // Returns the number of tiles per type (NoSharps, OneSharp, TwoSharps, ThreeSharps)
 // Rounds up hex count to the nearest multiple of 4, then divides by 4
-export function calculateTileDistribution(radius: number): [number, number, number, number] {
+export function calculateTileDistribution(
+  radius: number,
+): [number, number, number, number] {
   const hexCount = calculateHexCount(radius);
   const totalTiles = Math.ceil(hexCount / 4) * 4;
   const tilesPerType = totalTiles / 4;
@@ -87,17 +90,21 @@ export function calculateTileDistribution(radius: number): [number, number, numb
 // Returns total tiles and number of groups needed
 export function calculateTileCountsFromRatio(
   boardRadius: number,
-  distributionRatio: [number, number, number, number]
-): { totalTiles: number; numGroups: number; distribution: [number, number, number, number] } {
+  distributionRatio: [number, number, number, number],
+): {
+  totalTiles: number;
+  numGroups: number;
+  distribution: [number, number, number, number];
+} {
   const boardSize = calculateHexCount(boardRadius);
   const groupSize = distributionRatio.reduce((sum, count) => sum + count, 0);
-  
+
   // Handle all-zeros case - default to balanced distribution
   if (groupSize === 0) {
     const defaultRatio: [number, number, number, number] = [1, 1, 1, 1];
     return calculateTileCountsFromRatio(boardRadius, defaultRatio);
   }
-  
+
   const numGroups = Math.ceil(boardSize / groupSize);
   const actualDistribution: [number, number, number, number] = [
     distributionRatio[0] * numGroups,
@@ -105,7 +112,7 @@ export function calculateTileCountsFromRatio(
     distributionRatio[2] * numGroups,
     distributionRatio[3] * numGroups,
   ];
-  
+
   return {
     totalTiles: numGroups * groupSize,
     numGroups,
@@ -120,13 +127,14 @@ export function calculateTileCountsFromRatio(
 function createShuffledDeck(
   boardRadius: number,
   seed?: number,
-  tileDistribution?: [number, number, number, number]
+  tileDistribution?: [number, number, number, number],
 ): TileType[] {
   // Use explicit distribution if provided, otherwise calculate from board radius
-  const distribution = tileDistribution ?? calculateTileDistribution(boardRadius);
-  
+  const distribution =
+    tileDistribution ?? calculateTileDistribution(boardRadius);
+
   const [noSharps, oneSharp, twoSharps, threeSharps] = distribution;
-  
+
   const tiles: TileType[] = [
     ...Array(noSharps).fill(TileType.NoSharps),
     ...Array(oneSharp).fill(TileType.OneSharp),
@@ -151,7 +159,7 @@ function seededRandom(seed: number): () => number {
 function shuffleArray<T>(array: T[], seed?: number): T[] {
   const shuffled = [...array];
   const random = seed !== undefined ? seededRandom(seed) : Math.random;
-  
+
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -171,30 +179,30 @@ function randomizePlayerOrder(playerIds: string[], seed?: number): string[] {
 // Starting player is the first from the seating order
 function determineGameplayOrder<T extends { id: string; edgePosition: number }>(
   players: T[],
-  seatingOrder: string[]
+  seatingOrder: string[],
 ): T[] {
   // Sort players by edge position (clockwise order)
   const sortedPlayers = [...players].sort(
-    (a, b) => a.edgePosition - b.edgePosition
+    (a, b) => a.edgePosition - b.edgePosition,
   );
-  
+
   // Find the starting player (first from seating order)
   const startingPlayerId = seatingOrder[0];
-  const startIndex = sortedPlayers.findIndex(p => p.id === startingPlayerId);
-  
+  const startIndex = sortedPlayers.findIndex((p) => p.id === startingPlayerId);
+
   // Rotate array to start with the starting player
   const gameplayOrder = [
     ...sortedPlayers.slice(startIndex),
-    ...sortedPlayers.slice(0, startIndex)
+    ...sortedPlayers.slice(0, startIndex),
   ];
-  
+
   return gameplayOrder;
 }
 
 // Reducer function
 export function gameReducer(
   state: GameState = initialState,
-  action: GameAction
+  action: GameAction,
 ): GameState {
   switch (action.type) {
     case ADD_PLAYER: {
@@ -213,9 +221,10 @@ export function gameReducer(
       if (color === undefined) {
         // Find the first available color
         const usedColors = new Set(state.configPlayers.map((p) => p.color));
-        color = PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[0];
+        color =
+          PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[0];
       }
-      
+
       // Check if color is already taken
       const colorTaken = state.configPlayers.some((p) => p.color === color);
       if (colorTaken) {
@@ -254,20 +263,24 @@ export function gameReducer(
     case REMOVE_PLAYER: {
       return {
         ...state,
-        configPlayers: state.configPlayers.filter((p) => p.id !== action.payload.playerId),
+        configPlayers: state.configPlayers.filter(
+          (p) => p.id !== action.payload.playerId,
+        ),
       };
     }
 
     case CHANGE_PLAYER_COLOR: {
       const { playerId, color } = action.payload;
-      
+
       // Find if another player has this color
       const otherPlayerWithColor = state.configPlayers.find(
-        (p) => p.id !== playerId && p.color === color
+        (p) => p.id !== playerId && p.color === color,
       );
 
       // Find the player requesting the color change
-      const requestingPlayer = state.configPlayers.find((p) => p.id === playerId);
+      const requestingPlayer = state.configPlayers.find(
+        (p) => p.id === playerId,
+      );
 
       if (!requestingPlayer) {
         return state;
@@ -293,7 +306,7 @@ export function gameReducer(
       return {
         ...state,
         configPlayers: state.configPlayers.map((p) =>
-          p.id === playerId ? { ...p, color } : p
+          p.id === playerId ? { ...p, color } : p,
         ),
       };
     }
@@ -309,8 +322,9 @@ export function gameReducer(
       if (configPlayers.length === 1 && !configPlayers[0].isAI) {
         // Find an available color and edge for the AI
         const usedColors = new Set(configPlayers.map((p) => p.color));
-        const aiColor = PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[1];
-        
+        const aiColor =
+          PLAYER_COLORS.find((c) => !usedColors.has(c)) || PLAYER_COLORS[1];
+
         const usedEdges = new Set(configPlayers.map((p) => p.edge));
         let aiEdge: 0 | 1 | 2 | 3 = 1;
         for (let i = 0; i < 4; i++) {
@@ -319,19 +333,19 @@ export function gameReducer(
             break;
           }
         }
-        
+
         const aiPlayer: ConfigPlayer = {
           id: generatePlayerId(),
           color: aiColor,
           edge: aiEdge,
           isAI: true,
         };
-        
+
         configPlayers = [...configPlayers, aiPlayer];
       }
 
       // Randomize player order for seating selection
-      const playerIds = configPlayers.map(cp => cp.id);
+      const playerIds = configPlayers.map((cp) => cp.id);
       const seed = action.payload?.seed;
       const seatingOrder = randomizePlayerOrder(playerIds, seed);
 
@@ -339,8 +353,8 @@ export function gameReducer(
       return {
         ...state,
         configPlayers, // Update config players if AI was added
-        screen: 'seating',
-        phase: 'seating',
+        screen: "seating",
+        phase: "seating",
         boardRadius: action.payload?.boardRadius ?? state.boardRadius,
         seed, // Store seed for later use when shuffling tiles
         seatingPhase: {
@@ -356,19 +370,19 @@ export function gameReducer(
     case RETURN_TO_CONFIG: {
       return {
         ...state,
-        screen: 'configuration',
+        screen: "configuration",
       };
     }
 
     case SETUP_GAME: {
       const { players, teams } = action.payload;
-      
+
       return {
         ...state,
         players,
         teams,
         currentPlayerIndex: 0,
-        phase: 'playing',
+        phase: "playing",
         board: new Map(),
         availableTiles: [],
         currentTile: null,
@@ -382,20 +396,24 @@ export function gameReducer(
 
     case SHUFFLE_TILES: {
       const { seed, tileDistribution } = action.payload;
-      
+
       return {
         ...state,
-        availableTiles: createShuffledDeck(state.boardRadius, seed, tileDistribution),
+        availableTiles: createShuffledDeck(
+          state.boardRadius,
+          seed,
+          tileDistribution,
+        ),
       };
     }
 
     case START_SEATING_PHASE: {
       const { seatingOrder } = action.payload;
-      
+
       return {
         ...state,
-        screen: 'seating',
-        phase: 'seating',
+        screen: "seating",
+        phase: "seating",
         seatingPhase: {
           active: true,
           seatingOrder,
@@ -409,91 +427,101 @@ export function gameReducer(
     case SELECT_EDGE: {
       const { playerId, edgeNumber } = action.payload;
       const { seatingPhase } = state;
-      
+
       // Validate edge is available
       if (!seatingPhase.availableEdges.includes(edgeNumber)) {
         return state;
       }
-      
+
       // Validate it's this player's turn
-      const currentPlayer = seatingPhase.seatingOrder[seatingPhase.seatingIndex];
+      const currentPlayer =
+        seatingPhase.seatingOrder[seatingPhase.seatingIndex];
       if (currentPlayer !== playerId) {
         return state;
       }
-      
+
       // Update edge assignments
       const newEdgeAssignments = new Map(seatingPhase.edgeAssignments);
       newEdgeAssignments.set(playerId, edgeNumber);
-      
+
       // Remove edge from available
       const newAvailableEdges = seatingPhase.availableEdges.filter(
-        e => e !== edgeNumber
+        (e) => e !== edgeNumber,
       );
-      
+
       // Update or create player's edge position
-      const configPlayer = state.configPlayers.find(cp => cp.id === playerId);
+      const configPlayer = state.configPlayers.find((cp) => cp.id === playerId);
       if (!configPlayer) {
         return state;
       }
-      
-      const updatedPlayers = state.players.length > 0
-        ? state.players.map(p =>
-            p.id === playerId ? { ...p, edgePosition: edgeNumber } : p
-          )
-        : state.configPlayers.map(cp => ({
-            id: cp.id,
-            color: cp.color,
-            edgePosition: cp.id === playerId ? edgeNumber : -1,
-            isAI: cp.isAI,
-          }));
-      
+
+      const updatedPlayers =
+        state.players.length > 0
+          ? state.players.map((p) =>
+              p.id === playerId ? { ...p, edgePosition: edgeNumber } : p,
+            )
+          : state.configPlayers.map((cp) => ({
+              id: cp.id,
+              color: cp.color,
+              edgePosition: cp.id === playerId ? edgeNumber : -1,
+              isAI: cp.isAI,
+            }));
+
       // Increment seating index
       const newSeatingIndex = seatingPhase.seatingIndex + 1;
-      
+
       // Check if seating is complete
-      const seatingComplete = newSeatingIndex >= seatingPhase.seatingOrder.length;
-      
+      const seatingComplete =
+        newSeatingIndex >= seatingPhase.seatingOrder.length;
+
       if (seatingComplete) {
         // Create teams for 4 or 6 players (opposite sides team up)
         const teams = [];
-        const sortedPlayers = [...updatedPlayers].sort((a, b) => a.edgePosition - b.edgePosition);
-        
+        const sortedPlayers = [...updatedPlayers].sort(
+          (a, b) => a.edgePosition - b.edgePosition,
+        );
+
         if (updatedPlayers.length === 4) {
           teams.push(
             { player1Id: sortedPlayers[0].id, player2Id: sortedPlayers[2].id },
-            { player1Id: sortedPlayers[1].id, player2Id: sortedPlayers[3].id }
+            { player1Id: sortedPlayers[1].id, player2Id: sortedPlayers[3].id },
           );
         } else if (updatedPlayers.length === 6) {
           teams.push(
             { player1Id: sortedPlayers[0].id, player2Id: sortedPlayers[3].id },
             { player1Id: sortedPlayers[1].id, player2Id: sortedPlayers[4].id },
-            { player1Id: sortedPlayers[2].id, player2Id: sortedPlayers[5].id }
+            { player1Id: sortedPlayers[2].id, player2Id: sortedPlayers[5].id },
           );
         }
-        
+
         // Determine gameplay order - players ordered clockwise from starting player
-        const orderedPlayers = determineGameplayOrder(updatedPlayers, seatingPhase.seatingOrder);
-        
+        const orderedPlayers = determineGameplayOrder(
+          updatedPlayers,
+          seatingPhase.seatingOrder,
+        );
+
         // Starting player is now at index 0
         const currentPlayerIndex = 0;
-        
+
         // Initialize the game
         // Use existing availableTiles if already shuffled (e.g., from SHUFFLE_TILES action)
         // Otherwise create a new shuffled deck using the stored seed from START_GAME
-        const availableTiles = state.availableTiles.length > 0 
-          ? state.availableTiles 
-          : createShuffledDeck(state.boardRadius, state.seed);
-        const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
+        const availableTiles =
+          state.availableTiles.length > 0
+            ? state.availableTiles
+            : createShuffledDeck(state.boardRadius, state.seed);
+        const currentTile =
+          availableTiles.length > 0 ? availableTiles[0] : null;
         const remainingTiles = availableTiles.slice(1);
-        
+
         // Transition to gameplay
         return {
           ...state,
           players: orderedPlayers,
           teams,
           currentPlayerIndex,
-          screen: 'gameplay',
-          phase: 'playing',
+          screen: "gameplay",
+          phase: "playing",
           board: new Map(),
           availableTiles: remainingTiles,
           currentTile,
@@ -511,7 +539,7 @@ export function gameReducer(
           },
         };
       }
-      
+
       // Continue seating phase
       return {
         ...state,
@@ -571,10 +599,20 @@ export function gameReducer(
       newBoard.set(posKey, placedTile);
 
       // Calculate new flows
-      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players, state.boardRadius);
+      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(
+        newBoard,
+        state.players,
+        state.boardRadius,
+      );
 
       // Check for victory
-      const victoryResult = checkVictory(newBoard, state.players, state.teams, undefined, state.boardRadius);
+      const victoryResult = checkVictory(
+        newBoard,
+        state.players,
+        state.teams,
+        undefined,
+        state.boardRadius,
+      );
 
       // Add to move history
       const move = {
@@ -598,10 +636,10 @@ export function gameReducer(
       if (victoryResult.winners.length > 0) {
         return {
           ...newState,
-          phase: 'finished',
+          phase: "finished",
           winners: victoryResult.winners,
           winType: victoryResult.winType,
-          screen: 'game-over',
+          screen: "game-over",
         };
       }
 
@@ -635,10 +673,20 @@ export function gameReducer(
       newBoard.set(posKey, newPlacedTile);
 
       // Calculate new flows
-      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(newBoard, state.players, state.boardRadius);
+      const { flows: newFlows, flowEdges: newFlowEdges } = calculateFlows(
+        newBoard,
+        state.players,
+        state.boardRadius,
+      );
 
       // Check for victory
-      const victoryResult = checkVictory(newBoard, state.players, state.teams, undefined, state.boardRadius);
+      const victoryResult = checkVictory(
+        newBoard,
+        state.players,
+        state.teams,
+        undefined,
+        state.boardRadius,
+      );
 
       // Add to move history (replacement move)
       const move = {
@@ -651,7 +699,7 @@ export function gameReducer(
       if (isSingleSupermove) {
         // Return the replaced tile to the bag
         const newAvailableTiles = [...state.availableTiles, oldTile.type];
-        
+
         // Shuffle the bag using the same seeded shuffle as tile distribution
         const shuffled = shuffleArray(newAvailableTiles, state.seed);
 
@@ -671,10 +719,10 @@ export function gameReducer(
         if (victoryResult.winners.length > 0) {
           return {
             ...newState,
-            phase: 'finished',
+            phase: "finished",
             winners: victoryResult.winners,
             winType: victoryResult.winType,
-            screen: 'game-over',
+            screen: "game-over",
           };
         }
 
@@ -698,10 +746,10 @@ export function gameReducer(
         return {
           ...newState,
           supermoveInProgress: false,
-          phase: 'finished',
+          phase: "finished",
           winners: victoryResult.winners,
           winType: victoryResult.winType,
-          screen: 'game-over',
+          screen: "game-over",
         };
       }
 
@@ -711,26 +759,83 @@ export function gameReducer(
     case NEXT_PLAYER: {
       return {
         ...state,
-        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length,
+        currentPlayerIndex:
+          (state.currentPlayerIndex + 1) % state.players.length,
       };
     }
 
     case END_GAME: {
       const { winners, winType } = action.payload;
-      
+
       return {
         ...state,
-        phase: 'finished',
+        phase: "finished",
         winners,
         winType,
-        screen: 'game-over',
+        screen: "game-over",
       };
     }
 
     case RESET_GAME: {
       return {
         ...initialState,
-        screen: 'configuration',
+        screen: "configuration",
+      };
+    }
+
+    case REMATCH_GAME: {
+      // Rematch: keep the same players and seats, but:
+      // - Randomize first player order (new seating order)
+      // - Create a new shuffle
+      // - Go back to just after the seating phase (directly to gameplay)
+
+      // Get the previous edge assignments from the completed seating phase
+      const edgeAssignments = state.seatingPhase.edgeAssignments;
+
+      // Randomize the player order for a new starting player
+      const playerIds = state.players.map((p) => p.id);
+      const newSeatingOrder = randomizePlayerOrder(playerIds);
+
+      // Determine gameplay order - players ordered clockwise from new starting player
+      const orderedPlayers = determineGameplayOrder(
+        state.players,
+        newSeatingOrder,
+      );
+
+      // Create a new shuffled deck (no seed for random shuffle)
+      const availableTiles = createShuffledDeck(state.boardRadius);
+      const currentTile = availableTiles.length > 0 ? availableTiles[0] : null;
+      const remainingTiles = availableTiles.slice(1);
+
+      return {
+        ...state,
+        // Keep the same players and teams
+        players: orderedPlayers,
+        // Keep teams unchanged
+        // Reset to gameplay phase
+        screen: "gameplay",
+        phase: "playing",
+        currentPlayerIndex: 0,
+        // Reset board and tiles
+        board: new Map(),
+        availableTiles: remainingTiles,
+        currentTile,
+        flows: new Map(),
+        flowEdges: new Map(),
+        // Clear game status
+        winners: [],
+        winType: null,
+        moveHistory: [],
+        supermoveInProgress: false,
+        lastPlacedTilePosition: null,
+        // Update seating phase to reflect it's complete but keep edge assignments
+        seatingPhase: {
+          active: false,
+          seatingOrder: newSeatingOrder,
+          seatingIndex: newSeatingOrder.length,
+          availableEdges: [],
+          edgeAssignments,
+        },
       };
     }
 
