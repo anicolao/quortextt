@@ -460,6 +460,12 @@ test.describe('Move Notation with Rotation', () => {
     expect(state.game.moveHistory[2].tile.rotation).toBe(2);
     expect(state.game.moveHistory[3].tile.rotation).toBe(0);
     
+    // Validate all expected notations
+    expect(allMoveNotations[0]).toBe('P1A3T1SW'); // Move 1: edge 0, rot 5
+    expect(allMoveNotations[1]).toBe('P2A2T1N');  // Move 2: edge 4, rot 5
+    expect(allMoveNotations[2]).toBe('P1A2T1NE'); // Move 3: edge 0, rot 2
+    expect(allMoveNotations[3]).toBe('P2A1T1NW'); // Move 4: edge 4, rot 0 (was NE, now fixed to NW)
+    
     // Log detailed information for all moves for user validation
     console.log('\n=== DETAILED MOVE INFORMATION ===');
     for (let i = 0; i < 4; i++) {

@@ -64,6 +64,16 @@ describe('Game Notation', () => {
       expect(rotationToOrientation(5, 0)).toBe('SW');
       expect(rotationToOrientation(5, 4)).toBe('N');
     });
+
+    it('should handle rotation 0 on edge 4 correctly (special case)', () => {
+      // Rotation 0 on edge 4 should be NW (not NE)
+      expect(rotationToOrientation(0, 4)).toBe('NW');
+    });
+
+    it('should handle rotation 2 on edge 0 correctly', () => {
+      // Rotation 2 on edge 0 should be NE
+      expect(rotationToOrientation(2, 0)).toBe('NE');
+    });
   });
 
   describe('tileTypeToNotation', () => {

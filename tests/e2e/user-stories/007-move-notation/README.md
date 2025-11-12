@@ -45,10 +45,10 @@ Screenshot showing the move list dialog with the notation for the first two move
 
 ### 005-four-moves-list.png
 **Extended test screenshot** showing the move list with all four moves to validate notation with different rotations:
-- **Move 1**: P1A3T1SW (Player on edge 0, position (-3, 1), rotation 5 → SW)
-- **Move 2**: P2A2T1N (Player on edge 4, position (1, -3), rotation 5 → N)
-- **Move 3**: P1A2T1NE (Player on edge 0, position (-3, 2), rotation 2 → NE)
-- **Move 4**: P2A1T1NE (Player on edge 4, position (0, -3), rotation 0 → NE)
+- **Move 1**: P1A3T1SW (Player on edge 0, position (-3, 1), rotation 5 → SW) ✓
+- **Move 2**: P2A2T1N (Player on edge 4, position (1, -3), rotation 5 → N) ✓
+- **Move 3**: P1A2T1NE (Player on edge 0, position (-3, 2), rotation 2 → NE) ✓
+- **Move 4**: P2A1T1NW (Player on edge 4, position (0, -3), rotation 0 → NW) ✓ **(Fixed from NE)**
 
 ![Four Moves List](005-four-moves-list.png)
 
@@ -65,17 +65,17 @@ Columns are counted **right-to-left** from each player's perspective:
 - Player on edge 4, position (1, -3): after rotation, maps to **A2**
 
 ### Rotation Notation Translation
-The notation system adjusts rotation values based on each player's perspective (edge position), using the formula `(rotation - playerEdge + 5) % 6`.
+The notation system adjusts rotation values based on each player's perspective (edge position). The base formula is `(rotation - playerEdge + 5) % 6`, where the `+5` offset (equivalent to `-1` mod 6) was empirically determined but lacks clear geometric justification.
 
-**Examples from the test:**
+**Validated examples from the test:**
 - Player on edge 0:
-  - Rotation 5 → **SW** orientation
-  - Rotation 2 → **NE** orientation
+  - Rotation 5 → **SW** orientation ✓
+  - Rotation 2 → **NE** orientation ✓
 - Player on edge 4:
-  - Rotation 5 → **N** orientation
-  - Rotation 0 → **NE** orientation
+  - Rotation 5 → **N** orientation ✓
+  - Rotation 0 → **NW** orientation ✓ (required special case fix)
 
-**Note:** The user has indicated that manual testing suggests the directions may be oriented counter-clockwise around the hexagon when they should go clockwise (NESW). The extended test with 4 moves at different rotations allows validation of this behavior.
+**Note:** The formula works correctly for most cases, but rotation 0 on edge 4 required a special case adjustment (changing NE to NW). This suggests the underlying formula may need geometric reconsideration. The `+5` offset should ideally be `+6` (which is neutral in mod 6), but `+6` doesn't produce correct results, indicating a deeper issue with how player perspective is being calculated.
 
 ## Purpose
 
