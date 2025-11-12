@@ -157,29 +157,21 @@ Discord Activities allow embedding full web applications directly into Discord u
 
 ### 3.2 Data Flow
 
-**Game Creation Flow:**
-1. User: `/quortex new 3` (3 players)
-2. Bot: Creates game lobby embed with "Join Game" button
-3. Players: Click "Join" button to join
-4. Bot: Updates embed showing joined players
-5. Creator: Clicks "Start Game" when ready
-6. Bot: Begins seating phase with edge selection
-7. Bot: Starts first turn with board image and action buttons
+**Activity Launch Flow:**
+1. User clicks "Play Quortex" in Discord Activity shelf
+2. Discord loads iframe with Quortex app URL
+3. App authenticates with Discord SDK
+4. Backend validates Discord user token
+5. WebSocket connection established
+6. User joins game lobby or creates new game
 
-**Turn Flow:**
-1. Bot: Posts turn message with:
-   - Current board state image
-   - Player's drawn tile preview
-   - Rotation buttons (↶ ↷)
-   - Placement select menu (legal positions)
-   - Confirm/Cancel buttons
-2. Player: Selects rotation and position
-3. Player: Clicks confirm
-4. Bot: Updates game state
-5. Bot: Recalculates flows
-6. Bot: Checks victory conditions
-7. Bot: Posts updated board image
-8. Bot: Either declares winner or starts next player's turn
+**Game Play Flow:**
+1. Client sends move via WebSocket to server
+2. Server validates move using game logic
+3. Server updates game state in MongoDB
+4. Server broadcasts state update to all connected players
+5. Clients receive update and render new board state
+6. All players see synchronized game state in real-time
 
 ## 4. Discord Activity Integration
 
@@ -326,31 +318,8 @@ The existing Vite app already has all UI components needed:
 1. Discord SDK initialization
 2. WebSocket client for multiplayer sync
 3. Discord user authentication
-- Buttons: "↶ Rotate CCW" and "Rotate CW ↷"
-- Style: Secondary (gray)
-- Action: Rotate current tile orientation
 
-**Position Select Menu:**
-- Component: Select menu with autocomplete
-- Options: All legal hex positions (filtered by legality)
-- Format: "Row: X, Col: Y" or "Center", "Top-Left", etc.
-- Action: Preview tile placement
-
-**Confirm Placement Button:**
-- Label: "✓ Place Tile"
-- Style: Success (green)
-- Disabled until: Position selected
-- Action: Execute move, advance turn
-
-**Cancel Placement Button:**
-- Label: "✗ Cancel"
-- Style: Danger (red)
-- Action: Clear selection, keep tile in hand
-
-**Show Flows Toggle:**
-- Label: "👁 Show Flows" / "👁 Hide Flows"
-- Style: Secondary (gray)
-- Action: Toggle flow visualization on board image
+All existing UI controls (tile rotation, placement, confirmation) work as-is in the embedded Activity.
 
 ## 5. WebSocket Communication
 
