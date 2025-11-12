@@ -679,12 +679,37 @@ export class GameplayInputHandler {
       return false; // Click outside dialog
     }
     
+    // Check for navigation buttons at bottom
+    const buttonY = dialogY + dialogHeight - 55;
+    const buttonHeight = 30;
+    if (rotatedY >= buttonY && rotatedY <= buttonY + buttonHeight) {
+      const buttonWidth = 40;
+      const buttonSpacing = 10;
+      const totalWidth = 4 * buttonWidth + 3 * buttonSpacing;
+      const buttonsX = dialogX + dialogWidth / 2 - totalWidth / 2;
+      
+      // Check which button was clicked
+      if (rotatedX >= buttonsX && rotatedX < buttonsX + buttonWidth) {
+        store.dispatch(navigateMoveList('first'));
+        return true;
+      } else if (rotatedX >= buttonsX + buttonWidth + buttonSpacing && rotatedX < buttonsX + 2 * buttonWidth + buttonSpacing) {
+        store.dispatch(navigateMoveList('prev'));
+        return true;
+      } else if (rotatedX >= buttonsX + 2 * (buttonWidth + buttonSpacing) && rotatedX < buttonsX + 3 * buttonWidth + 2 * buttonSpacing) {
+        store.dispatch(navigateMoveList('next'));
+        return true;
+      } else if (rotatedX >= buttonsX + 3 * (buttonWidth + buttonSpacing) && rotatedX < buttonsX + 4 * buttonWidth + 3 * buttonSpacing) {
+        store.dispatch(navigateMoveList('last'));
+        return true;
+      }
+    }
+    
     // Calculate move list area
     const controlsY = dialogY + 60;
     const controlsHeight = 40;
     const contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 32; // Match rendering
-    const bottomMargin = 60; // Match rendering
+    const lineHeight = 38; // Increased from 32 for better spacing
+    const bottomMargin = 85; // Increased to accommodate navigation buttons
     const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     
     const moves = state.game.moveHistory;
@@ -700,7 +725,7 @@ export class GameplayInputHandler {
         if (moveNumber === moves.length) {
           store.dispatch(navigateMoveList('last'));
         } else {
-          // Set to specific move by navigating to first then forward
+          // Set to specific move by dispatching a single action with the target index
           store.dispatch(navigateMoveList('first'));
           for (let i = 0; i < moveNumber - 1; i++) {
             store.dispatch(navigateMoveList('next'));
@@ -749,6 +774,7 @@ export class GameplayInputHandler {
     const dialogWidth = Math.min(300, rotatedWidth * 0.5);
     const dialogHeight = Math.min(350, rotatedHeight * 0.4);
     const margin = 20;
+    const contentX = 20; // Match click detection
     
     const dialogX = -rotatedWidth / 2 + margin;
     const dialogY = rotatedHeight / 2 - dialogHeight - margin;
@@ -762,8 +788,8 @@ export class GameplayInputHandler {
     const controlsY = dialogY + 60;
     const controlsHeight = 40;
     const contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 32;
-    const bottomMargin = 60;
+    const lineHeight = 38; // Match click detection
+    const bottomMargin = 85; // Match click detection
     const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     
     const moves = state.game.moveHistory;
@@ -775,13 +801,13 @@ export class GameplayInputHandler {
       const moveNumber = startIndex + hoveredIndex + 1;
       
       if (moveNumber <= moves.length) {
-        // Return hover info for this move
+        // Return hover info for this move - bounds should match the green highlight position
         return {
           type: 'move-list-item',
           moveNumber: moveNumber,
           bounds: {
-            x: dialogX,
-            y: contentY + hoveredIndex * lineHeight - 14,
+            x: dialogX + contentX - 5, // Match green box x position
+            y: contentY + hoveredIndex * lineHeight - 16, // Match green box y position 
             width: dialogWidth - 40,
             height: lineHeight - 4,
           },
