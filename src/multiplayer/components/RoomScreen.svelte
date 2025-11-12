@@ -16,6 +16,7 @@
 
   function startGame() {
     if (room && canStart) {
+      console.log('Host starting game for room:', room.id);
       socket.startGame(room.id);
     }
   }
