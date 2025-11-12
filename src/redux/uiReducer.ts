@@ -12,6 +12,9 @@ import {
   UPDATE_SETTINGS,
   SHOW_HELP,
   HIDE_HELP,
+  SHOW_MOVE_LIST,
+  HIDE_MOVE_LIST,
+  NAVIGATE_MOVE_LIST,
 } from './actions';
 
 // Initial UI state
@@ -28,6 +31,9 @@ export const initialUIState: UIState = {
   showSettings: false,
   showHelp: false,
   helpCorner: null,
+  showMoveList: false,
+  moveListCorner: null,
+  moveListIndex: -1, // -1 means showing current state, 0+ means showing historical state
   savedGameState: null,
   settings: {
     boardRadius: 3,
@@ -114,6 +120,62 @@ export function uiReducer(
         ...state,
         showHelp: false,
         helpCorner: null,
+      };
+    }
+
+    case SHOW_MOVE_LIST: {
+      return {
+        ...state,
+        showMoveList: true,
+        moveListCorner: action.payload.corner,
+        moveListIndex: -1, // Start at current state
+      };
+    }
+
+    case HIDE_MOVE_LIST: {
+      return {
+        ...state,
+        showMoveList: false,
+        moveListCorner: null,
+        moveListIndex: -1,
+      };
+    }
+
+    case NAVIGATE_MOVE_LIST: {
+      // This will be handled by accessing the game state's moveHistory length
+      // moveListIndex: -1 = current state, 0 = after first move, etc.
+      let newIndex = state.moveListIndex;
+      
+      switch (action.payload.direction) {
+        case 'first':
+          newIndex = 0;
+          break;
+        case 'last':
+          newIndex = -1;
+          break;
+        case 'prev':
+          if (state.moveListIndex === -1) {
+            // Can't go back from current state without knowing history length
+            // Will be handled in the component
+            newIndex = state.moveListIndex;
+          } else {
+            newIndex = Math.max(0, state.moveListIndex - 1);
+          }
+          break;
+        case 'next':
+          if (state.moveListIndex === -1) {
+            // Already at current state
+            newIndex = -1;
+          } else {
+            // Will be clamped in the component based on history length
+            newIndex = state.moveListIndex + 1;
+          }
+          break;
+      }
+      
+      return {
+        ...state,
+        moveListIndex: newIndex,
       };
     }
 

@@ -115,9 +115,17 @@ export class GameplayRenderer {
     // Layer 6.5: Help buttons in corners
     this.renderHelpButtons();
 
+    // Layer 6.6: Move list buttons in corners
+    this.renderMoveListButtons();
+
     // Layer 6.7: Help dialog if open
     if (state.ui.showHelp && state.ui.helpCorner !== null) {
       this.renderHelpDialog(state.ui.helpCorner, state);
+    }
+
+    // Layer 6.8: Move list dialog if open
+    if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
+      this.renderMoveListDialog(state.ui.moveListCorner, state);
     }
 
     // Layer 7: Debug legality test - show winning paths
@@ -1943,6 +1951,204 @@ export class GameplayRenderer {
         this.ctx.font = "16px sans-serif";
       }
     });
+
+    // Restore context state
+    this.ctx.restore();
+  }
+
+  private renderMoveListButtons(): void {
+    // Render 📋 (list) buttons next to help buttons in each corner
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+    const doubleSpacing = 2 * (cornerSize + spacing);
+
+    const corners = [
+      { 
+        // Edge 0 (bottom): positioned after exit and help buttons
+        x: margin + cornerSize / 2 + doubleSpacing, 
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+        edge: 0,
+      },
+      {
+        // Edge 1 (right): positioned after exit and help buttons
+        x: this.layout.canvasWidth - margin - cornerSize / 2,
+        y: this.layout.canvasHeight - margin - cornerSize / 2 - doubleSpacing,
+        corner: 1,
+        edge: 1,
+      },
+      {
+        // Edge 2 (top): positioned after exit and help buttons
+        x: this.layout.canvasWidth - margin - cornerSize / 2 - doubleSpacing,
+        y: margin + cornerSize / 2,
+        corner: 2,
+        edge: 2,
+      },
+      {
+        // Edge 3 (left): positioned after exit and help buttons
+        x: margin + cornerSize / 2,
+        y: margin + cornerSize / 2 + doubleSpacing, 
+        corner: 3,
+        edge: 3,
+      },
+    ];
+
+    corners.forEach((corner) => {
+      const centerX = corner.x;
+      const centerY = corner.y;
+      const radius = cornerSize / 2;
+
+      // Draw circle background
+      this.ctx.fillStyle = "#4CAF50"; // Green for move list
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      this.ctx.fill();
+
+      // Draw border
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // Draw list icon with rotation so it's readable from the edge's perspective
+      let rotation = corner.edge * 90;
+      if (corner.edge === 1 || corner.edge === 3) {
+        rotation += 180;
+      }
+      
+      this.ctx.save();
+      this.ctx.translate(centerX, centerY);
+      this.ctx.rotate((rotation * Math.PI) / 180);
+      
+      // Draw a simple list icon (three horizontal lines)
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 3;
+      this.ctx.lineCap = "round";
+      
+      const lineLength = radius * 0.8;
+      const lineSpacing = radius * 0.4;
+      
+      for (let i = -1; i <= 1; i++) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(-lineLength / 2, i * lineSpacing);
+        this.ctx.lineTo(lineLength / 2, i * lineSpacing);
+        this.ctx.stroke();
+      }
+      
+      this.ctx.restore();
+    });
+  }
+
+  private renderMoveListDialog(corner: number, state: RootState): void {
+    // Import notation module
+    const { formatMoveHistory } = require('../game/notation');
+    
+    // Semi-transparent overlay
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
+
+    // Calculate rotation based on edge
+    let rotation = 0;
+    if (corner === 1) rotation = 270;
+    else if (corner === 2) rotation = 180;
+    else if (corner === 3) rotation = 90;
+
+    // For 90° and 270° rotations, dimensions are swapped
+    const rotatedWidth = (rotation === 90 || rotation === 270) ? this.layout.canvasHeight : this.layout.canvasWidth;
+    const rotatedHeight = (rotation === 90 || rotation === 270) ? this.layout.canvasWidth : this.layout.canvasHeight;
+
+    // Dialog box dimensions
+    const dialogWidth = Math.min(500, rotatedWidth * 0.8);
+    const dialogHeight = Math.min(700, rotatedHeight * 0.8);
+    const margin = 20;
+
+    // Save context state
+    this.ctx.save();
+
+    // Translate to screen center, rotate, then position dialog
+    this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
+    this.ctx.rotate((rotation * Math.PI) / 180);
+
+    // Position dialog in rotated space (always bottom-left in rotated coordinates)
+    const dialogX = -rotatedWidth / 2 + margin;
+    const dialogY = rotatedHeight / 2 - dialogHeight - margin;
+
+    // Dialog background
+    this.ctx.fillStyle = "#2a2a3e";
+    this.ctx.fillRect(dialogX, dialogY, dialogWidth, dialogHeight);
+    this.ctx.strokeStyle = "#4CAF50";
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(dialogX, dialogY, dialogWidth, dialogHeight);
+
+    // Title
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 24px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
+    this.ctx.fillText("Move List", dialogX + dialogWidth / 2, dialogY + 20);
+
+    // Get move history
+    const moves = state.game.moveHistory;
+    const players = state.game.players;
+    
+    // Format moves
+    const moveNotations = formatMoveHistory(moves, players, state.game.boardRadius);
+
+    // Navigation controls area
+    const controlsY = dialogY + 60;
+    const controlsHeight = 40;
+    
+    // Draw navigation info
+    this.ctx.font = "14px sans-serif";
+    this.ctx.textAlign = "left";
+    this.ctx.fillStyle = "#cccccc";
+    
+    const viewingIndex = state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
+    const statusText = `Viewing: ${viewingIndex} of ${moves.length} moves`;
+    this.ctx.fillText(statusText, dialogX + 20, controlsY + 20);
+
+    // Content area
+    const contentX = dialogX + 20;
+    let contentY = controlsY + controlsHeight + 10;
+    const lineHeight = 24;
+    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - 60) / lineHeight);
+
+    this.ctx.font = "16px monospace";
+    this.ctx.textAlign = "left";
+    this.ctx.fillStyle = "#ffffff";
+
+    if (moveNotations.length === 0) {
+      this.ctx.fillText("No moves yet", contentX, contentY);
+    } else {
+      // Show moves up to the current view index
+      const visibleMoves = state.ui.moveListIndex === -1 
+        ? moveNotations 
+        : moveNotations.slice(0, state.ui.moveListIndex);
+      
+      // Calculate starting index for pagination
+      const startIndex = Math.max(0, visibleMoves.length - maxLines);
+      
+      visibleMoves.slice(startIndex).forEach((notation: string, index: number) => {
+        const moveNumber = startIndex + index + 1;
+        const y = contentY + index * lineHeight;
+        
+        // Highlight current move if navigating
+        if (state.ui.moveListIndex !== -1 && moveNumber === state.ui.moveListIndex) {
+          this.ctx.fillStyle = "#4CAF50";
+        } else {
+          this.ctx.fillStyle = "#ffffff";
+        }
+        
+        this.ctx.fillText(`${moveNumber}. ${notation}`, contentX, y);
+      });
+    }
+
+    // Instructions at bottom
+    this.ctx.font = "14px sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.fillStyle = "#cccccc";
+    const instructY = dialogY + dialogHeight - 30;
+    this.ctx.fillText("Tap to dismiss", dialogX + dialogWidth / 2, instructY);
 
     // Restore context state
     this.ctx.restore();
