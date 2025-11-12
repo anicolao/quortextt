@@ -10,4 +10,8 @@ coverage/
 *.js.map
 !playwright.config.ts
 !vitest.config.ts
+!svelte.config.js
 victory-animation-*.png
+.env
+server/dist/
+server/node_modules/

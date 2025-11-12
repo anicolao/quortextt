@@ -1,0 +1,77 @@
+// Multiplayer state management using Svelte stores
+import { writable, derived } from 'svelte/store';
+
+export interface Player {
+  id: string;
+  username: string;
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  hostId: string;
+  players: Player[];
+  maxPlayers: number;
+  status: 'waiting' | 'playing' | 'finished';
+}
+
+export interface MultiplayerState {
+  connected: boolean;
+  username: string | null;
+  playerId: string | null;
+  currentRoom: Room | null;
+  availableRooms: Room[];
+  screen: 'login' | 'lobby' | 'room' | 'game';
+}
+
+const initialState: MultiplayerState = {
+  connected: false,
+  username: null,
+  playerId: null,
+  currentRoom: null,
+  availableRooms: [],
+  screen: 'login',
+};
+
+// Create the main store
+function createMultiplayerStore() {
+  const { subscribe, set, update } = writable<MultiplayerState>(initialState);
+
+  return {
+    subscribe,
+    
+    setConnected: (connected: boolean) => 
+      update(state => ({ ...state, connected })),
+    
+    setUsername: (username: string, playerId: string) =>
+      update(state => ({ ...state, username, playerId })),
+    
+    setScreen: (screen: MultiplayerState['screen']) =>
+      update(state => ({ ...state, screen })),
+    
+    setAvailableRooms: (rooms: Room[]) =>
+      update(state => ({ ...state, availableRooms: rooms })),
+    
+    setCurrentRoom: (room: Room | null) =>
+      update(state => ({ ...state, currentRoom: room })),
+    
+    updateCurrentRoom: (updates: Partial<Room>) =>
+      update(state => {
+        if (!state.currentRoom) return state;
+        return {
+          ...state,
+          currentRoom: { ...state.currentRoom, ...updates }
+        };
+      }),
+    
+    reset: () => set(initialState),
+  };
+}
+
+export const multiplayerStore = createMultiplayerStore();
+
+// Derived stores for convenience
+export const isHost = derived(
+  multiplayerStore,
+  $store => $store.currentRoom?.hostId === $store.playerId
+);
