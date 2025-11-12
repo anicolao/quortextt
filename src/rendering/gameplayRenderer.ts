@@ -1850,11 +1850,29 @@ export class GameplayRenderer {
     this.ctx.fillStyle = "#ffffff";
 
     // Build help lines based on game settings
+    const settings = state.ui.settings;
     const helpLines: string[] = [
       "Game Rules:",
       "• Connect your edge to the opposite edge",
       "• Place tiles to build flowing paths",
       "• Each tile must keep paths open for all players",
+    ];
+
+    // Add supermove rule if enabled
+    if (settings.supermove) {
+      if (settings.singleSupermove) {
+        helpLines.push("• If a player is blocked, they may replace a");
+        helpLines.push("  tile on the board to get unblocked and");
+        helpLines.push("  return it to the bag");
+      } else {
+        helpLines.push("• If a player is blocked, they have a super");
+        helpLines.push("  move that allows replacing a tile on the");
+        helpLines.push("  board that unblocks them and placing");
+        helpLines.push("  that tile in one turn");
+      }
+    }
+
+    helpLines.push(
       "",
       "Your Turn:",
       "• Tap a hex to place your current tile",
@@ -1866,26 +1884,8 @@ export class GameplayRenderer {
       "• Flow completion: connect your edges",
       "• Constraint: if you draw an unplayable tile",
       "",
-    ];
-
-    // Add supermove help based on settings
-    const settings = state.ui.settings;
-    if (settings.supermove) {
-      helpLines.push("Special Rules:");
-      if (settings.singleSupermove) {
-        helpLines.push("• If a player is blocked, they may replace a");
-        helpLines.push("  tile on the board to get unblocked and");
-        helpLines.push("  return it to the bag");
-      } else {
-        helpLines.push("• If a player is blocked, they have a super");
-        helpLines.push("  move that allows replacing a tile on the");
-        helpLines.push("  board that unblocks them and placing");
-        helpLines.push("  that tile in one turn");
-      }
-      helpLines.push("");
-    }
-
-    helpLines.push("Tap to dismiss");
+      "Tap to dismiss"
+    );
 
     helpLines.forEach((line, index) => {
       const y = contentY + index * lineHeight;
