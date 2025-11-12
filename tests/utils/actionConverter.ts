@@ -126,16 +126,19 @@ function getTileRotationCoords(
     centerY = canvasHeight / 2;
   }
   
-  // Calculate left side in player's local coordinate system
+  // Calculate NE button position for clockwise rotation
   // Map edge positions to rotation angles (in degrees)
   const edgeAngles = [0, 60, 120, 180, 240, 300];
   const rotationAngle = edgeAngles[playerEdge];
   const rotationRad = (rotationAngle * Math.PI) / 180;
   
-  // In player's local coords, left is at (-offset, 0)
-  // Rotate this point to screen coords
-  const localX = -offset;
-  const localY = 0;
+  // In player's local coords, NE button is at 60 degrees
+  // This gives us clockwise rotation (rotation += 1)
+  const buttonAngle = 60 * Math.PI / 180;
+  const localX = offset * Math.cos(buttonAngle);
+  const localY = offset * Math.sin(buttonAngle);
+  
+  // Rotate this point to screen coords based on player's edge
   const cos = Math.cos(rotationRad);
   const sin = Math.sin(rotationRad);
   const screenX = centerX + (localX * cos - localY * sin);
