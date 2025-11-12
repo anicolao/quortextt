@@ -37,11 +37,20 @@ Second player (P1 on edge 4) has placed a Type 1 tile at position (1, -3) with r
 ![Second Player Placed](003-second-player-placed.png)
 
 ### 004-move-list-opened.png
-**The key screenshot** showing the move list dialog with the notation for both moves:
+Screenshot showing the move list dialog with the notation for the first two moves:
 - **Move 1**: P1A3T1SW (Player on edge 0, position A3, Type 1, SW orientation)
 - **Move 2**: P2A2T1N (Player on edge 4, position A2, Type 1, N orientation)
 
 ![Move List Opened](004-move-list-opened.png)
+
+### 005-four-moves-list.png
+**Extended test screenshot** showing the move list with all four moves to validate notation with different rotations:
+- **Move 1**: P1A3T1SW (Player on edge 0, position (-3, 1), rotation 5 → SW)
+- **Move 2**: P2A2T1N (Player on edge 4, position (1, -3), rotation 5 → N)
+- **Move 3**: P1A2T1NE (Player on edge 0, position (-3, 2), rotation 2 → NE)
+- **Move 4**: P2A1T1NE (Player on edge 4, position (0, -3), rotation 0 → NE)
+
+![Four Moves List](005-four-moves-list.png)
 
 ## Notable Findings
 
@@ -56,11 +65,17 @@ Columns are counted **right-to-left** from each player's perspective:
 - Player on edge 4, position (1, -3): after rotation, maps to **A2**
 
 ### Rotation Notation Translation
-Both tiles were placed with **internal rotation 5**, which translates to different orientations in the notation:
-- Player on edge 0: rotation 5 → **SW** orientation in notation
-- Player on edge 4: rotation 5 → **N** orientation in notation
+The notation system adjusts rotation values based on each player's perspective (edge position), using the formula `(rotation - playerEdge + 5) % 6`.
 
-This demonstrates that the notation system adjusts rotation values based on each player's perspective (edge position), using the formula `(rotation - playerEdge + 5) % 6`.
+**Examples from the test:**
+- Player on edge 0:
+  - Rotation 5 → **SW** orientation
+  - Rotation 2 → **NE** orientation
+- Player on edge 4:
+  - Rotation 5 → **N** orientation
+  - Rotation 0 → **NE** orientation
+
+**Note:** The user has indicated that manual testing suggests the directions may be oriented counter-clockwise around the hexagon when they should go clockwise (NESW). The extended test with 4 moves at different rotations allows validation of this behavior.
 
 ## Purpose
 
@@ -68,5 +83,6 @@ This test creates a reproducible scenario for validating the move notation syste
 1. Position notation relative to player perspective
 2. Rotation/orientation notation relative to player perspective
 3. Visual confirmation that Type 1 tiles make rotation differences visible
+4. Testing multiple rotations (0, 2, 5) to identify potential orientation issues
 
-The user requested this test to identify issues with rotation information in the notation system. The screenshots provide visual evidence of the current behavior for debugging purposes.
+The test now includes 4 moves with different rotations for comprehensive validation. The user will review the screenshots to identify which moves have correct notation and which need correction.

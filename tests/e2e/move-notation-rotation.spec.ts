@@ -321,7 +321,7 @@ test.describe('Move Notation with Rotation', () => {
     expect(state.game.moveHistory[0].tile.rotation).toBe(5);
     expect(state.game.moveHistory[1].tile.rotation).toBe(5);
     
-    // Validate specific expected notation
+    // Validate specific expected notation for first 2 moves
     // First move: Player on edge 0, position (-3, 1), rotation 5
     // Expected: P1A3T1SW (columns count right-to-left, rotation adjusted for perspective)
     expect(moveNotations[0]).toBe('P1A3T1SW');
@@ -329,5 +329,149 @@ test.describe('Move Notation with Rotation', () => {
     // Second move: Player on edge 4, position (1, -3), rotation 5
     // Expected: P2A2T1N (columns count right-to-left, rotation adjusted for perspective)
     expect(moveNotations[1]).toBe('P2A2T1N');
+    
+    // === STEP 12: Close move list and continue with third move ===
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'HIDE_MOVE_LIST' });
+    });
+    
+    await waitForAnimationFrame(page);
+    
+    // === STEP 13: Draw tile for third move (player 1 again) ===
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'NEXT_PLAYER' });
+      store.dispatch({ type: 'DRAW_TILE' });
+    });
+    
+    await waitForAnimationFrame(page);
+    
+    state = await getReduxState(page);
+    console.log('Current tile after third draw:', state.game.currentTile);
+    expect(state.game.currentTile).toBe(1); // Should be Type 1
+    
+    // === STEP 14: Third player places tile with different rotation (rotation 2) ===
+    const thirdPlayerEdge = state.game.players[state.game.currentPlayerIndex].edgePosition;
+    console.log('Third move player edge:', thirdPlayerEdge);
+    
+    let thirdPosition: { row: number; col: number };
+    if (thirdPlayerEdge === 0) {
+      // Edge 0 - place at different position
+      thirdPosition = { row: -3, col: 2 };
+    } else if (thirdPlayerEdge === 4) {
+      // Edge 4 - place at different position
+      thirdPosition = { row: 2, col: -3 };
+    } else {
+      throw new Error('Unexpected player edge: ' + thirdPlayerEdge);
+    }
+    
+    const thirdRotation = 2;  // Different rotation
+    
+    await page.evaluate((data) => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ 
+        type: 'PLACE_TILE', 
+        payload: { position: data.position, rotation: data.rotation } 
+      });
+      store.dispatch({ type: 'NEXT_PLAYER' });
+    }, { position: thirdPosition, rotation: thirdRotation });
+    
+    await waitForAnimationFrame(page);
+    
+    // === STEP 15: Draw tile for fourth move (player 2 again) ===
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'DRAW_TILE' });
+    });
+    
+    await waitForAnimationFrame(page);
+    
+    state = await getReduxState(page);
+    console.log('Current tile after fourth draw:', state.game.currentTile);
+    expect(state.game.currentTile).toBe(1); // Should be Type 1
+    
+    // === STEP 16: Fourth player places tile with different rotation (rotation 0) ===
+    const fourthPlayerEdge = state.game.players[state.game.currentPlayerIndex].edgePosition;
+    console.log('Fourth move player edge:', fourthPlayerEdge);
+    
+    let fourthPosition: { row: number; col: number };
+    if (fourthPlayerEdge === 0) {
+      // Edge 0 - place at different position
+      fourthPosition = { row: -3, col: 0 };
+    } else if (fourthPlayerEdge === 4) {
+      // Edge 4 - place at different position
+      fourthPosition = { row: 0, col: -3 };
+    } else {
+      throw new Error('Unexpected player edge: ' + fourthPlayerEdge);
+    }
+    
+    const fourthRotation = 0;  // Different rotation
+    
+    await page.evaluate((data) => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ 
+        type: 'PLACE_TILE', 
+        payload: { position: data.position, rotation: data.rotation } 
+      });
+    }, { position: fourthPosition, rotation: fourthRotation });
+    
+    await waitForAnimationFrame(page);
+    
+    // === STEP 17: Open move list again to show all 4 moves ===
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'SHOW_MOVE_LIST', payload: { corner: 0 } });
+    });
+    
+    await waitForAnimationFrame(page);
+    
+    await pauseAnimations(page);
+    await page.screenshot({ 
+      path: 'tests/e2e/user-stories/007-move-notation/005-four-moves-list.png',
+      fullPage: false
+    });
+    
+    // === STEP 18: Get notation for all 4 moves ===
+    state = await getReduxState(page);
+    
+    const allMoveNotations = formatMoveHistory(
+      state.game.moveHistory,
+      state.game.players,
+      state.game.boardRadius
+    );
+    
+    console.log('\n=== ALL MOVE NOTATIONS ===');
+    allMoveNotations.forEach((notation: string, index: number) => {
+      const move = state.game.moveHistory[index];
+      const player = state.game.players.find((p: any) => p.id === move.playerId);
+      console.log(`Move ${index + 1}: ${notation} (edge ${player?.edgePosition}, pos ${JSON.stringify(move.tile.position)}, rot ${move.tile.rotation})`);
+    });
+    console.log('==========================\n');
+    
+    // Validate we have 4 moves
+    expect(allMoveNotations.length).toBe(4);
+    
+    // All tiles should be Type 1
+    expect(state.game.moveHistory[2].tile.type).toBe(1);
+    expect(state.game.moveHistory[3].tile.type).toBe(1);
+    
+    // Verify rotations are as expected
+    expect(state.game.moveHistory[2].tile.rotation).toBe(2);
+    expect(state.game.moveHistory[3].tile.rotation).toBe(0);
+    
+    // Log detailed information for all moves for user validation
+    console.log('\n=== DETAILED MOVE INFORMATION ===');
+    for (let i = 0; i < 4; i++) {
+      const move = state.game.moveHistory[i];
+      const player = state.game.players.find((p: any) => p.id === move.playerId);
+      console.log(`\nMove ${i + 1}:`);
+      console.log('  Player ID:', move.playerId);
+      console.log('  Player edge:', player?.edgePosition);
+      console.log('  Tile position:', move.tile.position);
+      console.log('  Tile rotation:', move.tile.rotation);
+      console.log('  Notation:', allMoveNotations[i]);
+    }
+    console.log('=================================\n');
   });
 });
