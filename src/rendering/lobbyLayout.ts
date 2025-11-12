@@ -39,6 +39,14 @@ export interface SettingsButton {
   size: number;
 }
 
+export interface BackButton {
+  x: number;
+  y: number;
+  size: number;
+  edge: Edge; // Which edge this back button belongs to (0=bottom, 1=right, 2=top, 3=left)
+  corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+}
+
 export interface PlayerListEntry {
   player: ConfigPlayer;
   x: number;
@@ -78,6 +86,7 @@ export interface LobbyLayout {
   startButton: StartButton;
   exitButtons: ExitButton[];
   helpButtons: HelpButton[];
+  backButtons: BackButton[];
   settingsButton: SettingsButton;
   playerLists: PlayerListEntry[][]; // One list per edge [bottom, right, top, left]
   settingsDialog: SettingsDialogLayout | null;
@@ -257,6 +266,44 @@ export function calculateLobbyLayout(
     },
   ];
 
+  // Back buttons (↩ buttons) - one per edge, positioned next to help buttons
+  const backButtonSize = exitButtonSize;
+  const backButtonSpacing = exitButtonSize * 0.15;
+  const backButtons: BackButton[] = [
+    {
+      // Edge 0 (bottom): next to help button
+      x: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing + helpButtonSize + backButtonSpacing,
+      y: canvasHeight - exitButtonSize / 2,
+      size: backButtonSize,
+      edge: 0,
+      corner: 0,
+    },
+    {
+      // Edge 1 (right): next to help button
+      x: canvasWidth - exitButtonSize / 2,
+      y: canvasHeight - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing - helpButtonSize - backButtonSpacing,
+      size: backButtonSize,
+      edge: 1,
+      corner: 1,
+    },
+    {
+      // Edge 2 (top): next to help button
+      x: canvasWidth - exitButtonSize / 2 - exitButtonSize - helpButtonSpacing - helpButtonSize - backButtonSpacing,
+      y: exitButtonSize / 2,
+      size: backButtonSize,
+      edge: 2,
+      corner: 2,
+    },
+    {
+      // Edge 3 (left): next to help button
+      x: exitButtonSize / 2,
+      y: exitButtonSize / 2 + exitButtonSize + helpButtonSpacing + helpButtonSize + backButtonSpacing,
+      size: backButtonSize,
+      edge: 3,
+      corner: 3,
+    },
+  ];
+
   // Player lists (one per edge, showing all players)
   const playerLists: PlayerListEntry[][] = [[], [], [], []];
   const entryWidth = minDim * 0.18; // Smaller to fit two columns
@@ -350,6 +397,7 @@ export function calculateLobbyLayout(
     startButton,
     exitButtons,
     helpButtons,
+    backButtons,
     settingsButton,
     playerLists,
     settingsDialog: null,

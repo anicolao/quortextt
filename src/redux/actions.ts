@@ -31,6 +31,7 @@ export const SET_AI_SCORING_DATA = 'SET_AI_SCORING_DATA';
 export const NEXT_PLAYER = 'NEXT_PLAYER';
 export const END_GAME = 'END_GAME';
 export const RESET_GAME = 'RESET_GAME';
+export const RESTORE_GAME = 'RESTORE_GAME';
 
 // UI actions
 export const SET_HOVERED_POSITION = 'SET_HOVERED_POSITION';
@@ -158,6 +159,10 @@ export interface ResetGameAction {
   type: typeof RESET_GAME;
 }
 
+export interface RestoreGameAction {
+  type: typeof RESTORE_GAME;
+}
+
 // AI debug action types
 export interface SetAIScoringDataAction {
   type: typeof SET_AI_SCORING_DATA;
@@ -227,6 +232,7 @@ export type GameAction =
   | NextPlayerAction
   | EndGameAction
   | ResetGameAction
+  | RestoreGameAction
   | SetAIScoringDataAction;
 
 export type UIAction =
@@ -321,6 +327,10 @@ export const endGame = (winners: string[], winType: 'flow' | 'constraint' | 'tie
 
 export const resetGame = (): ResetGameAction => ({
   type: RESET_GAME,
+});
+
+export const restoreGame = (): RestoreGameAction => ({
+  type: RESTORE_GAME,
 });
 
 // UI action creators

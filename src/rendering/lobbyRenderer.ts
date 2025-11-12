@@ -35,6 +35,7 @@ export class LobbyRenderer {
     settings?: import("../redux/types").GameSettings,
     showHelp: boolean = false,
     helpCorner: number | null = null,
+    hasSavedGame: boolean = false,
   ): LobbyLayout {
     this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players);
 
@@ -48,6 +49,9 @@ export class LobbyRenderer {
     this.renderSettingsButton(this.layout.settingsButton);
     this.renderExitButtons(this.layout.exitButtons);
     this.renderHelpButtons(this.layout.helpButtons);
+    if (hasSavedGame) {
+      this.renderBackButtons(this.layout.backButtons);
+    }
     this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
 
     // Render settings dialog if open
@@ -246,6 +250,43 @@ export class LobbyRenderer {
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
       this.ctx.fillText("?", 0, 0);
+      
+      this.ctx.restore();
+    });
+  }
+
+  private renderBackButtons(buttons: import("./lobbyLayout").BackButton[]): void {
+    buttons.forEach((button) => {
+      const centerX = button.x;
+      const centerY = button.y;
+      const radius = button.size / 2;
+
+      // Draw circle background
+      this.ctx.fillStyle = "#4CAF50"; // Green for back/restore
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      this.ctx.fill();
+
+      // Draw border
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // Draw ↩ symbol (arrow) with rotation so it's readable from the edge's perspective
+      let rotation = button.edge * 90;
+      if (button.edge === 1 || button.edge === 3) {
+        rotation += 180;
+      }
+      
+      this.ctx.save();
+      this.ctx.translate(centerX, centerY);
+      this.ctx.rotate((rotation * Math.PI) / 180);
+      
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.font = `bold ${radius * 1.3}px sans-serif`;
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillText("↩", 0, 0);
       
       this.ctx.restore();
     });

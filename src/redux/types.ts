@@ -133,6 +133,9 @@ export interface UIState {
   // Help dialog
   showHelp: boolean;
   helpCorner: 0 | 1 | 2 | 3 | null; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+  
+  // Saved game state (for back button on lobby)
+  savedGameState: GameState | null;
 }
 
 // Root state combining all state slices
