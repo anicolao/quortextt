@@ -656,14 +656,13 @@ export class GameplayInputHandler {
     let x = canvasX - centerX;
     let y = canvasY - centerY;
     
-    // Rotate back
+    // Rotate back to match how dialog is drawn
     const rad = -(rotation * Math.PI / 180);
     const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
     const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
     
-    // Translate back
-    x = rotatedX + centerX;
-    y = rotatedY + centerY;
+    // Now rotatedX and rotatedY are in the rotated coordinate space (origin at center)
+    // Dialog bounds are also in this space
     
     // Calculate dialog dimensions in rotated space
     const rotatedWidth = (rotation === 90 || rotation === 270) ? layout.canvasHeight : layout.canvasWidth;
@@ -675,8 +674,8 @@ export class GameplayInputHandler {
     const dialogX = -rotatedWidth / 2 + margin;
     const dialogY = rotatedHeight / 2 - dialogHeight - margin;
     
-    // Check if click is inside dialog
-    if (x < dialogX || x > dialogX + dialogWidth || y < dialogY || y > dialogY + dialogHeight) {
+    // Check if click is inside dialog (both in rotated space)
+    if (rotatedX < dialogX || rotatedX > dialogX + dialogWidth || rotatedY < dialogY || rotatedY > dialogY + dialogHeight) {
       return false; // Click outside dialog
     }
     
@@ -692,8 +691,8 @@ export class GameplayInputHandler {
     const startIndex = Math.max(0, moves.length - maxLines);
     
     // Check which move line was clicked
-    if (y >= contentY && y < contentY + (moves.length - startIndex) * lineHeight) {
-      const clickedIndex = Math.floor((y - contentY) / lineHeight);
+    if (rotatedY >= contentY && rotatedY < contentY + (moves.length - startIndex) * lineHeight) {
+      const clickedIndex = Math.floor((rotatedY - contentY) / lineHeight);
       const moveNumber = startIndex + clickedIndex + 1;
       
       if (moveNumber <= moves.length) {
@@ -736,14 +735,13 @@ export class GameplayInputHandler {
     let x = canvasX - centerX;
     let y = canvasY - centerY;
     
-    // Rotate back
+    // Rotate back to match how dialog is drawn
     const rad = -(rotation * Math.PI / 180);
     const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
     const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
     
-    // Translate back
-    x = rotatedX + centerX;
-    y = rotatedY + centerY;
+    // Now rotatedX and rotatedY are in the rotated coordinate space (origin at center)
+    // Dialog bounds are also in this space
     
     // Calculate dialog dimensions in rotated space
     const rotatedWidth = (rotation === 90 || rotation === 270) ? layout.canvasHeight : layout.canvasWidth;
@@ -755,8 +753,8 @@ export class GameplayInputHandler {
     const dialogX = -rotatedWidth / 2 + margin;
     const dialogY = rotatedHeight / 2 - dialogHeight - margin;
     
-    // Check if hover is inside dialog
-    if (x < dialogX || x > dialogX + dialogWidth || y < dialogY || y > dialogY + dialogHeight) {
+    // Check if hover is inside dialog (both in rotated space)
+    if (rotatedX < dialogX || rotatedX > dialogX + dialogWidth || rotatedY < dialogY || rotatedY > dialogY + dialogHeight) {
       return null;
     }
     
@@ -772,8 +770,8 @@ export class GameplayInputHandler {
     const startIndex = Math.max(0, moves.length - maxLines);
     
     // Check which move line is being hovered
-    if (y >= contentY && y < contentY + (moves.length - startIndex) * lineHeight) {
-      const hoveredIndex = Math.floor((y - contentY) / lineHeight);
+    if (rotatedY >= contentY && rotatedY < contentY + (moves.length - startIndex) * lineHeight) {
+      const hoveredIndex = Math.floor((rotatedY - contentY) / lineHeight);
       const moveNumber = startIndex + hoveredIndex + 1;
       
       if (moveNumber <= moves.length) {
