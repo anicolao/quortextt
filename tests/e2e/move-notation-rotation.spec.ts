@@ -310,11 +310,8 @@ test.describe('Move Notation with Rotation', () => {
     console.log('  Notation:', moveNotations[1]);
     console.log('============================\n');
     
-    // Basic validation that we have notation
+    // Validate the notation format and content
     expect(moveNotations.length).toBe(2);
-    // Both notations should be valid format with P1 or P2, position, T1, and orientation
-    expect(moveNotations[0]).toMatch(/^P[12][A-G]\d+T1[A-Z]+$/);
-    expect(moveNotations[1]).toMatch(/^P[12][A-G]\d+T1[A-Z]+$/);
     
     // Verify both tiles are Type 1
     expect(state.game.moveHistory[0].tile.type).toBe(1);
@@ -323,5 +320,14 @@ test.describe('Move Notation with Rotation', () => {
     // Verify both tiles have rotation 5
     expect(state.game.moveHistory[0].tile.rotation).toBe(5);
     expect(state.game.moveHistory[1].tile.rotation).toBe(5);
+    
+    // Validate specific expected notation
+    // First move: Player on edge 0, position (-3, 1), rotation 5
+    // Expected: P1A3T1SW (columns count right-to-left, rotation adjusted for perspective)
+    expect(moveNotations[0]).toBe('P1A3T1SW');
+    
+    // Second move: Player on edge 4, position (1, -3), rotation 5
+    // Expected: P2A2T1N (columns count right-to-left, rotation adjusted for perspective)
+    expect(moveNotations[1]).toBe('P2A2T1N');
   });
 });
