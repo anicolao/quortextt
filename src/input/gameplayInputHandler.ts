@@ -433,6 +433,13 @@ export class GameplayInputHandler {
       return;
     }
 
+    // If move list is open, check for move list item hover
+    if (state.ui.showMoveList) {
+      const moveListHover = this.checkMoveListItemHover(canvasX, canvasY);
+      store.dispatch(setHoveredElement(moveListHover));
+      return;
+    }
+
     // Check if we're in gameplay mode
     if (state.game.screen !== 'gameplay') return;
     if (state.game.currentTile == null) return;
@@ -677,7 +684,7 @@ export class GameplayInputHandler {
     const controlsY = dialogY + 60;
     const controlsHeight = 40;
     const contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 28;
+    const lineHeight = 32; // Match rendering
     const bottomMargin = 60; // Match rendering
     const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
     
@@ -705,5 +712,85 @@ export class GameplayInputHandler {
     }
     
     return true; // Click inside dialog but not on a move
+  }
+
+  private checkMoveListItemHover(canvasX: number, canvasY: number): HoveredElementType {
+    const state = store.getState();
+    const layout = this.renderer.getLayout();
+    
+    if (state.ui.moveListCorner === null) return null;
+    
+    const corner = state.ui.moveListCorner;
+    
+    // Calculate rotation based on corner
+    let rotation = 0;
+    if (corner === 1) rotation = 270;
+    else if (corner === 2) rotation = 180;
+    else if (corner === 3) rotation = 90;
+    
+    // Transform click coordinates to rotated space
+    const centerX = layout.canvasWidth / 2;
+    const centerY = layout.canvasHeight / 2;
+    
+    // Translate to origin
+    let x = canvasX - centerX;
+    let y = canvasY - centerY;
+    
+    // Rotate back
+    const rad = -(rotation * Math.PI / 180);
+    const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
+    const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
+    
+    // Translate back
+    x = rotatedX + centerX;
+    y = rotatedY + centerY;
+    
+    // Calculate dialog dimensions in rotated space
+    const rotatedWidth = (rotation === 90 || rotation === 270) ? layout.canvasHeight : layout.canvasWidth;
+    const rotatedHeight = (rotation === 90 || rotation === 270) ? layout.canvasWidth : layout.canvasHeight;
+    const dialogWidth = Math.min(300, rotatedWidth * 0.5);
+    const dialogHeight = Math.min(350, rotatedHeight * 0.4);
+    const margin = 20;
+    
+    const dialogX = -rotatedWidth / 2 + margin;
+    const dialogY = rotatedHeight / 2 - dialogHeight - margin;
+    
+    // Check if hover is inside dialog
+    if (x < dialogX || x > dialogX + dialogWidth || y < dialogY || y > dialogY + dialogHeight) {
+      return null;
+    }
+    
+    // Calculate move list area
+    const controlsY = dialogY + 60;
+    const controlsHeight = 40;
+    const contentY = controlsY + controlsHeight + 10;
+    const lineHeight = 32;
+    const bottomMargin = 60;
+    const maxLines = Math.floor((dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight);
+    
+    const moves = state.game.moveHistory;
+    const startIndex = Math.max(0, moves.length - maxLines);
+    
+    // Check which move line is being hovered
+    if (y >= contentY && y < contentY + (moves.length - startIndex) * lineHeight) {
+      const hoveredIndex = Math.floor((y - contentY) / lineHeight);
+      const moveNumber = startIndex + hoveredIndex + 1;
+      
+      if (moveNumber <= moves.length) {
+        // Return hover info for this move
+        return {
+          type: 'move-list-item',
+          moveNumber: moveNumber,
+          bounds: {
+            x: dialogX,
+            y: contentY + hoveredIndex * lineHeight - 14,
+            width: dialogWidth - 40,
+            height: lineHeight - 4,
+          },
+        };
+      }
+    }
+    
+    return null;
   }
 }
