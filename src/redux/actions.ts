@@ -44,6 +44,9 @@ export const TOGGLE_SETTINGS = "TOGGLE_SETTINGS";
 export const UPDATE_SETTINGS = "UPDATE_SETTINGS";
 export const SHOW_HELP = "SHOW_HELP";
 export const HIDE_HELP = "HIDE_HELP";
+export const SHOW_MOVE_LIST = "SHOW_MOVE_LIST";
+export const HIDE_MOVE_LIST = "HIDE_MOVE_LIST";
+export const NAVIGATE_MOVE_LIST = "NAVIGATE_MOVE_LIST";
 
 // Configuration action types
 export interface AddPlayerAction {
@@ -219,6 +222,24 @@ export interface HideHelpAction {
   type: typeof HIDE_HELP;
 }
 
+export interface ShowMoveListAction {
+  type: typeof SHOW_MOVE_LIST;
+  payload: {
+    corner: 0 | 1 | 2 | 3; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+  };
+}
+
+export interface HideMoveListAction {
+  type: typeof HIDE_MOVE_LIST;
+}
+
+export interface NavigateMoveListAction {
+  type: typeof NAVIGATE_MOVE_LIST;
+  payload: {
+    direction: "prev" | "next" | "first" | "last";
+  };
+}
+
 // Combined action type
 export type GameAction =
   | AddPlayerAction
@@ -250,7 +271,10 @@ export type UIAction =
   | ToggleSettingsAction
   | UpdateSettingsAction
   | ShowHelpAction
-  | HideHelpAction;
+  | HideHelpAction
+  | ShowMoveListAction
+  | HideMoveListAction
+  | NavigateMoveListAction;
 
 // Configuration action creators
 export const addPlayer = (color: string, edge: number): AddPlayerAction => ({
@@ -413,6 +437,22 @@ export const showHelp = (corner: 0 | 1 | 2 | 3): ShowHelpAction => ({
 
 export const hideHelp = (): HideHelpAction => ({
   type: HIDE_HELP,
+});
+
+export const showMoveList = (corner: 0 | 1 | 2 | 3): ShowMoveListAction => ({
+  type: SHOW_MOVE_LIST,
+  payload: { corner },
+});
+
+export const hideMoveList = (): HideMoveListAction => ({
+  type: HIDE_MOVE_LIST,
+});
+
+export const navigateMoveList = (
+  direction: "prev" | "next" | "first" | "last",
+): NavigateMoveListAction => ({
+  type: NAVIGATE_MOVE_LIST,
+  payload: { direction },
 });
 
 // AI debug action creators

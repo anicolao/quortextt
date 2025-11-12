@@ -1,7 +1,7 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, showHelp, hideHelp } from '../redux/actions';
+import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, showHelp, hideHelp, showMoveList, hideMoveList } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
@@ -25,6 +25,12 @@ export class GameplayInputHandler {
       return;
     }
 
+    // If move list dialog is open, close it on any click
+    if (state.ui.showMoveList) {
+      store.dispatch(hideMoveList());
+      return;
+    }
+
     // Check if we're in gameplay mode
     if (state.game.screen !== 'gameplay') return;
     if (state.game.currentTile == null) return;
@@ -33,6 +39,11 @@ export class GameplayInputHandler {
 
     // Check for help button clicks first
     if (this.checkHelpButtons(canvasX, canvasY, layout)) {
+      return;
+    }
+
+    // Check for move list button clicks
+    if (this.checkMoveListButtons(canvasX, canvasY, layout)) {
       return;
     }
 
@@ -557,5 +568,58 @@ export class GameplayInputHandler {
     }
 
     store.dispatch(setHoveredElement(hoveredElement));
+  }
+
+  private checkMoveListButtons(
+    x: number,
+    y: number,
+    layout: { canvasWidth: number; canvasHeight: number }
+  ): boolean {
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+    const doubleSpacing = 2 * (cornerSize + spacing);
+
+    const moveListButtons = [
+      { 
+        // Edge 0 (bottom): positioned after exit and help buttons
+        centerX: margin + cornerSize / 2 + doubleSpacing, 
+        centerY: layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+      },
+      {
+        // Edge 1 (right): positioned after exit and help buttons
+        centerX: layout.canvasWidth - margin - cornerSize / 2,
+        centerY: layout.canvasHeight - margin - cornerSize / 2 - doubleSpacing,
+        corner: 1,
+      },
+      {
+        // Edge 2 (top): positioned after exit and help buttons
+        centerX: layout.canvasWidth - margin - cornerSize / 2 - doubleSpacing,
+        centerY: margin + cornerSize / 2,
+        corner: 2,
+      },
+      {
+        // Edge 3 (left): positioned after exit and help buttons
+        centerX: margin + cornerSize / 2,
+        centerY: margin + cornerSize / 2 + doubleSpacing,
+        corner: 3,
+      },
+    ];
+
+    const radius = cornerSize / 2;
+
+    for (const button of moveListButtons) {
+      const dist = Math.sqrt(
+        Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
+      );
+      if (dist <= radius) {
+        // Move list button clicked
+        store.dispatch(showMoveList(button.corner as 0 | 1 | 2 | 3));
+        return true;
+      }
+    }
+
+    return false;
   }
 }

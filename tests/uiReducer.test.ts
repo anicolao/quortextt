@@ -12,6 +12,9 @@ import {
   updateSettings,
   showHelp,
   hideHelp,
+  showMoveList,
+  hideMoveList,
+  navigateMoveList,
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
@@ -234,6 +237,91 @@ describe('uiReducer', () => {
 
       expect(state.showHelp).toBe(false);
       expect(state.helpCorner).toBeNull();
+    });
+  });
+
+  describe('SHOW_MOVE_LIST', () => {
+    it('should show move list dialog at bottom-left corner', () => {
+      const state = uiReducer(initialUIState, showMoveList(0));
+
+      expect(state.showMoveList).toBe(true);
+      expect(state.moveListCorner).toBe(0);
+      expect(state.moveListIndex).toBe(-1);
+    });
+
+    it('should show move list dialog at all corners', () => {
+      for (let corner = 0; corner < 4; corner++) {
+        const state = uiReducer(initialUIState, showMoveList(corner as 0 | 1 | 2 | 3));
+        expect(state.showMoveList).toBe(true);
+        expect(state.moveListCorner).toBe(corner);
+      }
+    });
+  });
+
+  describe('HIDE_MOVE_LIST', () => {
+    it('should hide move list dialog', () => {
+      let state = uiReducer(initialUIState, showMoveList(1));
+      state = uiReducer(state, hideMoveList());
+
+      expect(state.showMoveList).toBe(false);
+      expect(state.moveListCorner).toBeNull();
+      expect(state.moveListIndex).toBe(-1);
+    });
+  });
+
+  describe('NAVIGATE_MOVE_LIST', () => {
+    it('should navigate to first move', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      state = uiReducer(state, navigateMoveList('first'));
+
+      expect(state.moveListIndex).toBe(0);
+    });
+
+    it('should navigate to last move (current state)', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      state = uiReducer(state, navigateMoveList('first'));
+      state = uiReducer(state, navigateMoveList('last'));
+
+      expect(state.moveListIndex).toBe(-1);
+    });
+
+    it('should navigate backwards through history', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      state = { ...state, moveListIndex: 5 };
+      state = uiReducer(state, navigateMoveList('prev'));
+
+      expect(state.moveListIndex).toBe(4);
+    });
+
+    it('should not go below 0 when navigating backwards', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      state = { ...state, moveListIndex: 0 };
+      state = uiReducer(state, navigateMoveList('prev'));
+
+      expect(state.moveListIndex).toBe(0);
+    });
+
+    it('should not go back when at current state (-1)', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      // moveListIndex is -1 by default
+      state = uiReducer(state, navigateMoveList('prev'));
+
+      expect(state.moveListIndex).toBe(-1);
+    });
+
+    it('should navigate forwards through history', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      state = { ...state, moveListIndex: 3 };
+      state = uiReducer(state, navigateMoveList('next'));
+
+      expect(state.moveListIndex).toBe(4);
+    });
+
+    it('should not go beyond current when at -1', () => {
+      let state = uiReducer(initialUIState, showMoveList(0));
+      state = uiReducer(state, navigateMoveList('next'));
+
+      expect(state.moveListIndex).toBe(-1);
     });
   });
 

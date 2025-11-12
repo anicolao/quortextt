@@ -134,6 +134,11 @@ export interface UIState {
   showHelp: boolean;
   helpCorner: 0 | 1 | 2 | 3 | null; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
   
+  // Move list dialog
+  showMoveList: boolean;
+  moveListCorner: 0 | 1 | 2 | 3 | null; // 0=bottom-left, 1=bottom-right, 2=top-right, 3=top-left
+  moveListIndex: number; // Current position in move history when navigating
+  
   // Saved game state (for back button on lobby)
   savedGameState: GameState | null;
 }
