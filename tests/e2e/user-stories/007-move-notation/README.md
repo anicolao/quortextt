@@ -38,8 +38,8 @@ Second player (P1 on edge 4) has placed a Type 1 tile at position (1, -3) with r
 
 ### 004-move-list-opened.png
 **The key screenshot** showing the move list dialog with the notation for both moves:
-- **Move 1**: P1A2T1NW (Player on edge 0, position A2, Type 1, NW orientation)
-- **Move 2**: P2A3T1NE (Player on edge 4, position A3, Type 1, NE orientation)
+- **Move 1**: P1A3T1SW (Player on edge 0, position A3, Type 1, SW orientation)
+- **Move 2**: P2A2T1N (Player on edge 4, position A2, Type 1, N orientation)
 
 ![Move List Opened](004-move-list-opened.png)
 
@@ -50,12 +50,17 @@ The move notation shows "P1" and "P2" based on the order players were added, not
 - Internal player P2 (edge 0) → displays as P1 in notation
 - Internal player P1 (edge 4) → displays as P2 in notation
 
+### Position Notation
+Columns are counted **right-to-left** from each player's perspective:
+- Player on edge 0, position (-3, 1): col 1 maps to **A3** (rightmost is A1, leftmost is A4)
+- Player on edge 4, position (1, -3): after rotation, maps to **A2**
+
 ### Rotation Notation Translation
 Both tiles were placed with **internal rotation 5**, which translates to different orientations in the notation:
-- Player on edge 0: rotation 5 → **NW** orientation in notation
-- Player on edge 4: rotation 5 → **NE** orientation in notation
+- Player on edge 0: rotation 5 → **SW** orientation in notation
+- Player on edge 4: rotation 5 → **N** orientation in notation
 
-This demonstrates that the notation system adjusts rotation values based on each player's perspective (edge position).
+This demonstrates that the notation system adjusts rotation values based on each player's perspective (edge position), using the formula `(rotation - playerEdge + 5) % 6`.
 
 ## Purpose
 
