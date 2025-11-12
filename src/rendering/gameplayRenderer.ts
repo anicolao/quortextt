@@ -717,26 +717,51 @@ export class GameplayRenderer {
   }
 
   private renderPlacedTiles(state: RootState): void {
+    // If viewing move history, reconstruct board at that point
+    const boardToRender = this.getBoardAtMoveIndex(state);
+
     // Multi-pass rendering for correct layering:
     // Pass 1: Draw all tile backgrounds
-    state.game.board.forEach((tile) => {
+    boardToRender.forEach((tile) => {
       this.renderTileBackground(tile, 1.0);
     });
 
     // Pass 2: Draw all grey channels (unfilled connections)
-    state.game.board.forEach((tile) => {
+    boardToRender.forEach((tile) => {
       this.renderGreyChannels(tile, state);
     });
 
     // Pass 3: Draw all filled flows
-    state.game.board.forEach((tile) => {
+    boardToRender.forEach((tile) => {
       this.renderFilledFlows(tile, state);
     });
 
     // Pass 4: Draw all animating flows
-    state.game.board.forEach((tile) => {
+    boardToRender.forEach((tile) => {
       this.renderAnimatingFlows(tile, state);
     });
+  }
+
+  private getBoardAtMoveIndex(state: RootState): Map<string, PlacedTile> {
+    // If showing current state or no moves yet, return actual board
+    if (state.ui.moveListIndex === -1 || state.game.moveHistory.length === 0) {
+      return state.game.board;
+    }
+
+    // Reconstruct board up to the selected move index
+    const historicalBoard = new Map<string, PlacedTile>();
+    const targetIndex = Math.min(
+      state.ui.moveListIndex,
+      state.game.moveHistory.length,
+    );
+
+    for (let i = 0; i < targetIndex; i++) {
+      const move = state.game.moveHistory[i];
+      const key = positionToKey(move.tile.position);
+      historicalBoard.set(key, move.tile);
+    }
+
+    return historicalBoard;
   }
 
   private renderLastPlacedTileHighlight(state: RootState): void {
@@ -752,6 +777,14 @@ export class GameplayRenderer {
 
     // Don't show highlight if there are no moves in history
     if (state.game.moveHistory.length === 0) {
+      return;
+    }
+
+    // If viewing history, don't show the highlight
+    if (
+      state.ui.moveListIndex !== -1 &&
+      state.ui.moveListIndex < state.game.moveHistory.length
+    ) {
       return;
     }
 
@@ -2100,8 +2133,8 @@ export class GameplayRenderer {
     // Content area
     const contentX = dialogX + 20;
     let contentY = controlsY + controlsHeight + 10;
-    const lineHeight = 32; // Increased from 28 to accommodate tile preview
-    const bottomMargin = 60; // Space for pagination buttons
+    const lineHeight = 38; // Increased from 32 for better spacing
+    const bottomMargin = 85; // Increased space for navigation buttons
     const maxLines = Math.floor(
       (dialogHeight - (contentY - dialogY) - bottomMargin) / lineHeight,
     );
@@ -2134,13 +2167,12 @@ export class GameplayRenderer {
           const isFuture = moveNumber > currentMoveIndex;
 
           // Draw background highlight for selected move
-          // Text baseline is at y, so highlight should go from y - textHeight to y + descent
           if (isSelected) {
             this.ctx.fillStyle = "rgba(76, 175, 80, 0.3)";
-            // For 16px font, text sits about 12px above baseline and 4px below
+            // For 16px font with line height 38, align highlight with text
             this.ctx.fillRect(
               contentX - 5,
-              y - 14,
+              y - 16,
               dialogWidth - 40,
               lineHeight - 4,
             );
@@ -2164,17 +2196,17 @@ export class GameplayRenderer {
           this.ctx.fillText(notation, contentX + numberColumnWidth + 5, y);
 
           // Draw tile preview if we have the move data
-          // Center tile vertically with text (text baseline is at y)
+          // Center tile vertically in the line
           if (move) {
-            const previewSize = 20; // Slightly larger for better visibility
+            const previewSize = 22; // Slightly larger for better visibility
             const previewX =
               contentX +
               numberColumnWidth +
               5 +
               this.ctx.measureText(notation).width +
               10;
-            // Center tile on text baseline (text is ~12px above baseline for 16px font)
-            const previewY = y - previewSize / 2 - 6; // Adjusted to center with text
+            // Center tile in the line (baseline is at y, center preview vertically in lineHeight)
+            const previewY = y - lineHeight / 2;
             this.renderSmallTile(
               move.tile,
               previewX + previewSize / 2,
@@ -2189,7 +2221,7 @@ export class GameplayRenderer {
         this.ctx.font = "12px sans-serif";
         this.ctx.textAlign = "center";
         this.ctx.fillStyle = "#888888";
-        const paginationY = dialogY + dialogHeight - 45;
+        const paginationY = dialogY + dialogHeight - 70;
         this.ctx.fillText(
           `Showing last ${maxLines} of ${moveNotations.length} moves`,
           dialogX + dialogWidth / 2,
@@ -2198,13 +2230,65 @@ export class GameplayRenderer {
       }
     }
 
+    // Navigation buttons at bottom
+    const buttonY = dialogY + dialogHeight - 55;
+    const buttonWidth = 40;
+    const buttonHeight = 30;
+    const buttonSpacing = 10;
+    const totalWidth = 4 * buttonWidth + 3 * buttonSpacing;
+    const buttonsX = dialogX + dialogWidth / 2 - totalWidth / 2;
+
+    const currentMoveIndex =
+      state.ui.moveListIndex === -1 ? moves.length : state.ui.moveListIndex;
+    const atFirst = currentMoveIndex === 0;
+    const atLast = currentMoveIndex === moves.length;
+
+    // Draw buttons: << < > >>
+    const buttons = [
+      { label: "<<", x: buttonsX, disabled: atFirst },
+      {
+        label: "<",
+        x: buttonsX + buttonWidth + buttonSpacing,
+        disabled: atFirst,
+      },
+      {
+        label: ">",
+        x: buttonsX + 2 * (buttonWidth + buttonSpacing),
+        disabled: atLast,
+      },
+      {
+        label: ">>",
+        x: buttonsX + 3 * (buttonWidth + buttonSpacing),
+        disabled: atLast,
+      },
+    ];
+
+    buttons.forEach((button) => {
+      this.ctx.fillStyle = button.disabled ? "#444444" : "#4CAF50";
+      this.ctx.fillRect(button.x, buttonY, buttonWidth, buttonHeight);
+      this.ctx.strokeStyle = button.disabled ? "#666666" : "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(button.x, buttonY, buttonWidth, buttonHeight);
+
+      this.ctx.fillStyle = button.disabled ? "#666666" : "#ffffff";
+      this.ctx.font = "bold 14px sans-serif";
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillText(
+        button.label,
+        button.x + buttonWidth / 2,
+        buttonY + buttonHeight / 2,
+      );
+    });
+
     // Instructions at bottom
-    this.ctx.font = "14px sans-serif";
+    this.ctx.font = "12px sans-serif";
     this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "top";
     this.ctx.fillStyle = "#cccccc";
-    const instructY = dialogY + dialogHeight - 25;
+    const instructY = dialogY + dialogHeight - 20;
     this.ctx.fillText(
-      "Click move to view, tap outside to dismiss",
+      "Click move or use buttons to navigate",
       dialogX + dialogWidth / 2,
       instructY,
     );
