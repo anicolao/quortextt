@@ -2,16 +2,22 @@
 
 ## 1. Executive Summary
 
-This document outlines a comprehensive architecture for integrating Quortex (Flows) as a Discord Application, enabling players to play matches directly within Discord servers through interactive messages, slash commands, and embedded game views.
+This document outlines the architecture for integrating Quortex (Flows) as a Discord Activity, enabling players to play matches directly within a dedicated Discord server using an embedded web application.
 
 **Key Features:**
-- Play complete Quortex games within Discord channels
+- Full Quortex web game embedded in Discord via Discord Activities
 - Support for 2-6 players per game (individual and team modes)
-- Interactive tile placement using Discord's message components
-- Real-time game state visualization using Discord embeds and images
-- Turn-based gameplay with Discord notifications
+- Real-time multiplayer using WebSocket connections
+- Complete web UI reused from existing implementation
 - Persistent game state across Discord restarts
 - Spectator mode for other server members
+- Single-server deployment on dedicated Quortex Discord server
+
+**Implementation Approach:**
+- **Discord Activities (Embedded Web App)** - Full game runs in iframe within Discord
+- **No slash commands** - All interaction through the embedded web UI
+- **WebSocket-based** - Real-time game state synchronization
+- **Dedicated server** - Bot only operates on the Quortex Discord server
 
 **Related Documents:**
 - [RULES.md](../RULES.md) - Complete game rules
@@ -20,26 +26,26 @@ This document outlines a comprehensive architecture for integrating Quortex (Flo
 
 ## 2. Discord Platform Overview
 
-### 2.1 Discord Application Types
+### 2.1 Discord Activities
 
-Discord offers several integration approaches:
+Discord Activities allow embedding full web applications directly into Discord using iframes. This provides:
 
-1. **Discord Bot** - Automated user that can respond to commands and events
-2. **Slash Commands** - First-class command interface with autocomplete
-3. **Message Components** - Interactive buttons and select menus
-4. **Embeds** - Rich formatted messages with images and fields
-5. **Activities (Beta)** - Embedded web applications using iframe
-
-**Recommended Approach:** Hybrid Bot + Slash Commands + Message Components
+- **Full Web UI** - Complete control over interface and interactions
+- **Rich Graphics** - Canvas-based rendering with animations
+- **Real-time Updates** - WebSocket for instant game state sync
+- **Native Feel** - Integrated into Discord's UI seamlessly
+- **Reuse Existing Code** - Leverage the complete existing Vite app
 
 ### 2.2 Technology Stack
 
-- **Discord Bot Framework:** discord.js (Node.js) or discord.py (Python)
-- **Backend:** Node.js/TypeScript (matches existing codebase)
-- **Database:** PostgreSQL or MongoDB (game state persistence)
-- **Image Generation:** Canvas API or Sharp (board visualization)
-- **Hosting:** Cloud platform (AWS, Google Cloud, Heroku, Railway)
+- **Discord Bot Framework:** discord.js (Node.js/TypeScript)
+- **Runtime:** Node.js or Bun (single Linux server)
+- **Database:** MongoDB (game state persistence)
+- **Web Framework:** Vite (existing app reused)
+- **Real-time:** WebSocket (Socket.io or ws library)
+- **Hosting:** Single Linux box (dedicated server)
 - **Game Logic:** Reuse existing TypeScript game core from `/src/game/`
+- **Frontend:** Existing Vite app from repository root
 
 ## 3. Architecture Overview
 
@@ -47,41 +53,51 @@ Discord offers several integration approaches:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Discord Platform                        │
-│  ┌────────────┐  ┌──────────────┐  ┌──────────────────┐    │
-│  │   Users    │  │   Channels   │  │  Message Events  │    │
-│  └────────────┘  └──────────────┘  └──────────────────┘    │
+│                   Discord Platform                           │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │         Discord Activity (Embedded iframe)         │     │
+│  │                                                    │     │
+│  │    ┌──────────────────────────────────────┐       │     │
+│  │    │    Quortex Vite App (Client-side)   │       │     │
+│  │    │  • Canvas rendering                  │       │     │
+│  │    │  • Input handling                    │       │     │
+│  │    │  • Animation system                  │       │     │
+│  │    │  • Redux state (local)               │       │     │
+│  │    │  • WebSocket client                  │       │     │
+│  │    └──────────────────────────────────────┘       │     │
+│  │                      ▲                             │     │
+│  │                      │ WebSocket                   │     │
+│  │                      ▼                             │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                              │
+│  Authentication via Discord SDK                             │
 └─────────────────────────────────────────────────────────────┘
                             ▲
-                            │ Discord API (Gateway + REST)
+                            │ HTTPS + WebSocket
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Discord Bot Backend                       │
+│              Single Linux Server (Node.js/Bun)              │
+│                                                              │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │              Command Handler                         │   │
-│  │  • /quortex new       • /quortex join               │   │
-│  │  • /quortex move      • /quortex status             │   │
-│  │  • /quortex leave     • /quortex help               │   │
+│  │              Discord Bot Process                     │   │
+│  │  • Handles Discord events                           │   │
+│  │  • Manages Activity lifecycle                       │   │
+│  │  • User authentication/authorization                │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                              │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │              Interaction Handler                     │   │
-│  │  • Button clicks      • Select menus                │   │
-│  │  • Modal submissions  • Autocomplete                │   │
+│  │              Web Server (Express/Fastify)            │   │
+│  │  • Serves Vite app (static files)                   │   │
+│  │  • WebSocket server (Socket.io/ws)                  │   │
+│  │  • Activity authentication endpoint                 │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                              │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              Game State Manager                      │   │
-│  │  • Active games map   • Player sessions             │   │
-│  │  • Turn management    • Game lifecycle              │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │              Rendering Engine                        │   │
-│  │  • Board image generation (Canvas)                  │   │
-│  │  • Tile visualization                               │   │
-│  │  • Flow path rendering                              │   │
-│  │  • Embed formatting                                 │   │
+│  │  • Active games in memory                           │   │
+│  │  • Player sessions (userId → gameId)                │   │
+│  │  • Real-time state sync via WebSocket               │   │
+│  │  • Game lifecycle management                        │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                             ▲
@@ -98,6 +114,34 @@ Discord offers several integration approaches:
 │  └──────────┘  └──────────┘                               │
 └─────────────────────────────────────────────────────────────┘
                             ▲
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    MongoDB Database                          │
+│  • Game states (active and completed)                       │
+│  • Player data and statistics                               │
+│  • Move history and game replays                            │
+│  • Server configuration                                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Data Flow
+
+**Activity Launch Flow:**
+1. User clicks "Play Quortex" in Discord Activity shelf
+2. Discord loads iframe with Quortex app URL
+3. App authenticates with Discord SDK
+4. Backend validates Discord user token
+5. WebSocket connection established
+6. User joins game lobby or creates new game
+
+**Game Play Flow:**
+1. Client sends move via WebSocket to server
+2. Server validates move using game logic
+3. Server updates game state in MongoDB
+4. Server broadcasts state update to all connected players
+5. Clients receive update and render new board state
+6. All players see synchronized game state in real-time
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -137,123 +181,151 @@ Discord offers several integration approaches:
 7. Bot: Posts updated board image
 8. Bot: Either declares winner or starts next player's turn
 
-## 4. Command Interface Design
+## 4. Discord Activity Integration
 
-### 4.1 Slash Commands
+### 4.1 Activity Registration
 
-#### `/quortex new [players]`
-Create a new game lobby.
+**Discord Developer Portal Setup:**
+1. Create Discord Application at https://discord.com/developers
+2. Enable "Activities" in the application settings
+3. Configure Activity settings:
+   - **Name:** Quortex
+   - **Description:** Strategic tile-placement game for 2-6 players
+   - **Activity URL:** `https://your-server.com/activity`
+   - **Supported Platforms:** Desktop (primary), Mobile (future)
+   - **Orientation:** Landscape preferred
+   - **Age Rating:** Everyone
 
-**Parameters:**
-- `players` (integer, 2-6, optional): Number of players (default: 2)
+**OAuth2 Scopes Required:**
+- `activities.read` - Read activity data
+- `activities.write` - Update activity state
+- `identify` - Get Discord user info
+- `guilds` - Verify server membership
 
-**Response:** Embed with:
-- Game ID
-- Creator
-- Player count
-- Status: "Waiting for players"
-- Join button
+### 4.2 Authentication Flow
 
-**Example:**
+Discord Activities use OAuth2 for authentication:
+
+```typescript
+// Client-side (in embedded iframe)
+import { DiscordSDK } from '@discord/embedded-app-sdk';
+
+const discordSdk = new DiscordSDK(CLIENT_ID);
+
+async function authenticate() {
+  // Wait for Discord SDK ready
+  await discordSdk.ready();
+  
+  // Authorize with Discord
+  const { code } = await discordSdk.commands.authorize({
+    client_id: CLIENT_ID,
+    response_type: 'code',
+    state: '',
+    prompt: 'none',
+    scope: ['identify', 'guilds', 'activities.read', 'activities.write'],
+  });
+  
+  // Send code to backend for validation
+  const response = await fetch('/api/auth/discord', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  
+  const { token, userId, username } = await response.json();
+  
+  // Store auth token for WebSocket
+  return { token, userId, username };
+}
 ```
-🎮 Quortex Game #1234
-Creator: @alice
-Players: 1/3
 
-Waiting for players to join...
+```typescript
+// Server-side (Node.js/Bun)
+import { verifyDiscordCode } from './discord-auth';
 
-[Join Game] [Cancel]
+app.post('/api/auth/discord', async (req, res) => {
+  const { code } = req.body;
+  
+  // Exchange code for access token
+  const userData = await verifyDiscordCode(code);
+  
+  // Verify user is in Quortex Discord server
+  if (!userData.guilds.includes(QUORTEX_SERVER_ID)) {
+    return res.status(403).json({ error: 'Must join Quortex Discord server' });
+  }
+  
+  // Create session token
+  const token = createSessionToken(userData.id);
+  
+  res.json({
+    token,
+    userId: userData.id,
+    username: userData.username,
+  });
+});
 ```
 
-#### `/quortex join [game-id]`
-Join an existing game lobby.
+### 4.3 Embedded Web App
 
-**Parameters:**
-- `game-id` (string, optional): Game ID (defaults to most recent in channel)
+The Discord Activity loads the existing Vite app with minimal modifications:
 
-**Response:** Updates lobby embed, adds player to list
+**App Entry Point (`src/main.ts`):**
+```typescript
+import { DiscordSDK } from '@discord/embedded-app-sdk';
+import { setupWebSocket } from './discord/websocket';
+import { store } from './redux/store';
+import { setDiscordUser } from './redux/actions';
 
-#### `/quortex leave [game-id]`
-Leave a game lobby or resign from active game.
+// Initialize Discord SDK
+const discordSdk = new DiscordSDK(import.meta.env.VITE_DISCORD_CLIENT_ID);
 
-**Parameters:**
-- `game-id` (string, optional): Game ID
+async function initDiscordActivity() {
+  try {
+    // Authenticate with Discord
+    await discordSdk.ready();
+    const auth = await authenticate();
+    
+    // Set up WebSocket for multiplayer
+    const ws = await setupWebSocket(auth.token);
+    
+    // Update Redux state with Discord user
+    store.dispatch(setDiscordUser({
+      id: auth.userId,
+      username: auth.username,
+      isDiscordActivity: true,
+    }));
+    
+    // Start the existing game
+    initializeGame();
+  } catch (error) {
+    console.error('Failed to initialize Discord Activity:', error);
+    showErrorScreen('Failed to connect to Discord');
+  }
+}
 
-**Response:** Removes player from game, potentially ends game
+// Check if running in Discord
+if (window.location.search.includes('frame_id')) {
+  initDiscordActivity();
+} else {
+  // Running standalone (for development/testing)
+  initializeGame();
+}
+```
 
-#### `/quortex move`
-Take a turn in your active game (alternative to buttons).
+### 4.4 No UI Changes Required
 
-**Response:** Opens a modal with:
-- Tile rotation selector
-- Position selector (autocomplete)
-- Confirm/Cancel
+The existing Vite app already has all UI components needed:
+- ✅ Lobby screen (player configuration)
+- ✅ Seating phase (edge selection)
+- ✅ Gameplay screen (tile placement, rotation, flows)
+- ✅ Game over screen (victory animation)
+- ✅ All rendering via Canvas
+- ✅ All input handling (touch and mouse)
 
-#### `/quortex status [game-id]`
-View current game state.
-
-**Parameters:**
-- `game-id` (string, optional): Game ID
-
-**Response:** Embed showing:
-- Current player
-- Board image
-- Player list and edges
-- Turn count
-- Move history (last 5)
-
-#### `/quortex help [topic]`
-Display help information.
-
-**Parameters:**
-- `topic` (string, optional): Specific help topic
-
-**Topics:**
-- `rules` - Basic game rules
-- `commands` - Command reference
-- `controls` - How to play via Discord
-- `tips` - Strategy tips
-
-#### `/quortex settings [option] [value]`
-Configure bot behavior (admin only).
-
-**Options:**
-- `channel` - Set default game channel
-- `notifications` - Turn notification style (mention/reply/silent)
-- `spectators` - Allow/disallow spectators
-- `timeout` - Turn timeout duration (minutes)
-
-### 4.2 Message Components
-
-#### Lobby Phase Components
-
-**Join Game Button:**
-- Label: "Join Game"
-- Style: Primary (blue)
-- Action: Add user to player list
-
-**Start Game Button:**
-- Label: "Start Game"
-- Style: Success (green)
-- Disabled until: Minimum players reached
-- Action: Begin seating phase
-
-**Cancel Game Button:**
-- Label: "Cancel"
-- Style: Danger (red)
-- Action: Delete game
-
-#### Seating Phase Components
-
-**Edge Selection:**
-- Component: Select menu
-- Options: Available edges (0-5, colored)
-- Label: "Choose your edge"
-- Action: Assign player to edge
-
-#### Gameplay Phase Components
-
-**Rotation Buttons:**
+**Only additions needed:**
+1. Discord SDK initialization
+2. WebSocket client for multiplayer sync
+3. Discord user authentication
 - Buttons: "↶ Rotate CCW" and "Rotate CW ↷"
 - Style: Secondary (gray)
 - Action: Rotate current tile orientation
@@ -280,18 +352,166 @@ Configure bot behavior (admin only).
 - Style: Secondary (gray)
 - Action: Toggle flow visualization on board image
 
-## 5. Game State Management
+## 5. WebSocket Communication
 
-### 5.1 State Structure
+### 5.1 WebSocket Protocol
+
+All real-time game state synchronization happens via WebSocket:
+
+**Client → Server Messages:**
+```typescript
+// Join game lobby
+{
+  type: 'JOIN_LOBBY',
+  gameId: string | null,  // null = create new game
+  playerCount?: number    // for new games
+}
+
+// Select edge in seating phase
+{
+  type: 'SELECT_EDGE',
+  gameId: string,
+  edge: number  // 0-5
+}
+
+// Place tile
+{
+  type: 'PLACE_TILE',
+  gameId: string,
+  position: { row: number, col: number },
+  rotation: number  // 0-5
+}
+
+// Leave game
+{
+  type: 'LEAVE_GAME',
+  gameId: string
+}
+```
+
+**Server → Client Messages:**
+```typescript
+// Game state update (broadcast to all players)
+{
+  type: 'GAME_STATE',
+  gameId: string,
+  state: GameState,  // Full Redux-compatible state
+  timestamp: number
+}
+
+// Error message
+{
+  type: 'ERROR',
+  message: string,
+  code: 'INVALID_MOVE' | 'GAME_NOT_FOUND' | 'NOT_YOUR_TURN' | ...
+}
+
+// Player joined/left
+{
+  type: 'PLAYER_UPDATE',
+  gameId: string,
+  players: Player[]
+}
+```
+
+### 5.2 WebSocket Server Implementation
+
+```typescript
+// server/websocket.ts
+import { WebSocketServer } from 'ws';
+import { GameStateManager } from './game-manager';
+import { validateDiscordToken } from './auth';
+
+const wss = new WebSocketServer({ port: 8080 });
+const gameManager = new GameStateManager();
+
+wss.on('connection', async (ws, req) => {
+  let userId: string | null = null;
+  let currentGameId: string | null = null;
+  
+  ws.on('message', async (data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      
+      // Authenticate on first message
+      if (!userId && message.token) {
+        userId = await validateDiscordToken(message.token);
+        if (!userId) {
+          ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid token' }));
+          ws.close();
+          return;
+        }
+      }
+      
+      // Handle game actions
+      switch (message.type) {
+        case 'JOIN_LOBBY':
+          const gameId = message.gameId || await gameManager.createGame(userId, message.playerCount);
+          await gameManager.addPlayer(gameId, userId);
+          currentGameId = gameId;
+          broadcastGameState(gameId);
+          break;
+          
+        case 'SELECT_EDGE':
+          await gameManager.selectEdge(message.gameId, userId, message.edge);
+          broadcastGameState(message.gameId);
+          break;
+          
+        case 'PLACE_TILE':
+          await gameManager.placeTile(
+            message.gameId, 
+            userId, 
+            message.position, 
+            message.rotation
+          );
+          broadcastGameState(message.gameId);
+          break;
+          
+        case 'LEAVE_GAME':
+          await gameManager.removePlayer(message.gameId, userId);
+          broadcastGameState(message.gameId);
+          break;
+      }
+    } catch (error) {
+      ws.send(JSON.stringify({ type: 'ERROR', message: error.message }));
+    }
+  });
+  
+  ws.on('close', () => {
+    if (currentGameId && userId) {
+      gameManager.removePlayer(currentGameId, userId);
+    }
+  });
+});
+
+function broadcastGameState(gameId: string) {
+  const state = gameManager.getGameState(gameId);
+  const message = JSON.stringify({
+    type: 'GAME_STATE',
+    gameId,
+    state,
+    timestamp: Date.now()
+  });
+  
+  // Send to all connected clients in this game
+  wss.clients.forEach(client => {
+    if (client.gameId === gameId && client.readyState === 1) {
+      client.send(message);
+    }
+  });
+}
+```
+
+## 6. Game State Management
+
+### 6.1 State Structure
 
 ```typescript
 interface DiscordGameState {
-  // Discord-specific metadata
+  // Game identification
   gameId: string;              // Unique game identifier
-  serverId: string;            // Discord server (guild) ID
-  channelId: string;           // Channel where game is played
+  serverId: string;            // Discord server (guild) ID - always QUORTEX_SERVER_ID
   creatorId: string;           // Discord user ID of creator
-  messageId: string;           // ID of main game message
   
   // Game phase
   phase: 'lobby' | 'seating' | 'playing' | 'finished';
@@ -315,128 +535,136 @@ interface DiscordGameState {
   moveHistory: DiscordMove[];
   
   // Settings
-  turnTimeoutMinutes: number;
-  notifyOnTurn: boolean;
   allowSpectators: boolean;
   
   // Timestamps
-  createdAt: number;
-  startedAt: number | null;
-  lastMoveAt: number;
-  expiresAt: number | null;
+  createdAt: Date;
+  startedAt: Date | null;
+  lastMoveAt: Date;
 }
 
 interface DiscordPlayer extends Player {
   discordUserId: string;       // Discord user ID
   discordUsername: string;     // Discord username (for display)
-  isBot: boolean;              // AI player flag
-  hasTimedOut: boolean;        // Turn timeout flag
+  isAI: boolean;               // AI player flag (future)
 }
 
 interface DiscordMove extends Move {
   discordUserId: string;
-  duration: number;            // Seconds taken for move
-}
-
-// Temporary interaction state (not persisted)
-interface PlayerInteractionState {
-  userId: string;
-  gameId: string;
-  currentRotation: Rotation;
-  selectedPosition: HexPosition | null;
-  lastInteractionTime: number;
+  duration: number;            // Milliseconds taken for move
+  timestamp: Date;
 }
 ```
 
-### 5.2 State Persistence
+### 6.2 MongoDB Schema
 
-**Database Schema (PostgreSQL):**
+**Database:** `quortex`
 
-```sql
--- Games table
-CREATE TABLE games (
-  game_id VARCHAR(32) PRIMARY KEY,
-  server_id VARCHAR(32) NOT NULL,
-  channel_id VARCHAR(32) NOT NULL,
-  creator_id VARCHAR(32) NOT NULL,
-  message_id VARCHAR(32),
-  phase VARCHAR(20) NOT NULL,
-  game_state JSONB NOT NULL,        -- Serialized game state
-  created_at TIMESTAMP NOT NULL,
-  started_at TIMESTAMP,
-  last_move_at TIMESTAMP,
-  expires_at TIMESTAMP,
-  INDEX idx_server_channel (server_id, channel_id),
-  INDEX idx_expires_at (expires_at)
-);
+**Collections:**
 
--- Players in games
-CREATE TABLE game_players (
-  game_id VARCHAR(32) NOT NULL,
-  discord_user_id VARCHAR(32) NOT NULL,
-  player_index INTEGER NOT NULL,
-  edge_position INTEGER,
-  is_ai BOOLEAN DEFAULT FALSE,
-  joined_at TIMESTAMP NOT NULL,
-  PRIMARY KEY (game_id, discord_user_id),
-  FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE CASCADE
-);
+```typescript
+// games collection
+{
+  _id: ObjectId,
+  gameId: string,              // UUID
+  serverId: string,            // Always the Quortex server ID
+  creatorId: string,           // Discord user ID
+  phase: 'lobby' | 'seating' | 'playing' | 'finished',
+  players: [{
+    discordUserId: string,
+    discordUsername: string,
+    color: string,
+    edge: number,
+    isAI: boolean
+  }],
+  teams: [{
+    player1Id: string,
+    player2Id: string
+  }],
+  currentPlayerIndex: number,
+  board: {                     // Serialized as object
+    "0,0": { type: 0, rotation: 2 },
+    "1,-1": { type: 1, rotation: 0 },
+    // ...
+  },
+  availableTiles: [0, 1, 2, 0, 3, ...],  // Array of TileType
+  currentTile: number | null,
+  flows: {                     // Serialized as object
+    "player1": ["0,0", "1,0", ...],
+    "player2": ["0,1", "-1,1", ...],
+  },
+  winner: string | null,
+  winType: string | null,
+  allowSpectators: boolean,
+  createdAt: ISODate,
+  startedAt: ISODate | null,
+  lastMoveAt: ISODate,
+}
 
--- Move history
-CREATE TABLE moves (
-  move_id SERIAL PRIMARY KEY,
-  game_id VARCHAR(32) NOT NULL,
-  discord_user_id VARCHAR(32) NOT NULL,
-  move_number INTEGER NOT NULL,
-  tile_type INTEGER NOT NULL,
-  tile_rotation INTEGER NOT NULL,
-  position_row INTEGER NOT NULL,
-  position_col INTEGER NOT NULL,
-  duration INTEGER,                 -- Seconds
-  created_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE CASCADE,
-  INDEX idx_game_moves (game_id, move_number)
-);
+// moves collection
+{
+  _id: ObjectId,
+  gameId: string,
+  discordUserId: string,
+  moveNumber: number,
+  tileType: number,
+  tileRotation: number,
+  positionRow: number,
+  positionCol: number,
+  duration: number,            // Milliseconds
+  timestamp: ISODate
+}
 
--- Server settings
-CREATE TABLE server_settings (
-  server_id VARCHAR(32) PRIMARY KEY,
-  default_channel_id VARCHAR(32),
-  turn_timeout_minutes INTEGER DEFAULT 30,
-  notify_on_turn BOOLEAN DEFAULT TRUE,
-  allow_spectators BOOLEAN DEFAULT TRUE,
-  updated_at TIMESTAMP NOT NULL
-);
+// player_stats collection
+{
+  _id: ObjectId,
+  discordUserId: string,
+  discordUsername: string,
+  gamesPlayed: number,
+  gamesWon: number,
+  totalMoves: number,
+  avgMoveTime: number,         // Milliseconds
+  lastPlayedAt: ISODate
+}
 
--- Statistics
-CREATE TABLE player_stats (
-  discord_user_id VARCHAR(32) PRIMARY KEY,
-  games_played INTEGER DEFAULT 0,
-  games_won INTEGER DEFAULT 0,
-  total_moves INTEGER DEFAULT 0,
-  avg_move_time FLOAT DEFAULT 0,
-  last_played_at TIMESTAMP
-);
+// server_config collection (single document)
+{
+  _id: ObjectId,
+  serverId: string,            // The Quortex Discord server ID
+  allowSpectators: boolean,
+  maxActiveGames: number,
+  updatedAt: ISODate
+}
 ```
 
-**Caching Strategy:**
-- Keep active games in memory (Redis or in-process Map)
-- Persist to database on each move
-- Load from database on bot restart
-- Clean up expired games (older than 24 hours of inactivity)
+**Indexes:**
+```javascript
+// games collection
+db.games.createIndex({ gameId: 1 }, { unique: true });
+db.games.createIndex({ phase: 1 });
+db.games.createIndex({ lastMoveAt: 1 });
 
-### 5.3 State Synchronization
+// moves collection
+db.moves.createIndex({ gameId: 1, moveNumber: 1 });
+db.moves.createIndex({ gameId: 1 });
+
+// player_stats collection
+db.player_stats.createIndex({ discordUserId: 1 }, { unique: true });
+```
+
+### 6.3 State Synchronization
 
 **Concurrency Handling:**
-- Use message interaction IDs to prevent duplicate actions
+- WebSocket message queue per game
 - Lock game state during move processing
-- Queue interactions if move in progress
-- Timeout locks after 5 seconds
+- Broadcast updates to all connected players
+- MongoDB atomic operations for state updates
 
 **Example Lock Implementation:**
 ```typescript
 class GameStateManager {
   private locks: Map<string, Promise<void>> = new Map();
+  private games: Map<string, DiscordGameState> = new Map();
   
   async withLock<T>(gameId: string, fn: () => Promise<T>): Promise<T> {
     // Wait for existing lock
@@ -459,1151 +687,691 @@ class GameStateManager {
       release!();
     }
   }
+  
+  async placeTile(gameId: string, userId: string, position: HexPosition, rotation: Rotation) {
+    return this.withLock(gameId, async () => {
+      const game = await this.getGame(gameId);
+      
+      // Validate it's player's turn
+      if (game.players[game.currentPlayerIndex].discordUserId !== userId) {
+        throw new Error('Not your turn');
+      }
+      
+      // Use existing game logic
+      const move = { type: game.currentTile!, rotation, position };
+      if (!isLegalMove(game.board, move, game.players, game.teams)) {
+        throw new Error('Illegal move');
+      }
+      
+      // Apply move
+      game.board.set(`${position.row},${position.col}`, {
+        type: game.currentTile!,
+        rotation,
+        position
+      });
+      
+      // Update flows
+      game.flows = calculateFlows(game.board, game.players);
+      
+      // Check victory
+      const victory = checkVictory(game.board, game.flows, game.players, game.teams);
+      if (victory.winner) {
+        game.winner = victory.winner;
+        game.winType = victory.winType;
+        game.phase = 'finished';
+      } else {
+        // Next player
+        game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+        game.currentTile = game.availableTiles.pop() || null;
+      }
+      
+      game.lastMoveAt = new Date();
+      
+      // Save to MongoDB
+      await this.saveGame(game);
+      
+      return game;
+    });
+  }
 }
 ```
 
-## 6. Rendering and Visualization
+## 7. Client-Side Integration
 
-### 6.1 Board Image Generation
+### 7.1 No Server-Side Rendering Needed
 
-**Approach:** Server-side rendering using Canvas API
+Unlike a slash command approach, Discord Activities use the **full embedded web app**. All rendering happens client-side using the existing Canvas-based renderer.
 
-**Image Specifications:**
-- Format: PNG
-- Size: 800x800 pixels (fits Discord embed limit)
-- Background: Light gray (table surface)
-- Board: Hexagonal grid with colored edges
-- Tiles: Rendered with Bézier curve flow paths
-- Flows: Color-coded paths in player colors
-- Current tile: Highlighted preview at selected position
+**Advantages:**
+- ✅ Reuse 100% of existing rendering code
+- ✅ All animations work out of the box
+- ✅ Touch and mouse input already implemented
+- ✅ No image generation or upload overhead
+- ✅ Real-time updates without polling
 
-**Canvas Rendering Stack:**
+### 7.2 Minimal Code Changes to Existing App
+
+The existing Vite app only needs:
+
+1. **Discord SDK integration** (already shown in section 4.3)
+2. **WebSocket client** for multiplayer sync
+3. **Conditional initialization** (Discord vs standalone)
+
+**WebSocket Client (`src/discord/websocket.ts`):**
 ```typescript
-class DiscordBoardRenderer {
-  private canvas: Canvas;
-  private ctx: CanvasRenderingContext2D;
+import { store } from '../redux/store';
+import { setGameState, addPlayer, removePlayer } from '../redux/actions';
+
+export class GameWebSocket {
+  private ws: WebSocket;
+  private reconnectAttempts = 0;
   
-  // Reuse layout calculations from existing codebase
-  private layout: HexLayout;
-  
-  constructor(boardRadius: number = 3) {
-    this.canvas = createCanvas(800, 800);
-    this.ctx = this.canvas.getContext('2d');
-    this.layout = calculateLayout(this.canvas.width, this.canvas.height, boardRadius);
+  constructor(private token: string) {
+    this.connect();
   }
   
-  // Render complete board state
-  async renderBoard(
-    board: Map<string, PlacedTile>,
-    flows: Map<string, Set<string>>,
-    players: Player[],
-    currentTile?: { type: TileType; rotation: Rotation; position: HexPosition }
-  ): Promise<Buffer> {
-    // Clear canvas
-    this.ctx.fillStyle = '#F0F0F0';
-    this.ctx.fillRect(0, 0, 800, 800);
+  private connect() {
+    this.ws = new WebSocket('wss://your-server.com/ws');
     
-    // Draw board outline with colored edges
-    this.drawBoardOutline(players);
+    this.ws.onopen = () => {
+      console.log('WebSocket connected');
+      this.reconnectAttempts = 0;
+      // Send auth token
+      this.send({ token: this.token });
+    };
     
-    // Draw hex grid
-    this.drawHexGrid();
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      this.handleMessage(message);
+    };
     
-    // Draw placed tiles
-    for (const [posKey, tile] of board) {
-      this.drawTile(tile);
+    this.ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      this.reconnect();
+    };
+  }
+  
+  private handleMessage(message: any) {
+    switch (message.type) {
+      case 'GAME_STATE':
+        // Update Redux store with server state
+        store.dispatch(setGameState(message.state));
+        break;
+        
+      case 'PLAYER_UPDATE':
+        message.players.forEach(p => {
+          store.dispatch(addPlayer(p));
+        });
+        break;
+        
+      case 'ERROR':
+        console.error('Server error:', message.message);
+        break;
     }
-    
-    // Draw flows
-    this.drawFlows(flows, players);
-    
-    // Draw current tile preview (if provided)
-    if (currentTile) {
-      this.drawTilePreview(currentTile);
+  }
+  
+  private reconnect() {
+    if (this.reconnectAttempts < 5) {
+      setTimeout(() => {
+        this.reconnectAttempts++;
+        this.connect();
+      }, 1000 * Math.pow(2, this.reconnectAttempts));
     }
-    
-    // Return PNG buffer
-    return this.canvas.toBuffer('image/png');
   }
   
-  private drawBoardOutline(players: Player[]): void {
-    // Reuse logic from existing rendering/layout.ts
-  }
-  
-  private drawTile(tile: PlacedTile): void {
-    // Reuse logic from existing rendering/gameplayRenderer.ts
-  }
-  
-  private drawFlows(flows: Map<string, Set<string>>, players: Player[]): void {
-    // Reuse logic from existing rendering/gameplayRenderer.ts
-  }
-}
-```
-
-**Optimization:**
-- Cache static elements (board outline, grid)
-- Only re-render on game state changes
-- Use image compression
-- Consider storing images in CDN for repeated views
-
-### 6.2 Embed Design
-
-**Game Lobby Embed:**
-```javascript
-{
-  title: "🎮 Quortex Game #1234",
-  description: "Waiting for players to join...",
-  color: 0x5865F2,  // Discord blurple
-  fields: [
-    { name: "Creator", value: "@alice", inline: true },
-    { name: "Players", value: "2/3", inline: true },
-    { name: "Status", value: "⏳ In Lobby", inline: true }
-  ],
-  footer: { text: "Use /quortex join to join this game" },
-  timestamp: new Date()
-}
-```
-
-**Active Game Embed:**
-```javascript
-{
-  title: "🎮 Quortex Game #1234",
-  description: "⏱️ **@bob's Turn**\nDraw Tile: Type 2 (Rink)",
-  color: 0x57F287,  // Green
-  image: { url: "https://cdn.example.com/game-1234-board.png" },
-  fields: [
-    { 
-      name: "Players", 
-      value: "🟥 @alice (Edge 0)\n🟦 @bob (Edge 3)\n🟩 @charlie (Edge 5)",
-      inline: true 
-    },
-    { 
-      name: "Game Info", 
-      value: "Turn: 8\nTiles Left: 32",
-      inline: true 
+  send(message: any) {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
     }
-  ],
-  footer: { text: "Select rotation and position, then click ✓ Place Tile" },
-  timestamp: new Date()
+  }
+  
+  joinLobby(gameId: string | null, playerCount?: number) {
+    this.send({ type: 'JOIN_LOBBY', gameId, playerCount });
+  }
+  
+  selectEdge(gameId: string, edge: number) {
+    this.send({ type: 'SELECT_EDGE', gameId, edge });
+  }
+  
+  placeTile(gameId: string, position: HexPosition, rotation: Rotation) {
+    this.send({ type: 'PLACE_TILE', gameId, position, rotation });
+  }
+  
+  leaveGame(gameId: string) {
+    this.send({ type: 'LEAVE_GAME', gameId });
+  }
 }
 ```
 
-**Victory Embed:**
-```javascript
-{
-  title: "🏆 Game Over - @alice Wins!",
-  description: "Victory Type: Flow Completion\nWinning path connected Edge 0 to Edge 3",
-  color: 0xFFD700,  // Gold
-  image: { url: "https://cdn.example.com/game-1234-final.png" },
-  fields: [
-    { name: "Total Turns", value: "15", inline: true },
-    { name: "Duration", value: "22 minutes", inline: true },
-    { name: "Winning Player", value: "@alice 🟥", inline: true }
-  ],
-  thumbnail: { url: "https://cdn.example.com/trophy.png" },
-  footer: { text: "Use /quortex new to start another game" }
-}
-```
+### 7.3 Redux Action Interception
 
-### 6.3 Tile Preview Images
+When running in Discord Activity mode, Redux actions that modify game state should be sent to server instead of applied locally:
 
-Generate small tile preview images (200x200) showing:
-- Tile type (corner count)
-- Current rotation
-- Flow paths highlighted
-
-These can be included in embeds to help players visualize their current tile.
-
-## 7. Turn Management and Notifications
-
-### 7.1 Turn Notification Strategies
-
-**Option 1: Mention (Default)**
-```
-🔔 @bob, it's your turn!
-```
-- Sends a notification to the player
-- Good for active games
-- Can be overwhelming for slow games
-
-**Option 2: Reply to Player's Last Message**
-```
-@bob It's your turn!
-```
-- Less intrusive than full mention
-- Maintains conversation flow
-- Good for casual games
-
-**Option 3: Silent Update**
-```
-⏱️ bob's Turn
-```
-- No notification
-- Player must check channel
-- Good for asynchronous games
-
-**Configuration:** Set via `/quortex settings notifications`
-
-### 7.2 Turn Timeout Handling
-
-**Timeout Flow:**
-1. Player has configurable time limit (default: 30 minutes)
-2. After 15 minutes: Warning message
-   ```
-   ⚠️ @bob, you have 15 minutes left for your turn!
-   ```
-3. After 30 minutes: Auto-skip or forfeit
-   - **Auto-skip:** AI makes random legal move
-   - **Forfeit:** Player leaves game, team/player loses
-4. Configuration via `/quortex settings timeout`
-
-**Grace Period:**
-- First timeout: Warning only
-- Second timeout: Skip turn
-- Third timeout: Forfeit game
-
-### 7.3 Turn History Tracking
-
-Store last 10 moves in game state, display in status embed:
-```
-📜 Recent Moves:
-8. @bob placed Type 2 at (0, 2) - 45s
-7. @alice placed Type 1 at (-1, 1) - 1m 12s
-6. @charlie placed Type 0 at (1, -1) - 2m 3s
-```
-
-## 8. Spectator Mode
-
-### 8.1 Spectator Features
-
-**Join as Spectator:**
-- Command: `/quortex spectate [game-id]`
-- Permissions: Configurable (all/friends/none)
-- Subscribe to game updates in DMs
-
-**Spectator Updates:**
-- Receive board image after each move
-- No interaction buttons
-- Can unsubscribe anytime
-
-**Spectator Embed:**
-```javascript
-{
-  title: "👁 Spectating Game #1234",
-  description: "@bob just played Type 2 at (0, 2)",
-  image: { url: "https://cdn.example.com/game-1234-board.png" },
-  footer: { text: "React with ❌ to stop spectating" }
-}
-```
-
-### 8.2 Public Game Channels
-
-Servers can designate "game channels" where:
-- All moves are posted publicly
-- Anyone can spectate by default
-- Thread per game (Discord threads feature)
-
-## 9. AI Opponent Integration
-
-### 9.1 AI Player Setup
-
-**Adding AI to Game:**
-```
-/quortex new 3 ai:1
-```
-- Creates 3-player game with 1 AI
-- AI fills remaining slot
-- AI difficulty: Easy (default) or Medium
-
-**AI Behavior:**
-- Takes turn automatically after 2-5 second delay (feels natural)
-- Uses existing AI logic from `/src/ai/` (when implemented)
-- Shows "🤖 AI-Bot is thinking..." during turn
-
-### 9.2 AI Implementation
-
-Reuse planned AI from DESIGN_DOC.md Phase 6:
-- Easy AI: One-move lookahead, simple heuristics
-- Medium AI: Alpha-beta search, better evaluation
-
-Adapt for Discord context:
 ```typescript
-class DiscordAIPlayer {
-  async takeTurn(
-    gameState: DiscordGameState,
-    difficulty: 'easy' | 'medium'
-  ): Promise<{ position: HexPosition; rotation: Rotation }> {
-    // Show "thinking" message
-    await this.showThinkingMessage(gameState);
-    
-    // Calculate move (with artificial delay)
-    const move = difficulty === 'easy' 
-      ? await this.easyAI.findBestMove(gameState)
-      : await this.mediumAI.findBestMove(gameState);
-    
-    // Add realistic delay (2-5 seconds)
-    await sleep(2000 + Math.random() * 3000);
-    
-    return move;
+// src/redux/discordMiddleware.ts
+import { Middleware } from 'redux';
+import { GameWebSocket } from '../discord/websocket';
+
+let wsClient: GameWebSocket | null = null;
+
+export function setWebSocketClient(client: GameWebSocket) {
+  wsClient = client;
+}
+
+export const discordMiddleware: Middleware = store => next => action => {
+  // If running in Discord Activity and have WebSocket
+  if (wsClient && window.location.search.includes('frame_id')) {
+    // Intercept game-modifying actions
+    switch (action.type) {
+      case 'PLACE_TILE':
+        const state = store.getState();
+        wsClient.placeTile(state.game.gameId, action.payload.position, action.payload.rotation);
+        return; // Don't apply locally, wait for server broadcast
+        
+      case 'SELECT_EDGE':
+        wsClient.selectEdge(state.game.gameId, action.payload.edge);
+        return;
+        
+      // Let other actions through
+      default:
+        return next(action);
+    }
+  } else {
+    // Standalone mode, apply locally
+    return next(action);
   }
+};
+```
+
+## 8. Deployment Architecture
+
+### 8.1 Single Server Setup
+
+**Server Requirements:**
+- Linux box (Ubuntu 22.04 LTS recommended)
+- 2 vCPU, 4GB RAM minimum
+- 20GB SSD storage
+- Public IP address with ports 443 (HTTPS) and 8080 (WebSocket)
+
+**Software Stack:**
+```
+Linux Server
+├── Node.js v20+ OR Bun v1.0+
+├── MongoDB 7.0+
+├── Nginx (reverse proxy)
+├── PM2 (process manager)
+└── Let's Encrypt (SSL certificates)
+```
+
+### 8.2 Directory Structure
+
+```
+/opt/quortex-discord/
+├── backend/
+│   ├── src/
+│   │   ├── discord-bot.ts       # Discord bot process
+│   │   ├── web-server.ts        # Express/Fastify server
+│   │   ├── websocket.ts         # WebSocket server
+│   │   ├── game-manager.ts      # Game state management
+│   │   ├── auth.ts              # Discord authentication
+│   │   └── db/
+│   │       └── mongodb.ts       # MongoDB connection
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/
+│   ├── (existing Vite app)
+│   ├── dist/                    # Built static files
+│   └── vite.config.ts
+└── nginx/
+    └── quortex.conf             # Nginx configuration
+```
+
+### 8.3 Deployment Steps
+
+**1. Install Dependencies:**
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js (or Bun)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install MongoDB
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg
+echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+sudo apt update
+sudo apt install -y mongodb-org
+
+# Start MongoDB
+sudo systemctl start mongod
+sudo systemctl enable mongod
+
+# Install Nginx
+sudo apt install -y nginx certbot python3-certbot-nginx
+
+# Install PM2
+sudo npm install -g pm2
+```
+
+**2. Clone and Build:**
+```bash
+cd /opt
+sudo git clone https://github.com/your-username/quortextt.git quortex-discord
+cd quortex-discord
+
+# Build frontend
+npm install
+npm run build
+
+# Setup backend
+cd backend
+npm install
+npm run build
+```
+
+**3. Configure Environment:**
+```bash
+# /opt/quortex-discord/backend/.env
+DISCORD_CLIENT_ID=your_client_id
+DISCORD_CLIENT_SECRET=your_client_secret
+DISCORD_BOT_TOKEN=your_bot_token
+QUORTEX_SERVER_ID=your_server_id
+MONGODB_URI=mongodb://localhost:27017/quortex
+NODE_ENV=production
+PORT=3000
+WS_PORT=8080
+```
+
+**4. Configure Nginx:**
+```nginx
+# /etc/nginx/sites-available/quortex
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    # Redirect to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+    
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    
+    # Serve static Vite app
+    location / {
+        root /opt/quortex-discord/dist;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # API endpoints
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # WebSocket
+    location /ws {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 }
 ```
 
-## 10. Discord Activity Integration (Future)
+**5. Start Services:**
+```bash
+# Enable Nginx site
+sudo ln -s /etc/nginx/sites-available/quortex /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
 
-### 10.1 Embedded Web View
+# Get SSL certificate
+sudo certbot --nginx -d your-domain.com
 
-Discord Activities allow embedded iframe applications:
-
-**Benefits:**
-- Full web UI (reuse existing rendering code)
-- Touch and mouse interaction
-- Real-time updates
-- Better visual experience
-
-**Architecture:**
-```
-Discord Client
-  └─> Embedded iframe
-       └─> Vite app (existing codebase)
-            ├─> src/rendering/
-            ├─> src/input/
-            ├─> src/game/
-            └─> WebSocket connection to bot backend
+# Start backend with PM2
+cd /opt/quortex-discord/backend
+pm2 start dist/index.js --name quortex-discord
+pm2 save
+pm2 startup
 ```
 
-**Communication Flow:**
-1. Discord Activity SDK provides authentication
-2. WebSocket connects to bot backend
-3. Game state synced bidirectionally
-4. Moves validated server-side
-5. UI updates in real-time
+### 8.4 Monitoring and Maintenance
 
-**Implementation Considerations:**
-- Requires Discord Developer approval for Activities
-- More complex deployment (web app + bot)
-- Better UX for active players
-- Fallback to message components for mobile
+**PM2 Commands:**
+```bash
+pm2 status              # Check status
+pm2 logs quortex-discord  # View logs
+pm2 restart quortex-discord  # Restart app
+pm2 monit              # Real-time monitoring
+```
 
-### 10.2 Hybrid Approach
+**MongoDB Maintenance:**
+```bash
+# Backup database
+mongodump --db quortex --out /backups/$(date +%Y%m%d)
 
-Support both modes:
-1. **Message Components:** Default, works everywhere
-2. **Embedded Activity:** Opt-in for desktop users
+# Monitor performance
+mongosh
+> use quortex
+> db.stats()
+> db.games.find({phase: "playing"}).count()
+```
 
-Players choose via `/quortex settings mode`:
-- `messages` - Classic message-based interface
-- `activity` - Embedded web view (if available)
-- `auto` - Activity on desktop, messages on mobile
+**Log Files:**
+- PM2 logs: `~/.pm2/logs/`
+- Nginx logs: `/var/log/nginx/`
+- MongoDB logs: `/var/log/mongodb/mongod.log`
 
-## 11. Security and Privacy
+### 8.5 Cost Estimate
 
-### 11.1 Data Privacy
+**Hardware/Hosting:**
+- VPS (2 vCPU, 4GB RAM, 20GB SSD): **$10-20/month**
+  - Hetzner Cloud CX21: €4.90/month (~$5.50)
+  - DigitalOcean Droplet: $12/month
+  - Linode Shared 4GB: $24/month
+
+**Domain & SSL:**
+- Domain name: **$10-15/year**
+- SSL certificate: **Free** (Let's Encrypt)
+
+**Total:** **$10-20/month** + ~$1/month for domain
+
+**Capacity:**
+- 10-20 concurrent games
+- 50-100 active players
+- Sufficient for dedicated Quortex Discord server
+
+
+## 9. Development Roadmap
+
+### 9.1 Implementation Phases
+
+**Phase 1: Discord Activity Setup (Week 1)**
+- [ ] Register Discord Application
+- [ ] Enable Activities in Developer Portal
+- [ ] Set up development server
+- [ ] Configure OAuth2 scopes
+- [ ] Test basic Activity embedding
+
+**Phase 2: Backend Infrastructure (Weeks 2-3)**
+- [ ] Set up MongoDB database
+- [ ] Implement Discord authentication
+- [ ] Create WebSocket server
+- [ ] Implement game state manager with locking
+- [ ] Add MongoDB persistence layer
+- [ ] Test with mock clients
+
+**Phase 3: Frontend Integration (Weeks 4-5)**
+- [ ] Add Discord SDK to Vite app
+- [ ] Implement WebSocket client
+- [ ] Add Redux middleware for multiplayer sync
+- [ ] Test authentication flow
+- [ ] Test game state synchronization
+- [ ] Handle edge cases (disconnection, reconnection)
+
+**Phase 4: Multiplayer Testing (Week 6)**
+- [ ] Test 2-player games end-to-end
+- [ ] Test 3-6 player games
+- [ ] Test team modes (4-6 players)
+- [ ] Performance testing with multiple concurrent games
+- [ ] Fix any synchronization bugs
+
+**Phase 5: Deployment (Week 7)**
+- [ ] Set up production Linux server
+- [ ] Install and configure MongoDB
+- [ ] Deploy backend with PM2
+- [ ] Configure Nginx reverse proxy
+- [ ] Set up SSL certificates
+- [ ] Deploy to Discord Activity shelf
+
+**Phase 6: Polish & Launch (Week 8)**
+- [ ] Add spectator mode
+- [ ] Implement game statistics
+- [ ] Add error handling and recovery
+- [ ] Create user documentation
+- [ ] Beta test with Quortex Discord community
+- [ ] Official launch
+
+### 9.2 Future Enhancements
+
+- **AI Opponents** - Integrate existing AI from web version
+- **Game Replays** - Save and replay completed games
+- **Tournaments** - Organized tournament brackets
+- **Leaderboards** - Track wins, statistics
+- **Mobile Support** - Optimize for Discord mobile app
+- **Voice Integration** - Activity voice channel features
+- **Custom Boards** - Different board sizes/shapes
+- **Achievements** - Discord-style achievements system
+
+## 10. Security and Privacy
+
+### 10.1 Data Privacy
 
 **Data Collected:**
 - Discord user IDs (for game state)
-- Server IDs (for multi-server support)
+- Discord usernames (for display)
 - Game moves and timestamps
 - Player statistics
 
 **Data NOT Collected:**
-- Messages outside game commands
-- Personal information beyond Discord username
-- Voice or video data
+- No messages outside the Activity
+- No voice data
+- No personal information beyond Discord username
+- No tracking across servers (single-server only)
 
 **Privacy Policy:**
 - Clear documentation of data usage
 - GDPR compliance
-- User can request data deletion via `/quortex privacy delete`
+- Users can request data deletion
 - Data retention: 90 days after last activity
 
-### 11.2 Security Measures
-
-**Input Validation:**
-- Validate all Discord interactions
-- Verify interaction tokens
-- Sanitize user inputs
-- Rate limiting on commands
-
-**Game State Validation:**
-- Server-side move legality checking
-- Prevent client-side manipulation
-- Validate Discord user permissions
-- Prevent unauthorized game modifications
-
-**API Security:**
-- Discord bot token in environment variables
-- Database credentials secured
-- HTTPS for all external communications
-- Regular security audits
-
-### 11.3 Abuse Prevention
-
-**Rate Limiting:**
-- Max 10 commands per user per minute
-- Max 5 game creations per server per hour
-- Cooldown between games (30 seconds)
-
-**Spam Prevention:**
-- Limit concurrent games per user (3)
-- Limit concurrent games per channel (2)
-- Auto-cleanup inactive games (24 hours)
-
-**Moderation:**
-- Server admins can use `/quortex admin ban` to ban abusive users
-- Global ban list for severe violations
-- Report mechanism for inappropriate behavior
-
-## 12. Deployment Architecture
-
-### 12.1 Hosting Options
-
-**Option A: Single Server (Small Scale)**
-```
-VPS/Cloud Instance (e.g., Railway, Heroku)
-  ├─> Discord Bot (Node.js)
-  ├─> Database (PostgreSQL)
-  └─> File Storage (local or S3)
-```
-- Cost: $10-20/month
-- Supports: 100-500 concurrent games
-- Good for: Single/few servers
-
-**Option B: Microservices (Medium Scale)**
-```
-Load Balancer
-  ├─> Bot Service 1 (Node.js)
-  ├─> Bot Service 2 (Node.js)
-  └─> Bot Service N (Node.js)
-       │
-       ├─> Shared Database (PostgreSQL cluster)
-       ├─> Redis (game state cache)
-       └─> CDN (S3 + CloudFront for images)
-```
-- Cost: $50-200/month
-- Supports: 1000+ concurrent games
-- Good for: Multiple large servers
-
-**Option C: Serverless (Large Scale)**
-```
-AWS Lambda / Google Cloud Functions
-  ├─> Interaction Handler (Lambda)
-  ├─> Move Processor (Lambda)
-  └─> Image Renderer (Lambda)
-       │
-       ├─> DynamoDB / Firestore (game state)
-       ├─> Redis (ElastiCache) (cache)
-       └─> S3 + CloudFront (images)
-```
-- Cost: Pay-per-use ($0 at low scale, $100+ at high scale)
-- Supports: 10,000+ concurrent games
-- Good for: Large public bot
-
-### 12.2 Deployment Pipeline
-
-**CI/CD with GitHub Actions:**
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy Discord Bot
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          npm install -g @railway/cli
-          railway up
-```
-
-**Environment Configuration:**
-```bash
-# .env (not committed)
-DISCORD_TOKEN=your_bot_token_here
-DISCORD_CLIENT_ID=your_client_id_here
-DATABASE_URL=postgresql://user:pass@host:5432/db
-REDIS_URL=redis://host:6379
-S3_BUCKET=quortex-images
-S3_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-NODE_ENV=production
-LOG_LEVEL=info
-```
-
-### 12.3 Monitoring and Logging
-
-**Metrics to Track:**
-- Active games count
-- Commands per minute
-- Average response time
-- Error rate
-- Database query performance
-- Image generation time
-
-**Tools:**
-- **Logging:** Winston or Pino (structured logs)
-- **Monitoring:** Prometheus + Grafana
-- **Error Tracking:** Sentry
-- **Uptime:** UptimeRobot or Pingdom
-
-**Example Metrics Dashboard:**
-```
-Quortex Discord Bot - Live Metrics
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Active Games: 47
-Players Online: 112
-Commands/min: 23
-Avg Response: 142ms
-Error Rate: 0.02%
-Uptime: 99.97%
-```
-
-## 13. Development Roadmap
-
-### Phase 1: Core Bot Infrastructure (Weeks 1-2)
-- [ ] Set up Discord bot project structure
-- [ ] Implement slash command registration
-- [ ] Create basic command handler framework
-- [ ] Set up database schema and connections
-- [ ] Implement game state manager (in-memory)
-- [ ] Add basic logging and error handling
-
-### Phase 2: Game Logic Integration (Weeks 3-4)
-- [ ] Extract game core from existing codebase
-- [ ] Adapt types for Discord context
-- [ ] Implement game state serialization/deserialization
-- [ ] Port flow calculation logic
-- [ ] Port legality checking logic
-- [ ] Port victory condition checking
-- [ ] Write integration tests
-
-### Phase 3: Basic Gameplay (Weeks 5-6)
-- [ ] Implement `/quortex new` command
-- [ ] Implement lobby system with join/leave
-- [ ] Implement seating phase
-- [ ] Implement turn management
-- [ ] Create basic message components (buttons/selects)
-- [ ] Add move execution logic
-- [ ] Test 2-player games end-to-end
-
-### Phase 4: Rendering System (Weeks 7-8)
-- [ ] Set up Canvas rendering for board
-- [ ] Implement hex layout calculations
-- [ ] Render placed tiles
-- [ ] Render flow paths
-- [ ] Generate PNG images
-- [ ] Upload to CDN or Discord CDN
-- [ ] Create embed templates
-- [ ] Optimize image generation performance
-
-### Phase 5: Extended Features (Weeks 9-10)
-- [ ] Support 3-6 player games
-- [ ] Implement team mode (4-6 players)
-- [ ] Add turn timeout handling
-- [ ] Add move history display
-- [ ] Implement `/quortex status` command
-- [ ] Add game statistics tracking
-- [ ] Create help system
-
-### Phase 6: Polish and Testing (Weeks 11-12)
-- [ ] Comprehensive testing (all player counts)
-- [ ] Performance optimization
-- [ ] Error handling improvements
-- [ ] User experience refinements
-- [ ] Documentation completion
-- [ ] Beta testing with real users
-
-### Phase 7: Advanced Features (Future)
-- [ ] AI opponent integration
-- [ ] Spectator mode
-- [ ] Leaderboards
-- [ ] Advanced statistics
-- [ ] Discord Activity (embedded web view)
-- [ ] Tournament mode
-- [ ] Replay system
-
-## 14. Cost Estimation
-
-### Development Costs
-- **Developer Time:** 12 weeks × 20 hours/week = 240 hours
-- **At $50/hour:** $12,000 (professional)
-- **At $0/hour:** Free (open source / personal project)
-
-### Hosting Costs (Monthly)
-
-**Small Scale (1-10 servers, <100 games/day):**
-- Railway/Heroku Hobby: $5-10
-- PostgreSQL: Included
-- Total: **$5-10/month**
-
-**Medium Scale (10-100 servers, <1000 games/day):**
-- Cloud VM (2 vCPU, 4GB RAM): $20-40
-- Managed PostgreSQL: $15-25
-- Redis Cache: $10-15
-- S3 + CloudFront: $5-10
-- Total: **$50-90/month**
-
-**Large Scale (100+ servers, 10,000+ games/day):**
-- Kubernetes cluster: $100-200
-- Database cluster: $50-100
-- Redis cluster: $30-50
-- CDN + Storage: $20-40
-- Total: **$200-390/month**
-
-### Free Tier Options
-Many cloud providers offer free tiers:
-- **Railway:** $5 credit/month (free tier)
-- **Heroku:** Free dyno (limited hours)
-- **Google Cloud:** $300 credit (90 days)
-- **AWS:** Free tier (12 months)
-- **Render:** Free tier (slower startup)
-
-**Recommendation:** Start with Railway or Render free tier for testing.
-
-## 15. Alternative Approaches
-
-### 15.1 Discord Bot vs. Web Integration
-
-**Bot Approach (Recommended):**
-- ✅ Native Discord experience
-- ✅ No external website needed
-- ✅ Lower barrier to entry
-- ❌ Limited UI flexibility
-- ❌ Image generation overhead
-
-**Web Link Approach:**
-- ✅ Full UI/UX control (reuse existing web app)
-- ✅ Better visuals
-- ❌ Requires leaving Discord
-- ❌ Higher friction for users
-- ❌ State synchronization complexity
-
-**Hybrid Approach (Best of Both):**
-- Bot for game management
-- Web link for detailed view
-- Discord Activity for embedded gameplay (future)
-
-### 15.2 Command vs. Natural Language
-
-**Slash Commands (Recommended):**
-- ✅ Clear, structured interface
-- ✅ Built-in autocomplete
-- ✅ No command prefix confusion
-- ✅ Better Discord integration
-
-**Natural Language:**
-- Example: "create a 3 player game"
-- ✅ More conversational
-- ❌ Parsing complexity
-- ❌ Ambiguity issues
-- ❌ Harder to discover features
-
-**Recommendation:** Stick with slash commands for clarity.
-
-### 15.3 Persistent vs. Ephemeral Messages
-
-**Persistent Game Messages (Recommended):**
-- ✅ Scrollable game history
-- ✅ Players can review past moves
-- ❌ Clutters channel
-
-**Ephemeral Messages:**
-- ✅ Clean channel
-- ❌ Can't review history
-- ❌ Lost if Discord restarts
-
-**Recommendation:** Persistent for main game, ephemeral for help/errors.
-
-## 16. Open Questions and Decisions
-
-### 16.1 Technical Decisions
-
-**Q: Should we use discord.js (TypeScript) or discord.py (Python)?**
-- **A:** discord.js (TypeScript) - matches existing codebase, easier code reuse
-
-**Q: SQL (PostgreSQL) or NoSQL (MongoDB) for database?**
-- **A:** PostgreSQL - better for relational data (games, players, moves), ACID transactions
-
-**Q: Host images on Discord CDN or external CDN (S3)?**
-- **A:** Discord CDN for simplicity initially, migrate to S3 if scale requires
-
-**Q: Should AI opponents be synchronous or queued?**
-- **A:** Synchronous with artificial delay (2-5s) for natural feel
-
-### 16.2 Product Decisions
-
-**Q: Allow multiple concurrent games per player?**
-- **A:** Yes, limit to 3 concurrent games per player
-
-**Q: Support private/DM games?**
-- **A:** Yes, but require all players in same server for easier coordination
-
-**Q: Show player statistics publicly?**
-- **A:** Yes, but allow opt-out via privacy settings
-
-**Q: Support custom board sizes?**
-- **A:** No, stick with standard 37-hex board for consistency
-
-### 16.3 UX Decisions
-
-**Q: How to handle network/Discord outages?**
-- **A:** Persist game state in database, resume when bot reconnects
-
-**Q: Allow players to undo moves?**
-- **A:** No, moves are final (per game rules)
-
-**Q: Support game saving/loading?**
-- **A:** Yes, games auto-save, can resume after bot restart
-
-**Q: How to visualize legal moves in static image?**
-- **A:** Overlay green dots on legal hex positions in board image
-
-## 17. Migration and Backward Compatibility
-
-### 17.1 Versioning Strategy
-
-**Bot Version:** Semantic versioning (MAJOR.MINOR.PATCH)
-- **MAJOR:** Breaking changes to game format or commands
-- **MINOR:** New features, backward compatible
-- **PATCH:** Bug fixes
-
-**Game State Version:** Include version field in database
+### 10.2 Security Measures
+
+**Authentication:**
+- OAuth2 via Discord SDK
+- Verify user is member of Quortex Discord server
+- Session tokens with expiration
+- WebSocket authentication required
+
+**Game State Security:**
+- Server-side move validation
+- Prevent client-side cheating
+- MongoDB injection prevention
+- Rate limiting on WebSocket messages
+
+**Infrastructure Security:**
+- HTTPS only (Let's Encrypt SSL)
+- Nginx security headers
+- MongoDB authentication enabled
+- Regular security updates
+
+### 10.3 Rate Limiting
+
+**Per User:**
+- Max 10 WebSocket messages per second
+- Max 3 concurrent games
+- Cooldown between creating games (30 seconds)
+
+**Per Server:**
+- Max 20 active games (configurable)
+- WebSocket connection limit
+- Database query limits
+
+## 11. Spectator Mode
+
+### 11.1 Implementation
+
+Spectators can view games in real-time through the embedded Activity:
+
+**Spectator Features:**
+- Read-only view of game board
+- See all players and current turn
+- View move history
+- No interaction with game
+
+**How to Spectate:**
+1. Open Quortex Activity in Discord
+2. Select "Spectate Game" from lobby
+3. Choose game from active games list
+4. View game in real-time
+
+**WebSocket Messages:**
 ```typescript
-interface DiscordGameState {
-  stateVersion: string;  // e.g., "1.0.0"
-  // ... rest of state
+// Join as spectator
+{
+  type: 'SPECTATE',
+  gameId: string
 }
+
+// Spectators receive same GAME_STATE broadcasts
+// But cannot send game-modifying actions
 ```
 
-**Migration Path:**
-- Detect old version games on load
-- Apply migration transforms
-- Save with new version
-- Deprecate old versions after 30 days
+## 12. Success Metrics
 
-### 17.2 Feature Flags
+### 12.1 Key Performance Indicators
 
-Enable gradual rollout of new features:
-```typescript
-const FEATURES = {
-  AI_OPPONENTS: process.env.ENABLE_AI === 'true',
-  SPECTATOR_MODE: process.env.ENABLE_SPECTATOR === 'true',
-  DISCORD_ACTIVITY: process.env.ENABLE_ACTIVITY === 'true',
-  TOURNAMENTS: process.env.ENABLE_TOURNAMENTS === 'true',
-};
-```
-
-Configure per server or globally via environment variables.
-
-## 18. Success Metrics
-
-### 18.1 Key Performance Indicators (KPIs)
-
-**Adoption Metrics:**
-- Total servers using bot
-- Daily active users (DAU)
+**Adoption:**
+- Active players per day
 - Games created per day
-- Game completion rate (finished / started)
+- Game completion rate
 
-**Engagement Metrics:**
+**Engagement:**
 - Average game duration
 - Average moves per game
-- Return user rate (weekly)
-- Commands per user per day
+- Return player rate (weekly)
 
-**Quality Metrics:**
+**Quality:**
 - Error rate (< 1%)
 - Average response time (< 500ms)
-- Bot uptime (> 99.5%)
-- User satisfaction (survey)
+- Server uptime (> 99%)
 
-**Growth Metrics:**
-- Week-over-week user growth
-- Server retention rate (30 days)
-- Referral rate (invites per user)
+**Target Goals (Month 1):**
+- 20+ active players
+- 50+ games completed
+- 90%+ completion rate
+- < 5 critical bugs
 
-### 18.2 Success Criteria
+## 13. Testing Strategy
 
-**Launch Goals (Month 1):**
-- ✅ Bot stable for 99%+ uptime
-- ✅ 10+ servers actively using
-- ✅ 50+ games completed
-- ✅ < 5 critical bugs reported
+### 13.1 Development Testing
 
-**Growth Goals (Month 3):**
-- ✅ 100+ servers
-- ✅ 1000+ games completed
-- ✅ 500+ daily active users
-- ✅ 75%+ game completion rate
+**Local Testing:**
+```bash
+# Terminal 1: Start MongoDB
+mongod
 
-**Maturity Goals (Month 6):**
-- ✅ 500+ servers
-- ✅ 10,000+ games completed
-- ✅ 2000+ daily active users
-- ✅ AI opponents functional
-- ✅ Community-contributed features
+# Terminal 2: Start backend
+cd backend
+npm run dev
 
-## 19. Community and Support
+# Terminal 3: Start Vite dev server
+npm run dev
 
-### 19.1 Support Channels
+# Use Discord Developer Portal test servers
+```
 
-**In-Discord Support:**
-- `/quortex help` - Built-in help system
-- Support server - Dedicated Discord for bot support
-- FAQ channel - Common questions and answers
+**Discord Test Server:**
+- Create test Discord server
+- Install Activity in test mode
+- Test with multiple Discord accounts
+- Verify authentication and multiplayer
 
-**External Resources:**
-- GitHub repository - Open source code
-- Documentation site - Comprehensive guides
-- Issue tracker - Bug reports and feature requests
-- Reddit/Forum - Community discussions
+### 13.2 Production Testing
 
-### 19.2 Contribution Guidelines
+- Gradual rollout to Quortex Discord server
+- Monitor PM2 logs and MongoDB
+- Track error rates and performance
+- Gather user feedback
+- Fix issues quickly
 
-**Open Source Model:**
-- MIT or GPL-3.0 license (match existing project)
-- Accept pull requests for features
-- Community-driven development
-- Maintain CONTRIBUTING.md guide
+## 14. Troubleshooting
 
-**Feature Requests:**
-- Users can suggest via GitHub Issues
-- Voting system for prioritization
-- Monthly review of top requests
-- Transparent roadmap
+### 14.1 Common Issues
 
-### 19.3 Moderation and Community Management
+**Activity Won't Load:**
+- Check Discord Application settings
+- Verify Activity URL is correct and HTTPS
+- Check server logs for errors
+- Ensure SSL certificate is valid
 
-**Support Team:**
-- Bot owner/creator
-- 2-3 volunteer moderators
-- Community contributors
+**WebSocket Connection Fails:**
+- Check firewall allows port 8080
+- Verify Nginx WebSocket configuration
+- Check WebSocket server is running
+- Test with `wscat -c wss://your-domain.com/ws`
 
-**Community Guidelines:**
-- Respectful communication
-- No cheating or exploitation
-- No spam or advertising
-- Follow Discord Terms of Service
+**Authentication Errors:**
+- Verify Discord Client ID and Secret
+- Check OAuth2 scopes are correct
+- Ensure user is in Quortex Discord server
+- Check session token expiration
 
-## 20. Conclusion and Next Steps
+**Game State Desync:**
+- Check MongoDB connection
+- Verify WebSocket broadcasts
+- Check for race conditions in game manager
+- Review locking implementation
 
-### 20.1 Summary
+### 14.2 Debugging Commands
 
-This architecture provides a comprehensive plan for integrating Quortex into Discord as a fully-featured Discord Application. The design leverages:
+```bash
+# Check server status
+pm2 status
+pm2 logs quortex-discord --lines 100
 
-1. **Existing Game Logic:** Reuse battle-tested code from the web implementation
-2. **Discord-Native UX:** Slash commands and message components for intuitive gameplay
-3. **Scalable Architecture:** Start simple, grow with demand
-4. **Rich Visualization:** Server-side rendering for beautiful board images
-5. **Multiplayer Support:** Full 2-6 player games with team modes
-6. **Future-Proof Design:** Extensible for AI, activities, and advanced features
+# Check MongoDB
+mongosh
+> use quortex
+> db.games.find({phase: "playing"}).pretty()
 
-### 20.2 Recommended First Steps
+# Check Nginx
+sudo nginx -t
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/error.log
 
-1. **Prototype (Week 1):**
-   - Create basic Discord bot
-   - Implement `/quortex new` and join/leave
-   - Manual game state (no database yet)
-   - Static board image (no rendering yet)
+# Check WebSocket connections
+ss -tulpn | grep 8080
 
-2. **MVP (Weeks 2-4):**
-   - Database integration
-   - Basic rendering (simple board image)
-   - Complete 2-player game flow
-   - Deploy to test server
+# Test WebSocket
+wscat -c wss://your-domain.com/ws
+```
 
-3. **Beta (Weeks 5-8):**
-   - Full rendering system
-   - 3-6 player support
-   - Refine UX based on feedback
-   - Public beta on 5-10 servers
+## 15. Conclusion
 
-4. **Launch (Weeks 9-12):**
-   - Polish and bug fixes
-   - Performance optimization
-   - Documentation completion
-   - Public announcement
+This architecture provides a streamlined approach to integrating Quortex into Discord using Discord Activities and MongoDB:
 
-### 20.3 Long-Term Vision
+**Key Benefits:**
+- ✅ Reuses 100% of existing game UI and rendering
+- ✅ MongoDB for flexible document storage
+- ✅ Single Linux server deployment (simple, cost-effective)
+- ✅ WebSocket for real-time multiplayer
+- ✅ Dedicated Quortex Discord server (focused community)
+- ✅ No slash commands complexity
+- ✅ Native Discord experience via embedded Activity
 
-The Discord bot can become:
-- **Primary Platform:** Many users prefer Discord over standalone web
-- **Community Hub:** Tournaments, leaderboards, events
-- **Social Experience:** Play with friends where they already are
-- **Gateway:** Introduces new players to Quortex through easy access
+**Total Cost:** ~$10-20/month for VPS + ~$1/month for domain
 
-**Future Integrations:**
-- Discord Activity for embedded full gameplay
-- Voice channel integration for voice chat during games
-- Server boosting rewards (custom themes, AI priority)
-- Integration with web version (shared accounts, statistics)
+**Timeline:** 8 weeks from setup to launch
+
+**Next Steps:**
+1. Register Discord Application
+2. Set up development server
+3. Begin Phase 1 implementation
+4. Iterate based on testing feedback
 
 ---
 
-## Appendix A: Example Game Flow
-
-**Complete game from start to finish:**
-
-```
-1. Alice: /quortex new 3
-   Bot: [Lobby Embed] "Game #1234 created. 1/3 players."
-        [Join Game] button
-
-2. Bob clicks [Join Game]
-   Bot: Updates embed "2/3 players"
-
-3. Charlie clicks [Join Game]
-   Bot: Updates embed "3/3 players - Ready to start!"
-        Enables [Start Game] button
-
-4. Alice clicks [Start Game]
-   Bot: "Seating Phase - Choose your edges"
-        Alice: [Select Menu: Edge 0-5]
-        Bob: [Select Menu: Available edges]
-        Charlie: [Select Menu: Available edges]
-
-5. All players select edges
-   Bot: "Game starting! @Alice's turn"
-        [Board Image: Empty board with colored edges]
-        "Drew: Type 2 (Rink)"
-        [Rotate CCW] [Rotate CW]
-        [Position: Select Menu with legal moves]
-        [✓ Place Tile] [✗ Cancel]
-
-6. Alice selects rotation: 3, position: (0, 0)
-   Alice clicks [✓ Place Tile]
-   Bot: [Updated Board Image with tile at (0,0)]
-        "@Bob's turn"
-        "Drew: Type 1 (Kimono)"
-        [Same controls]
-
-7-14. Players continue taking turns...
-
-15. Bob places tile that completes his flow
-    Bot: [Final Board Image with winning flow highlighted]
-         "🏆 @Bob Wins! Victory: Flow Completion"
-         [Game Stats]
-         [Play Again] button
-```
-
-## Appendix B: Code Examples
-
-### Example: Slash Command Handler
-
-```typescript
-// src/commands/new.ts
-import { SlashCommandBuilder } from 'discord.js';
-import { GameStateManager } from '../game/manager';
-
-export const data = new SlashCommandBuilder()
-  .setName('quortex')
-  .setDescription('Quortex game commands')
-  .addSubcommand(subcommand =>
-    subcommand
-      .setName('new')
-      .setDescription('Create a new game')
-      .addIntegerOption(option =>
-        option
-          .setName('players')
-          .setDescription('Number of players (2-6)')
-          .setRequired(false)
-          .setMinValue(2)
-          .setMaxValue(6)
-      )
-  );
-
-export async function execute(interaction: ChatInputCommandInteraction) {
-  const playerCount = interaction.options.getInteger('players') ?? 2;
-  
-  // Create game
-  const gameId = await GameStateManager.createGame({
-    serverId: interaction.guildId!,
-    channelId: interaction.channelId,
-    creatorId: interaction.user.id,
-    maxPlayers: playerCount,
-  });
-  
-  // Create lobby embed
-  const embed = createLobbyEmbed(gameId, interaction.user, playerCount);
-  const row = createLobbyButtons(gameId);
-  
-  await interaction.reply({ embeds: [embed], components: [row] });
-}
-```
-
-### Example: Button Interaction Handler
-
-```typescript
-// src/interactions/buttons.ts
-import { ButtonInteraction } from 'discord.js';
-import { GameStateManager } from '../game/manager';
-
-export async function handleButton(interaction: ButtonInteraction) {
-  const [action, gameId, ...params] = interaction.customId.split(':');
-  
-  switch (action) {
-    case 'join':
-      await handleJoinGame(interaction, gameId);
-      break;
-    case 'start':
-      await handleStartGame(interaction, gameId);
-      break;
-    case 'confirm':
-      await handleConfirmMove(interaction, gameId);
-      break;
-    case 'cancel':
-      await handleCancelMove(interaction, gameId);
-      break;
-  }
-}
-
-async function handleConfirmMove(
-  interaction: ButtonInteraction,
-  gameId: string
-) {
-  const game = await GameStateManager.getGame(gameId);
-  const interactionState = await GameStateManager.getInteractionState(
-    interaction.user.id,
-    gameId
-  );
-  
-  if (!interactionState.selectedPosition) {
-    await interaction.reply({
-      content: 'Please select a position first!',
-      ephemeral: true
-    });
-    return;
-  }
-  
-  // Execute move
-  const newState = await GameStateManager.executeMove(gameId, {
-    userId: interaction.user.id,
-    position: interactionState.selectedPosition,
-    rotation: interactionState.currentRotation,
-  });
-  
-  // Render new board
-  const boardImage = await renderBoard(newState);
-  
-  // Check victory
-  const victory = checkVictory(newState);
-  
-  if (victory) {
-    // Game over
-    const embed = createVictoryEmbed(newState, victory);
-    await interaction.update({ embeds: [embed], components: [] });
-  } else {
-    // Next turn
-    const embed = createTurnEmbed(newState);
-    const row = createTurnButtons(gameId);
-    await interaction.update({ embeds: [embed], components: [row] });
-  }
-}
-```
-
-### Example: Board Rendering
-
-```typescript
-// src/rendering/board.ts
-import { createCanvas } from 'canvas';
-import { PlacedTile, HexPosition, Player } from '../game/types';
-
-export async function renderBoard(
-  board: Map<string, PlacedTile>,
-  flows: Map<string, Set<string>>,
-  players: Player[]
-): Promise<Buffer> {
-  const canvas = createCanvas(800, 800);
-  const ctx = canvas.getContext('2d');
-  
-  // Background
-  ctx.fillStyle = '#F0F0F0';
-  ctx.fillRect(0, 0, 800, 800);
-  
-  // Draw hex grid
-  drawHexGrid(ctx);
-  
-  // Draw board outline with player edges
-  drawBoardOutline(ctx, players);
-  
-  // Draw placed tiles
-  for (const [key, tile] of board) {
-    drawTile(ctx, tile);
-  }
-  
-  // Draw flows
-  for (const [playerId, positions] of flows) {
-    const player = players.find(p => p.id === playerId);
-    if (player) {
-      drawFlow(ctx, positions, player.color);
-    }
-  }
-  
-  return canvas.toBuffer('image/png');
-}
-```
-
-## Appendix C: Database Queries
-
-### Example Queries
-
-```sql
--- Get active games in a server
-SELECT g.*, COUNT(gp.discord_user_id) as player_count
-FROM games g
-LEFT JOIN game_players gp ON g.game_id = gp.game_id
-WHERE g.server_id = $1 
-  AND g.phase IN ('lobby', 'seating', 'playing')
-GROUP BY g.game_id
-ORDER BY g.created_at DESC;
-
--- Get player statistics
-SELECT 
-  discord_user_id,
-  games_played,
-  games_won,
-  ROUND((games_won::float / NULLIF(games_played, 0) * 100), 2) as win_rate,
-  total_moves,
-  ROUND(avg_move_time, 1) as avg_move_seconds
-FROM player_stats
-WHERE discord_user_id = $1;
-
--- Get recent moves for a game
-SELECT m.*, p.discord_username
-FROM moves m
-JOIN game_players gp ON m.game_id = gp.game_id 
-  AND m.discord_user_id = gp.discord_user_id
-WHERE m.game_id = $1
-ORDER BY m.move_number DESC
-LIMIT 10;
-
--- Cleanup expired games
-DELETE FROM games
-WHERE expires_at < NOW()
-  AND phase != 'finished';
-```
-
----
-
-**Document Version:** 1.0  
+**Document Version:** 2.0 (Revised for MongoDB + Activity approach)  
 **Last Updated:** 2024-11-12  
 **Author:** Quortex Development Team  
-**Status:** Proposed Architecture
+**Status:** Revised Architecture
