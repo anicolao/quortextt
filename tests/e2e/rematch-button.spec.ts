@@ -33,7 +33,7 @@ test.describe('Rematch Button', () => {
     expect(state.game.phase).toBe('finished');
     expect(state.game.winners).toContain('P1');
 
-    // Take a screenshot showing the rematch button
+    // Take a screenshot showing the rematch buttons
     await page.screenshot({ path: 'test-results/rematch-button-visible.png' });
 
     // Get canvas dimensions to calculate button position
@@ -45,9 +45,12 @@ test.describe('Rematch Button', () => {
       };
     });
 
-    // Click the rematch button (center bottom of canvas)
-    const buttonX = canvasSize.width / 2;
-    const buttonY = canvasSize.height - 110;
+    // Click one of the rematch buttons (bottom-left corner)
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+    const buttonX = margin + cornerSize / 2 + (cornerSize + spacing) * 2;
+    const buttonY = canvasSize.height - margin - cornerSize / 2;
     
     await page.mouse.click(box.x + buttonX, box.y + buttonY);
     await waitForAnimationFrame(page);
@@ -102,7 +105,7 @@ test.describe('Rematch Button', () => {
 
     await waitForAnimationFrame(page);
 
-    // Click rematch button
+    // Click rematch button (bottom-left corner)
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -115,8 +118,11 @@ test.describe('Rematch Button', () => {
       };
     });
 
-    const buttonX = canvasSize.width / 2;
-    const buttonY = canvasSize.height - 110;
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+    const buttonX = margin + cornerSize / 2 + (cornerSize + spacing) * 2;
+    const buttonY = canvasSize.height - margin - cornerSize / 2;
     
     await page.mouse.click(box.x + buttonX, box.y + buttonY);
     await waitForAnimationFrame(page);

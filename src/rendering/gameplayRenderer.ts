@@ -29,6 +29,7 @@ import {
   getDebugPathInfo,
   isPlayerBlocked,
 } from "../game/legality";
+import { drawCircularArrow } from "./circularArrow";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -1558,66 +1559,13 @@ export class GameplayRenderer {
     this.ctx.translate(center.x, center.y);
     this.ctx.rotate(rotationRad);
 
-    // Draw circular arrow icon
-    this.ctx.strokeStyle = BUTTON_ICON;
-    this.ctx.lineWidth = size * 0.12;
-    this.ctx.lineCap = "round";
-    this.ctx.lineJoin = "round";
-
+    // Define arc angles for the circular arrow
     const radius = size * 0.25;
     const startAngle = clockwise ? Math.PI * 0.1 : Math.PI * 0.8;
     const endAngle = clockwise ? Math.PI * 0.8 : Math.PI * 0.1;
 
-    // Draw arc
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, radius, startAngle, endAngle, !clockwise);
-    this.ctx.stroke();
-
-    // Draw arrowhead at the START of the arc as a stroked triangle
-    const arrowLength = size * 0.15;
-    const arrowWidth = size * 0.08;
-    const arrowAngle = startAngle;
-    const arrowX = radius * Math.cos(arrowAngle);
-    const arrowY = radius * Math.sin(arrowAngle);
-
-    // Calculate tangent direction at the start of the arc
-    // For a circle, the tangent is perpendicular to the radius
-    // Tangent points in direction of rotation: -90° for clockwise, +90° for counter-clockwise
-    const tangentAngle = arrowAngle + (clockwise ? -Math.PI / 2 : Math.PI / 2);
-
-    // Draw arrowhead as a stroked and filled triangle for better visibility
-    this.ctx.beginPath();
-
-    // Tip of the arrow
-    this.ctx.moveTo(
-      arrowX + arrowLength * Math.cos(tangentAngle),
-      arrowY + arrowLength * Math.sin(tangentAngle),
-    );
-
-    // Left side of the arrow base (perpendicular to tangent)
-    const baseAngle1 = tangentAngle + Math.PI * 0.5;
-    this.ctx.lineTo(
-      arrowX + arrowWidth * Math.cos(baseAngle1),
-      arrowY + arrowWidth * Math.sin(baseAngle1),
-    );
-
-    // Right side of the arrow base (perpendicular to tangent)
-    const baseAngle2 = tangentAngle - Math.PI * 0.5;
-    this.ctx.lineTo(
-      arrowX + arrowWidth * Math.cos(baseAngle2),
-      arrowY + arrowWidth * Math.sin(baseAngle2),
-    );
-
-    this.ctx.closePath();
-
-    // Fill the arrowhead
-    this.ctx.fillStyle = BUTTON_ICON;
-    this.ctx.fill();
-
-    // Stroke the arrowhead for better visibility
-    this.ctx.strokeStyle = BUTTON_ICON;
-    this.ctx.lineWidth = size * 0.08;
-    this.ctx.stroke();
+    // Use shared circular arrow drawing function
+    drawCircularArrow(this.ctx, 0, 0, radius, startAngle, endAngle, clockwise, size);
 
     this.ctx.restore();
   }
