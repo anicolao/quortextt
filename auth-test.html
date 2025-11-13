@@ -102,7 +102,7 @@
 <body>
     <div class="container">
         <h1>🎮 Quortex OAuth Test</h1>
-        <p>This page tests the Discord OAuth authentication flow for the multiplayer server.</p>
+        <p>This page tests the OAuth authentication flow for the multiplayer server. Supports Discord and Google.</p>
 
         <div class="section">
             <h2>Step 1: Server Status</h2>
@@ -112,9 +112,10 @@
         </div>
 
         <div class="section">
-            <h2>Step 2: Login with Discord</h2>
-            <p>Click the button below to authenticate with Discord:</p>
+            <h2>Step 2: Login</h2>
+            <p>Click a button below to authenticate with your preferred provider:</p>
             <a href="http://localhost:3001/auth/discord" class="button">Login with Discord</a>
+            <a href="http://localhost:3001/auth/google" class="button" style="background: #4285f4; margin-left: 10px;">Login with Google</a>
             <div id="authStatus"></div>
         </div>
 
