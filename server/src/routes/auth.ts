@@ -37,15 +37,15 @@ router.get('/discord/callback',
   (req, res) => {
     const user = req.user as any;
     if (!user) {
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}?error=auth_failed`);
+      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/multiplayer.html?error=auth_failed`);
     }
 
     // Generate JWT token
     const token = generateToken(user.id);
     
-    // Redirect to client with token
+    // Redirect to multiplayer client with token
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    res.redirect(`${clientUrl}?token=${token}`);
+    res.redirect(`${clientUrl}/multiplayer.html?token=${token}`);
   }
 );
 
