@@ -1,10 +1,40 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { multiplayerStore } from '../stores/multiplayerStore';
   import { socket } from '../socket';
 
   let username = '';
   let connecting = false;
   let error = '';
+  let serverUrl = '';
+  
+  onMount(() => {
+    // Get server URL from environment
+    // @ts-ignore - Vite injects import.meta.env
+    serverUrl = import.meta.env?.VITE_SERVER_URL || 'http://localhost:3001';
+    
+    // Check if we have a token from OAuth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const authError = urlParams.get('error');
+    
+    if (authError) {
+      error = `Authentication failed: ${authError}`;
+    } else if (token) {
+      // Store token and connect with authentication
+      localStorage.setItem('quortex_token', token);
+      handleAuthenticatedLogin(token);
+      
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      // Check for stored token
+      const storedToken = localStorage.getItem('quortex_token');
+      if (storedToken) {
+        handleAuthenticatedLogin(storedToken);
+      }
+    }
+  });
 
   async function handleLogin() {
     if (!username.trim()) {
@@ -33,6 +63,44 @@
       connecting = false;
     }
   }
+  
+  async function handleAuthenticatedLogin(token: string) {
+    connecting = true;
+    error = '';
+    
+    try {
+      // Fetch user info from server
+      const response = await fetch(`${serverUrl}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Invalid or expired token');
+      }
+      
+      const user = await response.json();
+      
+      // Connect to socket with authentication
+      await socket.connectWithAuth(token);
+      socket.identify(user.displayName);
+      
+      // Wait a bit for identification
+      setTimeout(() => {
+        multiplayerStore.setScreen('lobby');
+      }, 500);
+    } catch (err) {
+      error = 'Authentication failed. Please try again.';
+      localStorage.removeItem('quortex_token');
+      connecting = false;
+    }
+  }
+  
+  function handleDiscordLogin() {
+    // Redirect to Discord OAuth
+    window.location.href = `${serverUrl}/auth/discord`;
+  }
 
   function handleKeyPress(e: KeyboardEvent) {
     if (e.key === 'Enter') {
@@ -44,26 +112,44 @@
 <div class="login-screen">
   <div class="login-container">
     <h1>Quortex Multiplayer</h1>
-    <p class="subtitle">Enter your username to join</p>
+    <p class="subtitle">Choose how to join</p>
     
-    <div class="login-form">
-      <input
-        type="text"
-        bind:value={username}
-        on:keypress={handleKeyPress}
-        placeholder="Enter username"
-        maxlength="20"
-        disabled={connecting}
-        autofocus
-      />
+    {#if error}
+      <div class="error">{error}</div>
+    {/if}
+    
+    <div class="login-options">
+      <div class="oauth-section">
+        <button class="discord-button" on:click={handleDiscordLogin} disabled={connecting}>
+          <svg class="discord-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+          </svg>
+          {connecting ? 'Connecting...' : 'Continue with Discord'}
+        </button>
+        <p class="oauth-description">Use your Discord account</p>
+      </div>
       
-      {#if error}
-        <div class="error">{error}</div>
-      {/if}
+      <div class="divider">
+        <span>or</span>
+      </div>
       
-      <button on:click={handleLogin} disabled={connecting || !username.trim()}>
-        {connecting ? 'Connecting...' : 'Join Lobby'}
-      </button>
+      <div class="guest-section">
+        <p class="section-label">Join as guest</p>
+        <div class="login-form">
+          <input
+            type="text"
+            bind:value={username}
+            on:keypress={handleKeyPress}
+            placeholder="Enter username"
+            maxlength="20"
+            disabled={connecting}
+          />
+          
+          <button on:click={handleLogin} disabled={connecting || !username.trim()}>
+            {connecting ? 'Connecting...' : 'Join Lobby'}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="info">
@@ -87,7 +173,7 @@
     background: white;
     border-radius: 12px;
     padding: 40px;
-    max-width: 400px;
+    max-width: 450px;
     width: 100%;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   }
@@ -103,12 +189,96 @@
     color: #666;
     margin: 0 0 30px 0;
     text-align: center;
+    font-size: 16px;
+  }
+
+  .login-options {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+  }
+
+  .oauth-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .discord-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 24px;
+    background: #5865F2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .discord-button:hover:not(:disabled) {
+    background: #4752C4;
+  }
+
+  .discord-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .discord-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .oauth-description {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #999;
+    margin: 10px 0;
+  }
+
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .divider span {
+    padding: 0 15px;
+    font-size: 14px;
+  }
+
+  .guest-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .section-label {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
   }
 
   .login-form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
   }
 
   input {
@@ -153,9 +323,11 @@
   .error {
     color: #e74c3c;
     font-size: 14px;
-    padding: 8px;
+    padding: 12px;
     background: #fee;
-    border-radius: 4px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 10px;
   }
 
   .info {
