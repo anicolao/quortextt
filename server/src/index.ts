@@ -8,6 +8,7 @@ import passport from './auth/passport-config.js';
 import { configurePassport } from './auth/passport-config.js';
 import authRoutes from './routes/auth.js';
 import jwt from 'jsonwebtoken';
+import { GameStorage, DataStorage } from './storage/index.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -35,7 +36,7 @@ const io = new Server(httpServer, {
   }
 });
 
-// In-memory storage (MVP - no database)
+// File-based storage (using event sourcing with .jsonl files)
 interface Player {
   id: string;
   username: string;
@@ -61,35 +62,74 @@ interface GameAction {
   sequence: number; // Sequential number for ordering
 }
 
-const rooms = new Map<string, GameRoom>();
+// Initialize storage
+const dataDir = process.env.DATA_DIR || './data';
+const gameStorage = new GameStorage(`${dataDir}/games`);
+const playerStorage = new DataStorage(`${dataDir}/players`, 'players.jsonl');
+const sessionStorage = new DataStorage(`${dataDir}/sessions`, 'sessions.jsonl');
+
+// In-memory cache for players (since they're transient)
 const players = new Map<string, Player>();
-// Actions collection: gameId -> array of actions
-const gameActions = new Map<string, GameAction[]>();
+
+// Initialize storage on startup
+async function initializeStorage() {
+  await gameStorage.initialize();
+  await playerStorage.initialize();
+  await sessionStorage.initialize();
+  console.log('✅ File-based storage initialized');
+}
+
+// Call initialization
+await initializeStorage();
 
 // REST API endpoints
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', rooms: rooms.size, players: players.size });
+app.get('/health', async (req, res) => {
+  try {
+    const gameIds = await gameStorage.listGames();
+    res.json({ 
+      status: 'ok', 
+      games: gameIds.length, 
+      players: players.size,
+      storage: 'file-based'
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Storage unavailable' });
+  }
 });
 
 // Get all available rooms
-app.get('/api/rooms', (req, res) => {
-  const availableRooms = Array.from(rooms.values())
-    .filter(room => room.status === 'waiting')
-    .map(room => ({
-      id: room.id,
-      name: room.name,
-      hostId: room.hostId,
-      playerCount: room.players.length,
-      maxPlayers: room.maxPlayers,
-      status: room.status
-    }));
-  res.json({ rooms: availableRooms });
+app.get('/api/rooms', async (req, res) => {
+  try {
+    const gameIds = await gameStorage.listGames();
+    const rooms = await Promise.all(
+      gameIds.map(async (gameId) => {
+        const state = await gameStorage.getGameState(gameId);
+        return state;
+      })
+    );
+    
+    const availableRooms = rooms
+      .filter(room => room && room.status === 'waiting')
+      .map(room => ({
+        id: room!.gameId,
+        name: room!.name,
+        hostId: room!.hostId,
+        playerCount: room!.players.length,
+        maxPlayers: room!.maxPlayers,
+        status: room!.status
+      }));
+    
+    res.json({ rooms: availableRooms });
+  } catch (error) {
+    console.error('Error listing rooms:', error);
+    res.status(500).json({ error: 'Failed to list rooms' });
+  }
 });
 
 // Create a new room
-app.post('/api/rooms', (req, res) => {
+app.post('/api/rooms', async (req, res) => {
   const { name, maxPlayers, hostId } = req.body;
   
   if (!name || !hostId || !maxPlayers) {
@@ -101,18 +141,14 @@ app.post('/api/rooms', (req, res) => {
   }
 
   const roomId = uuidv4();
-  const room: GameRoom = {
-    id: roomId,
-    name,
-    hostId,
-    players: [],
-    maxPlayers,
-    status: 'waiting',
-  };
-
-  rooms.set(roomId, room);
   
-  res.json({ room: { id: room.id, name: room.name, maxPlayers: room.maxPlayers } });
+  try {
+    await gameStorage.createGame(roomId, name, hostId, maxPlayers);
+    res.json({ room: { id: roomId, name, maxPlayers } });
+  } catch (error) {
+    console.error('Error creating room:', error);
+    res.status(500).json({ error: 'Failed to create room' });
+  }
 });
 
 // Socket.IO connection handling with optional JWT authentication
@@ -158,214 +194,293 @@ io.on('connection', (socket) => {
   });
 
   // Join a room
-  socket.on('join_room', (data: { roomId: string }) => {
+  socket.on('join_room', async (data: { roomId: string }) => {
     const { roomId } = data;
-    const room = rooms.get(roomId);
     const player = players.get(socket.id);
-
-    if (!room) {
-      socket.emit('error', { message: 'Room not found' });
-      return;
-    }
 
     if (!player) {
       socket.emit('error', { message: 'Player not identified' });
       return;
     }
 
-    if (room.status !== 'waiting') {
-      socket.emit('error', { message: 'Room is not accepting players' });
-      return;
-    }
-
-    if (room.players.length >= room.maxPlayers) {
-      socket.emit('error', { message: 'Room is full' });
-      return;
-    }
-
-    // Check if player is already in the room
-    const existingPlayer = room.players.find(p => p.id === player.id);
-    if (!existingPlayer) {
-      room.players.push(player);
-    }
-
-    socket.join(roomId);
-    
-    // Notify everyone in the room
-    io.to(roomId).emit('player_joined', {
-      player: { id: player.id, username: player.username },
-      room: {
-        id: room.id,
-        name: room.name,
-        players: room.players.map(p => ({ id: p.id, username: p.username })),
-        hostId: room.hostId
+    try {
+      const state = await gameStorage.getGameState(roomId);
+      
+      if (!state) {
+        socket.emit('error', { message: 'Room not found' });
+        return;
       }
-    });
 
-    console.log(`Player ${player.username} joined room ${room.name}`);
+      if (state.status !== 'waiting') {
+        socket.emit('error', { message: 'Room is not accepting players' });
+        return;
+      }
+
+      if (state.players.length >= state.maxPlayers) {
+        socket.emit('error', { message: 'Room is full' });
+        return;
+      }
+
+      // Check if player is already in the room
+      const existingPlayer = state.players.find(p => p.id === player.id);
+      if (!existingPlayer) {
+        // Add player via action
+        const joinAction: GameAction = {
+          type: 'JOIN_GAME',
+          payload: { player },
+          playerId: player.id,
+          timestamp: Date.now(),
+          sequence: state.lastActionSequence + 1
+        };
+        await gameStorage.appendAction(roomId, joinAction);
+      }
+
+      socket.join(roomId);
+      
+      // Get updated state
+      const updatedState = await gameStorage.getGameState(roomId);
+      
+      // Notify everyone in the room
+      io.to(roomId).emit('player_joined', {
+        player: { id: player.id, username: player.username },
+        room: {
+          id: updatedState!.gameId,
+          name: updatedState!.name,
+          players: updatedState!.players.map(p => ({ id: p.id, username: p.username })),
+          hostId: updatedState!.hostId
+        }
+      });
+
+      console.log(`Player ${player.username} joined room ${updatedState!.name}`);
+    } catch (error) {
+      console.error('Error joining room:', error);
+      socket.emit('error', { message: 'Failed to join room' });
+    }
   });
 
   // Leave a room
-  socket.on('leave_room', (data: { roomId: string }) => {
+  socket.on('leave_room', async (data: { roomId: string }) => {
     const { roomId } = data;
-    const room = rooms.get(roomId);
     const player = players.get(socket.id);
 
-    if (!room || !player) return;
+    if (!player) return;
 
-    // Remove player from room
-    room.players = room.players.filter(p => p.id !== player.id);
-    socket.leave(roomId);
+    try {
+      const state = await gameStorage.getGameState(roomId);
+      if (!state) return;
 
-    // Notify others
-    io.to(roomId).emit('player_left', {
-      playerId: player.id,
-      room: {
-        id: room.id,
-        name: room.name,
-        players: room.players.map(p => ({ id: p.id, username: p.username })),
-        hostId: room.hostId
-      }
-    });
+      // Record leave action
+      const leaveAction: GameAction = {
+        type: 'LEAVE_GAME',
+        payload: { playerId: player.id },
+        playerId: player.id,
+        timestamp: Date.now(),
+        sequence: state.lastActionSequence + 1
+      };
+      await gameStorage.appendAction(roomId, leaveAction);
 
-    // Delete room if empty
-    if (room.players.length === 0) {
-      rooms.delete(roomId);
-      console.log(`Room ${room.name} deleted (empty)`);
+      socket.leave(roomId);
+
+      // Get updated state
+      const updatedState = await gameStorage.getGameState(roomId);
+
+      // Notify others
+      io.to(roomId).emit('player_left', {
+        playerId: player.id,
+        room: {
+          id: updatedState!.gameId,
+          name: updatedState!.name,
+          players: updatedState!.players.map(p => ({ id: p.id, username: p.username })),
+          hostId: updatedState!.hostId
+        }
+      });
+
+      console.log(`Player ${player.username} left room ${updatedState!.name}`);
+    } catch (error) {
+      console.error('Error leaving room:', error);
     }
-
-    console.log(`Player ${player.username} left room ${room.name}`);
   });
 
   // Start game (host posts START_GAME action with seed)
-  socket.on('start_game', (data: { roomId: string }) => {
+  socket.on('start_game', async (data: { roomId: string }) => {
     const { roomId } = data;
-    const room = rooms.get(roomId);
     const player = players.get(socket.id);
 
-    if (!room || !player) return;
+    if (!player) return;
 
-    // Only host can start the game
-    if (room.hostId !== player.id) {
-      socket.emit('error', { message: 'Only host can start the game' });
-      return;
+    try {
+      const state = await gameStorage.getGameState(roomId);
+      if (!state) return;
+
+      // Only host can start the game
+      if (state.hostId !== player.id) {
+        socket.emit('error', { message: 'Only host can start the game' });
+        return;
+      }
+
+      if (state.players.length < 2) {
+        socket.emit('error', { message: 'Need at least 2 players to start' });
+        return;
+      }
+
+      // Record start game action
+      const startAction: GameAction = {
+        type: 'START_GAME',
+        payload: {},
+        playerId: player.id,
+        timestamp: Date.now(),
+        sequence: state.lastActionSequence + 1
+      };
+      await gameStorage.appendAction(roomId, startAction);
+
+      // Get updated state
+      const updatedState = await gameStorage.getGameState(roomId);
+
+      // Host should now post START_GAME action with seed via post_action event
+      // We just notify clients that the game is ready to start
+      io.to(roomId).emit('game_ready', {
+        gameId: updatedState!.gameId,
+        players: updatedState!.players.map((p, index) => ({ 
+          id: p.id, 
+          username: p.username,
+          playerIndex: index // Assign player indices for the game
+        }))
+      });
+
+      console.log(`Game ready in room ${updatedState!.name}, waiting for host to post START_GAME action`);
+    } catch (error) {
+      console.error('Error starting game:', error);
+      socket.emit('error', { message: 'Failed to start game' });
     }
-
-    if (room.players.length < 2) {
-      socket.emit('error', { message: 'Need at least 2 players to start' });
-      return;
-    }
-
-    room.status = 'playing';
-    
-    // Initialize actions log for this game
-    if (!gameActions.has(roomId)) {
-      gameActions.set(roomId, []);
-    }
-
-    // Host should now post START_GAME action with seed via post_action event
-    // We just notify clients that the game is ready to start
-    io.to(roomId).emit('game_ready', {
-      gameId: room.id,
-      players: room.players.map((p, index) => ({ 
-        id: p.id, 
-        username: p.username,
-        playerIndex: index // Assign player indices for the game
-      }))
-    });
-
-    console.log(`Game ready in room ${room.name}, waiting for host to post START_GAME action`);
   });
 
   // Post a game action (event sourcing)
-  socket.on('post_action', (data: { gameId: string; action: any }) => {
+  socket.on('post_action', async (data: { gameId: string; action: any }) => {
     const { gameId, action } = data;
     const player = players.get(socket.id);
-    const room = rooms.get(gameId);
 
-    if (!room || !player) return;
+    if (!player) return;
 
-    // Get or create actions array for this game
-    if (!gameActions.has(gameId)) {
-      gameActions.set(gameId, []);
+    try {
+      const state = await gameStorage.getGameState(gameId);
+      if (!state) return;
+      
+      // Create the action with metadata
+      const gameAction: GameAction = {
+        type: action.type,
+        payload: action.payload || {},
+        playerId: player.id,
+        timestamp: Date.now(),
+        sequence: state.lastActionSequence + 1
+      };
+
+      // Append to action log
+      await gameStorage.appendAction(gameId, gameAction);
+
+      // Broadcast action to all players in the game
+      io.to(gameId).emit('action_posted', gameAction);
+
+      console.log(`Action ${gameAction.type} posted to game ${gameId} by ${player.username}`);
+    } catch (error) {
+      console.error('Error posting action:', error);
+      socket.emit('error', { message: 'Failed to post action' });
     }
-    
-    const actions = gameActions.get(gameId)!;
-    
-    // Create the action with metadata
-    const gameAction: GameAction = {
-      type: action.type,
-      payload: action.payload || {},
-      playerId: player.id,
-      timestamp: Date.now(),
-      sequence: actions.length
-    };
-
-    // Append to action log
-    actions.push(gameAction);
-
-    // Broadcast action to all players in the game
-    io.to(gameId).emit('action_posted', gameAction);
-
-    console.log(`Action ${gameAction.type} posted to game ${gameId} by ${player.username}`);
   });
 
   // Get all actions for a game (for new players or reconnection)
-  socket.on('get_actions', (data: { gameId: string }) => {
+  socket.on('get_actions', async (data: { gameId: string }) => {
     const { gameId } = data;
-    const actions = gameActions.get(gameId) || [];
     
-    socket.emit('actions_list', {
-      gameId,
-      actions
-    });
+    try {
+      const actions = await gameStorage.readActions(gameId);
+      
+      socket.emit('actions_list', {
+        gameId,
+        actions
+      });
+    } catch (error) {
+      console.error('Error getting actions:', error);
+      socket.emit('error', { message: 'Failed to get actions' });
+    }
   });
 
   // Disconnect
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log('Client disconnected:', socket.id);
     const player = players.get(socket.id);
 
     if (player) {
       player.connected = false;
 
-      // Find and update all rooms this player was in
-      rooms.forEach((room) => {
-        const playerInRoom = room.players.find(p => p.id === player.id);
-        if (playerInRoom) {
-          playerInRoom.connected = false;
-          io.to(room.id).emit('player_disconnected', {
-            playerId: player.id,
-            username: player.username
-          });
+      try {
+        // Find and update all games this player was in
+        const gameIds = await gameStorage.listGames();
+        for (const gameId of gameIds) {
+          const state = await gameStorage.getGameState(gameId);
+          if (state) {
+            const playerInGame = state.players.find(p => p.id === player.id);
+            if (playerInGame) {
+              // Record disconnect action
+              const disconnectAction: GameAction = {
+                type: 'PLAYER_DISCONNECT',
+                payload: { playerId: player.id },
+                playerId: player.id,
+                timestamp: Date.now(),
+                sequence: state.lastActionSequence + 1
+              };
+              await gameStorage.appendAction(gameId, disconnectAction);
+              
+              io.to(gameId).emit('player_disconnected', {
+                playerId: player.id,
+                username: player.username
+              });
+            }
+          }
         }
-      });
+      } catch (error) {
+        console.error('Error handling disconnect:', error);
+      }
 
       // Clean up after a timeout (give them a chance to reconnect)
-      setTimeout(() => {
+      setTimeout(async () => {
         if (!player.connected) {
           players.delete(socket.id);
           
-          // Remove from all rooms and clean up
-          rooms.forEach((room, roomId) => {
-            const idx = room.players.findIndex(p => p.id === player.id);
-            if (idx !== -1) {
-              room.players.splice(idx, 1);
-              io.to(room.id).emit('player_left', {
-                playerId: player.id,
-                room: {
-                  id: room.id,
-                  name: room.name,
-                  players: room.players.map(p => ({ id: p.id, username: p.username })),
-                  hostId: room.hostId
+          try {
+            // Remove from all games and clean up
+            const gameIds = await gameStorage.listGames();
+            for (const gameId of gameIds) {
+              const state = await gameStorage.getGameState(gameId);
+              if (state) {
+                const playerInGame = state.players.find(p => p.id === player.id);
+                if (playerInGame) {
+                  // Record leave action
+                  const leaveAction: GameAction = {
+                    type: 'LEAVE_GAME',
+                    payload: { playerId: player.id },
+                    playerId: player.id,
+                    timestamp: Date.now(),
+                    sequence: state.lastActionSequence + 1
+                  };
+                  await gameStorage.appendAction(gameId, leaveAction);
+                  
+                  const updatedState = await gameStorage.getGameState(gameId);
+                  
+                  io.to(gameId).emit('player_left', {
+                    playerId: player.id,
+                    room: {
+                      id: updatedState!.gameId,
+                      name: updatedState!.name,
+                      players: updatedState!.players.map(p => ({ id: p.id, username: p.username })),
+                      hostId: updatedState!.hostId
+                    }
+                  });
                 }
-              });
-
-              if (room.players.length === 0) {
-                rooms.delete(roomId);
               }
             }
-          });
+          } catch (error) {
+            console.error('Error cleaning up disconnected player:', error);
+          }
         }
       }, 30000); // 30 second grace period
     }
@@ -378,3 +493,19 @@ httpServer.listen(PORT, () => {
   console.log(`🎮 Quortex multiplayer server running on port ${PORT}`);
   console.log(`   Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
 });
+
+// Graceful shutdown
+async function shutdown() {
+  console.log('Shutting down gracefully...');
+  try {
+    await gameStorage.shutdown();
+    console.log('✅ All data flushed to disk');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
