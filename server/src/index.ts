@@ -149,6 +149,7 @@ app.get('/health', async (req, res) => {
 // Get all available rooms
 app.get('/api/rooms', async (req, res) => {
   try {
+    const userId = req.query.userId as string | undefined;
     const gameIds = await gameStorage.listGames();
     const rooms = await Promise.all(
       gameIds.map(async (gameId) => {
@@ -157,8 +158,21 @@ app.get('/api/rooms', async (req, res) => {
       })
     );
     
+    // For authenticated users, include their active games even if not in 'waiting' status
+    let userGameIds: string[] = [];
+    if (userId) {
+      const session = getUserSession(userId);
+      if (session) {
+        userGameIds = session.activeGameIds;
+      }
+    }
+    
     const availableRooms = rooms
-      .filter(room => room && room.status === 'waiting')
+      .filter(room => {
+        if (!room) return false;
+        // Include if waiting OR if it's one of the user's active games
+        return room.status === 'waiting' || (userId && userGameIds.includes(room.gameId));
+      })
       .map(room => ({
         id: room!.gameId,
         name: room!.name,
