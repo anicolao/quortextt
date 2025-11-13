@@ -84,8 +84,16 @@ class MultiplayerSocket {
     if (!this.socket) return;
 
     // Player identification response
-    this.socket.on('identified', (data: { playerId: string; username: string }) => {
+    this.socket.on('identified', (data: { playerId: string; username: string; authenticated?: boolean; activeGames?: string[] }) => {
       multiplayerStore.setUsername(data.username, data.playerId);
+      
+      // If user has active games, refresh the room list to show them
+      if (data.activeGames && data.activeGames.length > 0) {
+        console.log(`User has ${data.activeGames.length} active games, refreshing room list`);
+        this.fetchRooms(data.playerId).then(rooms => {
+          multiplayerStore.setAvailableRooms(rooms);
+        });
+      }
     });
 
     // Room events
@@ -147,9 +155,14 @@ class MultiplayerSocket {
     this.socket.emit('identify', { username });
   }
 
-  async fetchRooms(): Promise<Room[]> {
+  async fetchRooms(userId?: string): Promise<Room[]> {
     try {
-      const response = await fetch(`${this.serverUrl}/api/rooms`);
+      // Include userId parameter if provided to get user's active games
+      const url = userId 
+        ? `${this.serverUrl}/api/rooms?userId=${encodeURIComponent(userId)}`
+        : `${this.serverUrl}/api/rooms`;
+      
+      const response = await fetch(url);
       const data = await response.json();
       return data.rooms || [];
     } catch (error) {
