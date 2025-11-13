@@ -106,39 +106,10 @@ export class GameCoordinator {
     this.gameId = gameId;
     
     console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
+    console.log('Players should now use the configuration screen to add themselves by clicking edge buttons.');
     
-    // Request any existing actions to sync first
+    // Request any existing actions to sync
     socket.getActions(gameId);
-    
-    // Check if we're the host (first player in the list)
-    // The host should initialize the game by posting ADD_PLAYER actions
-    const mySocketId = socket.getSocketId();
-    const isHost = players.length > 0 && players[0].id === mySocketId;
-    
-    if (isHost) {
-      console.log('I am the host. Posting ADD_PLAYER actions for all players.');
-      
-      // Post ADD_PLAYER action for each player
-      players.forEach((_player: any, index: number) => {
-        const color = this.getPlayerColor(index);
-        socket.postAction(gameId, {
-          type: 'ADD_PLAYER',
-          payload: {
-            color,
-            isAI: false
-          }
-        });
-      });
-      
-      console.log('Posted all ADD_PLAYER actions. Players can now configure game settings.');
-    } else {
-      console.log('Waiting for host to initialize game setup.');
-    }
-  }
-
-  private getPlayerColor(index: number): string {
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f7b731', '#5f27cd', '#00d2d3'];
-    return colors[index % colors.length];
   }
 
   private handleActionReceived(event: Event) {
