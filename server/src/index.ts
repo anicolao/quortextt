@@ -4,6 +4,10 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
+import passport from './auth/passport-config.js';
+import { configurePassport } from './auth/passport-config.js';
+import authRoutes from './routes/auth.js';
+import jwt from 'jsonwebtoken';
 
 const app = express();
 const httpServer = createServer(app);
@@ -15,6 +19,13 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Initialize Passport
+app.use(passport.initialize());
+configurePassport();
+
+// Authentication routes
+app.use('/auth', authRoutes);
 
 // Socket.IO server
 const io = new Server(httpServer, {
@@ -104,9 +115,29 @@ app.post('/api/rooms', (req, res) => {
   res.json({ room: { id: room.id, name: room.name, maxPlayers: room.maxPlayers } });
 });
 
-// Socket.IO connection handling
+// Socket.IO connection handling with optional JWT authentication
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  
+  if (token) {
+    try {
+      const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+      socket.data.userId = decoded.userId;
+      socket.data.authenticated = true;
+    } catch (err) {
+      console.log('Invalid token provided, allowing anonymous connection');
+      socket.data.authenticated = false;
+    }
+  } else {
+    socket.data.authenticated = false;
+  }
+  
+  next();
+});
+
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('Client connected:', socket.id, socket.data.authenticated ? '(authenticated)' : '(anonymous)');
 
   // Player identification
   socket.on('identify', (data: { username: string }) => {
@@ -118,8 +149,12 @@ io.on('connection', (socket) => {
       connected: true
     };
     players.set(playerId, player);
-    console.log('Player identified:', player.username);
-    socket.emit('identified', { playerId, username: player.username });
+    console.log('Player identified:', player.username, socket.data.authenticated ? '(authenticated user)' : '');
+    socket.emit('identified', { 
+      playerId, 
+      username: player.username,
+      authenticated: socket.data.authenticated 
+    });
   });
 
   // Join a room
