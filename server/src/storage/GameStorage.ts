@@ -76,16 +76,44 @@ export class GameStorage {
   }
 
   /**
+   * Get the next sequence number for a game.
+   * This ensures atomic increment of sequence numbers.
+   */
+  async getNextSequence(gameId: string): Promise<number> {
+    // Check cache first
+    if (this.cache.has(gameId)) {
+      const state = this.cache.get(gameId)!;
+      return state.lastActionSequence + 1;
+    }
+    
+    // Load from disk if not cached
+    const actions = await this.readActions(gameId);
+    if (actions.length === 0) {
+      return 0; // First action
+    }
+    
+    return actions[actions.length - 1].sequence + 1;
+  }
+
+  /**
    * Append a game action to the action log.
    * Actions are buffered in memory and flushed periodically for performance.
    * The in-memory cache is updated immediately to ensure consistent reads.
    * 
    * @param gameId - The game ID
-   * @param action - The action to append
+   * @param action - The action to append (sequence will be auto-assigned if not set)
    * @param immediate - If true, flush immediately (default: false for performance)
+   * @returns The action with the assigned sequence number
    */
-  async appendAction(gameId: string, action: GameAction, immediate = false): Promise<void> {
-    const line = JSON.stringify(action);
+  async appendAction(gameId: string, action: GameAction, immediate = false): Promise<GameAction> {
+    // Ensure sequence is set correctly
+    const state = this.cache.get(gameId);
+    const finalAction: GameAction = {
+      ...action,
+      sequence: state ? state.lastActionSequence + 1 : action.sequence
+    };
+    
+    const line = JSON.stringify(finalAction);
     
     // Add to write buffer
     if (!this.writeBuffers.has(gameId)) {
@@ -95,9 +123,8 @@ export class GameStorage {
     
     // Update in-memory cache immediately
     if (this.cache.has(gameId)) {
-      const state = this.cache.get(gameId)!;
-      this.cache.set(gameId, this.applyAction(state, action));
-    } else if (action.type === 'CREATE_GAME') {
+      this.cache.set(gameId, this.applyAction(state!, finalAction));
+    } else if (finalAction.type === 'CREATE_GAME') {
       // Initialize cache for new game
       const initialState: GameState = {
         gameId,
@@ -108,17 +135,19 @@ export class GameStorage {
         maxPlayers: 2,
         lastActionSequence: -1
       };
-      this.cache.set(gameId, this.applyAction(initialState, action));
+      this.cache.set(gameId, this.applyAction(initialState, finalAction));
     }
     
     // Flush if immediate mode, buffer is large, or this is a critical action
     const shouldFlushNow = immediate || 
                            this.writeBuffers.get(gameId)!.length >= 10 ||
-                           action.type === 'CREATE_GAME';
+                           finalAction.type === 'CREATE_GAME';
     
     if (shouldFlushNow) {
       await this.flush(gameId);
     }
+    
+    return finalAction;
   }
 
   /**
