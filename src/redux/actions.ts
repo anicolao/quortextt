@@ -35,6 +35,7 @@ export const REMATCH_GAME = "REMATCH_GAME";
 export const RESTORE_GAME = "RESTORE_GAME";
 
 // UI actions
+export const SET_GAME_MODE = "SET_GAME_MODE";
 export const SET_HOVERED_POSITION = "SET_HOVERED_POSITION";
 export const SET_HOVERED_ELEMENT = "SET_HOVERED_ELEMENT";
 export const SET_SELECTED_POSITION = "SET_SELECTED_POSITION";
@@ -178,6 +179,11 @@ export interface SetAIScoringDataAction {
 }
 
 // UI action types
+export interface SetGameModeAction {
+  type: typeof SET_GAME_MODE;
+  payload: import("./types").GameMode;
+}
+
 export interface SetHoveredPositionAction {
   type: typeof SET_HOVERED_POSITION;
   payload: HexPosition | null;
@@ -263,6 +269,7 @@ export type GameAction =
   | SetAIScoringDataAction;
 
 export type UIAction =
+  | SetGameModeAction
   | SetHoveredPositionAction
   | SetHoveredElementAction
   | SetSelectedPositionAction
@@ -389,6 +396,13 @@ export const restoreGame = (): RestoreGameAction => ({
 });
 
 // UI action creators
+export const setGameMode = (
+  mode: import("./types").GameMode,
+): SetGameModeAction => ({
+  type: SET_GAME_MODE,
+  payload: mode,
+});
+
 export const setHoveredPosition = (
   position: HexPosition | null,
 ): SetHoveredPositionAction => ({

@@ -101,6 +101,9 @@ export interface GameSettings {
   tileDistribution: [number, number, number, number]; // [NoSharps, OneSharp, TwoSharps, ThreeSharps]
 }
 
+// Game mode type
+export type GameMode = 'tabletop' | 'multiplayer';
+
 // UI state for interaction
 // Hovered element type for debug visualization
 export type HoveredElementType = 
@@ -112,6 +115,9 @@ export type HoveredElementType =
   | null;
 
 export interface UIState {
+  // Game mode
+  gameMode: GameMode;
+  
   // Interaction state
   selectedPosition: HexPosition | null;
   hoveredPosition: HexPosition | null;
