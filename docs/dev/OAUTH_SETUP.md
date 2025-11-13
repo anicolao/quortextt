@@ -60,7 +60,7 @@ VITE_SERVER_URL=http://localhost:3001
 
 The authentication flow works as follows:
 
-1. User clicks "Login with Discord" on the client
+1. User clicks "Continue with Discord" on the multiplayer login screen
 2. Client redirects to `/auth/discord`
 3. Server redirects to Discord's OAuth page
 4. User authorizes the application on Discord
@@ -68,7 +68,7 @@ The authentication flow works as follows:
 6. Server exchanges code for user info
 7. Server creates/updates user in database
 8. Server generates JWT token
-9. Server redirects to client with token
+9. Server redirects to `multiplayer.html` with token in URL
 10. Client stores token and uses it for API requests
 
 ## API Endpoints
