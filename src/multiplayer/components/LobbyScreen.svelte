@@ -24,7 +24,8 @@
 
   async function refreshRooms() {
     refreshing = true;
-    const fetchedRooms = await socket.fetchRooms();
+    // Pass playerId to get user's active games if authenticated
+    const fetchedRooms = await socket.fetchRooms(playerId || undefined);
     rooms = fetchedRooms || [];
     multiplayerStore.setAvailableRooms(rooms);
     refreshing = false;
@@ -102,19 +103,32 @@
       {:else}
         <div class="rooms-list">
           {#each rooms as room}
-            <div class="room-card">
+            <div class="room-card" class:in-progress={room.status === 'playing'}>
               <div class="room-info">
                 <h3>{room.name}</h3>
                 <p class="room-players">
                   👥 {room.playerCount || room.players?.length || 0}/{room.maxPlayers} players
                 </p>
+                {#if room.status === 'playing'}
+                  <span class="status-badge">In Progress</span>
+                {:else if room.status === 'finished'}
+                  <span class="status-badge finished">Finished</span>
+                {/if}
               </div>
               <button 
                 class="join-btn" 
                 on:click={() => joinRoom(room)}
-                disabled={(room.playerCount || room.players?.length || 0) >= room.maxPlayers}
+                disabled={room.status === 'waiting' && (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
               >
-                {(room.playerCount || room.players?.length || 0) >= room.maxPlayers ? 'Full' : 'Join'}
+                {#if room.status === 'playing'}
+                  Resume
+                {:else if room.status === 'finished'}
+                  View
+                {:else if (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
+                  Full
+                {:else}
+                  Join
+                {/if}
               </button>
             </div>
           {/each}
@@ -314,6 +328,11 @@
     border-radius: 8px;
     transition: transform 0.2s;
   }
+  
+  .room-card.in-progress {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+  }
 
   .room-card:hover {
     transform: translateY(-2px);
@@ -327,9 +346,23 @@
   }
 
   .room-players {
-    margin: 0;
+    margin: 0 0 4px 0;
     color: #666;
     font-size: 14px;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #2196F3;
+    color: white;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .status-badge.finished {
+    background: #757575;
   }
 
   .join-btn {
