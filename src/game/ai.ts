@@ -360,6 +360,7 @@ export function generateMoveCandidates(
 
         // Find best follow-up move with the replaced tile
         let bestFollowupScore = -Infinity;
+        let foundWinningFollowup = false;
 
         for (
           let followupRotation = 0;
@@ -401,6 +402,17 @@ export function generateMoveCandidates(
             if (followupScore > bestFollowupScore) {
               bestFollowupScore = followupScore;
             }
+
+            // Stop early if we found a winning move
+            if (followupScore >= WIN_SCORE) {
+              foundWinningFollowup = true;
+              break;
+            }
+          }
+
+          // Break outer loop if we found a winning move
+          if (foundWinningFollowup) {
+            break;
           }
         }
 
