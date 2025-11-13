@@ -5,8 +5,8 @@ import { multiplayerStore } from './stores/multiplayerStore';
 export class GameCoordinator {
   private store: any; // Redux store
   private gameId: string;
-  private isHostPlayer: boolean = false;
   private localActionsProcessed = 0;
+  private originalDispatch: any = null;
 
   constructor(reduxStore: any, gameId: string) {
     this.store = reduxStore;
@@ -15,12 +15,68 @@ export class GameCoordinator {
 
   start() {
     this.setupEventListeners();
+    this.interceptReduxDispatch();
     // Request game actions to sync state
     socket.getActions(this.gameId);
   }
 
   stop() {
     this.cleanup();
+  }
+
+  private interceptReduxDispatch() {
+    // Intercept Redux dispatch to catch START_GAME and other actions
+    // that should be broadcast to all clients
+    if (!this.store) return;
+    
+    this.originalDispatch = this.store.dispatch;
+    this.store.dispatch = (action: any) => {
+      // Check if this is START_GAME from lobby Play button
+      if (action.type === 'START_GAME' && !action.payload?.seed) {
+        // Generate seed and post to server
+        const seed = Math.floor(Math.random() * 1000000);
+        console.log(`Intercepted START_GAME, adding seed: ${seed}`);
+        
+        const actionWithSeed = {
+          ...action,
+          payload: {
+            ...action.payload,
+            seed
+          }
+        };
+        
+        // Post to server (will come back via action stream)
+        socket.postAction(this.gameId, actionWithSeed);
+        
+        // Don't dispatch locally yet - wait for it to come back from server
+        return;
+      }
+      
+      // Check if this is a player action that should be broadcast
+      if (this.shouldBroadcastAction(action.type)) {
+        console.log(`Broadcasting action: ${action.type}`);
+        socket.postAction(this.gameId, action);
+        // Don't dispatch locally - wait for server broadcast
+        return;
+      }
+      
+      // For other actions (UI, etc.), dispatch normally
+      return this.originalDispatch(action);
+    };
+  }
+
+  private shouldBroadcastAction(actionType: string): boolean {
+    // Actions that affect game state and should be broadcast
+    const broadcastActions = [
+      'SELECT_EDGE',
+      'PLACE_TILE',
+      'REPLACE_TILE',
+      'DRAW_TILE',
+      'NEXT_PLAYER',
+      'END_GAME',
+      'CHANGE_PLAYER_COLOR'
+    ];
+    return broadcastActions.includes(actionType);
   }
 
   private setupEventListeners() {
@@ -39,52 +95,48 @@ export class GameCoordinator {
     const { gameId, players } = customEvent.detail;
     this.gameId = gameId;
     
-    // Get current multiplayer state to check if we're host
-    let isHost = false;
-    multiplayerStore.subscribe((state) => {
-      isHost = state.playerId === state.currentRoom?.hostId;
-    })();
-    this.isHostPlayer = isHost;
+    console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
     
-    console.log(`Game ready! GameId: ${gameId}, IsHost: ${this.isHostPlayer}`);
+    // Initialize game config (players) but don't start game yet
+    // Players will enter lobby/seating phase first
+    this.initializeGameConfig(players);
     
-    // If host, generate seed and post START_GAME action
-    if (this.isHostPlayer) {
-      this.initializeGameAsHost(players);
-    } else {
-      // Non-host: request all actions to sync
-      socket.getActions(gameId);
-    }
+    // Request any existing actions to sync
+    socket.getActions(gameId);
   }
 
-  private initializeGameAsHost(players: any[]) {
+  private initializeGameConfig(players: any[]) {
     if (!this.gameId) return;
     
-    // Generate random seed
-    const seed = Math.floor(Math.random() * 1000000);
+    console.log(`Initializing game config with ${players.length} players`);
     
-    console.log(`Host initializing game with seed: ${seed}`);
+    // Map socket players to game player configs
+    // Store this so Redux can initialize the lobby screen
+    const playerConfigs = players.map((p, index) => ({
+      id: `p${index + 1}`,
+      username: p.username,
+      socketId: p.id,
+      color: this.getPlayerColor(index),
+      isAI: false
+    }));
     
-    // Post START_GAME action with seed and player configuration
-    const startGameAction = {
-      type: 'START_GAME',
-      payload: {
-        seed,
-        boardRadius: 5,
-        // Map socket players to game players
-        players: players.map((p, index) => ({
-          id: `p${index + 1}`,
-          username: p.username,
-          socketId: p.id,
-          color: this.getPlayerColor(index),
-          edge: index, // Assign edges in order
-          isAI: false
-        }))
-      }
-    };
+    // Initialize Redux with players (enters lobby/seating phase)
+    // This should show the lobby where players can choose colors
+    if (this.store) {
+      // Add each player to the configuration screen
+      playerConfigs.forEach((playerConfig) => {
+        this.store.dispatch({
+          type: 'ADD_PLAYER',
+          payload: {
+            ...playerConfig
+          }
+        });
+      });
+    }
     
-    // Post to server
-    socket.postAction(this.gameId, startGameAction);
+    // Note: START_GAME with seed will be dispatched later
+    // when a player clicks "Play" in the lobby
+    console.log('Players added to lobby. Waiting for "Play" button click to start game with seed.');
   }
 
   private getPlayerColor(index: number): string {
@@ -104,9 +156,9 @@ export class GameCoordinator {
       return;
     }
     
-    // Dispatch to Redux store
-    if (this.store) {
-      this.store.dispatch({
+    // Dispatch to Redux store using original dispatch to avoid re-interception
+    if (this.store && this.originalDispatch) {
+      this.originalDispatch.call(this.store, {
         type: action.type,
         payload: action.payload
       });
@@ -123,10 +175,10 @@ export class GameCoordinator {
     
     console.log(`Syncing ${actions.length} actions`);
     
-    // Replay all actions in order
+    // Replay all actions in order using original dispatch
     actions.forEach((action: any) => {
-      if (action.sequence >= this.localActionsProcessed && this.store) {
-        this.store.dispatch({
+      if (action.sequence >= this.localActionsProcessed && this.store && this.originalDispatch) {
+        this.originalDispatch.call(this.store, {
           type: action.type,
           payload: action.payload
         });
@@ -153,6 +205,11 @@ export class GameCoordinator {
     window.removeEventListener('multiplayer:game-ready', this.handleGameReady.bind(this) as EventListener);
     window.removeEventListener('multiplayer:action', this.handleActionReceived.bind(this) as EventListener);
     window.removeEventListener('multiplayer:actions-sync', this.handleActionsSync.bind(this) as EventListener);
+    
+    // Restore original dispatch
+    if (this.originalDispatch && this.store) {
+      this.store.dispatch = this.originalDispatch;
+    }
     
     this.localActionsProcessed = 0;
   }
