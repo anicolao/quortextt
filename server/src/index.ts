@@ -327,20 +327,23 @@ io.on('connection', (socket) => {
         return;
       }
 
-      if (state.status !== 'waiting') {
-        socket.emit('error', { message: 'Room is not accepting players' });
+      // Check if player is already in the room (for rejoining in-progress games)
+      const existingPlayer = state.players.find(p => p.id === player.id);
+      const isRejoining = existingPlayer !== undefined;
+
+      // Allow rejoining in-progress games, but don't allow new players to join
+      if (!isRejoining && state.status !== 'waiting') {
+        socket.emit('error', { message: 'Room is not accepting new players' });
         return;
       }
 
-      if (state.players.length >= state.maxPlayers) {
+      if (!isRejoining && state.players.length >= state.maxPlayers) {
         socket.emit('error', { message: 'Room is full' });
         return;
       }
 
-      // Check if player is already in the room
-      const existingPlayer = state.players.find(p => p.id === player.id);
+      // Add player via action only if they're not already in the room
       if (!existingPlayer) {
-        // Add player via action (sequence will be auto-assigned)
         const joinAction: GameAction = {
           type: 'JOIN_GAME',
           payload: { player },
@@ -372,7 +375,20 @@ io.on('connection', (socket) => {
         }
       });
 
-      console.log(`Player ${player.username} joined room ${updatedState!.name}`);
+      // If rejoining an in-progress or finished game, notify the player to load the game
+      if (isRejoining && (updatedState!.status === 'playing' || updatedState!.status === 'finished')) {
+        socket.emit('game_ready', {
+          gameId: updatedState!.gameId,
+          players: updatedState!.players.map((p, index) => ({ 
+            id: p.id, 
+            username: p.username,
+            playerIndex: index
+          }))
+        });
+        console.log(`Player ${player.username} rejoined in-progress game ${updatedState!.name}`);
+      } else {
+        console.log(`Player ${player.username} joined room ${updatedState!.name}`);
+      }
     } catch (error) {
       console.error('Error joining room:', error);
       socket.emit('error', { message: 'Failed to join room' });
