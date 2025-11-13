@@ -72,6 +72,7 @@ export class GameCoordinator {
       'REMOVE_PLAYER',
       'CHANGE_PLAYER_COLOR',
       'UPDATE_SETTINGS',
+      'TOGGLE_SETTINGS',
       // Seating phase actions
       'SELECT_EDGE',
       'COMPLETE_SEATING_PHASE',
