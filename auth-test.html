@@ -175,12 +175,15 @@
             try {
                 const response = await fetch(`${SERVER_URL}/health`);
                 const data = await response.json();
-                showStatus('serverStatus', 
-                    `Server is running! ✓<br>Rooms: ${data.rooms}, Players: ${data.players}`, 
+                // Safely construct message without innerHTML
+                const rooms = parseInt(data.rooms, 10) || 0;
+                const players = parseInt(data.players, 10) || 0;
+                showStatusSafe('serverStatus', 
+                    `Server is running! ✓\nRooms: ${rooms}, Players: ${players}`, 
                     'success'
                 );
             } catch (error) {
-                showStatus('serverStatus', 
+                showStatusSafe('serverStatus', 
                     `Server is not responding. Make sure it's running on port 3001.`, 
                     'error'
                 );
@@ -247,9 +250,20 @@
             showStatus('authStatus', 'Logged out', 'success');
         }
 
-        function showStatus(elementId, message, type) {
+        // Safe status display - never uses innerHTML
+        function showStatusSafe(elementId, message, type) {
             const element = document.getElementById(elementId);
-            element.innerHTML = `<div class="${type}">${message}</div>`;
+            const div = document.createElement('div');
+            div.className = type;
+            // Always use textContent to prevent XSS
+            div.textContent = message;
+            element.innerHTML = '';
+            element.appendChild(div);
+        }
+        
+        // For backward compatibility
+        function showStatus(elementId, message, type) {
+            showStatusSafe(elementId, message, type);
         }
     </script>
 </body>

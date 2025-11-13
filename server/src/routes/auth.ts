@@ -1,17 +1,38 @@
 // Authentication routes for Discord OAuth
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import passport from '../auth/passport-config.js';
 import { generateToken, authenticateJWT, AuthRequest } from '../middleware/auth.js';
 import { UserStore } from '../models/User.js';
 
 const router = express.Router();
 
+// Rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 requests per windowMs
+  message: { error: 'Too many authentication attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limiting for authenticated endpoints
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Discord OAuth routes
 router.get('/discord', 
+  authLimiter,
   passport.authenticate('discord', { session: false })
 );
 
 router.get('/discord/callback',
+  authLimiter,
   passport.authenticate('discord', { session: false, failureRedirect: '/auth/error' }),
   (req, res) => {
     const user = req.user as any;
@@ -29,7 +50,7 @@ router.get('/discord/callback',
 );
 
 // Get current authenticated user
-router.get('/me', authenticateJWT, (req: AuthRequest, res) => {
+router.get('/me', apiLimiter, authenticateJWT, (req: AuthRequest, res) => {
   const userId = req.authUser?.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -54,7 +75,7 @@ router.get('/me', authenticateJWT, (req: AuthRequest, res) => {
 });
 
 // Update user settings
-router.put('/me/settings', authenticateJWT, (req: AuthRequest, res) => {
+router.put('/me/settings', apiLimiter, authenticateJWT, (req: AuthRequest, res) => {
   const userId = req.authUser?.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
