@@ -98,8 +98,9 @@
   }
   
   function handleDiscordLogin() {
-    // Redirect to Discord OAuth
-    window.location.href = `${serverUrl}/auth/discord`;
+    // Redirect to Discord OAuth with current URL as returnTo
+    const returnTo = encodeURIComponent(window.location.href);
+    window.location.href = `${serverUrl}/auth/discord?returnTo=${returnTo}`;
   }
 
   function handleKeyPress(e: KeyboardEvent) {
