@@ -7,7 +7,7 @@ This document describes how to use the multiplayer functionality in Quortex.
 The multiplayer implementation consists of:
 - **Frontend**: Svelte-based UI for login, lobby, and room management
 - **Backend**: Express + Socket.IO server for real-time communication
-- **In-Memory Storage**: Simple room and player management (no database)
+- **File-Based Storage**: Event sourcing with append-only `.jsonl` files for persistence
 
 ## Getting Started
 
@@ -102,11 +102,16 @@ CLIENT_URL=http://localhost:5173
 VITE_SERVER_URL=http://localhost:3001
 ```
 
+## Current Features (MVP)
+
+- ✅ File-based persistent storage using event sourcing
+- ✅ OAuth authentication (Google, Discord)
+- ✅ Game state persistence and replay via action logs
+- ✅ Graceful shutdown with data flushing
+
 ## Current Limitations (MVP)
 
-- No persistent storage (rooms and players are lost on server restart)
-- No authentication (username only, no passwords)
-- No reconnection handling after disconnect
+- No full reconnection handling after disconnect (work in progress)
 - Game state synchronization not fully implemented yet
 - No spectator mode
 - No chat functionality
@@ -114,13 +119,49 @@ VITE_SERVER_URL=http://localhost:3001
 ## Future Enhancements
 
 Planned features for future releases:
-- Database integration (MongoDB)
-- OAuth authentication (Facebook, Google, Discord, Apple)
-- Game state persistence and replay
-- Reconnection handling
+- Complete reconnection handling
 - Chat system
 - Leaderboards
 - Tournament support
+- Migration to MongoDB when scaling needs arise (10K+ concurrent users)
+
+## Storage System
+
+The server uses file-based storage with event sourcing for game data persistence. See `server/src/storage/README.md` for detailed documentation.
+
+### Key Features
+
+- **Event Sourcing**: All game actions are stored as append-only logs
+- **Performance**: Writes ~0.1-1ms with buffering, reads <1ms with caching
+- **Reliability**: Graceful shutdown ensures data integrity
+- **Simplicity**: No database server required
+- **Debugging**: Action logs are human-readable `.jsonl` files
+- **Backup**: Just copy the `data/` directory
+
+### Data Location
+
+Game data is stored in:
+```
+server/data/
+├── games/
+│   └── game-{id}.actions.jsonl
+├── players/
+│   └── players.jsonl
+└── sessions/
+    └── sessions.jsonl
+```
+
+### Backup
+
+To backup game data:
+```bash
+tar -czf backup-$(date +%Y%m%d).tar.gz server/data/
+```
+
+To restore:
+```bash
+tar -xzf backup-20251113.tar.gz
+```
 
 ## Troubleshooting
 
