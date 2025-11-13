@@ -1,10 +1,14 @@
 # OAuth Authentication Setup
 
-This document explains how to set up Discord OAuth authentication for the Quortex multiplayer server.
+This document explains how to set up OAuth authentication for the Quortex multiplayer server.
 
 ## Overview
 
-The multiplayer server uses Discord OAuth 2.0 for user authentication. This provides a simple, secure way for users to log in without creating separate accounts.
+The multiplayer server supports multiple OAuth 2.0 providers for user authentication. This provides a simple, secure way for users to log in without creating separate accounts.
+
+**Supported Providers:**
+- Discord OAuth
+- Google OAuth
 
 ## Discord OAuth Setup
 
@@ -32,6 +36,47 @@ The multiplayer server uses Discord OAuth 2.0 for user authentication. This prov
 
 ### 4. Configure Environment Variables
 
+Add your Discord credentials to the `.env` file (see section below for complete example).
+
+## Google OAuth Setup
+
+### 1. Create a Google Cloud Project
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Give your project a name (e.g., "Quortex")
+
+### 2. Enable Google+ API
+
+1. In your project, go to "APIs & Services" > "Library"
+2. Search for "Google+ API"
+3. Click "Enable"
+
+### 3. Create OAuth 2.0 Credentials
+
+1. Go to "APIs & Services" > "Credentials"
+2. Click "Create Credentials" > "OAuth 2.0 Client IDs"
+3. If prompted, configure the OAuth consent screen:
+   - Choose "External" user type
+   - Fill in the required fields (app name, user support email, developer contact)
+   - Add scopes: `profile` and `email`
+   - Add test users if needed during development
+4. For Application type, select "Web application"
+5. Give it a name (e.g., "Quortex Web Client")
+6. Add Authorized redirect URIs:
+   - For local development: `http://localhost:3001/auth/google/callback`
+   - For production: `https://yourdomain.com/auth/google/callback`
+7. Click "Create"
+
+### 4. Get Your Credentials
+
+1. After creation, you'll see:
+   - **Client ID**: Copy this value
+   - **Client Secret**: Copy this value (keep this secure!)
+2. You can view these again in "APIs & Services" > "Credentials"
+
+### 5. Configure Environment Variables
+
 Create a `.env` file in the root directory (copy from `.env.example`):
 
 ```bash
@@ -47,6 +92,10 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 DISCORD_CLIENT_ID=your-discord-client-id-here
 DISCORD_CLIENT_SECRET=your-discord-client-secret-here
 
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id-here
+GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+
 # Client configuration
 VITE_SERVER_URL=http://localhost:3001
 ```
@@ -58,14 +107,14 @@ VITE_SERVER_URL=http://localhost:3001
 
 ## OAuth Flow
 
-The authentication flow works as follows:
+The authentication flow works as follows (same for both Discord and Google):
 
-1. User clicks "Continue with Discord" on the multiplayer login screen
-2. Client redirects to `/auth/discord?returnTo={currentUrl}` with the current page URL
+1. User clicks "Continue with Discord" or "Continue with Google" on the multiplayer login screen
+2. Client redirects to `/auth/{provider}?returnTo={currentUrl}` with the current page URL
 3. Server encodes the returnTo URL in the OAuth state parameter
-4. Server redirects to Discord's OAuth page
-5. User authorizes the application on Discord
-6. Discord redirects back to `/auth/discord/callback` with the state parameter
+4. Server redirects to the provider's OAuth page
+5. User authorizes the application
+6. Provider redirects back to `/auth/{provider}/callback` with the state parameter
 7. Server exchanges code for user info
 8. Server creates/updates user in database
 9. Server generates JWT token
@@ -80,6 +129,8 @@ The authentication flow works as follows:
 
 - `GET /auth/discord` - Initiate Discord OAuth flow
 - `GET /auth/discord/callback` - Discord OAuth callback
+- `GET /auth/google` - Initiate Google OAuth flow
+- `GET /auth/google/callback` - Google OAuth callback
 - `GET /auth/me` - Get current authenticated user (requires JWT)
 - `PUT /auth/me/settings` - Update user settings (requires JWT)
 - `POST /auth/logout` - Logout (client should delete token)
@@ -126,9 +177,16 @@ npm run dev:server
 
 ### 2. Test Authentication
 
+**Discord:**
 1. Navigate to `http://localhost:3001/auth/discord`
 2. You should be redirected to Discord
 3. Authorize the application
+4. You'll be redirected back to the client with a token in the URL
+
+**Google:**
+1. Navigate to `http://localhost:3001/auth/google`
+2. You should be redirected to Google
+3. Select your Google account and authorize the application
 4. You'll be redirected back to the client with a token in the URL
 
 ### 3. Test Protected Routes
@@ -152,9 +210,13 @@ curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3001/auth/me
 
 Make sure you've set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` in your `.env` file.
 
+### "Google OAuth credentials not configured"
+
+Make sure you've set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in your `.env` file.
+
 ### "Redirect URI mismatch"
 
-The callback URL in your Discord application settings must exactly match `BASE_URL/auth/discord/callback`.
+The callback URL in your OAuth application settings must exactly match `BASE_URL/auth/{provider}/callback`. Check both Discord and Google Cloud Console settings.
 
 ### "Invalid token"
 
@@ -164,7 +226,6 @@ The JWT token may have expired or been tampered with. Users need to log in again
 
 According to the web multiplayer design document, additional OAuth providers can be added:
 - Facebook OAuth
-- Google Sign-In  
 - Apple Sign In
 
-Each provider follows a similar pattern to the Discord implementation.
+Each provider follows a similar pattern to the Discord and Google implementations.

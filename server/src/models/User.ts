@@ -3,11 +3,12 @@
 
 export interface IUser {
   id: string;
-  discordId: string;
+  discordId?: string;
+  googleId?: string;
   displayName: string;
   email?: string;
   avatar?: string;
-  provider: 'discord';
+  provider: 'discord' | 'google';
   stats: {
     gamesPlayed: number;
     gamesWon: number;
@@ -32,20 +33,31 @@ export class UserStore {
     return Array.from(users.values()).find(user => user.discordId === discordId);
   }
 
+  static findByGoogleId(googleId: string): IUser | undefined {
+    return Array.from(users.values()).find(user => user.googleId === googleId);
+  }
+
   static findById(id: string): IUser | undefined {
     return users.get(id);
   }
 
   static create(userData: {
     id: string;
-    discordId: string;
+    discordId?: string;
+    googleId?: string;
     displayName: string;
     email?: string;
     avatar?: string;
+    provider: 'discord' | 'google';
   }): IUser {
     const user: IUser = {
-      ...userData,
-      provider: 'discord',
+      id: userData.id,
+      discordId: userData.discordId,
+      googleId: userData.googleId,
+      displayName: userData.displayName,
+      email: userData.email,
+      avatar: userData.avatar,
+      provider: userData.provider,
       stats: {
         gamesPlayed: 0,
         gamesWon: 0,
