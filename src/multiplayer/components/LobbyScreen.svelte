@@ -55,6 +55,17 @@
     showCreateModal = true;
     roomName = `${username}'s game`;
   }
+  
+  function handleSignOut() {
+    // Clear stored token
+    localStorage.removeItem('quortex_token');
+    
+    // Disconnect socket
+    socket.disconnect();
+    
+    // Return to login screen
+    multiplayerStore.setScreen('login');
+  }
 </script>
 
 <div class="lobby-screen">
@@ -64,6 +75,9 @@
         <h1>Game Lobby</h1>
         <div class="user-info">
           <span class="username">👤 {username}</span>
+          <button class="signout-btn" on:click={handleSignOut} title="Sign Out">
+            🚪 Sign Out
+          </button>
         </div>
       </div>
     </header>
@@ -185,11 +199,34 @@
     font-size: 28px;
   }
 
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .username {
     font-size: 16px;
     background: rgba(255, 255, 255, 0.2);
     padding: 8px 16px;
     border-radius: 20px;
+  }
+  
+  .signout-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .signout-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
 
   .actions {
