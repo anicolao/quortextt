@@ -117,6 +117,7 @@ export type HoveredElementType =
 export interface UIState {
   // Game mode
   gameMode: GameMode;
+  localPlayerId: string | null; // ID of the local player in multiplayer mode
   
   // Interaction state
   selectedPosition: HexPosition | null;
