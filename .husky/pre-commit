@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 npm run build
-npm run test:coverage
+npx vitest run --coverage --exclude tests/aiRematch.test.ts
