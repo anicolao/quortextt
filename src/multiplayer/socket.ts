@@ -45,6 +45,41 @@ class MultiplayerSocket {
     });
   }
 
+  connectWithAuth(token: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.socket?.connected) {
+        resolve();
+        return;
+      }
+
+      this.socket = io(this.serverUrl, {
+        transports: ['websocket', 'polling'],
+        auth: {
+          token: token
+        }
+      });
+
+      this.socket.on('connect', () => {
+        console.log('Connected to server with authentication');
+        multiplayerStore.setConnected(true);
+        resolve();
+      });
+
+      this.socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        multiplayerStore.setConnected(false);
+        reject(error);
+      });
+
+      this.socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+        multiplayerStore.setConnected(false);
+      });
+
+      this.setupEventHandlers();
+    });
+  }
+
   private setupEventHandlers() {
     if (!this.socket) return;
 
