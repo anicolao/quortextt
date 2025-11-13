@@ -229,6 +229,17 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           store.dispatch(nextPlayer() as any);
           store.dispatch(drawTile() as any);
         }
+      } else {
+        // AI has no valid moves - should trigger constraint victory
+        console.log(`[AI Middleware] AI player ${currentPlayer.id} has no valid moves!`);
+        console.log(`[AI Middleware] Current tile: ${currentTile?.type || 'null'}`);
+        console.log(`[AI Middleware] Board size: ${board.size}`);
+        console.log(`[AI Middleware] Supermove enabled: ${supermoveEnabled}`);
+        console.log(`[AI Middleware] This should be a constraint victory for the AI player`);
+        
+        // Advance to next player and draw tile - this should trigger constraint victory check
+        store.dispatch(nextPlayer() as any);
+        store.dispatch(drawTile() as any);
       }
     }
   }
