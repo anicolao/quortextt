@@ -118,8 +118,7 @@ test.describe('AI Player', () => {
         await page.mouse.click(box.x + coords.x, box.y + coords.y);
         await waitForAnimationFrame(page);
       } else {
-        // AI player - wait for auto-select
-        await page.waitForTimeout(1000);
+        // AI player - auto-select happens synchronously via Redux middleware
         await waitForAnimationFrame(page);
       }
     }
@@ -177,8 +176,7 @@ test.describe('AI Player', () => {
         await page.mouse.click(box.x + coords.x, box.y + coords.y);
         await waitForAnimationFrame(page);
       } else {
-        // AI player - wait for auto-select
-        await page.waitForTimeout(1000);
+        // AI player - auto-select happens synchronously via Redux middleware
         await waitForAnimationFrame(page);
       }
     }
@@ -201,8 +199,7 @@ test.describe('AI Player', () => {
     console.log('First player to play:', firstPlayer.id, 'is AI?', firstPlayer.isAI);
     
     if (firstPlayer.isAI) {
-      // AI should automatically place the tile
-      await page.waitForTimeout(1500); // AI has 1000ms delay
+      // AI should automatically place the tile synchronously via Redux middleware
       await waitForAnimationFrame(page);
       
       state = await getReduxState(page);
@@ -274,7 +271,7 @@ test.describe('AI Player', () => {
         await page.mouse.click(box.x + coords.x, box.y + coords.y);
         await waitForAnimationFrame(page);
       } else {
-        await page.waitForTimeout(1000);
+        // AI player - auto-select happens synchronously via Redux middleware
         await waitForAnimationFrame(page);
       }
     }
