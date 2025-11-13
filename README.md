@@ -49,10 +49,19 @@ For complete game rules and mechanics, see **[docs/RULES.md](docs/RULES.md)**.
   - Smooth animations for tile placement, rotation, and victory
   - Touch-optimized interface for tabletop play
 
+### 🚧 In Progress
+
+- **Multiplayer Server** - Node.js + Socket.IO backend with Discord OAuth authentication
+  - Real-time gameplay support
+  - Discord OAuth 2.0 login
+  - JWT-based session management
+  - Event sourcing architecture for game state
+
 ### 🚧 Future Enhancements
 
 - AI opponents (easy, medium difficulty levels)
-- Multiplayer over network
+- Additional OAuth providers (Facebook, Google, Apple)
+- Database persistence (MongoDB)
 - Game notation system for replay
 - Advanced analytics and statistics
 - Additional board sizes and variants
@@ -95,6 +104,28 @@ npm run dev
 ```
 
 The application will be available at `http://localhost:5173`
+
+### Multiplayer Server
+
+The multiplayer server provides real-time gameplay with authentication:
+
+```bash
+# Start the multiplayer server
+npm run dev:server
+```
+
+The server will run on `http://localhost:3001`
+
+**Setup OAuth Authentication:**
+
+1. Create a Discord application at [Discord Developer Portal](https://discord.com/developers/applications)
+2. Configure OAuth redirect: `http://localhost:3001/auth/discord/callback`
+3. Create `.env` file with credentials (see `.env.example`)
+4. See [docs/dev/OAUTH_SETUP.md](docs/dev/OAUTH_SETUP.md) for detailed setup instructions
+
+**Test the OAuth flow:**
+
+Open `auth-test.html` in a browser to test authentication. See [docs/dev/TESTING_OAUTH.md](docs/dev/TESTING_OAUTH.md) for testing guide.
 
 ### Building
 
@@ -182,6 +213,11 @@ quortextt/
 - **[docs/designs/DESIGN_DOC.md](docs/designs/DESIGN_DOC.md)** - Architecture and implementation design
 - **[docs/designs/UI_DESIGN.md](docs/designs/UI_DESIGN.md)** - Detailed UI specifications
 - **[docs/dev/DEPLOYMENT.md](docs/dev/DEPLOYMENT.md)** - Deployment guide for GitHub Pages
+
+### Multiplayer & Authentication
+- **[docs/designs/WEB_MULTIPLAYER.md](docs/designs/WEB_MULTIPLAYER.md)** - Multiplayer architecture design
+- **[docs/dev/OAUTH_SETUP.md](docs/dev/OAUTH_SETUP.md)** - OAuth authentication setup guide
+- **[docs/dev/TESTING_OAUTH.md](docs/dev/TESTING_OAUTH.md)** - OAuth testing instructions
 
 ### Testing Documentation
 - **[docs/testing/user-stories.md](docs/testing/user-stories.md)** - E2E test scenarios
