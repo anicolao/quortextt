@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:multiplayer": "vite --config vite.multiplayer.config.ts",
     "dev:server": "cd server && npm run dev",
     "build": "tsc && vite build",
     "build:multiplayer": "tsc && vite build --config vite.multiplayer.config.ts",
