@@ -65,17 +65,15 @@ interface GameAction {
 // Initialize storage
 const dataDir = process.env.DATA_DIR || './data';
 const gameStorage = new GameStorage(`${dataDir}/games`);
-const playerStorage = new DataStorage(`${dataDir}/players`, 'players.jsonl');
-const sessionStorage = new DataStorage(`${dataDir}/sessions`, 'sessions.jsonl');
 
-// In-memory cache for players (since they're transient)
+// Note: Players are transient (session-based) and stored only in-memory.
+// User authentication data would go in a separate user storage when implemented.
+// For now, we only persist game data.
 const players = new Map<string, Player>();
 
 // Initialize storage on startup
 async function initializeStorage() {
   await gameStorage.initialize();
-  await playerStorage.initialize();
-  await sessionStorage.initialize();
   console.log('✅ File-based storage initialized');
 }
 
@@ -224,13 +222,13 @@ io.on('connection', (socket) => {
       // Check if player is already in the room
       const existingPlayer = state.players.find(p => p.id === player.id);
       if (!existingPlayer) {
-        // Add player via action
+        // Add player via action (sequence will be auto-assigned)
         const joinAction: GameAction = {
           type: 'JOIN_GAME',
           payload: { player },
           playerId: player.id,
           timestamp: Date.now(),
-          sequence: state.lastActionSequence + 1
+          sequence: 0 // Will be overwritten by storage
         };
         await gameStorage.appendAction(roomId, joinAction);
       }
@@ -269,13 +267,13 @@ io.on('connection', (socket) => {
       const state = await gameStorage.getGameState(roomId);
       if (!state) return;
 
-      // Record leave action
+      // Record leave action (sequence will be auto-assigned)
       const leaveAction: GameAction = {
         type: 'LEAVE_GAME',
         payload: { playerId: player.id },
         playerId: player.id,
         timestamp: Date.now(),
-        sequence: state.lastActionSequence + 1
+        sequence: 0 // Will be overwritten by storage
       };
       await gameStorage.appendAction(roomId, leaveAction);
 
@@ -323,13 +321,13 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Record start game action
+      // Record start game action (sequence will be auto-assigned)
       const startAction: GameAction = {
         type: 'START_GAME',
         payload: {},
         playerId: player.id,
         timestamp: Date.now(),
-        sequence: state.lastActionSequence + 1
+        sequence: 0 // Will be overwritten by storage
       };
       await gameStorage.appendAction(roomId, startAction);
 
@@ -365,22 +363,22 @@ io.on('connection', (socket) => {
       const state = await gameStorage.getGameState(gameId);
       if (!state) return;
       
-      // Create the action with metadata
+      // Create the action with metadata (sequence will be auto-assigned by storage)
       const gameAction: GameAction = {
         type: action.type,
         payload: action.payload || {},
         playerId: player.id,
         timestamp: Date.now(),
-        sequence: state.lastActionSequence + 1
+        sequence: 0 // Will be overwritten by storage
       };
 
-      // Append to action log
-      await gameStorage.appendAction(gameId, gameAction);
+      // Append to action log (storage assigns correct sequence)
+      const finalAction = await gameStorage.appendAction(gameId, gameAction);
 
       // Broadcast action to all players in the game
-      io.to(gameId).emit('action_posted', gameAction);
+      io.to(gameId).emit('action_posted', finalAction);
 
-      console.log(`Action ${gameAction.type} posted to game ${gameId} by ${player.username}`);
+      console.log(`Action ${finalAction.type} posted to game ${gameId} by ${player.username}`);
     } catch (error) {
       console.error('Error posting action:', error);
       socket.emit('error', { message: 'Failed to post action' });
@@ -420,13 +418,13 @@ io.on('connection', (socket) => {
           if (state) {
             const playerInGame = state.players.find(p => p.id === player.id);
             if (playerInGame) {
-              // Record disconnect action
+              // Record disconnect action (sequence will be auto-assigned)
               const disconnectAction: GameAction = {
                 type: 'PLAYER_DISCONNECT',
                 payload: { playerId: player.id },
                 playerId: player.id,
                 timestamp: Date.now(),
-                sequence: state.lastActionSequence + 1
+                sequence: 0 // Will be overwritten by storage
               };
               await gameStorage.appendAction(gameId, disconnectAction);
               
@@ -454,13 +452,13 @@ io.on('connection', (socket) => {
               if (state) {
                 const playerInGame = state.players.find(p => p.id === player.id);
                 if (playerInGame) {
-                  // Record leave action
+                  // Record leave action (sequence will be auto-assigned)
                   const leaveAction: GameAction = {
                     type: 'LEAVE_GAME',
                     payload: { playerId: player.id },
                     playerId: player.id,
                     timestamp: Date.now(),
-                    sequence: state.lastActionSequence + 1
+                    sequence: 0 // Will be overwritten by storage
                   };
                   await gameStorage.appendAction(gameId, leaveAction);
                   
