@@ -1,6 +1,5 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
-import { multiplayerStore } from './stores/multiplayerStore';
 
 export class GameCoordinator {
   private store: any; // Redux store
@@ -68,13 +67,24 @@ export class GameCoordinator {
   private shouldBroadcastAction(actionType: string): boolean {
     // Actions that affect game state and should be broadcast
     const broadcastActions = [
+      // Game setup actions
+      'ADD_PLAYER',
+      'REMOVE_PLAYER',
+      'CHANGE_PLAYER_COLOR',
+      'UPDATE_SETTINGS',
+      // Seating phase actions
       'SELECT_EDGE',
+      'COMPLETE_SEATING_PHASE',
+      // Gameplay actions
       'PLACE_TILE',
       'REPLACE_TILE',
       'DRAW_TILE',
       'NEXT_PLAYER',
       'END_GAME',
-      'CHANGE_PLAYER_COLOR'
+      // Other game flow actions
+      'SETUP_GAME',
+      'SHUFFLE_TILES',
+      'START_SEATING_PHASE'
     ];
     return broadcastActions.includes(actionType);
   }
@@ -97,46 +107,33 @@ export class GameCoordinator {
     
     console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
     
-    // Initialize game config (players) but don't start game yet
-    // Players will enter lobby/seating phase first
-    this.initializeGameConfig(players);
-    
-    // Request any existing actions to sync
+    // Request any existing actions to sync first
     socket.getActions(gameId);
-  }
-
-  private initializeGameConfig(players: any[]) {
-    if (!this.gameId) return;
     
-    console.log(`Initializing game config with ${players.length} players`);
+    // Check if we're the host (first player in the list)
+    // The host should initialize the game by posting ADD_PLAYER actions
+    const mySocketId = socket.getSocketId();
+    const isHost = players.length > 0 && players[0].id === mySocketId;
     
-    // Map socket players to game player configs
-    // Store this so Redux can initialize the lobby screen
-    const playerConfigs = players.map((p, index) => ({
-      id: `p${index + 1}`,
-      username: p.username,
-      socketId: p.id,
-      color: this.getPlayerColor(index),
-      isAI: false
-    }));
-    
-    // Initialize Redux with players (enters lobby/seating phase)
-    // This should show the lobby where players can choose colors
-    if (this.store) {
-      // Add each player to the configuration screen
-      playerConfigs.forEach((playerConfig) => {
-        this.store.dispatch({
+    if (isHost) {
+      console.log('I am the host. Posting ADD_PLAYER actions for all players.');
+      
+      // Post ADD_PLAYER action for each player
+      players.forEach((_player: any, index: number) => {
+        const color = this.getPlayerColor(index);
+        socket.postAction(gameId, {
           type: 'ADD_PLAYER',
           payload: {
-            ...playerConfig
+            color,
+            isAI: false
           }
         });
       });
+      
+      console.log('Posted all ADD_PLAYER actions. Players can now configure game settings.');
+    } else {
+      console.log('Waiting for host to initialize game setup.');
     }
-    
-    // Note: START_GAME with seed will be dispatched later
-    // when a player clicks "Play" in the lobby
-    console.log('Players added to lobby. Waiting for "Play" button click to start game with seed.');
   }
 
   private getPlayerColor(index: number): string {

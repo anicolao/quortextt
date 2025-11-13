@@ -164,6 +164,10 @@ class MultiplayerSocket {
     this.socket.emit('get_actions', { gameId });
   }
 
+  getSocketId(): string | null {
+    return this.socket?.id || null;
+  }
+
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();
