@@ -29,11 +29,30 @@ The `GameStorage` class manages game data using event sourcing:
 ### DataStorage
 
 The `DataStorage` class provides simple key-value storage for:
-- User data
-- Session information
+- User sessions (tracking active games for reconnection)
+- User preferences and settings
 - Other metadata
 
 Uses a single `.jsonl` file where the latest entry for each ID is the current state.
+
+#### Session Storage for Reconnection
+
+The session storage enables players to resume their games after disconnecting:
+
+1. **Session Tracking**: When authenticated users join a game, their session is updated with the game ID
+2. **Reconnection**: On reconnect, the server sends the list of active games to the client
+3. **Persistent Identity**: Authenticated users maintain the same player ID across connections
+4. **Anonymous Users**: Non-authenticated users use socket.id (ephemeral, new each connection)
+
+Example session data:
+```json
+{
+  "userId": "google-oauth-12345",
+  "username": "Alice",
+  "activeGameIds": ["game-abc", "game-xyz"],
+  "lastSeen": 1763073456789
+}
+```
 
 ## Usage
 
