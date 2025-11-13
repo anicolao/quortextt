@@ -3,7 +3,6 @@ import passport from 'passport';
 import { Strategy as DiscordStrategy } from '@oauth-everything/passport-discord';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { UserStore, IUser } from '../models/User.js';
-import { v4 as uuidv4 } from 'uuid';
 
 // Configure OAuth Strategies
 export function configurePassport() {
@@ -21,13 +20,13 @@ export function configurePassport() {
         let user = UserStore.findByDiscordId(profile.id);
         
         if (!user) {
-          // Create new user
+          // Create new user using Discord ID as the stable primary key
           const avatarUrl = profile.avatar 
             ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
             : undefined;
 
-          user = UserStore.create({
-            id: uuidv4(),
+          user = await UserStore.create({
+            id: `discord:${profile.id}`, // Use OAuth provider ID as stable key
             discordId: profile.id,
             displayName: profile.username,
             email: profile.email,
@@ -38,7 +37,7 @@ export function configurePassport() {
           console.log(`✓ New user created: ${user.displayName} (Discord ID: ${profile.id})`);
         } else {
           // Update last active time
-          UserStore.update(user.id, { lastActive: new Date() });
+          await UserStore.update(user.id, { lastActive: new Date() });
           console.log(`✓ User logged in: ${user.displayName}`);
         }
         
@@ -68,11 +67,11 @@ export function configurePassport() {
         let user = UserStore.findByGoogleId(profile.id);
         
         if (!user) {
-          // Create new user
+          // Create new user using Google ID as the stable primary key
           const avatarUrl = profile.photos?.[0]?.value;
 
-          user = UserStore.create({
-            id: uuidv4(),
+          user = await UserStore.create({
+            id: `google:${profile.id}`, // Use OAuth provider ID as stable key
             googleId: profile.id,
             displayName: profile.displayName,
             email: profile.emails?.[0]?.value,
@@ -83,7 +82,7 @@ export function configurePassport() {
           console.log(`✓ New user created: ${user.displayName} (Google ID: ${profile.id})`);
         } else {
           // Update last active time
-          UserStore.update(user.id, { lastActive: new Date() });
+          await UserStore.update(user.id, { lastActive: new Date() });
           console.log(`✓ User logged in: ${user.displayName}`);
         }
         

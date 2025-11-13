@@ -183,7 +183,7 @@ router.get('/me', apiLimiter, authenticateJWT, (req: AuthRequest, res) => {
 });
 
 // Update user settings
-router.put('/me/settings', apiLimiter, authenticateJWT, (req: AuthRequest, res) => {
+router.put('/me/settings', apiLimiter, authenticateJWT, async (req: AuthRequest, res) => {
   const userId = req.authUser?.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -200,7 +200,7 @@ router.put('/me/settings', apiLimiter, authenticateJWT, (req: AuthRequest, res) 
   }
 
   // Update settings
-  const updatedUser = UserStore.update(userId, {
+  const updatedUser = await UserStore.update(userId, {
     settings: { ...user.settings, ...settings }
   });
 
