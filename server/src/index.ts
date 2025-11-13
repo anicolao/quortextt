@@ -65,20 +65,69 @@ interface GameAction {
 // Initialize storage
 const dataDir = process.env.DATA_DIR || './data';
 const gameStorage = new GameStorage(`${dataDir}/games`);
+const sessionStorage = new DataStorage(`${dataDir}/sessions`, 'sessions.jsonl');
 
-// Note: Players are transient (session-based) and stored only in-memory.
-// User authentication data would go in a separate user storage when implemented.
-// For now, we only persist game data.
+// In-memory cache for active socket connections
+// Maps socket.id -> Player info (ephemeral, for current connections)
 const players = new Map<string, Player>();
 
 // Initialize storage on startup
 async function initializeStorage() {
   await gameStorage.initialize();
+  await sessionStorage.initialize();
   console.log('✅ File-based storage initialized');
 }
 
 // Call initialization
 await initializeStorage();
+
+// Session management helpers
+interface UserSession {
+  userId: string;
+  username: string;
+  activeGameIds: string[];
+  lastSeen: number;
+}
+
+/**
+ * Update user session with their active games
+ */
+async function updateUserSession(userId: string, username: string, gameIds: string[]): Promise<void> {
+  const session: UserSession = {
+    userId,
+    username,
+    activeGameIds: gameIds,
+    lastSeen: Date.now()
+  };
+  await sessionStorage.set(userId, session);
+}
+
+/**
+ * Get user session to find their active games
+ */
+function getUserSession(userId: string): UserSession | null {
+  return sessionStorage.get(userId) || null;
+}
+
+/**
+ * Add a game to user's session
+ */
+async function addGameToUserSession(userId: string, username: string, gameId: string): Promise<void> {
+  const session = getUserSession(userId);
+  const activeGameIds = session ? [...new Set([...session.activeGameIds, gameId])] : [gameId];
+  await updateUserSession(userId, username, activeGameIds);
+}
+
+/**
+ * Remove a game from user's session
+ */
+async function removeGameFromUserSession(userId: string, gameId: string): Promise<void> {
+  const session = getUserSession(userId);
+  if (session) {
+    const activeGameIds = session.activeGameIds.filter(id => id !== gameId);
+    await updateUserSession(userId, session.username, activeGameIds);
+  }
+}
 
 // REST API endpoints
 
@@ -149,6 +198,43 @@ app.post('/api/rooms', async (req, res) => {
   }
 });
 
+// Get user's active games (for reconnection)
+app.get('/api/users/:userId/games', async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const session = getUserSession(userId);
+    if (!session) {
+      return res.json({ games: [] });
+    }
+    
+    // Get details for each active game
+    const games = await Promise.all(
+      session.activeGameIds.map(async (gameId) => {
+        const state = await gameStorage.getGameState(gameId);
+        if (!state) return null;
+        
+        return {
+          id: state.gameId,
+          name: state.name,
+          status: state.status,
+          playerCount: state.players.length,
+          maxPlayers: state.maxPlayers,
+          hostId: state.hostId
+        };
+      })
+    );
+    
+    // Filter out null entries (games that no longer exist)
+    const activeGames = games.filter(g => g !== null);
+    
+    res.json({ games: activeGames, username: session.username });
+  } catch (error) {
+    console.error('Error getting user games:', error);
+    res.status(500).json({ error: 'Failed to get user games' });
+  }
+});
+
 // Socket.IO connection handling with optional JWT authentication
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
@@ -174,20 +260,38 @@ io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, socket.data.authenticated ? '(authenticated)' : '(anonymous)');
 
   // Player identification
-  socket.on('identify', (data: { username: string }) => {
-    const playerId = socket.id;
+  socket.on('identify', async (data: { username: string }) => {
+    // Use authenticated userId if available, otherwise use socket.id
+    const userId = socket.data.authenticated ? socket.data.userId : socket.id;
+    const playerId = userId; // playerId is now persistent for authenticated users
+    
     const player: Player = {
       id: playerId,
       username: data.username,
       socketId: socket.id,
       connected: true
     };
-    players.set(playerId, player);
-    console.log('Player identified:', player.username, socket.data.authenticated ? '(authenticated user)' : '');
+    players.set(socket.id, player);
+    
+    // For authenticated users, load their session to find active games
+    let activeGames: string[] = [];
+    if (socket.data.authenticated) {
+      const session = getUserSession(userId);
+      if (session) {
+        activeGames = session.activeGameIds;
+        console.log(`Player ${player.username} reconnected with ${activeGames.length} active games`);
+      } else {
+        // Create initial session
+        await updateUserSession(userId, data.username, []);
+      }
+    }
+    
+    console.log('Player identified:', player.username, socket.data.authenticated ? '(authenticated user)' : '(anonymous)');
     socket.emit('identified', { 
       playerId, 
       username: player.username,
-      authenticated: socket.data.authenticated 
+      authenticated: socket.data.authenticated,
+      activeGames // Send list of games the player is in
     });
   });
 
@@ -235,6 +339,11 @@ io.on('connection', (socket) => {
 
       socket.join(roomId);
       
+      // Track session for authenticated users
+      if (socket.data.authenticated) {
+        await addGameToUserSession(socket.data.userId, player.username, roomId);
+      }
+      
       // Get updated state
       const updatedState = await gameStorage.getGameState(roomId);
       
@@ -278,6 +387,11 @@ io.on('connection', (socket) => {
       await gameStorage.appendAction(roomId, leaveAction);
 
       socket.leave(roomId);
+      
+      // Remove from session for authenticated users
+      if (socket.data.authenticated) {
+        await removeGameFromUserSession(socket.data.userId, roomId);
+      }
 
       // Get updated state
       const updatedState = await gameStorage.getGameState(roomId);
