@@ -1,4 +1,3 @@
-// Simple multiplayer server for Quortex MVP - Event Sourcing Architecture
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -9,6 +8,7 @@ import { configurePassport } from './auth/passport-config.js';
 import authRoutes from './routes/auth.js';
 import jwt from 'jsonwebtoken';
 import { GameStorage, DataStorage } from './storage/index.js';
+import { UserStore } from './models/User.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -75,6 +75,7 @@ const players = new Map<string, Player>();
 async function initializeStorage() {
   await gameStorage.initialize();
   await sessionStorage.initialize();
+  await UserStore.init(); // Load users from persistent storage
   console.log('✅ File-based storage initialized');
 }
 

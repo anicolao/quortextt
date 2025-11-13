@@ -1,8 +1,11 @@
-// User model for MVP (in-memory storage)
-// Will be replaced with MongoDB in future iterations
+// User model with persistent storage
+// Uses stable OAuth provider IDs as primary keys for cross-device/session persistence
+
+import { DataStorage } from '../storage/DataStorage.js';
+import path from 'path';
 
 export interface IUser {
-  id: string;
+  id: string; // Stable ID: googleId or discordId
   discordId?: string;
   googleId?: string;
   displayName: string;
@@ -25,23 +28,38 @@ export interface IUser {
   lastActive: Date;
 }
 
-// In-memory user storage for MVP
-const users = new Map<string, IUser>();
+// Persistent user storage
+const userStorage = new DataStorage(path.join(process.cwd(), 'data', 'users'), 'users.jsonl');
+
+// In-memory cache for performance
+const userCache = new Map<string, IUser>();
 
 export class UserStore {
+  static async init(): Promise<void> {
+    // Initialize storage (creates directory and loads from file)
+    await userStorage.initialize();
+    
+    // Load all users into cache
+    const allUsersMap = await userStorage.getAll();
+    for (const [id, userData] of allUsersMap.entries()) {
+      userCache.set(id, userData as IUser);
+    }
+    console.log(`✓ Loaded ${userCache.size} users from storage`);
+  }
+
   static findByDiscordId(discordId: string): IUser | undefined {
-    return Array.from(users.values()).find(user => user.discordId === discordId);
+    return Array.from(userCache.values()).find(user => user.discordId === discordId);
   }
 
   static findByGoogleId(googleId: string): IUser | undefined {
-    return Array.from(users.values()).find(user => user.googleId === googleId);
+    return Array.from(userCache.values()).find(user => user.googleId === googleId);
   }
 
   static findById(id: string): IUser | undefined {
-    return users.get(id);
+    return userCache.get(id);
   }
 
-  static create(userData: {
+  static async create(userData: {
     id: string;
     discordId?: string;
     googleId?: string;
@@ -49,7 +67,7 @@ export class UserStore {
     email?: string;
     avatar?: string;
     provider: 'discord' | 'google';
-  }): IUser {
+  }): Promise<IUser> {
     const user: IUser = {
       id: userData.id,
       discordId: userData.discordId,
@@ -74,24 +92,30 @@ export class UserStore {
       lastActive: new Date()
     };
 
-    users.set(user.id, user);
+    // Save to storage and cache
+    await userStorage.set(user.id, user);
+    userCache.set(user.id, user);
     return user;
   }
 
-  static update(id: string, updates: Partial<IUser>): IUser | undefined {
-    const user = users.get(id);
+  static async update(id: string, updates: Partial<IUser>): Promise<IUser | undefined> {
+    const user = userCache.get(id);
     if (!user) return undefined;
 
     const updatedUser = { ...user, ...updates, lastActive: new Date() };
-    users.set(id, updatedUser);
+    
+    // Update storage and cache
+    await userStorage.set(id, updatedUser);
+    userCache.set(id, updatedUser);
     return updatedUser;
   }
 
-  static delete(id: string): boolean {
-    return users.delete(id);
+  static async delete(id: string): Promise<boolean> {
+    await userStorage.delete(id);
+    return userCache.delete(id);
   }
 
   static getAll(): IUser[] {
-    return Array.from(users.values());
+    return Array.from(userCache.values());
   }
 }
