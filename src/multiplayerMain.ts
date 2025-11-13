@@ -48,6 +48,11 @@ multiplayerStore.subscribe((state) => {
   if (state.screen === 'game' && state.gameId) {
     console.log('Starting multiplayer game with gameId:', state.gameId);
     
+    // Set game mode to multiplayer
+    import('./redux/actions').then(({ setGameMode }) => {
+      store.dispatch(setGameMode('multiplayer'));
+    });
+    
     // Hide Svelte UI, show canvas
     if (svelteRoot) svelteRoot.style.display = 'none';
     canvas.classList.add('active');

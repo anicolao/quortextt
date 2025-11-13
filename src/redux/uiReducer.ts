@@ -3,6 +3,7 @@
 import { UIState } from './types';
 import {
   UIAction,
+  SET_GAME_MODE,
   SET_HOVERED_POSITION,
   SET_HOVERED_ELEMENT,
   SET_SELECTED_POSITION,
@@ -19,6 +20,7 @@ import {
 
 // Initial UI state
 export const initialUIState: UIState = {
+  gameMode: 'tabletop', // Default to tabletop mode
   selectedPosition: null,
   hoveredPosition: null,
   hoveredElement: null,
@@ -55,6 +57,13 @@ export function uiReducer(
   action: UIAction
 ): UIState {
   switch (action.type) {
+    case SET_GAME_MODE: {
+      return {
+        ...state,
+        gameMode: action.payload,
+      };
+    }
+
     case SET_HOVERED_POSITION: {
       return {
         ...state,

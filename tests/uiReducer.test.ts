@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { uiReducer, initialUIState } from '../src/redux/uiReducer';
 import {
+  setGameMode,
   setHoveredPosition,
   setHoveredElement,
   setSelectedPosition,
@@ -18,6 +19,21 @@ import {
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
+  describe('SET_GAME_MODE', () => {
+    it('should set game mode to multiplayer', () => {
+      const state = uiReducer(initialUIState, setGameMode('multiplayer'));
+
+      expect(state.gameMode).toBe('multiplayer');
+    });
+
+    it('should set game mode to tabletop', () => {
+      let state = uiReducer(initialUIState, setGameMode('multiplayer'));
+      state = uiReducer(state, setGameMode('tabletop'));
+
+      expect(state.gameMode).toBe('tabletop');
+    });
+  });
+
   describe('SET_HOVERED_POSITION', () => {
     it('should set hovered position', () => {
       const position = { row: 1, col: 2 };

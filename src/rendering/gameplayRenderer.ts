@@ -69,6 +69,26 @@ export class GameplayRenderer {
   }
 
   render(state: RootState): void {
+    // Save canvas state before applying any transformations
+    this.ctx.save();
+    
+    // In multiplayer mode, rotate the entire canvas so the current player's edge is at the bottom
+    if (state.ui.gameMode === 'multiplayer' && state.game.players.length > 0) {
+      const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+      if (currentPlayer) {
+        // Calculate rotation needed to put player's edge at bottom (edge 0 position)
+        // Edge positions: 0=bottom, 1=bottom-right, 2=top-right, 3=top, 4=top-left, 5=bottom-left
+        // We need to rotate so that player's edge becomes edge 0
+        const edgeAngles = [0, 60, 120, 180, 240, 300];
+        const rotationAngle = -edgeAngles[currentPlayer.edgePosition]; // Negative to rotate clockwise
+        
+        // Rotate around the center of the canvas
+        this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
+        this.ctx.rotate((rotationAngle * Math.PI) / 180);
+        this.ctx.translate(-this.layout.canvasWidth / 2, -this.layout.canvasHeight / 2);
+      }
+    }
+    
     // Layer 1: Background
     this.renderBackground();
 
@@ -113,14 +133,14 @@ export class GameplayRenderer {
       this.renderVictoryStars(state);
     }
 
-    // Layer 6: Exit buttons in corners
-    this.renderExitButtons();
+    // Layer 6: Exit buttons in corners (only show on current player's edge in multiplayer mode)
+    this.renderExitButtons(state);
 
-    // Layer 6.5: Help buttons in corners
-    this.renderHelpButtons();
+    // Layer 6.5: Help buttons in corners (only show on current player's edge in multiplayer mode)
+    this.renderHelpButtons(state);
 
-    // Layer 6.6: Move list buttons in corners
-    this.renderMoveListButtons();
+    // Layer 6.6: Move list buttons in corners (only show on current player's edge in multiplayer mode)
+    this.renderMoveListButtons(state);
 
     // Layer 6.7: Help dialog if open
     if (state.ui.showHelp && state.ui.helpCorner !== null) {
@@ -146,6 +166,9 @@ export class GameplayRenderer {
     if (state.ui.settings.debugHitTest) {
       this.renderDebugApexVertex(state);
     }
+    
+    // Restore canvas state
+    this.ctx.restore();
   }
 
   private renderBackground(): void {
@@ -1706,31 +1729,40 @@ export class GameplayRenderer {
     this.ctx.textBaseline = "alphabetic";
   }
 
-  private renderExitButtons(): void {
+  private renderExitButtons(state: RootState): void {
     // Render X buttons in each corner
+    // In multiplayer mode, only render on the bottom edge (from current player's perspective)
     const cornerSize = 50;
     const margin = 10;
 
     const corners = [
-      { x: margin + cornerSize / 2, y: margin + cornerSize / 2, rotation: 0 },
+      { x: margin + cornerSize / 2, y: margin + cornerSize / 2, rotation: 0, edge: 3 }, // top-left
       {
         x: this.layout.canvasWidth - margin - cornerSize / 2,
         y: margin + cornerSize / 2,
         rotation: 90,
+        edge: 2, // top-right
       },
       {
         x: this.layout.canvasWidth - margin - cornerSize / 2,
         y: this.layout.canvasHeight - margin - cornerSize / 2,
         rotation: 180,
+        edge: 1, // bottom-right
       },
       {
         x: margin + cornerSize / 2,
         y: this.layout.canvasHeight - margin - cornerSize / 2,
         rotation: 270,
+        edge: 0, // bottom-left
       },
     ];
 
     corners.forEach((corner) => {
+      // In multiplayer mode, only show buttons on the bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && corner.edge !== 0) {
+        return;
+      }
+      
       this.ctx.save();
       this.ctx.translate(corner.x, corner.y);
       this.ctx.rotate((corner.rotation * Math.PI) / 180);
@@ -1761,9 +1793,10 @@ export class GameplayRenderer {
     });
   }
 
-  private renderHelpButtons(): void {
+  private renderHelpButtons(state: RootState): void {
     // Render ? buttons next to X buttons in each corner
     // Each button represents one edge's lower-left position
+    // In multiplayer mode, only render on the bottom edge (from current player's perspective)
     const cornerSize = 50;
     const margin = 10;
     const spacing = cornerSize * 0.15;
@@ -1810,6 +1843,11 @@ export class GameplayRenderer {
     ];
 
     corners.forEach((corner) => {
+      // In multiplayer mode, only show buttons on the bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && corner.edge !== 0) {
+        return;
+      }
+      
       const centerX = corner.x;
       const centerY = corner.y;
       const radius = cornerSize / 2;
@@ -1972,8 +2010,9 @@ export class GameplayRenderer {
     this.ctx.restore();
   }
 
-  private renderMoveListButtons(): void {
+  private renderMoveListButtons(state: RootState): void {
     // Render 📋 (list) buttons next to help buttons in each corner
+    // In multiplayer mode, only render on the bottom edge (from current player's perspective)
     const cornerSize = 50;
     const margin = 10;
     const spacing = cornerSize * 0.15;
@@ -2011,6 +2050,11 @@ export class GameplayRenderer {
     ];
 
     corners.forEach((corner) => {
+      // In multiplayer mode, only show buttons on the bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && corner.edge !== 0) {
+        return;
+      }
+      
       const centerX = corner.x;
       const centerY = corner.y;
       const radius = cornerSize / 2;
