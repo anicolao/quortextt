@@ -25,6 +25,35 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Validate and sanitize redirect URL to prevent open redirect vulnerabilities
+function getValidatedRedirectUrl(returnTo: string): string {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const defaultRedirect = `${clientUrl}/quortextt/multiplayer.html`;
+  
+  // If no returnTo or not a valid URL, use default
+  if (!returnTo || !returnTo.startsWith('http')) {
+    return defaultRedirect;
+  }
+  
+  try {
+    const returnUrl = new URL(returnTo);
+    const clientUrlObj = new URL(clientUrl);
+    
+    // Only allow redirects to the same origin as CLIENT_URL
+    if (returnUrl.origin === clientUrlObj.origin) {
+      return returnTo;
+    }
+    
+    // URL is from a different origin, reject and use default
+    console.warn(`Rejected redirect to untrusted origin: ${returnUrl.origin}`);
+    return defaultRedirect;
+  } catch (e) {
+    // Invalid URL format, use default
+    console.warn(`Invalid redirect URL format: ${returnTo}`);
+    return defaultRedirect;
+  }
+}
+
 // Discord OAuth routes
 router.get('/discord', 
   authLimiter,
@@ -48,21 +77,18 @@ router.get('/discord/callback',
     
     // Decode the state parameter to get the return URL
     const state = req.query.state as string;
-    let returnTo = '';
+    let decodedReturnTo = '';
     
     if (state) {
       try {
-        returnTo = Buffer.from(state, 'base64').toString('utf-8');
+        decodedReturnTo = Buffer.from(state, 'base64').toString('utf-8');
       } catch (e) {
         console.error('Failed to decode state:', e);
       }
     }
     
-    // Fallback to default if no valid return URL
-    if (!returnTo || !returnTo.startsWith('http')) {
-      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-      returnTo = `${clientUrl}/quortextt/multiplayer.html`;
-    }
+    // Validate and sanitize the redirect URL
+    const returnTo = getValidatedRedirectUrl(decodedReturnTo);
     
     if (!user) {
       // Append error to return URL
@@ -103,21 +129,18 @@ router.get('/google/callback',
     
     // Decode the state parameter to get the return URL
     const state = req.query.state as string;
-    let returnTo = '';
+    let decodedReturnTo = '';
     
     if (state) {
       try {
-        returnTo = Buffer.from(state, 'base64').toString('utf-8');
+        decodedReturnTo = Buffer.from(state, 'base64').toString('utf-8');
       } catch (e) {
         console.error('Failed to decode state:', e);
       }
     }
     
-    // Fallback to default if no valid return URL
-    if (!returnTo || !returnTo.startsWith('http')) {
-      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-      returnTo = `${clientUrl}/quortextt/multiplayer.html`;
-    }
+    // Validate and sanitize the redirect URL
+    const returnTo = getValidatedRedirectUrl(decodedReturnTo);
     
     if (!user) {
       // Append error to return URL
