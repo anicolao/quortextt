@@ -61,15 +61,18 @@ VITE_SERVER_URL=http://localhost:3001
 The authentication flow works as follows:
 
 1. User clicks "Continue with Discord" on the multiplayer login screen
-2. Client redirects to `/auth/discord`
-3. Server redirects to Discord's OAuth page
-4. User authorizes the application on Discord
-5. Discord redirects back to `/auth/discord/callback`
-6. Server exchanges code for user info
-7. Server creates/updates user in database
-8. Server generates JWT token
-9. Server redirects to `multiplayer.html` with token in URL
-10. Client stores token and uses it for API requests
+2. Client redirects to `/auth/discord?returnTo={currentUrl}` with the current page URL
+3. Server encodes the returnTo URL in the OAuth state parameter
+4. Server redirects to Discord's OAuth page
+5. User authorizes the application on Discord
+6. Discord redirects back to `/auth/discord/callback` with the state parameter
+7. Server exchanges code for user info
+8. Server creates/updates user in database
+9. Server generates JWT token
+10. Server redirects back to the original page (from state) with token in URL
+11. Client stores token and uses it for API requests
+
+**Note:** The redirect is dynamic and returns to wherever authentication was initiated, making it work seamlessly with different base paths (e.g., `/quortextt/multiplayer.html`).
 
 ## API Endpoints
 

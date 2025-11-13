@@ -28,7 +28,16 @@ const apiLimiter = rateLimit({
 // Discord OAuth routes
 router.get('/discord', 
   authLimiter,
-  passport.authenticate('discord', { session: false })
+  (req, res, next) => {
+    // Store the returnTo URL from query parameter or referer
+    const returnTo = req.query.returnTo as string || req.get('Referer') || '';
+    
+    // Pass state through OAuth flow
+    passport.authenticate('discord', { 
+      session: false,
+      state: Buffer.from(returnTo).toString('base64')
+    })(req, res, next);
+  }
 );
 
 router.get('/discord/callback',
@@ -36,16 +45,37 @@ router.get('/discord/callback',
   passport.authenticate('discord', { session: false, failureRedirect: '/auth/error' }),
   (req, res) => {
     const user = req.user as any;
+    
+    // Decode the state parameter to get the return URL
+    const state = req.query.state as string;
+    let returnTo = '';
+    
+    if (state) {
+      try {
+        returnTo = Buffer.from(state, 'base64').toString('utf-8');
+      } catch (e) {
+        console.error('Failed to decode state:', e);
+      }
+    }
+    
+    // Fallback to default if no valid return URL
+    if (!returnTo || !returnTo.startsWith('http')) {
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      returnTo = `${clientUrl}/quortextt/multiplayer.html`;
+    }
+    
     if (!user) {
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/multiplayer.html?error=auth_failed`);
+      // Append error to return URL
+      const separator = returnTo.includes('?') ? '&' : '?';
+      return res.redirect(`${returnTo}${separator}error=auth_failed`);
     }
 
     // Generate JWT token
     const token = generateToken(user.id);
     
-    // Redirect to multiplayer client with token
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    res.redirect(`${clientUrl}/multiplayer.html?token=${token}`);
+    // Redirect back to the original page with token
+    const separator = returnTo.includes('?') ? '&' : '?';
+    res.redirect(`${returnTo}${separator}token=${token}`);
   }
 );
 
