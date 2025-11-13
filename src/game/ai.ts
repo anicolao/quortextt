@@ -239,6 +239,8 @@ export function generateMoveCandidates(
   supermoveEnabled: boolean,
   boardRadius = 3,
 ): MoveCandidate[] {
+  const startTime = performance.now();
+  let evaluationCount = 0;
   const candidates: MoveCandidate[] = [];
 
   // Try all rotations
@@ -272,6 +274,7 @@ export function generateMoveCandidates(
       testBoard.set(positionToKey(position), tile);
 
       // Evaluate this position
+      evaluationCount++;
       const score = evaluatePosition(
         testBoard,
         aiPlayer,
@@ -328,6 +331,7 @@ export function generateMoveCandidates(
         testBoard.set(posKey, newTile);
 
         // Check if the replacement itself causes victory
+        evaluationCount++;
         let replacementScore = evaluatePosition(
           testBoard,
           aiPlayer,
@@ -384,6 +388,7 @@ export function generateMoveCandidates(
             followupBoard.set(positionToKey(followupPosition), followupTile);
 
             // Evaluate the final position after both moves
+            evaluationCount++;
             const followupScore = evaluatePosition(
               followupBoard,
               aiPlayer,
@@ -411,6 +416,10 @@ export function generateMoveCandidates(
     }
   }
 
+  const endTime = performance.now();
+  const elapsedMs = endTime - startTime;
+  console.log(`[AI] Generated ${candidates.length} candidates with ${evaluationCount} evaluations in ${elapsedMs.toFixed(2)}ms (board size: ${board.size})`);
+
   return candidates;
 }
 
@@ -424,6 +433,8 @@ export function selectAIMove(
   supermoveEnabled: boolean,
   boardRadius = 3,
 ): MoveCandidate | null {
+  const startTime = performance.now();
+  
   const candidates = generateMoveCandidates(
     board,
     tileType,
@@ -435,18 +446,24 @@ export function selectAIMove(
   );
 
   if (candidates.length === 0) {
+    console.log('[AI] No valid moves available');
     return null;
   }
 
   // If there's a winning move, take it immediately
   const winningMoves = candidates.filter((c) => c.isWinningMove);
   if (winningMoves.length > 0) {
+    const endTime = performance.now();
+    console.log(`[AI] selectAIMove took ${(endTime - startTime).toFixed(2)}ms - WINNING MOVE found`);
     // Return the first winning move (could randomize if desired)
     return winningMoves[0];
   }
 
   // Otherwise, select the move with the highest score
   candidates.sort((a, b) => b.score - a.score);
+
+  const endTime = performance.now();
+  console.log(`[AI] selectAIMove took ${(endTime - startTime).toFixed(2)}ms total - selected best of ${candidates.length} candidates (score: ${candidates[0].score.toFixed(2)})`);
 
   return candidates[0];
 }

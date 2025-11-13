@@ -8,6 +8,7 @@ import {
   DRAW_TILE,
   REPLACE_TILE,
   REMATCH_GAME,
+  END_GAME,
   placeTile,
   replaceTile,
   nextPlayer,
@@ -21,12 +22,20 @@ import { selectAIEdge, selectAIMove, generateMoveCandidates } from '../game/ai';
 import { positionToKey } from '../game/board';
 import { calculateTileCountsFromRatio } from './gameReducer';
 
+// Global counters for AI performance tracking
+let aiMoveCount = 0;
+let totalAITime = 0;
+
 // Middleware to automatically handle AI player turns
 export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (action) => {
   const gameAction = action as GameAction;
   
-  // Before START_GAME processes, dispatch SHUFFLE_TILES with custom distribution
+  // Reset counters on game start
   if (gameAction.type === START_GAME) {
+    aiMoveCount = 0;
+    totalAITime = 0;
+    console.log('[AI Middleware] Starting new game, resetting AI performance counters');
+    
     const state = store.getState();
     const { tileDistribution } = state.ui.settings;
     const boardRadius = gameAction.payload?.boardRadius ?? state.game.boardRadius;
@@ -93,6 +102,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         const { board, teams, supermoveInProgress } = state.game;
         const supermoveEnabled = state.ui.settings.supermove;
         
+        const moveStartTime = performance.now();
         const aiMove = selectAIMove(
           board,
           currentTile,
@@ -102,6 +112,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           supermoveEnabled && !supermoveInProgress,
           state.game.boardRadius
         );
+        const moveEndTime = performance.now();
+        const moveTime = moveEndTime - moveStartTime;
+        
+        aiMoveCount++;
+        totalAITime += moveTime;
+        console.log(`[AI Middleware] Move #${aiMoveCount} took ${moveTime.toFixed(2)}ms (cumulative: ${totalAITime.toFixed(2)}ms)`);
         
         if (aiMove) {
           if (aiMove.isReplacement) {
@@ -175,6 +191,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     if (currentPlayer && currentPlayer.isAI) {
       // AI needs to make a move
       // If supermove is already in progress, disable supermove for this move to prevent infinite replacements
+      const moveStartTime = performance.now();
       const aiMove = selectAIMove(
         board,
         currentTile,
@@ -184,6 +201,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         supermoveEnabled && !supermoveInProgress, // Disable supermove if already in progress
         state.game.boardRadius
       );
+      const moveEndTime = performance.now();
+      const moveTime = moveEndTime - moveStartTime;
+      
+      aiMoveCount++;
+      totalAITime += moveTime;
+      console.log(`[AI Middleware] Move #${aiMoveCount} took ${moveTime.toFixed(2)}ms (cumulative: ${totalAITime.toFixed(2)}ms)`);
       
       if (aiMove) {
         // Dispatch the move immediately (Redux is synchronous - no setTimeout needed)
@@ -214,6 +237,11 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
   // When a rematch happens, it directly transitions to playing phase with a current tile
   // If the first player is AI, we need to trigger their move
   if (gameAction.type === REMATCH_GAME) {
+    // Reset counters on rematch
+    aiMoveCount = 0;
+    totalAITime = 0;
+    console.log('[AI Middleware] Rematch started, resetting AI performance counters');
+    
     const { players, currentPlayerIndex, currentTile, board, teams, phase, supermoveInProgress } = state.game;
     
     // Only act if we're in playing phase and have a current tile
@@ -225,6 +253,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         const supermoveEnabled = state.ui.settings.supermove;
         
         // AI needs to make a move
+        const moveStartTime = performance.now();
         const aiMove = selectAIMove(
           board,
           currentTile,
@@ -234,6 +263,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           supermoveEnabled && !supermoveInProgress,
           state.game.boardRadius
         );
+        const moveEndTime = performance.now();
+        const moveTime = moveEndTime - moveStartTime;
+        
+        aiMoveCount++;
+        totalAITime += moveTime;
+        console.log(`[AI Middleware] Move #${aiMoveCount} took ${moveTime.toFixed(2)}ms (cumulative: ${totalAITime.toFixed(2)}ms)`);
         
         if (aiMove) {
           // Dispatch the move immediately (Redux is synchronous)
@@ -254,6 +289,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         }
       }
     }
+  }
+  
+  // Log summary when game ends
+  if (gameAction.type === END_GAME && aiMoveCount > 0) {
+    const avgTime = totalAITime / aiMoveCount;
+    console.log(`[AI Middleware] Game ended. Total AI moves: ${aiMoveCount}, Total time: ${totalAITime.toFixed(2)}ms, Avg time per move: ${avgTime.toFixed(2)}ms`);
   }
   
   return result;
