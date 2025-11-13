@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Test - Quortex</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #5865F2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #4752C4;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .user-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .user-info img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #c62828;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-left: 4px solid #2e7d32;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Quortex OAuth Test</h1>
+        <p>This page tests the Discord OAuth authentication flow for the multiplayer server.</p>
+
+        <div class="section">
+            <h2>Step 1: Server Status</h2>
+            <p>Make sure the server is running: <code>npm run dev:server</code></p>
+            <button class="button" onclick="checkServerStatus()">Check Server</button>
+            <div id="serverStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Step 2: Login with Discord</h2>
+            <p>Click the button below to authenticate with Discord:</p>
+            <a href="http://localhost:3001/auth/discord" class="button">Login with Discord</a>
+            <div id="authStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Step 3: User Info</h2>
+            <p>After logging in, your user information will appear here:</p>
+            <button class="button" onclick="getUserInfo()" id="getUserBtn" disabled>Get User Info</button>
+            <button class="button" onclick="logout()" id="logoutBtn" disabled>Logout</button>
+            <div id="userInfo"></div>
+        </div>
+
+        <div class="section">
+            <h2>Token Info</h2>
+            <div class="label">JWT Token:</div>
+            <pre id="tokenDisplay">Not logged in</pre>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:3001';
+        let token = null;
+
+        // Check for token in URL (after OAuth redirect)
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            const error = urlParams.get('error');
+
+            if (error) {
+                showStatus('authStatus', `Authentication failed: ${error}`, 'error');
+            } else if (urlToken) {
+                token = urlToken;
+                localStorage.setItem('quortex_token', token);
+                document.getElementById('tokenDisplay').textContent = token;
+                document.getElementById('getUserBtn').disabled = false;
+                document.getElementById('logoutBtn').disabled = false;
+                showStatus('authStatus', 'Authentication successful! ✓', 'success');
+                
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Auto-fetch user info
+                getUserInfo();
+            } else {
+                // Check for stored token
+                const storedToken = localStorage.getItem('quortex_token');
+                if (storedToken) {
+                    token = storedToken;
+                    document.getElementById('tokenDisplay').textContent = token;
+                    document.getElementById('getUserBtn').disabled = false;
+                    document.getElementById('logoutBtn').disabled = false;
+                    showStatus('authStatus', 'Using stored token', 'success');
+                }
+            }
+        });
+
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${SERVER_URL}/health`);
+                const data = await response.json();
+                showStatus('serverStatus', 
+                    `Server is running! ✓<br>Rooms: ${data.rooms}, Players: ${data.players}`, 
+                    'success'
+                );
+            } catch (error) {
+                showStatus('serverStatus', 
+                    `Server is not responding. Make sure it's running on port 3001.`, 
+                    'error'
+                );
+            }
+        }
+
+        async function getUserInfo() {
+            if (!token) {
+                showStatus('userInfo', 'Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${SERVER_URL}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const user = await response.json();
+                displayUserInfo(user);
+            } catch (error) {
+                showStatus('userInfo', `Failed to get user info: ${error.message}`, 'error');
+                // Token might be invalid, clear it
+                if (error.message.includes('403') || error.message.includes('401')) {
+                    logout();
+                }
+            }
+        }
+
+        function displayUserInfo(user) {
+            const html = `
+                <div class="user-info">
+                    ${user.avatar ? `<img src="${user.avatar}" alt="${user.displayName}">` : ''}
+                    <strong>${user.displayName}</strong><br>
+                    <small>Provider: ${user.provider}</small><br>
+                    <small>User ID: ${user.id}</small><br>
+                    <br>
+                    <strong>Stats:</strong><br>
+                    Games Played: ${user.stats.gamesPlayed}<br>
+                    Games Won: ${user.stats.gamesWon}<br>
+                    Games Lost: ${user.stats.gamesLost}<br>
+                    Win Streak: ${user.stats.winStreak}<br>
+                    Best Win Streak: ${user.stats.bestWinStreak}<br>
+                    <br>
+                    <small>Created: ${new Date(user.createdAt).toLocaleString()}</small><br>
+                    <small>Last Active: ${new Date(user.lastActive).toLocaleString()}</small>
+                </div>
+            `;
+            document.getElementById('userInfo').innerHTML = html;
+        }
+
+        function logout() {
+            token = null;
+            localStorage.removeItem('quortex_token');
+            document.getElementById('tokenDisplay').textContent = 'Not logged in';
+            document.getElementById('userInfo').innerHTML = '';
+            document.getElementById('getUserBtn').disabled = true;
+            document.getElementById('logoutBtn').disabled = true;
+            showStatus('authStatus', 'Logged out', 'success');
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
