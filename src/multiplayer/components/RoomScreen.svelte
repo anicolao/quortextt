@@ -20,6 +20,22 @@
       socket.startGame(room.id);
     }
   }
+  
+  function handleSignOut() {
+    // Leave room first
+    if (room) {
+      socket.leaveRoom(room.id);
+    }
+    
+    // Clear stored token
+    localStorage.removeItem('quortex_token');
+    
+    // Disconnect socket
+    socket.disconnect();
+    
+    // Return to login screen
+    multiplayerStore.setScreen('login');
+  }
 </script>
 
 <div class="room-screen">
@@ -33,9 +49,14 @@
               {room.players.length}/{room.maxPlayers} players
             </p>
           </div>
-          <button class="leave-btn" on:click={leaveRoom}>
-            ← Leave Room
-          </button>
+          <div class="header-actions">
+            <button class="leave-btn" on:click={leaveRoom}>
+              ← Leave Room
+            </button>
+            <button class="signout-btn" on:click={handleSignOut} title="Sign Out">
+              🚪 Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -140,6 +161,12 @@
     font-size: 14px;
   }
 
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
   .leave-btn {
     padding: 10px 20px;
     background: rgba(255, 255, 255, 0.2);
@@ -154,6 +181,23 @@
 
   .leave-btn:hover {
     background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .signout-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .signout-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
 
   .room-content {
