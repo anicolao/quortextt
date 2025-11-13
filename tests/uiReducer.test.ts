@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { uiReducer, initialUIState } from '../src/redux/uiReducer';
 import {
   setGameMode,
+  setLocalPlayerId,
   setHoveredPosition,
   setHoveredElement,
   setSelectedPosition,
@@ -31,6 +32,21 @@ describe('uiReducer', () => {
       state = uiReducer(state, setGameMode('tabletop'));
 
       expect(state.gameMode).toBe('tabletop');
+    });
+  });
+
+  describe('SET_LOCAL_PLAYER_ID', () => {
+    it('should set local player ID', () => {
+      const state = uiReducer(initialUIState, setLocalPlayerId('player1'));
+
+      expect(state.localPlayerId).toBe('player1');
+    });
+
+    it('should clear local player ID with null', () => {
+      let state = uiReducer(initialUIState, setLocalPlayerId('player1'));
+      state = uiReducer(state, setLocalPlayerId(null));
+
+      expect(state.localPlayerId).toBeNull();
     });
   });
 

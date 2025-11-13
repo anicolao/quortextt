@@ -72,15 +72,16 @@ export class GameplayRenderer {
     // Save canvas state before applying any transformations
     this.ctx.save();
     
-    // In multiplayer mode, rotate the entire canvas so the current player's edge is at the bottom
-    if (state.ui.gameMode === 'multiplayer' && state.game.players.length > 0) {
-      const currentPlayer = state.game.players[state.game.currentPlayerIndex];
-      if (currentPlayer) {
+    // In multiplayer mode, rotate the entire canvas so the local player's edge is at the bottom
+    if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
+      // Find the local player's info
+      const localPlayer = state.game.players.find(p => p.id === state.ui.localPlayerId);
+      if (localPlayer) {
         // Calculate rotation needed to put player's edge at bottom (edge 0 position)
         // Edge positions: 0=bottom, 1=bottom-right, 2=top-right, 3=top, 4=top-left, 5=bottom-left
         // We need to rotate so that player's edge becomes edge 0
         const edgeAngles = [0, 60, 120, 180, 240, 300];
-        const rotationAngle = -edgeAngles[currentPlayer.edgePosition]; // Negative to rotate clockwise
+        const rotationAngle = -edgeAngles[localPlayer.edgePosition]; // Negative to rotate clockwise
         
         // Rotate around the center of the canvas
         this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);

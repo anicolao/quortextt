@@ -36,6 +36,7 @@ export const RESTORE_GAME = "RESTORE_GAME";
 
 // UI actions
 export const SET_GAME_MODE = "SET_GAME_MODE";
+export const SET_LOCAL_PLAYER_ID = "SET_LOCAL_PLAYER_ID";
 export const SET_HOVERED_POSITION = "SET_HOVERED_POSITION";
 export const SET_HOVERED_ELEMENT = "SET_HOVERED_ELEMENT";
 export const SET_SELECTED_POSITION = "SET_SELECTED_POSITION";
@@ -184,6 +185,11 @@ export interface SetGameModeAction {
   payload: import("./types").GameMode;
 }
 
+export interface SetLocalPlayerIdAction {
+  type: typeof SET_LOCAL_PLAYER_ID;
+  payload: string | null;
+}
+
 export interface SetHoveredPositionAction {
   type: typeof SET_HOVERED_POSITION;
   payload: HexPosition | null;
@@ -270,6 +276,7 @@ export type GameAction =
 
 export type UIAction =
   | SetGameModeAction
+  | SetLocalPlayerIdAction
   | SetHoveredPositionAction
   | SetHoveredElementAction
   | SetSelectedPositionAction
@@ -401,6 +408,13 @@ export const setGameMode = (
 ): SetGameModeAction => ({
   type: SET_GAME_MODE,
   payload: mode,
+});
+
+export const setLocalPlayerId = (
+  playerId: string | null,
+): SetLocalPlayerIdAction => ({
+  type: SET_LOCAL_PLAYER_ID,
+  payload: playerId,
 });
 
 export const setHoveredPosition = (
