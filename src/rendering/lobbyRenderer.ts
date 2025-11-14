@@ -36,8 +36,9 @@ export class LobbyRenderer {
     showHelp: boolean = false,
     helpCorner: number | null = null,
     hasSavedGame: boolean = false,
+    gameMode: import("../redux/types").GameMode = 'tabletop',
   ): LobbyLayout {
-    this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players);
+    this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players, gameMode);
 
     // Clear canvas
     this.ctx.fillStyle = "#1a1a2e";
