@@ -130,12 +130,33 @@ When a player has been inactive at a specific player count:
 
 #### Game Completion Handler
 
-When a game finishes:
-1. Extract game results (player count, rankings, teams if applicable)
-2. Load all participating players' current ratings for that player count
-3. Calculate new ratings using Glicko-2
-4. Update player profiles with new ratings
-5. Store rating change history
+When a game finishes on the client side:
+1. Client detects game completion (phase becomes "finished")
+2. Client emits `game_completed` event to server with:
+   ```typescript
+   {
+     gameId: string;
+     playerCount: number; // 2-6
+     results: Array<{
+       playerId: string;
+       rank: number; // 1 = winner, 2 = second, etc.
+       teamId?: string; // For team games
+     }>;
+     isTeamGame?: boolean; // true for 4-6 player games with teams
+   }
+   ```
+3. Server receives the event in `server/src/index.ts` via `game_completed` socket handler
+4. Server calls `processGameCompletion()` from `ratingService.ts`
+5. Rating service:
+   - Loads current ratings for all players at that player count
+   - Calculates new ratings using Glicko-2
+   - Updates each player's rating in their profile
+   - Records rating changes in rating history
+   - Applies RD floor (clamp to max(rd, 75))
+
+**Note**: The current implementation requires manual client-side integration. When the game 
+reaches "finished" phase and winners are determined, the client should emit the 
+`game_completed` event. This is a future enhancement task.
 
 #### User Profile
 
@@ -182,25 +203,33 @@ Returns: Top players sorted by rating
 
 ## Implementation Phases
 
-### Phase 1: Core Algorithm
-- Implement Glicko-2 calculation functions
-- Create rating update logic
-- Add unit tests for calculations
+### Phase 1: Core Algorithm ✅
+- ✅ Implement Glicko-2 calculation functions
+- ✅ Create rating update logic
+- ✅ Add unit tests for calculations
 
-### Phase 2: Data Model
-- Extend User model with rating fields
-- Add migration for existing users
-- Initialize new users with default ratings
+### Phase 2: Data Model ✅
+- ✅ Extend User model with rating fields
+- ✅ Add migration for existing users (automatic via default ratings)
+- ✅ Initialize new users with default ratings
 
-### Phase 3: Integration
-- Hook into game completion events
-- Update ratings after each game
-- Store rating history
+### Phase 3: Integration ⚠️
+- ✅ Create server endpoint for game completion (`game_completed` socket event)
+- ✅ Add rating calculation on game completion
+- ✅ Store rating history
+- ⚠️ **TODO**: Client-side integration to emit `game_completed` event when game finishes
+  - Requires detecting when `phase === "finished"` in game reducer
+  - Must extract player rankings and team information
+  - Emit to server via socket.io
 
-### Phase 4: API & Display
-- Create API endpoints for ratings
-- Add rating display to user profiles
-- Implement leaderboards
+### Phase 4: API & Display 🔜
+- 🔜 Create API endpoints for ratings
+- 🔜 Add rating display to user profiles
+- 🔜 Implement leaderboards
+
+**Current Status**: The rating system is fully implemented on the server side but requires 
+client-side integration to detect game completion and send results to the server. This is 
+the next step for full functionality.
 
 ## Testing Strategy
 
