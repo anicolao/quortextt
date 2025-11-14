@@ -158,9 +158,13 @@ npm run build
 ```
 
 This creates optimized production files in the `dist/` directory, including:
-- `dist/discord/` - Discord Activity entry point
+- `dist/discord/` - Discord Activity entry point with **relative asset paths**
+- `dist/discord/assets/` - Discord-specific bundled assets
 - `dist/index.html` - Standard multiplayer entry point
 - `dist/tabletop.html` - Tabletop mode entry point
+- `dist/assets/` - Shared assets for main and tabletop modes
+
+**Important:** The Discord build uses **relative paths** (`./assets/...`) instead of absolute paths (`/quortextt/assets/...`) to ensure assets load correctly when served through Discord's iframe proxy. This prevents path duplication issues when the HTML is served from a subdirectory.
 
 ### 2. Deploy to Production
 
@@ -180,13 +184,14 @@ https://your-domain.com/quortextt/discord/
 - `src/discordMain.ts` - Main TypeScript entry point for Discord mode
 - `src/discord/discordClient.ts` - Discord SDK integration and authentication
 - `src/vite-env.d.ts` - TypeScript environment variable definitions
+- `vite.discord.config.ts` - Separate Vite config for Discord build with relative paths
 - `docs/dev/DISCORD_ACTIVITY_SETUP.md` - This file
 
 **Modified Files:**
-- `vite.config.ts` - Added discord/ to build inputs
+- `vite.config.ts` - Added discord/ to build inputs (for main build)
 - `.env.example` - Added VITE_DISCORD_CLIENT_ID configuration
 - `src/multiplayer/stores/multiplayerStore.ts` - Added userId field and helper methods
-- `package.json` - Added @discord/embedded-app-sdk dependency
+- `package.json` - Added @discord/embedded-app-sdk dependency and separate Discord build step
 
 ### How It Works
 
@@ -408,6 +413,23 @@ In Discord Developer Portal, ensure URL mapping is correct:
 2. Check VITE_SERVER_URL in `.env` matches server URL
 3. Check server logs for errors
 4. Ensure WebSocket connection isn't blocked by firewall/proxy
+
+### Asset 404 Errors in Production (Path Duplication)
+
+**Problem**: nginx logs show 404 errors like `/quortextt/discord/quortextt/assets/...` (path is duplicated)
+
+**Root Cause**: Discord's iframe proxy may interpret absolute asset paths differently than expected, causing the base path to be applied twice.
+
+**Solution**: The Discord build uses a **separate Vite configuration** (`vite.discord.config.ts`) that:
+- Sets `base: './'` to use relative paths instead of absolute `/quortextt/` paths
+- Outputs to `dist/discord/` with its own `assets/` subdirectory
+- This ensures assets are referenced as `./assets/...` relative to the HTML file
+- When served from `/quortextt/discord/`, assets load from `/quortextt/discord/assets/...`
+
+**Verification**:
+1. Check `dist/discord/index.html` - asset paths should be `./assets/...` not `/quortextt/assets/...`
+2. Ensure deployment copies the entire `dist/discord/` directory including `dist/discord/assets/`
+3. nginx should serve static files from the correct directory structure
 
 ### TypeScript Errors
 
