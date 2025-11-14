@@ -19,6 +19,11 @@ export class GameplayInputHandler {
   handleClick(canvasX: number, canvasY: number): void {
     const state = store.getState();
     
+    // Transform input coordinates if board is rotated in multiplayer mode
+    const transformed = this.renderer.transformInputCoordinates(canvasX, canvasY, state);
+    const x = transformed.x;
+    const y = transformed.y;
+    
     // If help dialog is open, close it on any click
     if (state.ui.showHelp) {
       store.dispatch(hideHelp());
@@ -27,7 +32,7 @@ export class GameplayInputHandler {
 
     // If move list dialog is open, check if clicking on a move or outside
     if (state.ui.showMoveList) {
-      const moveClicked = this.checkMoveListItemClick(canvasX, canvasY);
+      const moveClicked = this.checkMoveListItemClick(x, y);
       if (!moveClicked) {
         // Click outside move list or not on a move - close and return to present
         store.dispatch(hideMoveList());
@@ -42,12 +47,12 @@ export class GameplayInputHandler {
     const layout = this.renderer.getLayout();
 
     // Check for help button clicks first
-    if (this.checkHelpButtons(canvasX, canvasY, layout)) {
+    if (this.checkHelpButtons(x, y, layout)) {
       return;
     }
 
     // Check for move list button clicks
-    if (this.checkMoveListButtons(canvasX, canvasY, layout)) {
+    if (this.checkMoveListButtons(x, y, layout)) {
       return;
     }
 
@@ -69,8 +74,8 @@ export class GameplayInputHandler {
       
       // Check checkmark button
       const distToCheck = Math.sqrt(
-        Math.pow(canvasX - buttonPositions.checkmark.x, 2) + 
-        Math.pow(canvasY - buttonPositions.checkmark.y, 2)
+        Math.pow(x - buttonPositions.checkmark.x, 2) + 
+        Math.pow(y - buttonPositions.checkmark.y, 2)
       );
       if (distToCheck < buttonSize / 2) {
         // Checkmark clicked - place or replace the tile
@@ -144,8 +149,8 @@ export class GameplayInputHandler {
       
       // Check X button
       const distToX = Math.sqrt(
-        Math.pow(canvasX - buttonPositions.cancel.x, 2) + 
-        Math.pow(canvasY - buttonPositions.cancel.y, 2)
+        Math.pow(x - buttonPositions.cancel.x, 2) + 
+        Math.pow(y - buttonPositions.cancel.y, 2)
       );
       if (distToX < buttonSize / 2) {
         // X clicked - cancel placement
@@ -156,12 +161,12 @@ export class GameplayInputHandler {
       // Check rotation buttons
       const rotationButtonSize = buttonSize * 0.6;
       const distToRotateNE = Math.sqrt(
-        Math.pow(canvasX - buttonPositions.rotateNE.x, 2) + 
-        Math.pow(canvasY - buttonPositions.rotateNE.y, 2)
+        Math.pow(x - buttonPositions.rotateNE.x, 2) + 
+        Math.pow(y - buttonPositions.rotateNE.y, 2)
       );
       const distToRotateNW = Math.sqrt(
-        Math.pow(canvasX - buttonPositions.rotateNW.x, 2) + 
-        Math.pow(canvasY - buttonPositions.rotateNW.y, 2)
+        Math.pow(x - buttonPositions.rotateNW.x, 2) + 
+        Math.pow(y - buttonPositions.rotateNW.y, 2)
       );
       
       if (distToRotateNE < rotationButtonSize / 2) {
@@ -181,8 +186,8 @@ export class GameplayInputHandler {
       }
       
       // Check if clicking on the tile itself to rotate (preserve existing functionality)
-      if (isPointInHex({ x: canvasX, y: canvasY }, tileCenter, layout.size)) {
-        this.handleTileRotation(canvasX, canvasY, tileCenter.x, tileCenter.y, playerEdge);
+      if (isPointInHex({ x: x, y: y }, tileCenter, layout.size)) {
+        this.handleTileRotation(x, y, tileCenter.x, tileCenter.y, playerEdge);
         return;
       }
     } else {
@@ -191,15 +196,15 @@ export class GameplayInputHandler {
       if (currentPlayer) {
         const edgePos = getPlayerEdgePosition(currentPlayer.edgePosition, layout, state.game.boardRadius);
         
-        if (isPointInHex({ x: canvasX, y: canvasY }, edgePos, layout.size)) {
-          this.handleTileRotation(canvasX, canvasY, edgePos.x, edgePos.y, currentPlayer.edgePosition);
+        if (isPointInHex({ x: x, y: y }, edgePos, layout.size)) {
+          this.handleTileRotation(x, y, edgePos.x, edgePos.y, currentPlayer.edgePosition);
           return;
         }
       }
     }
 
     // Check if clicking on a hex position to place tile
-    const hexPos = pixelToHex({ x: canvasX, y: canvasY }, layout);
+    const hexPos = pixelToHex({ x: x, y: y }, layout);
     
     // Verify this is a valid board position
     if (isValidPosition(hexPos, state.game.boardRadius)) {
@@ -218,7 +223,7 @@ export class GameplayInputHandler {
     }
 
     // Check for exit button clicks in corners
-    this.checkExitButtons(canvasX, canvasY, layout);
+    this.checkExitButtons(x, y, layout);
   }
 
   // Calculate button positions oriented toward the player's edge
@@ -427,6 +432,11 @@ export class GameplayInputHandler {
   handleMouseMove(canvasX: number, canvasY: number): void {
     const state = store.getState();
     
+    // Transform input coordinates if board is rotated in multiplayer mode
+    const transformed = this.renderer.transformInputCoordinates(canvasX, canvasY, state);
+    const x = transformed.x;
+    const y = transformed.y;
+    
     // Only track hover if debug mode is enabled
     if (!state.ui.settings.debugHitTest) {
       store.dispatch(setHoveredElement(null));
@@ -435,7 +445,7 @@ export class GameplayInputHandler {
 
     // If move list is open, check for move list item hover
     if (state.ui.showMoveList) {
-      const moveListHover = this.checkMoveListItemHover(canvasX, canvasY);
+      const moveListHover = this.checkMoveListItemHover(x, y);
       store.dispatch(setHoveredElement(moveListHover));
       return;
     }
@@ -466,12 +476,12 @@ export class GameplayInputHandler {
       // Check rotation buttons first (smaller)
       const rotationButtonSize = buttonSize * 0.6;
       const distToRotateNE = Math.sqrt(
-        Math.pow(canvasX - buttonPositions.rotateNE.x, 2) + 
-        Math.pow(canvasY - buttonPositions.rotateNE.y, 2)
+        Math.pow(x - buttonPositions.rotateNE.x, 2) + 
+        Math.pow(y - buttonPositions.rotateNE.y, 2)
       );
       const distToRotateNW = Math.sqrt(
-        Math.pow(canvasX - buttonPositions.rotateNW.x, 2) + 
-        Math.pow(canvasY - buttonPositions.rotateNW.y, 2)
+        Math.pow(x - buttonPositions.rotateNW.x, 2) + 
+        Math.pow(y - buttonPositions.rotateNW.y, 2)
       );
       
       if (distToRotateNE < rotationButtonSize / 2) {
@@ -491,8 +501,8 @@ export class GameplayInputHandler {
       } else {
         // Check checkmark button
         const distToCheck = Math.sqrt(
-          Math.pow(canvasX - buttonPositions.checkmark.x, 2) + 
-          Math.pow(canvasY - buttonPositions.checkmark.y, 2)
+          Math.pow(x - buttonPositions.checkmark.x, 2) + 
+          Math.pow(y - buttonPositions.checkmark.y, 2)
         );
         if (distToCheck < buttonSize / 2) {
           hoveredElement = {
@@ -504,8 +514,8 @@ export class GameplayInputHandler {
         } else {
           // Check X button
           const distToX = Math.sqrt(
-            Math.pow(canvasX - buttonPositions.cancel.x, 2) + 
-            Math.pow(canvasY - buttonPositions.cancel.y, 2)
+            Math.pow(x - buttonPositions.cancel.x, 2) + 
+            Math.pow(y - buttonPositions.cancel.y, 2)
           );
           if (distToX < buttonSize / 2) {
             hoveredElement = {
@@ -521,7 +531,7 @@ export class GameplayInputHandler {
 
     // If not hovering over a button, check if hovering over a hex position
     if (!hoveredElement) {
-      const hexPos = pixelToHex({ x: canvasX, y: canvasY }, layout);
+      const hexPos = pixelToHex({ x: x, y: y }, layout);
       
       // Verify this is a valid board position
       if (isValidPosition(hexPos, state.game.boardRadius)) {
@@ -561,10 +571,10 @@ export class GameplayInputHandler {
 
       for (const corner of corners) {
         if (
-          canvasX >= corner.x &&
-          canvasX <= corner.x + corner.width &&
-          canvasY >= corner.y &&
-          canvasY <= corner.y + corner.height
+          x >= corner.x &&
+          x <= corner.x + corner.width &&
+          y >= corner.y &&
+          y <= corner.y + corner.height
         ) {
           hoveredElement = {
             type: 'exit-button',
