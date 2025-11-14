@@ -45,7 +45,7 @@ describe('AI Rematch Functionality', () => {
       payload: { color: '#0173B2', edge: 1, isAI: true },
     } as GameAction);
 
-    // Start the game
+    // Start the game (random seed is fine - games complete via constraint victory)
     store.dispatch(startGame() as any);
 
     // AI players will auto-select edges and play the entire game instantly via middleware
@@ -53,8 +53,9 @@ describe('AI Rematch Functionality', () => {
     let state = store.getState() as RootState;
     
     // The game should be over by now (two AIs play instantly until victory)
-    console.log(`Game state: ${state.game.screen}, phase: ${state.game.phase}`);
+    console.log(`Game 1 state: ${state.game.screen}, phase: ${state.game.phase}`);
     expect(state.game.screen).toBe('game-over');
+    const game1BoardSize = state.game.board.size;
 
     // Now trigger a rematch from the game-over state
     store.dispatch(rematchGame() as any);
@@ -66,18 +67,16 @@ describe('AI Rematch Functionality', () => {
     console.log(`Board size: ${state.game.board.size}`);
     console.log(`First player is AI: ${state.game.players[state.game.currentPlayerIndex].isAI}`);
 
-    // Should be in playing phase or game-over (if AI played entire game again)
-    // But we expect at LEAST the first AI move to have been made after rematch
+    // Verify that the AI made at least one move after rematch
+    // The test is about rematch behavior - we just need to verify the AI took action
     const firstPlayerAfterRematch = state.game.players[state.game.currentPlayerIndex];
     
     // Since both players are AI, the first player is definitely AI
     expect(firstPlayerAfterRematch.isAI).toBe(true);
     
-    // The game might be over already, or in progress
-    // But in either case, at least one move should have been made
-    // (either the board has tiles, or we're in game-over which means the game was played)
-    const gameWasPlayed = state.game.board.size > 0 || state.game.screen === 'game-over';
-    expect(gameWasPlayed).toBe(true);
-    console.log('✓ AI made moves after rematch (game was played)');
+    // After rematch, AI should have made moves (board should have tiles)
+    // The game may have completed entirely, which is fine - we just verify it played
+    expect(state.game.board.size).toBeGreaterThan(0);
+    console.log(`✓ AI made moves after rematch (${state.game.board.size} tiles placed vs ${game1BoardSize} in game 1)`);
   });
 });
