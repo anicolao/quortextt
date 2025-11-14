@@ -1,5 +1,6 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
+import { setLocalPlayerId } from '../redux/actions';
 
 export class GameCoordinator {
   private store: any; // Redux store
@@ -49,6 +50,14 @@ export class GameCoordinator {
         
         // Don't dispatch locally yet - wait for it to come back from server
         return;
+      }
+      
+      // Check if this is SELECT_EDGE from the local player
+      if (action.type === 'SELECT_EDGE') {
+        console.log('[GameCoordinator] Local player selected edge:', action.payload);
+        // Store the local player's game ID in the UI state
+        this.originalDispatch.call(this.store, setLocalPlayerId(action.payload.playerId));
+        console.log('[GameCoordinator] Set localPlayerId to:', action.payload.playerId);
       }
       
       // Check if this is a player action that should be broadcast
