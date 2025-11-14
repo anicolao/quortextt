@@ -1,4 +1,4 @@
-// Authentication routes for OAuth providers (Discord and Google)
+// Authentication routes for OAuth providers (Discord, Google, and Facebook)
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import passport from '../auth/passport-config.js';
@@ -124,6 +124,58 @@ router.get('/google',
 router.get('/google/callback',
   authLimiter,
   passport.authenticate('google', { session: false, failureRedirect: '/auth/error' }),
+  (req, res) => {
+    const user = req.user as any;
+    
+    // Decode the state parameter to get the return URL
+    const state = req.query.state as string;
+    let decodedReturnTo = '';
+    
+    if (state) {
+      try {
+        decodedReturnTo = Buffer.from(state, 'base64').toString('utf-8');
+      } catch (e) {
+        console.error('Failed to decode state:', e);
+      }
+    }
+    
+    // Validate and sanitize the redirect URL
+    const returnTo = getValidatedRedirectUrl(decodedReturnTo);
+    
+    if (!user) {
+      // Append error to return URL
+      const separator = returnTo.includes('?') ? '&' : '?';
+      return res.redirect(`${returnTo}${separator}error=auth_failed`);
+    }
+
+    // Generate JWT token
+    const token = generateToken(user.id);
+    
+    // Redirect back to the original page with token
+    const separator = returnTo.includes('?') ? '&' : '?';
+    res.redirect(`${returnTo}${separator}token=${token}`);
+  }
+);
+
+// Facebook OAuth routes
+router.get('/facebook', 
+  authLimiter,
+  (req, res, next) => {
+    // Store the returnTo URL from query parameter or referer
+    const returnTo = req.query.returnTo as string || req.get('Referer') || '';
+    
+    // Pass state through OAuth flow
+    passport.authenticate('facebook', { 
+      session: false,
+      state: Buffer.from(returnTo).toString('base64'),
+      scope: ['email']
+    })(req, res, next);
+  }
+);
+
+router.get('/facebook/callback',
+  authLimiter,
+  passport.authenticate('facebook', { session: false, failureRedirect: '/auth/error' }),
   (req, res) => {
     const user = req.user as any;
     
