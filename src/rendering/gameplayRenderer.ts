@@ -87,9 +87,9 @@ export class GameplayRenderer {
         console.log('[GameplayRenderer] Found local player:', localPlayer);
         // Calculate rotation needed to put player's edge at bottom (edge 0 position)
         // Edge positions: 0=bottom, 1=bottom-right, 2=top-right, 3=top, 4=top-left, 5=bottom-left
-        // We need to rotate so that player's edge becomes edge 0
+        // We need to rotate so that player's edge becomes edge 0, and add 180° to keep it right-side-up
         const edgeAngles = [0, 60, 120, 180, 240, 300];
-        const rotationAngle = -edgeAngles[localPlayer.edgePosition]; // Negative to rotate clockwise
+        const rotationAngle = -edgeAngles[localPlayer.edgePosition] + 180; // Add 180° to flip orientation
         
         console.log('[GameplayRenderer] Applying rotation:', rotationAngle, 'degrees');
         
@@ -2839,6 +2839,48 @@ export class GameplayRenderer {
     return {
       x: center.x + size * Math.cos(angleRad),
       y: center.y + size * Math.sin(angleRad),
+    };
+  }
+
+  // Get the rotation angle applied to the board in multiplayer mode
+  getBoardRotationAngle(state: RootState): number {
+    if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
+      const localPlayer = state.game.players.find(p => p.id === state.ui.localPlayerId);
+      if (localPlayer) {
+        const edgeAngles = [0, 60, 120, 180, 240, 300];
+        return -edgeAngles[localPlayer.edgePosition] + 180;
+      }
+    }
+    return 0;
+  }
+
+  // Transform input coordinates to account for board rotation in multiplayer mode
+  transformInputCoordinates(x: number, y: number, state: RootState): { x: number; y: number } {
+    const rotationAngle = this.getBoardRotationAngle(state);
+    if (rotationAngle === 0) {
+      return { x, y };
+    }
+
+    // Calculate center of canvas
+    const centerX = this.layout.canvasWidth / 2;
+    const centerY = this.layout.canvasHeight / 2;
+
+    // Translate to origin
+    const translatedX = x - centerX;
+    const translatedY = y - centerY;
+
+    // Rotate (inverse rotation to transform input back to original coordinate space)
+    const rotationRad = (-rotationAngle * Math.PI) / 180;
+    const cos = Math.cos(rotationRad);
+    const sin = Math.sin(rotationRad);
+
+    const rotatedX = translatedX * cos - translatedY * sin;
+    const rotatedY = translatedX * sin + translatedY * cos;
+
+    // Translate back
+    return {
+      x: rotatedX + centerX,
+      y: rotatedY + centerY
     };
   }
 }
