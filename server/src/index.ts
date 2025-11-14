@@ -76,6 +76,14 @@ async function initializeStorage() {
   await gameStorage.initialize();
   await sessionStorage.initialize();
   await UserStore.init(); // Load users from persistent storage
+  
+  // Check if rating migration is needed
+  const { checkMigrationNeeded, migrateUsersToRatings } = await import('./rating/migration.js');
+  if (checkMigrationNeeded()) {
+    console.log('⚠️  Rating migration needed for existing users');
+    await migrateUsersToRatings();
+  }
+  
   console.log('✅ File-based storage initialized');
 }
 
@@ -527,6 +535,41 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error posting action:', error);
       socket.emit('error', { message: 'Failed to post action' });
+    }
+  });
+
+  // Handle game completion and rating updates
+  socket.on('game_completed', async (data: {
+    gameId: string;
+    playerCount: number;
+    results: Array<{ playerId: string; rank: number; teamId?: string }>;
+    isTeamGame?: boolean;
+  }) => {
+    const { gameId, playerCount, results, isTeamGame = false } = data;
+    
+    console.log(`[GameComplete] Received completion for game ${gameId} with ${playerCount} players`);
+    
+    try {
+      // Validate player count
+      if (playerCount < 2 || playerCount > 6) {
+        console.error(`[GameComplete] Invalid player count: ${playerCount}`);
+        return;
+      }
+      
+      // Import rating service (dynamic to avoid circular deps)
+      const { processGameCompletion } = await import('./rating/ratingService.js');
+      
+      // Process rating updates
+      await processGameCompletion(
+        gameId,
+        playerCount as 2 | 3 | 4 | 5 | 6,
+        results,
+        isTeamGame
+      );
+      
+      console.log(`[GameComplete] Successfully processed ratings for game ${gameId}`);
+    } catch (error) {
+      console.error('[GameComplete] Error processing game completion:', error);
     }
   });
 

@@ -3,6 +3,25 @@
 
 import { DataStorage } from '../storage/DataStorage.js';
 import path from 'path';
+import { GlickoRating, createDefaultRating } from '../rating/glicko2.js';
+
+export interface PlayerRatings {
+  twoPlayer: GlickoRating;
+  threePlayer: GlickoRating;
+  fourPlayer: GlickoRating;
+  fivePlayer: GlickoRating;
+  sixPlayer: GlickoRating;
+}
+
+export interface RatingHistoryEntry {
+  gameId: string;
+  playerCount: number;
+  oldRating: number;
+  newRating: number;
+  oldRD: number;
+  newRD: number;
+  timestamp: Date;
+}
 
 export interface IUser {
   id: string; // Stable ID: googleId or discordId
@@ -24,6 +43,8 @@ export interface IUser {
     soundEnabled: boolean;
     theme: string;
   };
+  ratings: PlayerRatings;
+  ratingHistory: RatingHistoryEntry[];
   createdAt: Date;
   lastActive: Date;
 }
@@ -88,6 +109,14 @@ export class UserStore {
         soundEnabled: true,
         theme: 'default'
       },
+      ratings: {
+        twoPlayer: createDefaultRating(),
+        threePlayer: createDefaultRating(),
+        fourPlayer: createDefaultRating(),
+        fivePlayer: createDefaultRating(),
+        sixPlayer: createDefaultRating()
+      },
+      ratingHistory: [],
       createdAt: new Date(),
       lastActive: new Date()
     };
@@ -117,5 +146,68 @@ export class UserStore {
 
   static getAll(): IUser[] {
     return Array.from(userCache.values());
+  }
+
+  /**
+   * Update a user's rating for a specific player count
+   */
+  static async updateRating(
+    userId: string,
+    playerCount: 2 | 3 | 4 | 5 | 6,
+    newRating: GlickoRating,
+    gameId: string
+  ): Promise<IUser | undefined> {
+    const user = userCache.get(userId);
+    if (!user) return undefined;
+
+    // Get the rating field name based on player count
+    const ratingField = playerCount === 2 ? 'twoPlayer' :
+                        playerCount === 3 ? 'threePlayer' :
+                        playerCount === 4 ? 'fourPlayer' :
+                        playerCount === 5 ? 'fivePlayer' : 'sixPlayer';
+
+    const oldRating = user.ratings[ratingField];
+
+    // Create history entry
+    const historyEntry: RatingHistoryEntry = {
+      gameId,
+      playerCount,
+      oldRating: oldRating.rating,
+      newRating: newRating.rating,
+      oldRD: oldRating.rd,
+      newRD: newRating.rd,
+      timestamp: new Date()
+    };
+
+    // Update the user with new rating
+    const updatedUser = {
+      ...user,
+      ratings: {
+        ...user.ratings,
+        [ratingField]: newRating
+      },
+      ratingHistory: [...user.ratingHistory, historyEntry],
+      lastActive: new Date()
+    };
+
+    // Update storage and cache
+    await userStorage.set(userId, updatedUser);
+    userCache.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  /**
+   * Get a user's rating for a specific player count
+   */
+  static getRating(userId: string, playerCount: 2 | 3 | 4 | 5 | 6): GlickoRating | undefined {
+    const user = userCache.get(userId);
+    if (!user) return undefined;
+
+    const ratingField = playerCount === 2 ? 'twoPlayer' :
+                        playerCount === 3 ? 'threePlayer' :
+                        playerCount === 4 ? 'fourPlayer' :
+                        playerCount === 5 ? 'fivePlayer' : 'sixPlayer';
+
+    return user.ratings[ratingField];
   }
 }
