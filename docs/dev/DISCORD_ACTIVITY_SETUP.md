@@ -33,8 +33,8 @@ The Discord Activity allows players to play Quortex directly within Discord usin
    - **Description**: Strategic tile-placement game for 2-6 players
    - **URL Mappings**: You'll add this after setting up your tunnel (see Testing section below)
    - ⚠️ **Do NOT use** `http://localhost:5173` - Discord cannot access localhost URLs
-   - For development: Use tunnel URL like `https://random-name.trycloudflare.com/discord.html`
-   - For production: `https://your-domain.com/quortextt/discord.html`
+   - For development: Use tunnel URL like `https://random-name.trycloudflare.com/discord/`
+   - For production: `https://your-domain.com/quortextt/discord/`
 
 ### 3. Get OAuth2 Credentials
 
@@ -92,7 +92,7 @@ npm run dev:server
 ```
 
 - Client will be available at: `http://localhost:5173`
-- Discord Activity at: `http://localhost:5173/discord.html`
+- Discord Activity at: `http://localhost:5173/discord/`
 - Server will be available at: `http://localhost:3001`
 
 ## Testing the Discord Activity
@@ -131,8 +131,8 @@ This outputs a URL like: `https://abc123.ngrok.io`
 1. Go to your application in the Discord Developer Portal
 2. Navigate to **Activities** → **URL Mappings**
 3. Add a mapping:
-   - **Root Mapping**: `/` → `https://your-tunnel-url.com/discord.html`
-   - Example: `https://random-name.trycloudflare.com/discord.html`
+   - **Root Mapping**: `/` → `https://your-tunnel-url.com/discord/`
+   - Example: `https://random-name.trycloudflare.com/discord/`
 4. **Save** the mapping
 
 **Note**: Cloudflare/ngrok URLs change each session, so update the mapping each time you restart the tunnel.
@@ -145,7 +145,7 @@ This outputs a URL like: `https://abc123.ngrok.io`
 
 ### Option 2: Direct Browser Testing (Limited)
 
-While you can open `http://localhost:5173/discord.html` directly in a browser, it won't have access to Discord SDK features. This is mainly useful for UI testing.
+While you can open `http://localhost:5173/discord/` directly in a browser, it won't have access to Discord SDK features. This is mainly useful for UI testing.
 
 To test Discord-specific features, you must run it within Discord using the Developer Portal's test mode.
 
@@ -158,7 +158,7 @@ npm run build
 ```
 
 This creates optimized production files in the `dist/` directory, including:
-- `dist/discord.html` - Discord Activity entry point
+- `dist/discord/` - Discord Activity entry point
 - `dist/index.html` - Standard multiplayer entry point
 - `dist/tabletop.html` - Tabletop mode entry point
 
@@ -168,7 +168,7 @@ The built files can be deployed to any static hosting service (GitHub Pages, Net
 
 Update your Discord Application's Activity URL to point to your production URL:
 ```
-https://your-domain.com/quortextt/discord.html
+https://your-domain.com/quortextt/discord/
 ```
 
 ## Architecture Overview
@@ -176,14 +176,14 @@ https://your-domain.com/quortextt/discord.html
 ### Files Added/Modified
 
 **New Files:**
-- `discord.html` - Entry point HTML for Discord Activity
+- `discord/` - Entry point HTML for Discord Activity
 - `src/discordMain.ts` - Main TypeScript entry point for Discord mode
 - `src/discord/discordClient.ts` - Discord SDK integration and authentication
 - `src/vite-env.d.ts` - TypeScript environment variable definitions
 - `docs/dev/DISCORD_ACTIVITY_SETUP.md` - This file
 
 **Modified Files:**
-- `vite.config.ts` - Added discord.html to build inputs
+- `vite.config.ts` - Added discord/ to build inputs
 - `.env.example` - Added VITE_DISCORD_CLIENT_ID configuration
 - `src/multiplayer/stores/multiplayerStore.ts` - Added userId field and helper methods
 - `package.json` - Added @discord/embedded-app-sdk dependency
@@ -249,7 +249,7 @@ Only additions:
 4. **Update Discord Developer Portal**:
    - Go to your Discord Application
    - Navigate to **Activities** → **URL Mappings**
-   - Set the root mapping to: `https://random-name.trycloudflare.com/discord.html`
+   - Set the root mapping to: `https://random-name.trycloudflare.com/discord/`
    - **Important**: The URL changes each time you run cloudflared, so update it each session
 
 5. **Test the Activity** in Discord - it should now load successfully!
@@ -269,7 +269,7 @@ Discord's Activity proxy cannot access `localhost` URLs. The `*.discordsays.com`
 
 ### Production Server "Refused to Connect" Error
 
-**Problem**: Getting "refused to connect" error on production server (e.g., `quortex.morpheum.dev/quortextt/discord.html`)
+**Problem**: Getting "refused to connect" error on production server (e.g., `quortex.morpheum.dev/quortextt/discord/`)
 
 **Common Causes & Solutions**:
 
@@ -301,7 +301,7 @@ Or for Apache:
 Discord Activities require valid HTTPS. Check:
 - Certificate is valid and not expired
 - No mixed content warnings
-- Test URL directly in browser: `https://quortex.morpheum.dev/quortextt/discord.html`
+- Test URL directly in browser: `https://quortex.morpheum.dev/quortextt/discord/`
 
 **3. Content-Security-Policy (CSP) Headers**
 
@@ -317,7 +317,7 @@ Content-Security-Policy: frame-ancestors https://*.discord.com https://*.discord
 Verify the files are accessible:
 ```bash
 # Test if files are served correctly
-curl -I https://quortex.morpheum.dev/quortextt/discord.html
+curl -I https://quortex.morpheum.dev/quortextt/discord/
 
 # Should return 200 OK with text/html content-type
 # Should NOT return 404 or redirect
@@ -331,7 +331,7 @@ If using a subdirectory (`/quortextt/`), ensure your web server is configured to
 # Nginx - serve static files from /quortextt/ path
 location /quortextt/ {
     alias /var/www/quortex/dist/;
-    try_files $uri $uri/ /quortextt/discord.html;
+    try_files $uri $uri/ /quortextt/discord/;
     
     # Enable CORS for Discord Activities
     add_header Access-Control-Allow-Origin "*";
@@ -341,13 +341,13 @@ location /quortextt/ {
 **6. Discord URL Mapping Configuration**
 
 In Discord Developer Portal, ensure URL mapping is correct:
-- **Incorrect**: `quortex.morpheum.dev/quortextt/discord.html` (missing protocol)
-- **Correct**: `https://quortex.morpheum.dev/quortextt/discord.html`
+- **Incorrect**: `quortex.morpheum.dev/quortextt/discord/` (missing protocol)
+- **Correct**: `https://quortex.morpheum.dev/quortextt/discord/`
 
 **Debugging Steps**:
 
 1. **Test the URL directly in browser**:
-   - Open: `https://quortex.morpheum.dev/quortextt/discord.html`
+   - Open: `https://quortex.morpheum.dev/quortextt/discord/`
    - Should load the page (may show Discord SDK error, but page should render)
    - Check browser console (F12) for errors
 
@@ -359,7 +359,7 @@ In Discord Developer Portal, ensure URL mapping is correct:
 
 3. **Verify CORS**:
    ```bash
-   curl -I -X OPTIONS https://quortex.morpheum.dev/quortextt/discord.html \
+   curl -I -X OPTIONS https://quortex.morpheum.dev/quortextt/discord/ \
      -H "Origin: https://discord.com" \
      -H "Access-Control-Request-Method: GET"
    
