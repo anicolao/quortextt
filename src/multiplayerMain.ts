@@ -13,6 +13,7 @@ import { positionToKey } from './game/board';
 import { isPlayerBlocked } from './game/legality';
 import { multiplayerStore } from './multiplayer/stores/multiplayerStore';
 import { GameCoordinator } from './multiplayer/gameCoordinator';
+import { setGameMode } from './redux/actions';
 
 // Expose store to window for testing
 declare global {
@@ -48,11 +49,10 @@ multiplayerStore.subscribe((state) => {
   if (state.screen === 'game' && state.gameId) {
     console.log('Starting multiplayer game with gameId:', state.gameId);
     
-    // Set game mode to multiplayer and store local player ID
-    import('./redux/actions').then(({ setGameMode, setLocalPlayerId }) => {
-      store.dispatch(setGameMode('multiplayer'));
-      store.dispatch(setLocalPlayerId(state.playerId));
-    });
+    // Set game mode to multiplayer
+    store.dispatch(setGameMode('multiplayer'));
+    console.log('Set game mode to multiplayer');
+    // Note: localPlayerId will be set when the player selects their edge during seating
     
     // Hide Svelte UI, show canvas
     if (svelteRoot) svelteRoot.style.display = 'none';
