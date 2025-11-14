@@ -2,6 +2,7 @@
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from '@oauth-everything/passport-discord';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as FacebookStrategy } from 'passport-facebook';
 import { UserStore, IUser } from '../models/User.js';
 
 // Configure OAuth Strategies
@@ -96,6 +97,51 @@ export function configurePassport() {
     console.log('✓ Google OAuth strategy configured');
   } else {
     console.warn('⚠️  Google OAuth credentials not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.');
+  }
+
+  // Configure Facebook Strategy
+  if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
+    passport.use(new FacebookStrategy({
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
+      callbackURL: `${process.env.BASE_URL || 'http://localhost:3001'}/auth/facebook/callback`,
+      profileFields: ['id', 'displayName', 'photos', 'email']
+    },
+    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+      try {
+        // Check if user already exists
+        let user = UserStore.findByFacebookId(profile.id);
+        
+        if (!user) {
+          // Create new user using Facebook ID as the stable primary key
+          const avatarUrl = profile.photos?.[0]?.value;
+
+          user = await UserStore.create({
+            id: `facebook:${profile.id}`, // Use OAuth provider ID as stable key
+            facebookId: profile.id,
+            displayName: profile.displayName,
+            email: profile.emails?.[0]?.value,
+            avatar: avatarUrl,
+            provider: 'facebook'
+          });
+
+          console.log(`✓ New user created: ${user.displayName} (Facebook ID: ${profile.id})`);
+        } else {
+          // Update last active time
+          await UserStore.update(user.id, { lastActive: new Date() });
+          console.log(`✓ User logged in: ${user.displayName}`);
+        }
+        
+        return done(null, user);
+      } catch (error) {
+        console.error('Error in Facebook OAuth strategy:', error);
+        return done(error);
+      }
+    }));
+
+    console.log('✓ Facebook OAuth strategy configured');
+  } else {
+    console.warn('⚠️  Facebook OAuth credentials not configured. Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables.');
   }
 
   // Serialize user for the session

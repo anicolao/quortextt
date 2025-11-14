@@ -146,10 +146,11 @@ export class UserStore {
     id: string;
     discordId?: string;
     googleId?: string;
+    facebookId?: string;
     displayName: string;
     email?: string;
     avatar?: string;
-    provider: "discord" | "google" | "anonymous";
+    provider: "discord" | "google" | "facebook" | "anonymous";
     alias?: string;
     isAnonymous?: boolean;
   }): Promise<IUser> {
@@ -157,6 +158,7 @@ export class UserStore {
       id: userData.id,
       discordId: userData.discordId,
       googleId: userData.googleId,
+      facebookId: userData.facebookId,
       displayName: userData.displayName,
       email: userData.email,
       avatar: userData.avatar,
