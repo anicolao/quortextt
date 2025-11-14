@@ -179,7 +179,8 @@ Add this to your `virtualHosts."quortex.morpheum.dev".locations` in `/etc/nixos/
 # Discord Activity - serve from /quortextt/discord/ with access to root assets
 "/quortextt/discord/" = {
   alias = "/var/www/quortex/";
-  tryFiles = "$uri $uri/ /quortextt/discord/index.html =404";
+  index = "discord/index.html";
+  tryFiles = "$uri $uri/ =404";
 };
 ```
 
@@ -191,11 +192,13 @@ Add this to your nginx config file **before** the `location /quortextt/` block:
 # Discord Activity - serve from /quortextt/discord/ with access to root assets
 location /quortextt/discord/ {
     alias /var/www/quortex/;
-    try_files $uri $uri/ /quortextt/discord/index.html =404;
+    index discord/index.html;
+    try_files $uri $uri/ =404;
 }
 ```
 
 **How it works:**
+- Request to `/quortextt/discord/` → serves `/var/www/quortex/discord/index.html` (via index directive)
 - Request to `/quortextt/discord/index.html` → serves `/var/www/quortex/discord/index.html`
 - Request to `/quortextt/discord/assets/file.js` → serves `/var/www/quortex/assets/file.js`
 - This allows Discord's iframe to access both the HTML and all assets under a consistent `/quortextt/discord/` prefix

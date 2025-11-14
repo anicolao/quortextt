@@ -221,7 +221,8 @@ server {
     # This location must come BEFORE the general /quortextt/ location
     location /quortextt/discord/ {
         alias /var/www/quortex/;
-        try_files $uri $uri/ /quortextt/discord/index.html =404;
+        index discord/index.html;
+        try_files $uri $uri/ =404;
     }
 
     # Serve static files (GitHub Pages alternative)
@@ -484,7 +485,8 @@ in
         # This location must come BEFORE the general /quortextt/ location
         "/quortextt/discord/" = {
           alias = "/var/www/quortex/";
-          tryFiles = "$uri $uri/ /quortextt/discord/index.html =404";
+          index = "discord/index.html";
+          tryFiles = "$uri $uri/ =404";
         };
 
         # Serve static files (if hosting on same server)
