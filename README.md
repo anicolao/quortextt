@@ -103,7 +103,9 @@ Start the development server with hot module replacement:
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173`
+The application will be available at `http://localhost:5173` with:
+- Multiplayer experience at `/` (default)
+- Tabletop experience at `/tabletop.html`
 
 ### Multiplayer Server
 
@@ -134,7 +136,12 @@ Build for production:
 npm run build
 ```
 
-The built files will be in the `dist` directory.
+The built files will be in the `dist` directory:
+- `dist/index.html` - Multiplayer experience (served at `/`)
+- `dist/tabletop.html` - Tabletop experience (served at `/tabletop`)
+- `dist/assets/` - Bundled JavaScript and CSS
+
+For production deployment instructions, see **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)**.
 
 ### Testing
 
@@ -209,10 +216,11 @@ quortextt/
 
 ### For Developers
 - **[AGENTS.md](AGENTS.md)** - Guidelines for AI agents and contributors
+- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Production deployment guide
 - **[docs/dev/DEVELOPMENT.md](docs/dev/DEVELOPMENT.md)** - Development workflow and testing
 - **[docs/designs/DESIGN_DOC.md](docs/designs/DESIGN_DOC.md)** - Architecture and implementation design
 - **[docs/designs/UI_DESIGN.md](docs/designs/UI_DESIGN.md)** - Detailed UI specifications
-- **[docs/dev/DEPLOYMENT.md](docs/dev/DEPLOYMENT.md)** - Deployment guide for GitHub Pages
+- **[docs/dev/DEPLOYMENT.md](docs/dev/DEPLOYMENT.md)** - Detailed deployment options and strategies
 
 ### Multiplayer & Authentication
 - **[docs/designs/WEB_MULTIPLAYER.md](docs/designs/WEB_MULTIPLAYER.md)** - Multiplayer architecture design
