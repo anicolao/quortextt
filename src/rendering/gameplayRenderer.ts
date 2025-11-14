@@ -149,6 +149,21 @@ export class GameplayRenderer {
     if (state.game.screen === "game-over") {
       this.renderVictoryStars(state);
     }
+
+    // Layer 7: Debug legality test - show winning paths
+    if (state.ui.settings.debugLegalityTest) {
+      this.renderDebugLegalityPaths(state);
+    }
+
+    // Layer 8: Debug hit test visualization
+    if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
+      this.renderDebugHitTestOutline(state.ui.hoveredElement);
+    }
+
+    // Layer 9: Debug apex vertex visualization
+    if (state.ui.settings.debugHitTest) {
+      this.renderDebugApexVertex(state);
+    }
     
     // Restore canvas state after board/tile rendering (removes rotation)
     this.ctx.restore();
@@ -170,21 +185,6 @@ export class GameplayRenderer {
     // Layer 6.8: Move list dialog if open
     if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
       this.renderMoveListDialog(state.ui.moveListCorner, state);
-    }
-
-    // Layer 7: Debug legality test - show winning paths
-    if (state.ui.settings.debugLegalityTest) {
-      this.renderDebugLegalityPaths(state);
-    }
-
-    // Layer 8: Debug hit test visualization
-    if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
-      this.renderDebugHitTestOutline(state.ui.hoveredElement);
-    }
-
-    // Layer 9: Debug apex vertex visualization
-    if (state.ui.settings.debugHitTest) {
-      this.renderDebugApexVertex(state);
     }
   }
 
