@@ -17,6 +17,7 @@ export interface IUser {
   alias: string;           // User-chosen display name
   claimCode: string;       // 6-letter code for account claiming
   isAnonymous: boolean;    // True for guest/anonymous users
+  profileCompleted: boolean; // True if user has completed initial profile setup
   
   stats: {
     gamesPlayed: number;
@@ -124,6 +125,7 @@ export class UserStore {
       alias: userData.alias || userData.displayName,
       claimCode: generateUniqueClaimCode(),
       isAnonymous: userData.isAnonymous || false,
+      profileCompleted: userData.isAnonymous ? true : false, // Anonymous users are auto-completed, OAuth users need setup
       stats: {
         gamesPlayed: 0,
         gamesWon: 0,

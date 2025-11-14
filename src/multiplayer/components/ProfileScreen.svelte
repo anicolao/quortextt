@@ -44,6 +44,11 @@
 
       profile = await response.json();
       newAlias = profile.alias;
+      
+      // Auto-enable editing for new users
+      if (!profile.profileCompleted && !profile.isAnonymous) {
+        editingAlias = true;
+      }
     } catch (err) {
       error = 'Failed to load profile';
       console.error(err);
@@ -71,9 +76,18 @@
         throw new Error(data.error || 'Failed to update alias');
       }
 
+      const data = await response.json();
       profile.alias = newAlias;
       profile.displayName = newAlias;
+      profile.profileCompleted = data.profileCompleted;
       editingAlias = false;
+      
+      // If this was the first time setting alias, redirect to lobby
+      if (data.profileCompleted && !profile.isAnonymous) {
+        setTimeout(() => {
+          multiplayerStore.setScreen('lobby');
+        }, 1000);
+      }
     } catch (err: any) {
       error = err.message;
     }
@@ -131,6 +145,8 @@
   function goBack() {
     multiplayerStore.setScreen('lobby');
   }
+  
+  $: isNewUser = profile && !profile.profileCompleted && !profile.isAnonymous;
 
   function getProviderDisplay(provider: string) {
     switch (provider) {
@@ -150,8 +166,10 @@
 <div class="profile-screen">
   <div class="profile-container">
     <header>
-      <button class="back-btn" on:click={goBack}>← Back to Lobby</button>
-      <h1>Your Profile</h1>
+      {#if !isNewUser}
+        <button class="back-btn" on:click={goBack}>← Back to Lobby</button>
+      {/if}
+      <h1>{isNewUser ? 'Welcome! Set Up Your Profile' : 'Your Profile'}</h1>
     </header>
 
     {#if loading}
@@ -160,6 +178,13 @@
       <div class="error">{error}</div>
     {:else if profile}
       <div class="profile-content">
+        {#if isNewUser}
+          <div class="welcome-message">
+            <p>👋 Welcome to Quortex! Please choose a display name for yourself.</p>
+            <p class="welcome-hint">You can change this later from your profile.</p>
+          </div>
+        {/if}
+        
         <!-- User Info Section -->
         <section class="profile-section">
           <div class="profile-header">
@@ -341,6 +366,27 @@
 
   .profile-content {
     padding: 30px;
+  }
+  
+  .welcome-message {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 20px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+  }
+  
+  .welcome-message p {
+    margin: 0 0 8px 0;
+    color: #1565C0;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  
+  .welcome-hint {
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    color: #1976D2 !important;
   }
 
   .profile-section {

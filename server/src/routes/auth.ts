@@ -177,6 +177,7 @@ router.get('/me', apiLimiter, authenticateJWT, (req: AuthRequest, res) => {
     avatar: user.avatar,
     provider: user.provider,
     isAnonymous: user.isAnonymous,
+    profileCompleted: user.profileCompleted,
     claimCode: user.claimCode,
     stats: user.stats,
     settings: user.settings,
