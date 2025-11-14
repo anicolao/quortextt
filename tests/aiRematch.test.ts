@@ -14,6 +14,7 @@ import {
   placeTile,
   nextPlayer,
   drawTile,
+  updateSettings,
   GameAction,
 } from '../src/redux/actions';
 import type { RootState } from '../src/redux/types';
@@ -23,12 +24,16 @@ describe('AI Rematch Functionality', () => {
     resetPlayerIdCounter();
   });
 
-  it('should make AI take the first move after rematch when AI becomes first player', { timeout: 60000 }, () => {
+  it('should make AI take the first move after rematch when AI becomes first player', { timeout: 15000 }, () => {
     // Create a store with aiMiddleware
     const store = createStore(
       rootReducer,
       applyMiddleware(aiMiddleware)
     );
+
+    // Disable supermoves to make the test run faster
+    // The test is about rematch behavior, not supermove functionality
+    store.dispatch(updateSettings({ supermove: false }));
 
     // Add two AI players to guarantee AI behavior
     store.dispatch({
