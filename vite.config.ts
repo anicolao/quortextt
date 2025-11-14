@@ -19,6 +19,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         tabletop: resolve(__dirname, 'tabletop.html'),
+        discord: resolve(__dirname, 'discord.html'),
       },
       output: {
         manualChunks: undefined, // Single bundle for simplicity
