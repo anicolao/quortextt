@@ -809,6 +809,41 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle game completion and rating updates
+  socket.on('game_completed', async (data: {
+    gameId: string;
+    playerCount: number;
+    results: Array<{ playerId: string; rank: number; teamId?: string }>;
+    isTeamGame?: boolean;
+  }) => {
+    const { gameId, playerCount, results, isTeamGame = false } = data;
+    
+    console.log(`[GameComplete] Received completion for game ${gameId} with ${playerCount} players`);
+    
+    try {
+      // Validate player count
+      if (playerCount < 2 || playerCount > 6) {
+        console.error(`[GameComplete] Invalid player count: ${playerCount}`);
+        return;
+      }
+      
+      // Import rating service (dynamic to avoid circular deps)
+      const { processGameCompletion } = await import('./rating/ratingService.js');
+      
+      // Process rating updates
+      await processGameCompletion(
+        gameId,
+        playerCount as 2 | 3 | 4 | 5 | 6,
+        results,
+        isTeamGame
+      );
+      
+      console.log(`[GameComplete] Successfully processed ratings for game ${gameId}`);
+    } catch (error) {
+      console.error('[GameComplete] Error processing game completion:', error);
+    }
+  });
+
   // Get all actions for a game (for new players or reconnection)
   socket.on('get_actions', async (data: { gameId: string }) => {
     const { gameId } = data;
