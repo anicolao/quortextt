@@ -24,13 +24,14 @@ export interface RatingHistoryEntry {
 }
 
 export interface IUser {
-  id: string; // Stable ID: googleId, discordId, or anon:uuid
+  id: string; // Stable ID: googleId, discordId, facebookId, or anon:uuid
   discordId?: string;
   googleId?: string;
+  facebookId?: string;
   displayName: string;
   email?: string;
   avatar?: string;
-  provider: "discord" | "google" | "anonymous";
+  provider: "discord" | "google" | "facebook" | "anonymous";
 
   // Profile fields
   alias: string; // User-chosen display name
@@ -122,6 +123,12 @@ export class UserStore {
   static findByGoogleId(googleId: string): IUser | undefined {
     return Array.from(userCache.values()).find(
       (user) => user.googleId === googleId,
+    );
+  }
+
+  static findByFacebookId(facebookId: string): IUser | undefined {
+    return Array.from(userCache.values()).find(
+      (user) => user.facebookId === facebookId,
     );
   }
 
