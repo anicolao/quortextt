@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quortex - Discord Activity</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            overflow-x: hidden;
+            background: #1e1f22;
+            color: #ffffff;
+        }
+        #multiplayer-ui {
+            width: 100%;
+            min-height: 100vh;
+        }
+        canvas {
+            display: none; /* Hidden until game starts */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas.active {
+            display: block;
+        }
+        #discord-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            gap: 1rem;
+        }
+        #discord-loading.hidden {
+            display: none;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #5865f2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #discord-error {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            gap: 1rem;
+            padding: 2rem;
+            text-align: center;
+        }
+        #discord-error.visible {
+            display: flex;
+        }
+        .error-message {
+            max-width: 500px;
+            padding: 1rem;
+            background: rgba(237, 66, 69, 0.1);
+            border: 1px solid rgba(237, 66, 69, 0.3);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="discord-loading">
+        <div class="spinner"></div>
+        <p>Connecting to Discord...</p>
+    </div>
+    
+    <div id="discord-error">
+        <div class="error-message">
+            <h2>Connection Failed</h2>
+            <p id="error-text">Unable to connect to Discord Activity.</p>
+        </div>
+    </div>
+    
+    <div id="multiplayer-ui" style="display: none;"></div>
+    <canvas id="game-canvas"></canvas>
+    
+    <script type="module" src="/src/discordMain.ts"></script>
+</body>
+</html>

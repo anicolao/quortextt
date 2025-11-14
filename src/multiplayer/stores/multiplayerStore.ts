@@ -20,6 +20,7 @@ export interface MultiplayerState {
   connected: boolean;
   username: string | null;
   playerId: string | null;
+  userId: string | null; // Discord user ID when in Discord Activity mode
   currentRoom: Room | null;
   availableRooms: Room[];
   screen: 'login' | 'lobby' | 'room' | 'game' | 'profile';
@@ -30,6 +31,7 @@ const initialState: MultiplayerState = {
   connected: false,
   username: null,
   playerId: null,
+  userId: null,
   currentRoom: null,
   availableRooms: [],
   screen: 'login',
@@ -42,6 +44,12 @@ function createMultiplayerStore() {
 
   return {
     subscribe,
+    set, // Expose set for Discord Activity to directly update state
+    get: () => {
+      let value: MultiplayerState = initialState;
+      subscribe(v => value = v)();
+      return value;
+    },
     
     setConnected: (connected: boolean) => 
       update(state => ({ ...state, connected })),
