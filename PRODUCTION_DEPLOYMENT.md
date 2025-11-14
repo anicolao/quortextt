@@ -353,6 +353,303 @@ sudo certbot renew --dry-run
 - Client always uses `https://` (which Socket.io converts to `wss://`)
 - Server never needs to know about SSL certificates
 
+#### 6. NixOS Configuration
+
+If you're using NixOS, here's the declarative configuration for nginx and the Node.js service:
+
+**File: `/etc/nixos/configuration.nix`** (or a separate module file)
+
+```nix
+{ config, pkgs, ... }:
+
+let
+  quortexServerDir = "/opt/quortex/server";
+  quortexDataDir = "/var/lib/quortex/data";
+in
+{
+  # System packages
+  environment.systemPackages = with pkgs; [
+    nodejs_18
+    git
+  ];
+
+  # Create data directory
+  systemd.tmpfiles.rules = [
+    "d ${quortexDataDir} 0750 quortex quortex -"
+  ];
+
+  # User for running the service
+  users.users.quortex = {
+    isSystemUser = true;
+    group = "quortex";
+    home = quortexServerDir;
+    createHome = true;
+  };
+
+  users.groups.quortex = {};
+
+  # Node.js server systemd service
+  systemd.services.quortex-server = {
+    description = "Quortex Multiplayer Server";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+
+    environment = {
+      NODE_ENV = "production";
+      PORT = "3001";
+      CLIENT_URL = "https://quortex.morpheum.dev";
+      JWT_SECRET = "your-secret-here-change-in-production";
+      DATA_DIR = quortexDataDir;
+      
+      # Optional: OAuth credentials
+      # DISCORD_CLIENT_ID = "your-discord-client-id";
+      # DISCORD_CLIENT_SECRET = "your-discord-client-secret";
+      # DISCORD_CALLBACK_URL = "https://quortex.morpheum.dev/auth/discord/callback";
+    };
+
+    serviceConfig = {
+      Type = "simple";
+      User = "quortex";
+      Group = "quortex";
+      WorkingDirectory = quortexServerDir;
+      ExecStart = "${pkgs.nodejs_18}/bin/node dist/index.js";
+      Restart = "always";
+      RestartSec = "10s";
+      
+      # Security hardening
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      ReadWritePaths = [ quortexDataDir ];
+    };
+
+    # Script to build the project on first start
+    preStart = ''
+      if [ ! -d "${quortexServerDir}/dist" ]; then
+        cd ${quortexServerDir}
+        ${pkgs.nodejs_18}/bin/npm install
+        ${pkgs.nodejs_18}/bin/npm run build
+      fi
+    '';
+  };
+
+  # Nginx configuration
+  services.nginx = {
+    enable = true;
+    recommendedProxySettings = true;
+    recommendedTlsSettings = true;
+    recommendedOptimisation = true;
+    recommendedGzipSettings = true;
+
+    upstreams = {
+      quortex_backend = {
+        servers = {
+          "127.0.0.1:3001" = {
+            max_fails = 3;
+            fail_timeout = "30s";
+          };
+        };
+        extraConfig = ''
+          keepalive 64;
+        '';
+      };
+    };
+
+    virtualHosts."quortex.morpheum.dev" = {
+      # Enable SSL/TLS
+      enableACME = true;
+      forceSSL = true;
+      
+      # HTTP2 support
+      http2 = true;
+
+      # Security headers
+      extraConfig = ''
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+      '';
+
+      locations = {
+        # Serve static files (if hosting on same server)
+        "/quortextt/" = {
+          alias = "/var/www/quortex/";
+          tryFiles = "$uri $uri/ /quortextt/index.html";
+          extraConfig = ''
+            # Cache static assets
+            location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+              expires 1y;
+              add_header Cache-Control "public, immutable";
+            }
+          '';
+        };
+
+        # API endpoints
+        "/api/" = {
+          proxyPass = "http://quortex_backend";
+          extraConfig = ''
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+          '';
+        };
+
+        # OAuth callback routes
+        "/auth/" = {
+          proxyPass = "http://quortex_backend";
+          extraConfig = ''
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+          '';
+        };
+
+        # Health check endpoint
+        "/health" = {
+          proxyPass = "http://quortex_backend";
+          extraConfig = ''
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+          '';
+        };
+
+        # WebSocket endpoint - CRITICAL for Socket.IO/WSS
+        "/socket.io/" = {
+          proxyPass = "http://quortex_backend";
+          extraConfig = ''
+            proxy_http_version 1.1;
+            
+            # WebSocket upgrade headers - REQUIRED
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            
+            # Standard proxy headers
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Timeouts for long-lived connections
+            proxy_read_timeout 86400;
+            proxy_send_timeout 86400;
+            
+            # Disable buffering for WebSocket
+            proxy_buffering off;
+            proxy_cache_bypass $http_upgrade;
+          '';
+        };
+      };
+    };
+  };
+
+  # ACME (Let's Encrypt) configuration
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "admin@morpheum.dev";
+    
+    # Use staging for testing, remove for production
+    # defaults.server = "https://acme-staging-v02.api.letsencrypt.org/directory";
+  };
+
+  # Firewall configuration
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [ 80 443 ];
+  };
+}
+```
+
+**NixOS-Specific Notes:**
+
+1. **Declarative Configuration**: All nginx and service configuration is declared in Nix
+2. **Automatic ACME/Let's Encrypt**: Set `enableACME = true` for automatic SSL certificates
+3. **Systemd Integration**: Service automatically starts on boot and restarts on failure
+4. **Security Hardening**: Built-in systemd security features (PrivateTmp, ProtectSystem, etc.)
+
+**Deployment Steps for NixOS:**
+
+```bash
+# 1. Clone the repository
+sudo mkdir -p /opt/quortex
+sudo git clone https://github.com/anicolao/quortextt.git /opt/quortex
+sudo chown -R quortex:quortex /opt/quortex
+
+# 2. Update your NixOS configuration
+sudo nano /etc/nixos/configuration.nix
+# Add the configuration above
+
+# 3. Rebuild NixOS (this will install packages, start services, configure nginx)
+sudo nixos-rebuild switch
+
+# 4. Check service status
+systemctl status quortex-server
+systemctl status nginx
+
+# 5. View logs
+journalctl -u quortex-server -f
+journalctl -u nginx -f
+```
+
+**Environment Variables for NixOS:**
+
+For sensitive values like secrets, use one of these approaches:
+
+**Option 1: NixOps secrets (recommended for production)**
+```nix
+# Use NixOps or sops-nix for secret management
+deployment.keys."quortex-env" = {
+  text = ''
+    JWT_SECRET=your-actual-secret
+    DISCORD_CLIENT_SECRET=your-discord-secret
+  '';
+};
+```
+
+**Option 2: Environment file**
+```nix
+systemd.services.quortex-server = {
+  # ... other config ...
+  serviceConfig = {
+    EnvironmentFile = "/etc/quortex/secrets.env";
+  };
+};
+```
+
+Then create `/etc/quortex/secrets.env`:
+```bash
+JWT_SECRET=your-actual-secret
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
+```
+
+**Testing Your NixOS Setup:**
+
+```bash
+# Test health endpoint
+curl https://quortex.morpheum.dev/health
+
+# Test WebSocket (should show 101 Switching Protocols)
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  https://quortex.morpheum.dev/socket.io/?EIO=4&transport=websocket
+
+# Check SSL certificate
+openssl s_client -connect quortex.morpheum.dev:443 -servername quortex.morpheum.dev
+```
+
 ## Environment Variables
 
 ### Client Configuration (Build Time)
