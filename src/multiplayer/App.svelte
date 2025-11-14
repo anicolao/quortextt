@@ -3,6 +3,7 @@
   import LoginScreen from './components/LoginScreen.svelte';
   import LobbyScreen from './components/LobbyScreen.svelte';
   import RoomScreen from './components/RoomScreen.svelte';
+  import ProfileScreen from './components/ProfileScreen.svelte';
 
   $: screen = $multiplayerStore.screen;
 </script>
@@ -14,6 +15,8 @@
     <LobbyScreen />
   {:else if screen === 'room'}
     <RoomScreen />
+  {:else if screen === 'profile'}
+    <ProfileScreen />
   {:else if screen === 'game'}
     <!-- Game screen handled by existing canvas game -->
     <div class="game-active">

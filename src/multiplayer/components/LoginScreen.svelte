@@ -32,9 +32,33 @@
       const storedToken = localStorage.getItem('quortex_token');
       if (storedToken) {
         handleAuthenticatedLogin(storedToken);
+      } else {
+        // Check for anonymous cookie
+        checkAnonymousCookie();
       }
     }
   });
+
+  async function checkAnonymousCookie() {
+    try {
+      const response = await fetch(`${serverUrl}/auth/validate-anonymous`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.valid && data.userId) {
+          // Generate token for anonymous user (server already has the user)
+          // We need to get a token - let's call /auth/me with the anonymous cookie
+          // Actually, the server should return a token. Let's update this flow.
+          // For now, just show the login screen - user can re-enter their name
+          console.log('Anonymous user cookie found but no token - user should log in again');
+        }
+      }
+    } catch (err) {
+      console.error('Error checking anonymous cookie:', err);
+    }
+  }
 
   async function handleLogin() {
     if (!username.trim()) {
@@ -51,15 +75,36 @@
     error = '';
 
     try {
-      await socket.connect();
-      socket.identify(username.trim());
+      // Create anonymous user via API
+      const response = await fetch(`${serverUrl}/auth/anonymous`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include', // Include cookies
+        body: JSON.stringify({ username: username.trim() })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create account');
+      }
+
+      const data = await response.json();
+      
+      // Store token
+      localStorage.setItem('quortex_token', data.token);
+      
+      // Connect to socket with authentication
+      await socket.connectWithAuth(data.token);
+      socket.identify(data.alias);
       
       // Wait a bit for identification
       setTimeout(() => {
         multiplayerStore.setScreen('lobby');
       }, 500);
-    } catch (err) {
-      error = 'Failed to connect to server';
+    } catch (err: any) {
+      error = err.message || 'Failed to connect to server';
       connecting = false;
     }
   }

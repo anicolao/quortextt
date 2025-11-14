@@ -22,7 +22,7 @@ export interface MultiplayerState {
   playerId: string | null;
   currentRoom: Room | null;
   availableRooms: Room[];
-  screen: 'login' | 'lobby' | 'room' | 'game';
+  screen: 'login' | 'lobby' | 'room' | 'game' | 'profile';
   gameId: string | null;
 }
 
