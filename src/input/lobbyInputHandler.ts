@@ -116,7 +116,11 @@ export class LobbyInputHandler {
       
       if (isPointInCircle(x, y, centerX, centerY, radius)) {
         const state = store.getState();
-        store.dispatch(startGame(state.ui.settings.boardRadius));
+        store.dispatch(startGame({
+          boardRadius: state.ui.settings.boardRadius,
+          supermove: state.ui.settings.supermove,
+          singleSupermove: state.ui.settings.singleSupermove,
+        }));
         return;
       }
     }

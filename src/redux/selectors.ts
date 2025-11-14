@@ -41,7 +41,7 @@ export const selectLegalPositions = (state: RootState): HexPosition[] => {
       position,
     };
 
-    return isLegalMove(board, placedTile, players, teams, state.game.boardRadius, state.ui.settings.supermove);
+    return isLegalMove(board, placedTile, players, teams, state.game.boardRadius, state.game.supermove);
   });
 };
 

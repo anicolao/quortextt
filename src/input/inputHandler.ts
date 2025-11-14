@@ -114,7 +114,11 @@ export class InputHandler {
 
     if (this.isPointInButton(x, y, this.currentLayout.startGameButton)) {
       if (this.currentLayout.startGameButton.enabled) {
-        store.dispatch(startGame());
+        const state = store.getState();
+        store.dispatch(startGame({
+          supermove: state.ui.settings.supermove,
+          singleSupermove: state.ui.settings.singleSupermove,
+        }));
       }
       return;
     }

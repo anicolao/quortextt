@@ -52,14 +52,15 @@ describe('Constraint Victory with Supermove', () => {
       winners: [],
       winType: null,
       moveHistory: [],
+      supermove: true, // Supermove enabled
+      singleSupermove: false,
       supermoveInProgress: false,
       lastPlacedTilePosition: null,
     };
 
     // With supermove enabled, this should NOT trigger constraint victory
     // because there are still empty positions where tiles can be placed
-    const action = drawTile(true); // supermove enabled
-    const newState = gameReducer(state, action);
+    const newState = gameReducer(state, { type: 'DRAW_TILE' });
 
     // Game should continue
     expect(newState.phase).toBe('playing');
@@ -111,13 +112,14 @@ describe('Constraint Victory with Supermove', () => {
       winners: [],
       winType: null,
       moveHistory: [],
+      supermove: true, // Supermove enabled
+      singleSupermove: false,
       supermoveInProgress: false,
       lastPlacedTilePosition: null,
     };
 
     // With supermove enabled and board full, this SHOULD trigger constraint victory
-    const action = drawTile(true); // supermove enabled
-    const newState = gameReducer(state, action);
+    const newState = gameReducer(state, { type: 'DRAW_TILE' });
 
     // Game should end with constraint victory
     expect(newState.phase).toBe('finished');
@@ -159,14 +161,15 @@ describe('Constraint Victory with Supermove', () => {
       winners: [],
       winType: null,
       moveHistory: [],
+      supermove: false, // Supermove disabled
+      singleSupermove: false,
       supermoveInProgress: false,
       lastPlacedTilePosition: null,
     };
 
     // With supermove disabled, constraint victory depends on blocking detection
     // For an empty board, all moves are legal, so no constraint victory
-    const action = drawTile(false); // supermove disabled
-    const newState = gameReducer(state, action);
+    const newState = gameReducer(state, { type: 'DRAW_TILE' });
 
     // With an empty board, no constraint victory should occur
     expect(newState.phase).toBe('playing');

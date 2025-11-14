@@ -80,6 +80,8 @@ export interface StartGameAction {
   payload?: {
     boardRadius?: number;
     seed?: number;
+    supermove?: boolean;
+    singleSupermove?: boolean;
   };
 }
 
@@ -129,9 +131,6 @@ export interface CompleteSeatingPhaseAction {
 // Gameplay action types
 export interface DrawTileAction {
   type: typeof DRAW_TILE;
-  payload?: {
-    supermoveEnabled?: boolean;
-  };
 }
 
 export interface PlaceTileAction {
@@ -312,10 +311,25 @@ export const changePlayerColor = (
   payload: { playerId, color },
 });
 
-export const startGame = (boardRadius?: number): StartGameAction => ({
-  type: START_GAME,
-  payload: boardRadius ? { boardRadius } : undefined,
-});
+export const startGame = (params?: {
+  boardRadius?: number;
+  seed?: number;
+  supermove?: boolean;
+  singleSupermove?: boolean;
+} | number): StartGameAction => {
+  // Handle legacy call with just boardRadius number
+  if (typeof params === 'number') {
+    return {
+      type: START_GAME,
+      payload: { boardRadius: params },
+    };
+  }
+  
+  return {
+    type: START_GAME,
+    payload: params,
+  };
+};
 
 export const returnToConfig = (): ReturnToConfigAction => ({
   type: RETURN_TO_CONFIG,
@@ -359,9 +373,8 @@ export const completeSeatingPhase = (): CompleteSeatingPhaseAction => ({
 });
 
 // Gameplay action creators
-export const drawTile = (supermoveEnabled?: boolean): DrawTileAction => ({
+export const drawTile = (): DrawTileAction => ({
   type: DRAW_TILE,
-  payload: supermoveEnabled !== undefined ? { supermoveEnabled } : undefined,
 });
 
 export const placeTile = (

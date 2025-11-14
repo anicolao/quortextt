@@ -65,6 +65,10 @@ export interface GameState {
   availableTiles: TileType[];      // Shuffled deck
   currentTile: TileType | null;    // Tile in hand
   
+  // Game rules (copied from UI settings when game starts)
+  supermove: boolean;              // Whether supermove is enabled for this game
+  singleSupermove: boolean;        // If true with supermove, replaced tile returns to bag
+  
   // Supermove state
   supermoveInProgress: boolean;    // True when player has replaced a tile and needs to place it
   
