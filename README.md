@@ -121,7 +121,7 @@ npm run dev
 The application will be available at `http://localhost:5173` with:
 - Multiplayer experience at `/` (default)
 - Tabletop experience at `/tabletop.html`
-- Discord Activity at `/discord.html`
+- Discord Activity at `/discord/`
 
 ### Discord Activity
 
@@ -139,11 +139,11 @@ npm run dev
 
 1. Create a Discord application at [Discord Developer Portal](https://discord.com/developers/applications)
 2. Enable Activities in your application settings
-3. Configure Activity URL: `http://localhost:5173/discord.html` (development) or your production URL
+3. Configure Activity URL: `http://localhost:5173/discord/` (development) or your production URL
 4. Set `VITE_DISCORD_CLIENT_ID` in `.env` file
 5. See [Discord Activity Setup Guide](docs/dev/DISCORD_ACTIVITY_SETUP.md) for detailed instructions
 
-The Discord Activity at `http://localhost:5173/discord.html` embeds the full game within Discord.
+The Discord Activity at `http://localhost:5173/discord/` embeds the full game within Discord.
 
 ### Multiplayer Server
 
