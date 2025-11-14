@@ -267,6 +267,117 @@ Only additions:
 **Why This Happens**:
 Discord's Activity proxy cannot access `localhost` URLs. The `*.discordsays.com` domain is Discord's CDN/proxy that loads your activity in an iframe, but it needs a publicly accessible URL to proxy.
 
+### Production Server "Refused to Connect" Error
+
+**Problem**: Getting "refused to connect" error on production server (e.g., `quortex.morpheum.dev/quortextt/discord.html`)
+
+**Common Causes & Solutions**:
+
+**1. CORS Headers Not Configured**
+   
+Discord's proxy (`*.discordsays.com`) needs your server to allow cross-origin requests.
+
+**Fix**: Add these headers to your server configuration:
+
+```nginx
+# Nginx configuration
+location /quortextt/ {
+    add_header Access-Control-Allow-Origin "*";
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization";
+}
+```
+
+Or for Apache:
+```apache
+<Directory /path/to/quortextt>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+</Directory>
+```
+
+**2. HTTPS/SSL Certificate Issues**
+
+Discord Activities require valid HTTPS. Check:
+- Certificate is valid and not expired
+- No mixed content warnings
+- Test URL directly in browser: `https://quortex.morpheum.dev/quortextt/discord.html`
+
+**3. Content-Security-Policy (CSP) Headers**
+
+If your server has CSP headers, they might block Discord's iframe.
+
+**Fix**: Update CSP to allow Discord's iframe:
+```
+Content-Security-Policy: frame-ancestors https://*.discord.com https://*.discordsays.com https://discord.com;
+```
+
+**4. Server Not Serving Files Correctly**
+
+Verify the files are accessible:
+```bash
+# Test if files are served correctly
+curl -I https://quortex.morpheum.dev/quortextt/discord.html
+
+# Should return 200 OK with text/html content-type
+# Should NOT return 404 or redirect
+```
+
+**5. Base Path Configuration Issue**
+
+If using a subdirectory (`/quortextt/`), ensure your web server is configured to serve static files correctly:
+
+```nginx
+# Nginx - serve static files from /quortextt/ path
+location /quortextt/ {
+    alias /var/www/quortex/dist/;
+    try_files $uri $uri/ /quortextt/discord.html;
+    
+    # Enable CORS for Discord Activities
+    add_header Access-Control-Allow-Origin "*";
+}
+```
+
+**6. Discord URL Mapping Configuration**
+
+In Discord Developer Portal, ensure URL mapping is correct:
+- **Incorrect**: `quortex.morpheum.dev/quortextt/discord.html` (missing protocol)
+- **Correct**: `https://quortex.morpheum.dev/quortextt/discord.html`
+
+**Debugging Steps**:
+
+1. **Test the URL directly in browser**:
+   - Open: `https://quortex.morpheum.dev/quortextt/discord.html`
+   - Should load the page (may show Discord SDK error, but page should render)
+   - Check browser console (F12) for errors
+
+2. **Check Network Tab**:
+   - Open DevTools → Network tab
+   - Reload the page
+   - Look for failed requests (red)
+   - Check if JS/CSS assets load correctly
+
+3. **Verify CORS**:
+   ```bash
+   curl -I -X OPTIONS https://quortex.morpheum.dev/quortextt/discord.html \
+     -H "Origin: https://discord.com" \
+     -H "Access-Control-Request-Method: GET"
+   
+   # Should include: Access-Control-Allow-Origin header
+   ```
+
+4. **Check Discord Developer Console**:
+   - In Discord, open DevTools (Ctrl+Shift+I)
+   - Try launching the activity
+   - Check Console and Network tabs for errors
+
+**Common Error Messages**:
+
+- **"Mixed Content"**: Your server has HTTP resources on an HTTPS page - fix all URLs to use HTTPS
+- **"Blocked by CORS policy"**: Add CORS headers (see solution #1)
+- **"Failed to load resource"**: Check if static files (JS/CSS) are accessible
+- **"X-Frame-Options denied"**: Remove or update X-Frame-Options header to allow Discord
+
 ### Activity Won't Load
 
 **Problem**: Discord shows blank screen or loading error (after tunnel is set up)
