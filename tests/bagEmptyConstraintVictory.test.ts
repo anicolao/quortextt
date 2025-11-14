@@ -39,12 +39,13 @@ describe('Bag Empty Constraint Victory', () => {
       winners: [],
       winType: null,
       moveHistory: [],
+      supermove: true,
+      singleSupermove: false,
       supermoveInProgress: false,
       lastPlacedTilePosition: null,
     };
 
-    const action = drawTile(true); // supermove enabled
-    const newState = gameReducer(state, action);
+    const newState = gameReducer(state, { type: 'DRAW_TILE' });
 
     expect(newState.phase).toBe('finished');
     expect(newState.winners).toEqual(['p1']);
@@ -76,12 +77,13 @@ describe('Bag Empty Constraint Victory', () => {
       winners: [],
       winType: null,
       moveHistory: [],
+      supermove: true,
+      singleSupermove: false,
       supermoveInProgress: false,
       lastPlacedTilePosition: null,
     };
 
-    const action = drawTile(true);
-    const newState = gameReducer(state, action);
+    const newState = gameReducer(state, { type: 'DRAW_TILE' });
 
     // Should return state unchanged
     expect(newState).toBe(state);

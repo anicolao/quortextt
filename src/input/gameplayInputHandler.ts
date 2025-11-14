@@ -93,7 +93,7 @@ export class GameplayInputHandler {
         const isOccupied = state.game.board.has(posKey);
         
         // Check if this is a replacement move (for supermove)
-        if (isOccupied && state.ui.settings.supermove && currentPlayer) {
+        if (isOccupied && state.game.supermove && currentPlayer) {
           // Validate replacement move
           if (!isValidReplacementMove(
             state.game.board,
@@ -110,7 +110,7 @@ export class GameplayInputHandler {
           }
           
           // Check if this is a single supermove
-          const isSingleSupermove = state.ui.settings.singleSupermove;
+          const isSingleSupermove = state.game.singleSupermove;
           
           // Perform replacement
           store.dispatch(replaceTile(
@@ -124,7 +124,7 @@ export class GameplayInputHandler {
           // If single supermove, advance to next player and draw a tile
           if (isSingleSupermove) {
             store.dispatch(nextPlayer());
-            store.dispatch(drawTile(state.ui.settings.supermove));
+            store.dispatch(drawTile());
           }
           // Otherwise, don't advance to next player - they get to place the replaced tile
           return;
@@ -137,7 +137,7 @@ export class GameplayInputHandler {
           position: state.ui.selectedPosition,
         };
         
-        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams, state.game.boardRadius, state.ui.settings.supermove)) {
+        if (!isLegalMove(state.game.board, placedTile, state.game.players, state.game.teams, state.game.boardRadius, state.game.supermove)) {
           // Move is illegal - don't allow placement
           // The UI should already show the button as disabled
           return;
@@ -153,7 +153,7 @@ export class GameplayInputHandler {
         // Always advance to next player after placing a tile
         // (even when completing supermove)
         store.dispatch(nextPlayer());
-        store.dispatch(drawTile(state.ui.settings.supermove));
+        store.dispatch(drawTile());
         return;
       }
       
@@ -222,7 +222,7 @@ export class GameplayInputHandler {
       const isOccupied = state.game.board.has(posKey);
       
       // Allow selecting occupied positions only if supermove is enabled and player is blocked
-      if (isOccupied && !state.ui.settings.supermove) {
+      if (isOccupied && !state.game.supermove) {
         // Can't select occupied positions in standard mode
         return;
       }

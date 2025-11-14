@@ -99,8 +99,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       if (currentPlayer && currentPlayer.isAI) {
         // AI is first player and needs to make the first move
         // Trigger AI move logic by manually calling the AI move handler
-        const { board, teams, supermoveInProgress } = state.game;
-        const supermoveEnabled = state.ui.settings.supermove;
+        const { board, teams, supermoveInProgress, supermove, singleSupermove } = state.game;
         
         const moveStartTime = performance.now();
         const aiMove = selectAIMove(
@@ -109,7 +108,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           currentPlayer,
           players,
           teams,
-          supermoveEnabled && !supermoveInProgress,
+          supermove && !supermoveInProgress,
           state.game.boardRadius
         );
         const moveEndTime = performance.now();
@@ -121,17 +120,16 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         
         if (aiMove) {
           if (aiMove.isReplacement) {
-            const isSingleSupermove = state.ui.settings.singleSupermove;
-            store.dispatch(replaceTile(aiMove.position, aiMove.rotation, isSingleSupermove) as any);
+            store.dispatch(replaceTile(aiMove.position, aiMove.rotation, singleSupermove) as any);
             
-            if (isSingleSupermove) {
+            if (singleSupermove) {
               store.dispatch(nextPlayer() as any);
-              store.dispatch(drawTile(supermoveEnabled) as any);
+              store.dispatch(drawTile() as any);
             }
           } else {
             store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
             store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile(supermoveEnabled) as any);
+            store.dispatch(drawTile() as any);
           }
         }
       }
@@ -152,7 +150,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
     }
     
     const currentPlayer = players[currentPlayerIndex];
-    const supermoveEnabled = state.ui.settings.supermove;
+    const supermoveEnabled = state.game.supermove;
     
     // Generate AI scoring data if debug mode is enabled (for any player)
     if (state.ui.settings.debugAIScoring && currentPlayer) {
@@ -211,13 +209,13 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       if (aiMove) {
         // Dispatch the move immediately (Redux is synchronous - no setTimeout needed)
         if (aiMove.isReplacement) {
-          const isSingleSupermove = state.ui.settings.singleSupermove;
+          const isSingleSupermove = state.game.singleSupermove;
           store.dispatch(replaceTile(aiMove.position, aiMove.rotation, isSingleSupermove) as any);
           
           // If single supermove, advance to next player and draw a tile
           if (isSingleSupermove) {
             store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile(supermoveEnabled) as any);
+            store.dispatch(drawTile() as any);
           }
           // Otherwise, the REPLACE_TILE action will trigger this middleware again
           // with the replaced tile in hand, and we'll place it
@@ -227,7 +225,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           // After placing a tile (not a replacement), always advance to next player
           // Even when completing a supermove (placing the replaced tile), we advance
           store.dispatch(nextPlayer() as any);
-          store.dispatch(drawTile(supermoveEnabled) as any);
+          store.dispatch(drawTile() as any);
         }
       } else {
         // AI has no valid moves - should trigger constraint victory
@@ -239,7 +237,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         
         // Advance to next player and draw tile - this should trigger constraint victory check
         store.dispatch(nextPlayer() as any);
-        store.dispatch(drawTile(supermoveEnabled) as any);
+        store.dispatch(drawTile() as any);
       }
     }
   }
@@ -261,7 +259,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       
       // Check if current player is AI
       if (currentPlayer && currentPlayer.isAI) {
-        const supermoveEnabled = state.ui.settings.supermove;
+        const supermoveEnabled = state.game.supermove;
         
         // AI needs to make a move
         const moveStartTime = performance.now();
@@ -284,18 +282,18 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         if (aiMove) {
           // Dispatch the move immediately (Redux is synchronous)
           if (aiMove.isReplacement) {
-            const isSingleSupermove = state.ui.settings.singleSupermove;
+            const isSingleSupermove = state.game.singleSupermove;
             store.dispatch(replaceTile(aiMove.position, aiMove.rotation, isSingleSupermove) as any);
             
             // If single supermove, advance to next player and draw a tile
             if (isSingleSupermove) {
               store.dispatch(nextPlayer() as any);
-              store.dispatch(drawTile(supermoveEnabled) as any);
+              store.dispatch(drawTile() as any);
             }
           } else {
             store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
             store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile(supermoveEnabled) as any);
+            store.dispatch(drawTile() as any);
           }
         }
       }

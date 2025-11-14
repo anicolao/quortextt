@@ -90,7 +90,7 @@ function init() {
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       
       let hasSupermove = false;
-      if (selectedPos && state.ui.settings.supermove && currentPlayer) {
+      if (selectedPos && state.game.supermove && currentPlayer) {
         const posKey = positionToKey(selectedPos);
         const isOccupied = state.game.board.has(posKey);
         hasSupermove = isOccupied && isPlayerBlocked(

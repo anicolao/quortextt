@@ -1388,7 +1388,7 @@ export class GameplayRenderer {
       state.game.players,
       state.game.teams,
       state.game.boardRadius,
-      state.ui.settings.supermove,
+      state.game.supermove,
     );
 
     // Get blocked players if move is illegal
@@ -1412,7 +1412,7 @@ export class GameplayRenderer {
     const posKey = positionToKey(state.ui.selectedPosition);
     const isOccupied = state.game.board.has(posKey);
     const hasSupermove =
-      state.ui.settings.supermove &&
+      state.game.supermove &&
       currentPlayer &&
       isOccupied &&
       isPlayerBlocked(

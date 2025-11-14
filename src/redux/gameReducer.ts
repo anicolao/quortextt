@@ -52,6 +52,8 @@ export const initialState: GameState = {
   winners: [],
   winType: null,
   moveHistory: [],
+  supermove: true,  // Default to true
+  singleSupermove: false,  // Default to false
   supermoveInProgress: false,
   lastPlacedTilePosition: null,
 };
@@ -357,6 +359,8 @@ export function gameReducer(
         phase: "seating",
         boardRadius: action.payload?.boardRadius ?? state.boardRadius,
         seed, // Store seed for later use when shuffling tiles
+        supermove: action.payload?.supermove ?? state.supermove,
+        singleSupermove: action.payload?.singleSupermove ?? state.singleSupermove,
         seatingPhase: {
           active: true,
           seatingOrder,
@@ -589,15 +593,14 @@ export function gameReducer(
 
       // Check for constraint victory after drawing a tile
       // If the current player cannot place this tile anywhere, they win via constraint victory
-      // Use the supermoveEnabled from the action payload, defaulting to true if not provided
-      const supermoveEnabled = action.payload?.supermoveEnabled ?? true;
+      // Use the supermove setting from game state
       const victoryResult = checkVictory(
         state.board,
         state.players,
         state.teams,
         nextTile,
         state.boardRadius,
-        supermoveEnabled
+        state.supermove
       );
 
       if (victoryResult.winners.length > 0) {

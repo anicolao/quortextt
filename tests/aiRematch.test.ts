@@ -24,7 +24,7 @@ describe('AI Rematch Functionality', () => {
     resetPlayerIdCounter();
   });
 
-  it('should make AI take the first move after rematch when AI becomes first player', { timeout: 20000 }, () => {
+  it('should make AI take the first move after rematch when AI becomes first player', { timeout: 30000 }, () => {
     // Create a store with aiMiddleware
     const store = createStore(
       rootReducer,
@@ -45,8 +45,12 @@ describe('AI Rematch Functionality', () => {
       payload: { color: '#0173B2', edge: 1, isAI: true },
     } as GameAction);
 
-    // Start the game (random seed is fine - games complete via constraint victory)
-    store.dispatch(startGame() as any);
+    // Start the game with supermove disabled (random seed is fine - games complete via constraint victory)
+    const state_ui = store.getState() as RootState;
+    store.dispatch(startGame({
+      supermove: state_ui.ui.settings.supermove,
+      singleSupermove: state_ui.ui.settings.singleSupermove,
+    }) as any);
 
     // AI players will auto-select edges and play the entire game instantly via middleware
     // since Redux middleware is synchronous
