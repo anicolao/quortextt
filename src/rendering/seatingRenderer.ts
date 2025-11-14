@@ -1,7 +1,14 @@
 // Seating phase renderer
 
-import { GameState, ConfigPlayer } from '../redux/types';
+import { GameState, ConfigPlayer, GameMode } from '../redux/types';
 import { calculateHexLayout, HexLayout, Point, calculateBoardRadiusMultiplier } from './hexLayout';
+
+// Exit button information
+export interface ExitButton {
+  x: number;
+  y: number;
+  size: number;
+}
 
 // Edge button information for seating phase
 export interface EdgeButton {
@@ -14,6 +21,7 @@ export interface EdgeButton {
 // Seating layout information
 export interface SeatingLayout {
   edgeButtons: EdgeButton[];
+  exitButton: ExitButton | null; // Only in multiplayer mode
   hexLayout: HexLayout;
   selectedEdges: Map<number, string>; // edge -> player color
 }
@@ -26,11 +34,23 @@ export class SeatingRenderer {
     this.ctx = ctx;
   }
 
-  render(canvasWidth: number, canvasHeight: number, state: GameState): SeatingLayout {
+  render(canvasWidth: number, canvasHeight: number, state: GameState, gameMode: GameMode): SeatingLayout {
     const hexLayout = calculateHexLayout(canvasWidth, canvasHeight, state.boardRadius);
     
+    // Filter available edges based on game mode
+    // In multiplayer mode, only show bottom edge (0) since the player plays from their device
+    // In tabletop mode, show all edges since players are gathered around the same device
+    const edgesToShow = gameMode === 'multiplayer' 
+      ? state.seatingPhase.availableEdges.filter(edge => edge === 0)
+      : state.seatingPhase.availableEdges;
+    
     // Calculate edge button positions
-    const edgeButtons = this.calculateEdgeButtons(hexLayout, state.seatingPhase.availableEdges, state.boardRadius);
+    const edgeButtons = this.calculateEdgeButtons(hexLayout, edgesToShow, state.boardRadius);
+    
+    // Calculate exit button (only in multiplayer mode)
+    const exitButton = gameMode === 'multiplayer' 
+      ? this.calculateExitButton(canvasWidth, canvasHeight)
+      : null;
     
     // Get selected edges with player colors
     const selectedEdges = new Map<number, string>();
@@ -43,6 +63,7 @@ export class SeatingRenderer {
     
     this.layout = {
       edgeButtons,
+      exitButton,
       hexLayout,
       selectedEdges,
     };
@@ -64,6 +85,11 @@ export class SeatingRenderer {
       if (currentPlayer) {
         this.drawEdgeButtons(edgeButtons, currentPlayer, state.seatingPhase.seatingIndex + 1);
       }
+    }
+    
+    // Draw exit button if in multiplayer mode
+    if (exitButton) {
+      this.drawExitButton(exitButton);
     }
 
     return this.layout;
@@ -217,5 +243,48 @@ export class SeatingRenderer {
       this.ctx.restore();
       this.ctx.restore();
     });
+  }
+
+  private calculateExitButton(canvasWidth: number, canvasHeight: number): ExitButton {
+    const minDim = Math.min(canvasWidth, canvasHeight);
+    const exitButtonSize = Math.max(50, minDim * 0.06);
+    
+    // Position exit button in bottom-left corner
+    return {
+      x: exitButtonSize / 2,
+      y: canvasHeight - exitButtonSize / 2,
+      size: exitButtonSize,
+    };
+  }
+
+  private drawExitButton(button: ExitButton): void {
+    this.ctx.save();
+    
+    // Draw circular button background
+    this.ctx.fillStyle = '#d32f2f';
+    this.ctx.beginPath();
+    this.ctx.arc(button.x, button.y, button.size / 2, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Draw border
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+    
+    // Draw X symbol
+    const xSize = button.size * 0.35;
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 3;
+    this.ctx.lineCap = 'round';
+    
+    // Draw X
+    this.ctx.beginPath();
+    this.ctx.moveTo(button.x - xSize, button.y - xSize);
+    this.ctx.lineTo(button.x + xSize, button.y + xSize);
+    this.ctx.moveTo(button.x + xSize, button.y - xSize);
+    this.ctx.lineTo(button.x - xSize, button.y + xSize);
+    this.ctx.stroke();
+    
+    this.ctx.restore();
   }
 }
