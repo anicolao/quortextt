@@ -10,19 +10,6 @@ export default defineConfig({
     })
   ],
   base: '/quortextt/',
-  experimental: {
-    renderBuiltUrl(filename, { hostType, type, ssr }) {
-      // For discord HTML, use relative paths to assets
-      if (hostType === 'html' && type === 'asset') {
-        return '../assets/' + filename.split('/').pop();
-      }
-      if (hostType === 'html' && type === 'public') {
-        return '../' + filename;
-      }
-      // Default behavior for other files
-      return { relative: true };
-    },
-  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -36,7 +23,17 @@ export default defineConfig({
       },
       output: {
         manualChunks: undefined, // Single bundle for simplicity
+        // Ensure asset paths are absolute from base, not relative
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
       },
+    },
+  },
+  experimental: {
+    // Render built URLs as absolute from base path
+    renderBuiltUrl(filename: string) {
+      return '/quortextt/' + filename;
     },
   },
 });
