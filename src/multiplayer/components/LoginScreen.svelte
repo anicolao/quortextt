@@ -129,7 +129,7 @@
       
       // Connect to socket with authentication
       await socket.connectWithAuth(token);
-      socket.identify(user.displayName);
+      socket.identify(user.alias || user.displayName);
       
       // Wait a bit for identification
       setTimeout(() => {
