@@ -8,9 +8,20 @@ class MultiplayerSocket {
   private serverUrl: string;
 
   constructor() {
-    // Use environment variable or default to localhost
+    // Use environment variable or auto-detect based on current protocol
     // @ts-ignore - Vite injects import.meta.env
-    this.serverUrl = import.meta.env?.VITE_SERVER_URL || 'http://localhost:3001';
+    const envServerUrl = import.meta.env?.VITE_SERVER_URL;
+    
+    if (envServerUrl) {
+      this.serverUrl = envServerUrl;
+    } else {
+      // Auto-detect: if page is HTTPS, use wss:// and https://, otherwise use ws:// and http://
+      const isSecure = window.location.protocol === 'https:';
+      const protocol = isSecure ? 'https:' : 'http:';
+      const host = window.location.hostname;
+      const port = isSecure ? '3001' : '3001'; // Use same port for now
+      this.serverUrl = `${protocol}//${host}:${port}`;
+    }
   }
 
   connect(): Promise<void> {

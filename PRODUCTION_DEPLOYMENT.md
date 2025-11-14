@@ -116,7 +116,27 @@ The multiplayer server is only needed for online multiplayer games. For single-p
 
 ## Environment Variables
 
-### Required for Production
+### Client Configuration (Build Time)
+
+The client needs to know where the multiplayer server is located. This is configured at build time using environment variables:
+
+```bash
+# .env.production (create this file in the repository root)
+VITE_SERVER_URL=https://your-server.com
+
+# For custom domain with standard HTTPS port (443):
+VITE_SERVER_URL=https://quortex.morpheum.dev
+
+# For custom port:
+VITE_SERVER_URL=https://quortex.morpheum.dev:3001
+```
+
+**Important:** 
+- If you don't set `VITE_SERVER_URL`, the client will auto-detect based on the current page's protocol and hostname
+- For HTTPS sites, it will automatically use `https://` (which socket.io converts to `wss://` for WebSocket)
+- For production deployments, it's recommended to explicitly set `VITE_SERVER_URL` to your server's URL
+
+### Required for Production Server
 
 ```bash
 # Server Configuration
@@ -229,6 +249,28 @@ Monitor server logs for errors:
 - DigitalOcean: View in App Platform console
 
 ### Common Issues
+
+**Issue: Mixed Content Error - WebSocket (ws://) blocked on HTTPS page**
+
+Error message: `Mixed Content: The page at 'https://...' was loaded over HTTPS, but attempted to connect to the insecure WebSocket endpoint 'ws://...'`
+
+**Solution:**
+1. Ensure `VITE_SERVER_URL` is set to use `https://` (not `http://`):
+   ```bash
+   # .env.production
+   VITE_SERVER_URL=https://your-server.com
+   ```
+
+2. If `VITE_SERVER_URL` is not set, the client auto-detects based on the page protocol:
+   - HTTPS page → uses `https://` (which Socket.io converts to `wss://`)
+   - HTTP page → uses `http://` (which Socket.io converts to `ws://`)
+
+3. Rebuild the client after changing environment variables:
+   ```bash
+   npm run build
+   ```
+
+4. Verify your server is accessible over HTTPS and supports WebSocket connections
 
 **Issue: CORS errors in browser**
 - Check `CLIENT_URL` environment variable matches your GitHub Pages URL
