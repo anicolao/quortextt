@@ -173,8 +173,11 @@ router.get('/me', apiLimiter, authenticateJWT, (req: AuthRequest, res) => {
   res.json({
     id: user.id,
     displayName: user.displayName,
+    alias: user.alias,
     avatar: user.avatar,
     provider: user.provider,
+    isAnonymous: user.isAnonymous,
+    claimCode: user.claimCode,
     stats: user.stats,
     settings: user.settings,
     createdAt: user.createdAt,
@@ -206,6 +209,85 @@ router.put('/me/settings', apiLimiter, authenticateJWT, async (req: AuthRequest,
 
   res.json({
     settings: updatedUser?.settings
+  });
+});
+
+// Create anonymous user
+router.post('/anonymous', authLimiter, async (req, res) => {
+  const { username } = req.body;
+  
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  const trimmedUsername = username.trim();
+  
+  if (trimmedUsername.length < 2 || trimmedUsername.length > 20) {
+    return res.status(400).json({ error: 'Username must be 2-20 characters' });
+  }
+
+  // Generate unique anonymous ID
+  const { v4: uuidv4 } = await import('uuid');
+  const anonymousId = `anon:${uuidv4()}`;
+
+  try {
+    // Create anonymous user
+    const user = await UserStore.create({
+      id: anonymousId,
+      displayName: trimmedUsername,
+      provider: 'anonymous',
+      alias: trimmedUsername,
+      isAnonymous: true
+    });
+
+    // Generate JWT token
+    const token = generateToken(user.id);
+
+    // Set cookie for anonymous user
+    res.cookie('quortex_anon_id', user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
+    res.json({
+      userId: user.id,
+      token,
+      alias: user.alias,
+      claimCode: user.claimCode,
+      isAnonymous: true
+    });
+  } catch (error) {
+    console.error('Error creating anonymous user:', error);
+    res.status(500).json({ error: 'Failed to create anonymous user' });
+  }
+});
+
+// Validate anonymous cookie
+router.get('/validate-anonymous', apiLimiter, async (req, res) => {
+  const anonymousId = req.cookies?.quortex_anon_id;
+  
+  if (!anonymousId) {
+    return res.json({ valid: false });
+  }
+
+  const user = UserStore.findById(anonymousId);
+  
+  if (!user || !user.isAnonymous) {
+    // Clear invalid cookie
+    res.clearCookie('quortex_anon_id');
+    return res.json({ valid: false });
+  }
+
+  // Update last active
+  await UserStore.update(user.id, { lastActive: new Date() });
+
+  res.json({
+    valid: true,
+    userId: user.id,
+    alias: user.alias,
+    claimCode: user.claimCode
   });
 });
 
