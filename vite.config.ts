@@ -10,19 +10,6 @@ export default defineConfig({
     })
   ],
   base: '/quortextt/',
-  experimental: {
-    renderBuiltUrl(filename, { hostType, type, ssr }) {
-      // For discord HTML, use relative paths to assets
-      if (hostType === 'html' && type === 'asset') {
-        return '../assets/' + filename.split('/').pop();
-      }
-      if (hostType === 'html' && type === 'public') {
-        return '../' + filename;
-      }
-      // Default behavior for other files
-      return { relative: true };
-    },
-  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
