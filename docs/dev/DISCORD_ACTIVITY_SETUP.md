@@ -167,18 +167,19 @@ All entry points use absolute paths (`/quortextt/assets/...`) and share the same
 
 ### 2. Nginx Configuration for Discord Activity
 
-**Important:** Discord's iframe proxy interprets absolute paths differently than standard browsers. When the Discord Activity loads from `/quortextt/discord/`, asset requests for `/quortextt/assets/...` may be interpreted as `/quortextt/discord/quortextt/assets/...`.
+**Important:** Discord's iframe proxy forces all URLs to be under the `/quortextt/discord/` path. To allow the Discord Activity to access assets from `/quortextt/assets/...`, you need to configure nginx to serve the entire root directory from the `/quortextt/discord/` location.
 
-To fix this, add a rewrite rule to your nginx configuration **before** the main `/quortextt/` location block:
+Add a specific location block for Discord Activity **before** the main `/quortextt/` location block:
 
 **For NixOS (declarative configuration):**
 
-Add this to your `virtualHosts."quortex.morpheum.dev".locations` in `/etc/nixos/configuration.nix`:
+Add this to your `virtualHosts."quortex.morpheum.dev".locations` in `/etc/nixos/configuration.nix` **before** the `"/quortextt/"` location:
 
 ```nix
-# Discord Activity - rewrite doubled paths
-"/quortextt/discord/quortextt/" = {
-  return = "301 /quortextt/";
+# Discord Activity - serve from /quortextt/discord/ with access to root assets
+"/quortextt/discord/" = {
+  alias = "/var/www/quortex/";
+  tryFiles = "$uri $uri/ /quortextt/discord/index.html =404";
 };
 ```
 
@@ -187,13 +188,17 @@ Add this to your `virtualHosts."quortex.morpheum.dev".locations` in `/etc/nixos/
 Add this to your nginx config file **before** the `location /quortextt/` block:
 
 ```nginx
-# Discord Activity - rewrite doubled paths
-location /quortextt/discord/quortextt/ {
-    rewrite ^/quortextt/discord/quortextt/(.*)$ /quortextt/$1 permanent;
+# Discord Activity - serve from /quortextt/discord/ with access to root assets
+location /quortextt/discord/ {
+    alias /var/www/quortex/;
+    try_files $uri $uri/ /quortextt/discord/index.html =404;
 }
 ```
 
-This redirects requests like `/quortextt/discord/quortextt/assets/file.js` to `/quortextt/assets/file.js`.
+**How it works:**
+- Request to `/quortextt/discord/index.html` → serves `/var/www/quortex/discord/index.html`
+- Request to `/quortextt/discord/assets/file.js` → serves `/var/www/quortex/assets/file.js`
+- This allows Discord's iframe to access both the HTML and all assets under a consistent `/quortextt/discord/` prefix
 
 ### 3. Deploy to Production
 

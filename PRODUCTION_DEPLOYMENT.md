@@ -217,9 +217,11 @@ server {
     access_log /var/log/nginx/quortex_access.log;
     error_log /var/log/nginx/quortex_error.log;
 
-    # Discord Activity - rewrite doubled paths caused by iframe proxy
-    location /quortextt/discord/quortextt/ {
-        rewrite ^/quortextt/discord/quortextt/(.*)$ /quortextt/$1 permanent;
+    # Discord Activity - serve from /quortextt/discord/ with access to root assets
+    # This location must come BEFORE the general /quortextt/ location
+    location /quortextt/discord/ {
+        alias /var/www/quortex/;
+        try_files $uri $uri/ /quortextt/discord/index.html =404;
     }
 
     # Serve static files (GitHub Pages alternative)
@@ -478,9 +480,11 @@ in
       '';
 
       locations = {
-        # Discord Activity - rewrite doubled paths caused by iframe proxy
-        "/quortextt/discord/quortextt/" = {
-          return = "301 /quortextt/";
+        # Discord Activity - serve from /quortextt/discord/ with access to root assets
+        # This location must come BEFORE the general /quortextt/ location
+        "/quortextt/discord/" = {
+          alias = "/var/www/quortex/";
+          tryFiles = "$uri $uri/ /quortextt/discord/index.html =404";
         };
 
         # Serve static files (if hosting on same server)
