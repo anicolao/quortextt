@@ -2,10 +2,12 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { v4 as uuidv4 } from 'uuid';
 import passport from './auth/passport-config.js';
 import { configurePassport } from './auth/passport-config.js';
 import authRoutes from './routes/auth.js';
+import profileRoutes from './routes/profile.js';
 import jwt from 'jsonwebtoken';
 import { GameStorage, DataStorage } from './storage/index.js';
 import { UserStore } from './models/User.js';
@@ -20,6 +22,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -27,6 +30,9 @@ configurePassport();
 
 // Authentication routes
 app.use('/auth', authRoutes);
+
+// Profile routes
+app.use('/api/profile', profileRoutes);
 
 // Socket.IO server
 const io = new Server(httpServer, {
@@ -77,6 +83,47 @@ async function initializeStorage() {
   await sessionStorage.initialize();
   await UserStore.init(); // Load users from persistent storage
   console.log('✅ File-based storage initialized');
+  
+  // Start cleanup job for expired anonymous users
+  startAnonymousUserCleanup();
+}
+
+/**
+ * Background job to clean up expired anonymous users
+ * Runs daily at 3 AM local time
+ */
+function startAnonymousUserCleanup() {
+  async function cleanupExpiredAnonymousUsers() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const allUsers = UserStore.getAll();
+    const expiredUsers = allUsers.filter(user => 
+      user.isAnonymous && 
+      new Date(user.lastActive) < thirtyDaysAgo
+    );
+    
+    if (expiredUsers.length > 0) {
+      console.log(`🧹 Cleaning up ${expiredUsers.length} expired anonymous users...`);
+      for (const user of expiredUsers) {
+        console.log(`   Deleting expired anonymous user: ${user.id} (last active: ${user.lastActive})`);
+        await UserStore.delete(user.id);
+      }
+      console.log(`✅ Cleanup completed. Deleted ${expiredUsers.length} users.`);
+    }
+  }
+
+  // Run cleanup immediately on startup (in case server was down for a while)
+  cleanupExpiredAnonymousUsers().catch(err => {
+    console.error('Error in anonymous user cleanup:', err);
+  });
+
+  // Then run daily (every 24 hours)
+  setInterval(() => {
+    cleanupExpiredAnonymousUsers().catch(err => {
+      console.error('Error in anonymous user cleanup:', err);
+    });
+  }, 24 * 60 * 60 * 1000);
+  
+  console.log('✅ Anonymous user cleanup job scheduled (runs daily)');
 }
 
 // Call initialization
