@@ -237,41 +237,6 @@
           </div>
         </section>
 
-        <!-- Statistics Section -->
-        <section class="profile-section stats-section">
-          <h3>Statistics</h3>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-value">{profile.stats.gamesPlayed}</div>
-              <div class="stat-label">Games Played</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{profile.stats.gamesWon}</div>
-              <div class="stat-label">Wins</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{profile.stats.gamesLost}</div>
-              <div class="stat-label">Losses</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">
-                {profile.stats.gamesPlayed > 0 
-                  ? Math.round((profile.stats.gamesWon / profile.stats.gamesPlayed) * 100) 
-                  : 0}%
-              </div>
-              <div class="stat-label">Win Rate</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{profile.stats.winStreak}</div>
-              <div class="stat-label">Current Streak</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{profile.stats.bestWinStreak}</div>
-              <div class="stat-label">Best Streak</div>
-            </div>
-          </div>
-        </section>
-
         <!-- Claim Another Account Section -->
         <section class="profile-section claim-section">
           <h3>Claim Another Account</h3>
@@ -498,7 +463,6 @@
   }
 
   .claim-code-section h3,
-  .stats-section h3,
   .claim-section h3 {
     margin: 0 0 15px 0;
     color: #333;
@@ -547,33 +511,6 @@
 
   .copy-btn:hover {
     background: #5568d3;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 15px;
-  }
-
-  .stat-item {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    text-align: center;
-  }
-
-  .stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #667eea;
-    margin-bottom: 5px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 
   .claim-input-group {
