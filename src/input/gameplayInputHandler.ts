@@ -19,20 +19,15 @@ export class GameplayInputHandler {
   handleClick(canvasX: number, canvasY: number): void {
     const state = store.getState();
     
-    // Transform input coordinates if board is rotated in multiplayer mode
-    const transformed = this.renderer.transformInputCoordinates(canvasX, canvasY, state);
-    const x = transformed.x;
-    const y = transformed.y;
-    
-    // If help dialog is open, close it on any click
+    // If help dialog is open, close it on any click (use original coordinates)
     if (state.ui.showHelp) {
       store.dispatch(hideHelp());
       return;
     }
 
-    // If move list dialog is open, check if clicking on a move or outside
+    // If move list dialog is open, check if clicking on a move or outside (use original coordinates)
     if (state.ui.showMoveList) {
-      const moveClicked = this.checkMoveListItemClick(x, y);
+      const moveClicked = this.checkMoveListItemClick(canvasX, canvasY);
       if (!moveClicked) {
         // Click outside move list or not on a move - close and return to present
         store.dispatch(hideMoveList());
@@ -46,15 +41,30 @@ export class GameplayInputHandler {
 
     const layout = this.renderer.getLayout();
 
-    // Check for help button clicks first
-    if (this.checkHelpButtons(x, y, layout)) {
+    // Check for corner UI buttons first with UNTRANSFORMED coordinates
+    // (these are in screen space, not board space)
+    if (this.checkHelpButtons(canvasX, canvasY, layout)) {
       return;
     }
 
-    // Check for move list button clicks
-    if (this.checkMoveListButtons(x, y, layout)) {
+    if (this.checkMoveListButtons(canvasX, canvasY, layout)) {
       return;
     }
+
+    // Check for exit button clicks in corners with UNTRANSFORMED coordinates
+    this.checkExitButtons(canvasX, canvasY, layout);
+    
+    // After corner buttons, check if we already handled the click
+    // (checkExitButtons dispatches resetGame which will change the state)
+    const stateAfterExit = store.getState();
+    if (stateAfterExit.game.screen !== 'gameplay') {
+      return;
+    }
+
+    // Transform coordinates for board interactions ONLY
+    const transformed = this.renderer.transformInputCoordinates(canvasX, canvasY, state);
+    const x = transformed.x;
+    const y = transformed.y;
 
     // Check if tile is already placed on board
     if (state.ui.selectedPosition) {
@@ -221,9 +231,6 @@ export class GameplayInputHandler {
       store.dispatch(setSelectedPosition(hexPos));
       return;
     }
-
-    // Check for exit button clicks in corners
-    this.checkExitButtons(x, y, layout);
   }
 
   // Calculate button positions oriented toward the player's edge
@@ -432,20 +439,15 @@ export class GameplayInputHandler {
   handleMouseMove(canvasX: number, canvasY: number): void {
     const state = store.getState();
     
-    // Transform input coordinates if board is rotated in multiplayer mode
-    const transformed = this.renderer.transformInputCoordinates(canvasX, canvasY, state);
-    const x = transformed.x;
-    const y = transformed.y;
-    
     // Only track hover if debug mode is enabled
     if (!state.ui.settings.debugHitTest) {
       store.dispatch(setHoveredElement(null));
       return;
     }
 
-    // If move list is open, check for move list item hover
+    // If move list is open, check for move list item hover (use original coordinates)
     if (state.ui.showMoveList) {
-      const moveListHover = this.checkMoveListItemHover(x, y);
+      const moveListHover = this.checkMoveListItemHover(canvasX, canvasY);
       store.dispatch(setHoveredElement(moveListHover));
       return;
     }
@@ -456,6 +458,61 @@ export class GameplayInputHandler {
 
     const layout = this.renderer.getLayout();
     let hoveredElement: HoveredElementType = null;
+
+    // Check for exit button hovers first with UNTRANSFORMED coordinates
+    const cornerSize = 50;
+    const margin = 10;
+
+    const corners = [
+      { x: margin, y: margin, width: cornerSize, height: cornerSize },
+      {
+        x: layout.canvasWidth - margin - cornerSize,
+        y: margin,
+        width: cornerSize,
+        height: cornerSize,
+      },
+      {
+        x: layout.canvasWidth - margin - cornerSize,
+        y: layout.canvasHeight - margin - cornerSize,
+        width: cornerSize,
+        height: cornerSize,
+      },
+      {
+        x: margin,
+        y: layout.canvasHeight - margin - cornerSize,
+        width: cornerSize,
+        height: cornerSize,
+      },
+    ];
+
+    for (const corner of corners) {
+      if (
+        canvasX >= corner.x &&
+        canvasX <= corner.x + corner.width &&
+        canvasY >= corner.y &&
+        canvasY <= corner.y + corner.height
+      ) {
+        hoveredElement = {
+          type: 'exit-button',
+          x: corner.x,
+          y: corner.y,
+          width: corner.width,
+          height: corner.height,
+        };
+        break;
+      }
+    }
+
+    // If hovering over exit button, we're done
+    if (hoveredElement) {
+      store.dispatch(setHoveredElement(hoveredElement));
+      return;
+    }
+
+    // Transform coordinates for board interactions ONLY
+    const transformed = this.renderer.transformInputCoordinates(canvasX, canvasY, state);
+    const x = transformed.x;
+    const y = transformed.y;
 
     // Check if tile is already placed on board
     if (state.ui.selectedPosition) {
@@ -539,52 +596,6 @@ export class GameplayInputHandler {
           type: 'hexagon',
           position: hexPos,
         };
-      }
-    }
-
-    // Check for exit button hovers
-    if (!hoveredElement) {
-      const cornerSize = 50;
-      const margin = 10;
-
-      const corners = [
-        { x: margin, y: margin, width: cornerSize, height: cornerSize },
-        {
-          x: layout.canvasWidth - margin - cornerSize,
-          y: margin,
-          width: cornerSize,
-          height: cornerSize,
-        },
-        {
-          x: layout.canvasWidth - margin - cornerSize,
-          y: layout.canvasHeight - margin - cornerSize,
-          width: cornerSize,
-          height: cornerSize,
-        },
-        {
-          x: margin,
-          y: layout.canvasHeight - margin - cornerSize,
-          width: cornerSize,
-          height: cornerSize,
-        },
-      ];
-
-      for (const corner of corners) {
-        if (
-          x >= corner.x &&
-          x <= corner.x + corner.width &&
-          y >= corner.y &&
-          y <= corner.y + corner.height
-        ) {
-          hoveredElement = {
-            type: 'exit-button',
-            x: corner.x,
-            y: corner.y,
-            width: corner.width,
-            height: corner.height,
-          };
-          break;
-        }
       }
     }
 
