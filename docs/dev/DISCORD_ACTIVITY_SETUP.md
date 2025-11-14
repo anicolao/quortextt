@@ -6,11 +6,14 @@ This guide explains how to set up and test the Quortex Discord Activity integrat
 
 The Discord Activity allows players to play Quortex directly within Discord using an embedded web application. This implementation reuses the existing multiplayer infrastructure with Discord SDK integration for authentication.
 
+**⚠️ Important**: Discord Activities require a **publicly accessible URL**. You cannot use `localhost` directly. For local development, you'll need to use a tunnel service like Cloudflare Tunnel or ngrok (setup instructions below).
+
 ## Prerequisites
 
 - Node.js v18 or later
 - Discord Application created at [Discord Developer Portal](https://discord.com/developers/applications)
 - A Discord server for testing
+- **Cloudflare Tunnel** or **ngrok** for local development (free)
 
 ## Discord Application Setup
 
@@ -28,8 +31,9 @@ The Discord Activity allows players to play Quortex directly within Discord usin
 3. Configure Activity settings:
    - **Activity Name**: Quortex
    - **Description**: Strategic tile-placement game for 2-6 players
-   - **URL Mappings**: Add your development/production URLs
-   - For development: `http://localhost:5173/discord.html`
+   - **URL Mappings**: You'll add this after setting up your tunnel (see Testing section below)
+   - ⚠️ **Do NOT use** `http://localhost:5173` - Discord cannot access localhost URLs
+   - For development: Use tunnel URL like `https://random-name.trycloudflare.com/discord.html`
    - For production: `https://your-domain.com/quortextt/discord.html`
 
 ### 3. Get OAuth2 Credentials
@@ -93,14 +97,51 @@ npm run dev:server
 
 ## Testing the Discord Activity
 
-### Option 1: Using Discord Developer Portal (Recommended)
+### Important: Public URL Required for Discord Activities
+
+**Discord Activities cannot load from `localhost` directly.** You must use a tunnel service to expose your local dev server to the internet.
+
+### Setup Public Tunnel (Required for Testing)
+
+**Option A: Cloudflare Tunnel (Free, Recommended)**
+```bash
+# Install cloudflared (one time)
+brew install cloudflare/cloudflare/cloudflared  # macOS
+# or download from https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+# Start tunnel (each dev session)
+cloudflared tunnel --url http://localhost:5173
+```
+
+This outputs a URL like: `https://random-name.trycloudflare.com`
+
+**Option B: ngrok (Alternative)**
+```bash
+# Install ngrok (one time)
+# Download from https://ngrok.com/download
+
+# Start tunnel (each dev session)
+ngrok http 5173
+```
+
+This outputs a URL like: `https://abc123.ngrok.io`
+
+### Configure Discord Developer Portal
 
 1. Go to your application in the Discord Developer Portal
-2. Navigate to **URL Mappings** under Activities
+2. Navigate to **Activities** → **URL Mappings**
 3. Add a mapping:
-   - **Root Mapping**: `/` → `http://localhost:5173/discord.html`
-4. Use the **Test Mode** to launch the activity in Discord
-5. The activity will load in an iframe within Discord
+   - **Root Mapping**: `/` → `https://your-tunnel-url.com/discord.html`
+   - Example: `https://random-name.trycloudflare.com/discord.html`
+4. **Save** the mapping
+
+**Note**: Cloudflare/ngrok URLs change each session, so update the mapping each time you restart the tunnel.
+
+### Launch the Activity
+
+1. Use the **Test Mode** in Discord Developer Portal to launch the activity
+2. The activity will load in an iframe within Discord
+3. Check browser console (DevTools) for any errors
 
 ### Option 2: Direct Browser Testing (Limited)
 
@@ -172,15 +213,70 @@ Only additions:
 
 ## Troubleshooting
 
+### "Refused to Connect" Error (Most Common Issue)
+
+**Problem**: Discord Activity shows error like `1438532244628050002.discordsays.com refused to connect.`
+
+**Root Cause**: Discord Activities uses a proxy system (`*.discordsays.com`) to load your application. For local development, Discord cannot reach your `localhost:5173` directly because it's not publicly accessible.
+
+**Solution - Use Cloudflare Tunnel (Recommended)**:
+
+1. **Install Cloudflare Tunnel** (cloudflared):
+   ```bash
+   # macOS
+   brew install cloudflare/cloudflare/cloudflared
+   
+   # Windows (via Chocolatey)
+   choco install cloudflared
+   
+   # Linux
+   wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+   sudo dpkg -i cloudflared-linux-amd64.deb
+   ```
+
+2. **Start your local dev server**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Create a tunnel to your localhost**:
+   ```bash
+   cloudflared tunnel --url http://localhost:5173
+   ```
+   
+   This will output a public URL like: `https://random-name.trycloudflare.com`
+
+4. **Update Discord Developer Portal**:
+   - Go to your Discord Application
+   - Navigate to **Activities** → **URL Mappings**
+   - Set the root mapping to: `https://random-name.trycloudflare.com/discord.html`
+   - **Important**: The URL changes each time you run cloudflared, so update it each session
+
+5. **Test the Activity** in Discord - it should now load successfully!
+
+**Alternative Solutions**:
+
+- **ngrok**: Similar to Cloudflare Tunnel
+  ```bash
+  ngrok http 5173
+  # Use the https URL provided
+  ```
+
+- **Production Deployment**: Deploy to a public hosting service (Vercel, Netlify, GitHub Pages) and use that URL
+
+**Why This Happens**:
+Discord's Activity proxy cannot access `localhost` URLs. The `*.discordsays.com` domain is Discord's CDN/proxy that loads your activity in an iframe, but it needs a publicly accessible URL to proxy.
+
 ### Activity Won't Load
 
-**Problem**: Discord shows blank screen or loading error
+**Problem**: Discord shows blank screen or loading error (after tunnel is set up)
 
 **Solutions**:
 1. Check Discord Developer Portal URL mapping is correct
 2. Verify VITE_DISCORD_CLIENT_ID is set in `.env`
 3. Check browser console for errors
 4. Ensure development server is running on correct port
+5. Verify your tunnel (cloudflared/ngrok) is still running
 
 ### Authentication Fails
 
