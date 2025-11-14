@@ -32,6 +32,7 @@ export class DiscordActivityClient {
 
   /**
    * Authenticate with Discord using OAuth2 flow
+   * Uses client-side authentication via Discord SDK
    */
   async authenticate(): Promise<DiscordAuthResult> {
     console.log('[Discord Activity] Starting authentication...');
@@ -56,28 +57,21 @@ export class DiscordActivityClient {
 
       console.log('[Discord Activity] Authorization code received');
 
-      // Exchange code for access token via backend
-      const response = await fetch('/api/auth/discord', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
+      // Use Discord SDK to get user info directly (client-side only, no backend needed)
+      // The SDK already has access to the authenticated user session
+      const { user } = await this.sdk.commands.authenticate({
+        access_token: await this.sdk.commands.getAccessToken(),
       });
 
-      if (!response.ok) {
-        throw new Error(`Authentication failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      console.log('[Discord Activity] User authenticated:', user);
       
       this.authResult = {
-        token: data.access_token,
-        userId: data.user.id,
-        username: data.user.username,
-        discriminator: data.user.discriminator || '0',
-        avatarUrl: data.user.avatar
-          ? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png`
+        token: code, // Use code as token for now (client-side only)
+        userId: user.id,
+        username: user.username,
+        discriminator: user.discriminator || '0',
+        avatarUrl: user.avatar
+          ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
           : null,
       };
 
