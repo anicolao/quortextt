@@ -65,6 +65,12 @@ For complete game rules and mechanics, see **[docs/RULES.md](docs/RULES.md)**.
   - JWT-based session management
   - Event sourcing architecture for game state
 
+- **Discord Activity** - Play Quortex directly within Discord
+  - Embedded web app using Discord Activities API
+  - Discord SDK authentication
+  - Full game experience in Discord client
+  - See [Discord Activity Setup Guide](docs/dev/DISCORD_ACTIVITY_SETUP.md)
+
 ### 🚧 Future Enhancements
 
 - AI opponents (easy, medium difficulty levels)
@@ -115,6 +121,29 @@ npm run dev
 The application will be available at `http://localhost:5173` with:
 - Multiplayer experience at `/` (default)
 - Tabletop experience at `/tabletop.html`
+- Discord Activity at `/discord.html`
+
+### Discord Activity
+
+Play Quortex directly within Discord using Discord Activities:
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+**Setup Discord Activity:**
+
+1. Create a Discord application at [Discord Developer Portal](https://discord.com/developers/applications)
+2. Enable Activities in your application settings
+3. Configure Activity URL: `http://localhost:5173/discord.html` (development) or your production URL
+4. Set `VITE_DISCORD_CLIENT_ID` in `.env` file
+5. See [Discord Activity Setup Guide](docs/dev/DISCORD_ACTIVITY_SETUP.md) for detailed instructions
+
+The Discord Activity at `http://localhost:5173/discord.html` embeds the full game within Discord.
 
 ### Multiplayer Server
 
