@@ -57,7 +57,9 @@ export class DiscordActivityClient {
       console.log('[Discord Activity] Authorization code received');
 
       // Exchange code for access token via backend
-      const response = await fetch('/api/auth/discord', {
+      // Use window.location.origin to ensure absolute URL from domain root
+      const apiUrl = `${window.location.origin}/api/auth/discord`;
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
