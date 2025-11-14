@@ -69,10 +69,13 @@ export class GameplayRenderer {
   }
 
   render(state: RootState): void {
-    // Save canvas state before applying any transformations
+    // Layer 1: Background
+    this.renderBackground();
+
+    // Save canvas state before applying board rotation
     this.ctx.save();
     
-    // In multiplayer mode, rotate the entire canvas so the local player's edge is at the bottom
+    // In multiplayer mode, rotate only the board/tiles so the local player's edge is at the bottom
     if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
       console.log('[GameplayRenderer] Multiplayer mode detected');
       console.log('[GameplayRenderer] localPlayerId:', state.ui.localPlayerId);
@@ -105,9 +108,6 @@ export class GameplayRenderer {
         });
       }
     }
-    
-    // Layer 1: Background
-    this.renderBackground();
 
     // Layer 2: Board hexagon with colored edges
     this.renderBoardHexagon(state);
@@ -149,6 +149,9 @@ export class GameplayRenderer {
     if (state.game.screen === "game-over") {
       this.renderVictoryStars(state);
     }
+    
+    // Restore canvas state after board/tile rendering (removes rotation)
+    this.ctx.restore();
 
     // Layer 6: Exit buttons in corners (only show on current player's edge in multiplayer mode)
     this.renderExitButtons(state);
@@ -183,9 +186,6 @@ export class GameplayRenderer {
     if (state.ui.settings.debugHitTest) {
       this.renderDebugApexVertex(state);
     }
-    
-    // Restore canvas state
-    this.ctx.restore();
   }
 
   private renderBackground(): void {
