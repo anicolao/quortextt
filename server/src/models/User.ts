@@ -1,8 +1,27 @@
 // User model with persistent storage
 // Uses stable OAuth provider IDs as primary keys for cross-device/session persistence
 
-import { DataStorage } from '../storage/DataStorage.js';
-import path from 'path';
+import { DataStorage } from "../storage/DataStorage.js";
+import path from "path";
+import { GlickoRating, createDefaultRating } from "../rating/glicko2.js";
+
+export interface PlayerRatings {
+  twoPlayer: GlickoRating;
+  threePlayer: GlickoRating;
+  fourPlayer: GlickoRating;
+  fivePlayer: GlickoRating;
+  sixPlayer: GlickoRating;
+}
+
+export interface RatingHistoryEntry {
+  gameId: string;
+  playerCount: number;
+  oldRating: number;
+  newRating: number;
+  oldRD: number;
+  newRD: number;
+  timestamp: Date;
+}
 
 export interface IUser {
   id: string; // Stable ID: googleId, discordId, or anon:uuid
@@ -11,14 +30,14 @@ export interface IUser {
   displayName: string;
   email?: string;
   avatar?: string;
-  provider: 'discord' | 'google' | 'anonymous';
-  
+  provider: "discord" | "google" | "anonymous";
+
   // Profile fields
-  alias: string;           // User-chosen display name
-  claimCode: string;       // 6-letter code for account claiming
-  isAnonymous: boolean;    // True for guest/anonymous users
+  alias: string; // User-chosen display name
+  claimCode: string; // 6-letter code for account claiming
+  isAnonymous: boolean; // True for guest/anonymous users
   profileCompleted: boolean; // True if user has completed initial profile setup
-  
+
   stats: {
     gamesPlayed: number;
     gamesWon: number;
@@ -31,12 +50,17 @@ export interface IUser {
     soundEnabled: boolean;
     theme: string;
   };
+  ratings: PlayerRatings;
+  ratingHistory: RatingHistoryEntry[];
   createdAt: Date;
   lastActive: Date;
 }
 
 // Persistent user storage
-const userStorage = new DataStorage(path.join(process.cwd(), 'data', 'users'), 'users.jsonl');
+const userStorage = new DataStorage(
+  path.join(process.cwd(), "data", "users"),
+  "users.jsonl",
+);
 
 // In-memory cache for performance
 const userCache = new Map<string, IUser>();
@@ -46,8 +70,8 @@ const userCache = new Map<string, IUser>();
  * Uses characters that are easy to distinguish (excludes I, L, O)
  */
 function generateClaimCode(): string {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ'; // Exclude I, L, O for clarity
-  let code = '';
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ"; // Exclude I, L, O for clarity
+  let code = "";
   for (let i = 0; i < 6; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
@@ -60,16 +84,18 @@ function generateClaimCode(): string {
 function generateUniqueClaimCode(): string {
   let attempts = 0;
   const maxAttempts = 100;
-  
+
   while (attempts < maxAttempts) {
     const code = generateClaimCode();
-    const existingUser = Array.from(userCache.values()).find(u => u.claimCode === code);
+    const existingUser = Array.from(userCache.values()).find(
+      (u) => u.claimCode === code,
+    );
     if (!existingUser) {
       return code;
     }
     attempts++;
   }
-  
+
   // If we somehow can't generate a unique code, add a timestamp suffix
   return generateClaimCode();
 }
@@ -78,7 +104,7 @@ export class UserStore {
   static async init(): Promise<void> {
     // Initialize storage (creates directory and loads from file)
     await userStorage.initialize();
-    
+
     // Load all users into cache
     const allUsersMap = await userStorage.getAll();
     for (const [id, userData] of allUsersMap.entries()) {
@@ -88,11 +114,15 @@ export class UserStore {
   }
 
   static findByDiscordId(discordId: string): IUser | undefined {
-    return Array.from(userCache.values()).find(user => user.discordId === discordId);
+    return Array.from(userCache.values()).find(
+      (user) => user.discordId === discordId,
+    );
   }
 
   static findByGoogleId(googleId: string): IUser | undefined {
-    return Array.from(userCache.values()).find(user => user.googleId === googleId);
+    return Array.from(userCache.values()).find(
+      (user) => user.googleId === googleId,
+    );
   }
 
   static findById(id: string): IUser | undefined {
@@ -100,7 +130,9 @@ export class UserStore {
   }
 
   static findByClaimCode(claimCode: string): IUser | undefined {
-    return Array.from(userCache.values()).find(user => user.claimCode === claimCode);
+    return Array.from(userCache.values()).find(
+      (user) => user.claimCode === claimCode,
+    );
   }
 
   static async create(userData: {
@@ -110,7 +142,7 @@ export class UserStore {
     displayName: string;
     email?: string;
     avatar?: string;
-    provider: 'discord' | 'google' | 'anonymous';
+    provider: "discord" | "google" | "anonymous";
     alias?: string;
     isAnonymous?: boolean;
   }): Promise<IUser> {
@@ -131,15 +163,23 @@ export class UserStore {
         gamesWon: 0,
         gamesLost: 0,
         winStreak: 0,
-        bestWinStreak: 0
+        bestWinStreak: 0,
       },
       settings: {
         notifications: true,
         soundEnabled: true,
-        theme: 'default'
+        theme: "default",
       },
+      ratings: {
+        twoPlayer: createDefaultRating(),
+        threePlayer: createDefaultRating(),
+        fourPlayer: createDefaultRating(),
+        fivePlayer: createDefaultRating(),
+        sixPlayer: createDefaultRating(),
+      },
+      ratingHistory: [],
       createdAt: new Date(),
-      lastActive: new Date()
+      lastActive: new Date(),
     };
 
     // Save to storage and cache
@@ -148,12 +188,15 @@ export class UserStore {
     return user;
   }
 
-  static async update(id: string, updates: Partial<IUser>): Promise<IUser | undefined> {
+  static async update(
+    id: string,
+    updates: Partial<IUser>,
+  ): Promise<IUser | undefined> {
     const user = userCache.get(id);
     if (!user) return undefined;
 
     const updatedUser = { ...user, ...updates, lastActive: new Date() };
-    
+
     // Update storage and cache
     await userStorage.set(id, updatedUser);
     userCache.set(id, updatedUser);
@@ -172,46 +215,55 @@ export class UserStore {
   /**
    * Merge stats from sourceUser into targetUser
    */
-  static mergeStats(targetStats: IUser['stats'], sourceStats: IUser['stats']): IUser['stats'] {
+  static mergeStats(
+    targetStats: IUser["stats"],
+    sourceStats: IUser["stats"],
+  ): IUser["stats"] {
     return {
       gamesPlayed: targetStats.gamesPlayed + sourceStats.gamesPlayed,
       gamesWon: targetStats.gamesWon + sourceStats.gamesWon,
       gamesLost: targetStats.gamesLost + sourceStats.gamesLost,
       winStreak: targetStats.winStreak, // Keep current streak
-      bestWinStreak: Math.max(targetStats.bestWinStreak, sourceStats.bestWinStreak)
+      bestWinStreak: Math.max(
+        targetStats.bestWinStreak,
+        sourceStats.bestWinStreak,
+      ),
     };
   }
 
   /**
    * Claim an anonymous account by merging its stats into the target user
    */
-  static async claimAccount(targetUserId: string, claimCode: string): Promise<{
+  static async claimAccount(
+    targetUserId: string,
+    claimCode: string,
+  ): Promise<{
     success: boolean;
     error?: string;
-    mergedStats?: IUser['stats'];
+    mergedStats?: IUser["stats"];
   }> {
     const sourceUser = this.findByClaimCode(claimCode);
-    
+
     if (!sourceUser) {
-      return { success: false, error: 'Invalid claim code' };
+      return { success: false, error: "Invalid claim code" };
     }
 
     if (!sourceUser.isAnonymous) {
-      return { success: false, error: 'Cannot claim a non-anonymous account' };
+      return { success: false, error: "Cannot claim a non-anonymous account" };
     }
 
     if (sourceUser.id === targetUserId) {
-      return { success: false, error: 'Cannot claim your own account' };
+      return { success: false, error: "Cannot claim your own account" };
     }
 
     const targetUser = this.findById(targetUserId);
     if (!targetUser) {
-      return { success: false, error: 'Target user not found' };
+      return { success: false, error: "Target user not found" };
     }
 
     // Merge stats
     const mergedStats = this.mergeStats(targetUser.stats, sourceUser.stats);
-    
+
     // Update target user with merged stats
     await this.update(targetUserId, { stats: mergedStats });
 
@@ -224,12 +276,92 @@ export class UserStore {
   /**
    * Regenerate claim code for a user
    */
-  static async regenerateClaimCode(userId: string): Promise<string | undefined> {
+  static async regenerateClaimCode(
+    userId: string,
+  ): Promise<string | undefined> {
     const user = this.findById(userId);
     if (!user) return undefined;
 
     const newClaimCode = generateUniqueClaimCode();
     await this.update(userId, { claimCode: newClaimCode });
     return newClaimCode;
+  }
+
+  /**
+   * Update a user's rating for a specific player count
+   */
+  static async updateRating(
+    userId: string,
+    playerCount: 2 | 3 | 4 | 5 | 6,
+    newRating: GlickoRating,
+    gameId: string,
+  ): Promise<IUser | undefined> {
+    const user = userCache.get(userId);
+    if (!user) return undefined;
+
+    // Get the rating field name based on player count
+    const ratingField =
+      playerCount === 2
+        ? "twoPlayer"
+        : playerCount === 3
+          ? "threePlayer"
+          : playerCount === 4
+            ? "fourPlayer"
+            : playerCount === 5
+              ? "fivePlayer"
+              : "sixPlayer";
+
+    const oldRating = user.ratings[ratingField];
+
+    // Create history entry
+    const historyEntry: RatingHistoryEntry = {
+      gameId,
+      playerCount,
+      oldRating: oldRating.rating,
+      newRating: newRating.rating,
+      oldRD: oldRating.rd,
+      newRD: newRating.rd,
+      timestamp: new Date(),
+    };
+
+    // Update the user with new rating
+    const updatedUser = {
+      ...user,
+      ratings: {
+        ...user.ratings,
+        [ratingField]: newRating,
+      },
+      ratingHistory: [...user.ratingHistory, historyEntry],
+      lastActive: new Date(),
+    };
+
+    // Update storage and cache
+    await userStorage.set(userId, updatedUser);
+    userCache.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  /**
+   * Get a user's rating for a specific player count
+   */
+  static getRating(
+    userId: string,
+    playerCount: 2 | 3 | 4 | 5 | 6,
+  ): GlickoRating | undefined {
+    const user = userCache.get(userId);
+    if (!user) return undefined;
+
+    const ratingField =
+      playerCount === 2
+        ? "twoPlayer"
+        : playerCount === 3
+          ? "threePlayer"
+          : playerCount === 4
+            ? "fourPlayer"
+            : playerCount === 5
+              ? "fivePlayer"
+              : "sixPlayer";
+
+    return user.ratings[ratingField];
   }
 }
