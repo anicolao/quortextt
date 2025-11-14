@@ -49,22 +49,31 @@ For complete game rules and mechanics, see **[docs/RULES.md](docs/RULES.md)**.
   - Smooth animations for tile placement, rotation, and victory
   - Touch-optimized interface for tabletop play
 
+- **User Profile System** ✨ NEW!
+  - Custom user aliases displayed in-game
+  - Profile management accessible from lobby
+  - Claim codes for account migration
+  - Anonymous guest accounts with cookie persistence
+  - Account claiming to merge stats and game history
+  - Auto-expiration of inactive anonymous users (30 days)
+
 ### 🚧 In Progress
 
-- **Multiplayer Server** - Node.js + Socket.IO backend with Discord OAuth authentication
+- **Multiplayer Server** - Node.js + Socket.IO backend with OAuth authentication
   - Real-time gameplay support
-  - Discord OAuth 2.0 login
+  - Discord & Google OAuth 2.0 login
   - JWT-based session management
   - Event sourcing architecture for game state
 
 ### 🚧 Future Enhancements
 
 - AI opponents (easy, medium difficulty levels)
-- Additional OAuth providers (Facebook, Google, Apple)
+- Additional OAuth providers (Facebook, Apple)
 - Database persistence (MongoDB)
 - Game notation system for replay
 - Advanced analytics and statistics
 - Additional board sizes and variants
+- Profile pictures and customization
 
 ## Technology Stack
 
@@ -109,7 +118,7 @@ The application will be available at `http://localhost:5173` with:
 
 ### Multiplayer Server
 
-The multiplayer server provides real-time gameplay with authentication:
+The multiplayer server provides real-time gameplay with authentication and user profiles:
 
 ```bash
 # Start the multiplayer server
@@ -117,6 +126,14 @@ npm run dev:server
 ```
 
 The server will run on `http://localhost:3001`
+
+**Features:**
+- Real-time gameplay via WebSockets
+- Discord & Google OAuth authentication
+- Anonymous guest accounts with cookie persistence
+- User profiles with custom aliases
+- Claim codes for account migration
+- Automatic cleanup of inactive users
 
 **Setup OAuth Authentication:**
 
@@ -224,6 +241,7 @@ quortextt/
 
 ### Multiplayer & Authentication
 - **[docs/designs/WEB_MULTIPLAYER.md](docs/designs/WEB_MULTIPLAYER.md)** - Multiplayer architecture design
+- **[docs/designs/USER_PROFILES.md](docs/designs/USER_PROFILES.md)** - User profile system design
 - **[docs/dev/OAUTH_SETUP.md](docs/dev/OAUTH_SETUP.md)** - OAuth authentication setup guide
 - **[docs/dev/TESTING_OAUTH.md](docs/dev/TESTING_OAUTH.md)** - OAuth testing instructions
 
