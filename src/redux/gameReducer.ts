@@ -567,11 +567,42 @@ export function gameReducer(
 
       const [nextTile, ...remainingTiles] = state.availableTiles;
 
-      return {
+      const newState = {
         ...state,
         currentTile: nextTile,
         availableTiles: remainingTiles,
       };
+
+      // Check for constraint victory after drawing a tile
+      // If the current player cannot place this tile anywhere, they win via constraint victory
+      const supermoveEnabled = state.supermoveInProgress !== undefined ? false : true; // Use default if not set
+      const victoryResult = checkVictory(
+        state.board,
+        state.players,
+        state.teams,
+        nextTile,
+        state.boardRadius,
+        supermoveEnabled
+      );
+
+      if (victoryResult.winners.length > 0) {
+        console.log(`[DRAW_TILE] Constraint victory detected! Winners: ${victoryResult.winners.join(', ')}, Type: ${victoryResult.winType}`);
+        console.log(`[DRAW_TILE] Current tile: ${nextTile}, Board size: ${state.board.size}`);
+        
+        // Get the actual winner (current player for constraint victory)
+        const currentPlayer = state.players[state.currentPlayerIndex];
+        const winners = victoryResult.winType === 'constraint' ? [currentPlayer.id] : victoryResult.winners;
+        
+        return {
+          ...newState,
+          phase: "finished",
+          winners,
+          winType: victoryResult.winType,
+          screen: "game-over",
+        };
+      }
+
+      return newState;
     }
 
     case PLACE_TILE: {

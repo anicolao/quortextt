@@ -232,7 +232,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
       } else {
         // AI has no valid moves - should trigger constraint victory
         console.log(`[AI Middleware] AI player ${currentPlayer.id} has no valid moves!`);
-        console.log(`[AI Middleware] Current tile: ${currentTile?.type || 'null'}`);
+        console.log(`[AI Middleware] Current tile: ${currentTile || 'null'}`);
         console.log(`[AI Middleware] Board size: ${board.size}`);
         console.log(`[AI Middleware] Supermove enabled: ${supermoveEnabled}`);
         console.log(`[AI Middleware] This should be a constraint victory for the AI player`);
