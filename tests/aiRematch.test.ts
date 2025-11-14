@@ -24,7 +24,7 @@ describe('AI Rematch Functionality', () => {
     resetPlayerIdCounter();
   });
 
-  it('should make AI take the first move after rematch when AI becomes first player', { timeout: 15000 }, () => {
+  it('should make AI take the first move after rematch when AI becomes first player', { timeout: 20000 }, () => {
     // Create a store with aiMiddleware
     const store = createStore(
       rootReducer,

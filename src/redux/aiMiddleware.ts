@@ -126,12 +126,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
             
             if (isSingleSupermove) {
               store.dispatch(nextPlayer() as any);
-              store.dispatch(drawTile() as any);
+              store.dispatch(drawTile(supermoveEnabled) as any);
             }
           } else {
             store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
             store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile() as any);
+            store.dispatch(drawTile(supermoveEnabled) as any);
           }
         }
       }
@@ -217,7 +217,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           // If single supermove, advance to next player and draw a tile
           if (isSingleSupermove) {
             store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile() as any);
+            store.dispatch(drawTile(supermoveEnabled) as any);
           }
           // Otherwise, the REPLACE_TILE action will trigger this middleware again
           // with the replaced tile in hand, and we'll place it
@@ -227,7 +227,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
           // After placing a tile (not a replacement), always advance to next player
           // Even when completing a supermove (placing the replaced tile), we advance
           store.dispatch(nextPlayer() as any);
-          store.dispatch(drawTile() as any);
+          store.dispatch(drawTile(supermoveEnabled) as any);
         }
       } else {
         // AI has no valid moves - should trigger constraint victory
@@ -239,7 +239,7 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
         
         // Advance to next player and draw tile - this should trigger constraint victory check
         store.dispatch(nextPlayer() as any);
-        store.dispatch(drawTile() as any);
+        store.dispatch(drawTile(supermoveEnabled) as any);
       }
     }
   }
@@ -290,12 +290,12 @@ export const aiMiddleware: Middleware<{}, RootState> = (store) => (next) => (act
             // If single supermove, advance to next player and draw a tile
             if (isSingleSupermove) {
               store.dispatch(nextPlayer() as any);
-              store.dispatch(drawTile() as any);
+              store.dispatch(drawTile(supermoveEnabled) as any);
             }
           } else {
             store.dispatch(placeTile(aiMove.position, aiMove.rotation) as any);
             store.dispatch(nextPlayer() as any);
-            store.dispatch(drawTile() as any);
+            store.dispatch(drawTile(supermoveEnabled) as any);
           }
         }
       }

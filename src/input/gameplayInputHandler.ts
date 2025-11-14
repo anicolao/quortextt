@@ -124,7 +124,7 @@ export class GameplayInputHandler {
           // If single supermove, advance to next player and draw a tile
           if (isSingleSupermove) {
             store.dispatch(nextPlayer());
-            store.dispatch(drawTile());
+            store.dispatch(drawTile(state.ui.settings.supermove));
           }
           // Otherwise, don't advance to next player - they get to place the replaced tile
           return;
@@ -153,7 +153,7 @@ export class GameplayInputHandler {
         // Always advance to next player after placing a tile
         // (even when completing supermove)
         store.dispatch(nextPlayer());
-        store.dispatch(drawTile());
+        store.dispatch(drawTile(state.ui.settings.supermove));
         return;
       }
       

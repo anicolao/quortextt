@@ -560,8 +560,22 @@ export function gameReducer(
     }
 
     case DRAW_TILE: {
-      // Draw next tile from deck
+      // Check if bag is empty - this triggers constraint victory for the current player
       if (state.availableTiles.length === 0) {
+        // Bag is empty - only trigger constraint victory if we're in playing phase with players
+        if (state.phase === 'playing' && state.players.length > 0) {
+          const currentPlayer = state.players[state.currentPlayerIndex];
+          console.log(`[DRAW_TILE] Bag is empty - constraint victory for player ${currentPlayer.id}`);
+          
+          return {
+            ...state,
+            phase: "finished",
+            winners: [currentPlayer.id],
+            winType: 'constraint',
+            screen: "game-over",
+          };
+        }
+        // Otherwise, just return state unchanged (edge case during setup)
         return state;
       }
 
@@ -575,7 +589,8 @@ export function gameReducer(
 
       // Check for constraint victory after drawing a tile
       // If the current player cannot place this tile anywhere, they win via constraint victory
-      const supermoveEnabled = state.supermoveInProgress !== undefined ? false : true; // Use default if not set
+      // Use the supermoveEnabled from the action payload, defaulting to true if not provided
+      const supermoveEnabled = action.payload?.supermoveEnabled ?? true;
       const victoryResult = checkVictory(
         state.board,
         state.players,

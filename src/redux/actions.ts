@@ -129,6 +129,9 @@ export interface CompleteSeatingPhaseAction {
 // Gameplay action types
 export interface DrawTileAction {
   type: typeof DRAW_TILE;
+  payload?: {
+    supermoveEnabled?: boolean;
+  };
 }
 
 export interface PlaceTileAction {
@@ -356,8 +359,9 @@ export const completeSeatingPhase = (): CompleteSeatingPhaseAction => ({
 });
 
 // Gameplay action creators
-export const drawTile = (): DrawTileAction => ({
+export const drawTile = (supermoveEnabled?: boolean): DrawTileAction => ({
   type: DRAW_TILE,
+  payload: supermoveEnabled !== undefined ? { supermoveEnabled } : undefined,
 });
 
 export const placeTile = (
