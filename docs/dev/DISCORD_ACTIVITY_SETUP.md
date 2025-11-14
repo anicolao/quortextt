@@ -165,7 +165,37 @@ This creates optimized production files in the `dist/` directory:
 
 All entry points use absolute paths (`/quortextt/assets/...`) and share the same asset bundles.
 
-### 2. Deploy to Production
+### 2. Nginx Configuration for Discord Activity
+
+**Important:** Discord's iframe proxy interprets absolute paths differently than standard browsers. When the Discord Activity loads from `/quortextt/discord/`, asset requests for `/quortextt/assets/...` may be interpreted as `/quortextt/discord/quortextt/assets/...`.
+
+To fix this, add a rewrite rule to your nginx configuration **before** the main `/quortextt/` location block:
+
+**For NixOS (declarative configuration):**
+
+Add this to your `virtualHosts."quortex.morpheum.dev".locations` in `/etc/nixos/configuration.nix`:
+
+```nix
+# Discord Activity - rewrite doubled paths
+"/quortextt/discord/quortextt/" = {
+  return = "301 /quortextt/";
+};
+```
+
+**For standard nginx:**
+
+Add this to your nginx config file **before** the `location /quortextt/` block:
+
+```nginx
+# Discord Activity - rewrite doubled paths
+location /quortextt/discord/quortextt/ {
+    rewrite ^/quortextt/discord/quortextt/(.*)$ /quortextt/$1 permanent;
+}
+```
+
+This redirects requests like `/quortextt/discord/quortextt/assets/file.js` to `/quortextt/assets/file.js`.
+
+### 3. Deploy to Production
 
 The built files can be deployed to any static hosting service (GitHub Pages, Netlify, Vercel, etc.) or served from your own server.
 
@@ -173,8 +203,6 @@ Update your Discord Application's Activity URL to point to your production URL:
 ```
 https://your-domain.com/quortextt/discord/
 ```
-
-**Important for Nginx/Production Servers:** The Discord Activity HTML uses absolute paths (`/quortextt/assets/...`) which means it expects to be served from a location where those paths are accessible. When deploying to nginx, ensure your configuration serves static files correctly. See the nginx configuration section in [PRODUCTION_DEPLOYMENT.md](../../PRODUCTION_DEPLOYMENT.md) for details.
 
 ## Architecture Overview
 
