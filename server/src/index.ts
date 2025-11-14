@@ -76,6 +76,14 @@ async function initializeStorage() {
   await gameStorage.initialize();
   await sessionStorage.initialize();
   await UserStore.init(); // Load users from persistent storage
+  
+  // Check if rating migration is needed
+  const { checkMigrationNeeded, migrateUsersToRatings } = await import('./rating/migration.js');
+  if (checkMigrationNeeded()) {
+    console.log('⚠️  Rating migration needed for existing users');
+    await migrateUsersToRatings();
+  }
+  
   console.log('✅ File-based storage initialized');
 }
 
