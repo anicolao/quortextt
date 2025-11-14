@@ -133,7 +133,14 @@
       
       // Wait a bit for identification
       setTimeout(() => {
-        multiplayerStore.setScreen('lobby');
+        // Check if this is a new user who hasn't completed profile setup
+        if (!user.profileCompleted && !user.isAnonymous) {
+          // New OAuth user - take them to profile screen for setup
+          multiplayerStore.setScreen('profile');
+        } else {
+          // Existing user or anonymous user - go to lobby
+          multiplayerStore.setScreen('lobby');
+        }
       }, 500);
     } catch (err) {
       error = 'Authentication failed. Please try again.';

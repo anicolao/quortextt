@@ -70,6 +70,7 @@ router.get('/', profileLimiter, authenticateJWT, (req: AuthRequest, res) => {
     avatar: user.avatar,
     provider: user.provider,
     isAnonymous: user.isAnonymous,
+    profileCompleted: user.profileCompleted,
     claimCode: user.claimCode,
     stats: user.stats,
     settings: user.settings,
@@ -97,16 +98,18 @@ router.put('/alias', profileLimiter, authenticateJWT, async (req: AuthRequest, r
     return res.status(404).json({ error: 'User not found' });
   }
 
-  // Update both alias and displayName
+  // Update both alias and displayName, and mark profile as completed
   const trimmedAlias = alias.trim();
   const updatedUser = await UserStore.update(userId, {
     alias: trimmedAlias,
-    displayName: trimmedAlias
+    displayName: trimmedAlias,
+    profileCompleted: true
   });
 
   res.json({
     alias: updatedUser?.alias,
-    displayName: updatedUser?.displayName
+    displayName: updatedUser?.displayName,
+    profileCompleted: updatedUser?.profileCompleted
   });
 });
 
