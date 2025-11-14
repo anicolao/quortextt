@@ -70,6 +70,21 @@ Test both endpoints:
 
 The multiplayer server is only needed for online multiplayer games. For single-player tabletop mode, it's not required.
 
+### Important: WebSocket/WSS Support
+
+**No server code changes needed for WSS!** 
+
+The server uses HTTP (`http.createServer()`), but modern hosting platforms (Render, Railway, DigitalOcean, etc.) automatically:
+1. Handle SSL/TLS termination at their reverse proxy layer
+2. Provide HTTPS URLs for your service
+3. Socket.IO automatically upgrades to WSS when accessed via HTTPS
+
+**Key Requirements:**
+- Deploy server to a platform with HTTPS support (all options below provide this)
+- Server must be accessible on the configured port (default: 3001)
+- Client must use HTTPS URL (e.g., `https://your-app.onrender.com`)
+- CORS must allow your client domain
+
 ### Option 1: Render.com (Free Tier)
 
 1. Create account at [render.com](https://render.com)
@@ -80,17 +95,19 @@ The multiplayer server is only needed for online multiplayer games. For single-p
    - **Environment Variables**:
      ```
      NODE_ENV=production
-     PORT=3001
+     PORT=10000
      CLIENT_URL=https://anicolao.github.io
      JWT_SECRET=<generate-random-secret>
      DISCORD_CLIENT_ID=<your-discord-app-id>
      DISCORD_CLIENT_SECRET=<your-discord-app-secret>
      DISCORD_CALLBACK_URL=https://your-app.onrender.com/auth/discord/callback
      ```
+   
+   **Note:** Render.com uses port 10000 by default. The platform handles port mapping automatically.
 
-3. Deploy and note the server URL
+3. Deploy and note the server URL (e.g., `https://your-app.onrender.com`)
 
-4. Update client environment to point to production server
+4. Update client: Set `VITE_SERVER_URL=https://your-app.onrender.com` and rebuild
 
 ### Option 2: Railway.app (Free Tier)
 
@@ -114,6 +131,228 @@ The multiplayer server is only needed for online multiplayer games. For single-p
 
 3. Deploy
 
+### Option 4: Self-Hosted with Nginx (Custom Server)
+
+If you're deploying on your own server behind nginx (e.g., VPS, dedicated server):
+
+#### 1. Server Setup
+
+Install Node.js and dependencies:
+```bash
+# On Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Clone and build
+cd /opt
+git clone https://github.com/anicolao/quortextt.git
+cd quortextt/server
+npm install
+npm run build
+```
+
+#### 2. Configure Process Manager (PM2)
+
+```bash
+# Install PM2
+sudo npm install -g pm2
+
+# Create ecosystem file
+cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'quortex-server',
+    script: 'dist/index.js',
+    cwd: '/opt/quortextt/server',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3001,
+      CLIENT_URL: 'https://quortex.morpheum.dev',
+      JWT_SECRET: 'your-secret-here',
+      DATA_DIR: '/var/lib/quortex/data'
+    }
+  }]
+};
+EOF
+
+# Start the server
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup  # Follow instructions to enable auto-start
+```
+
+#### 3. Nginx Configuration
+
+Create nginx config file `/etc/nginx/sites-available/quortex`:
+
+```nginx
+# Upstream configuration - points to your Node.js server
+upstream quortex_backend {
+    server 127.0.0.1:3001;  # Your server runs on port 3001 locally
+    keepalive 64;
+}
+
+# HTTPS Server Block
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name quortex.morpheum.dev;
+
+    # SSL Configuration (use certbot for Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/quortex.morpheum.dev/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/quortex.morpheum.dev/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # Logs
+    access_log /var/log/nginx/quortex_access.log;
+    error_log /var/log/nginx/quortex_error.log;
+
+    # Serve static files (GitHub Pages alternative)
+    location /quortextt/ {
+        # If hosting static files on same server
+        alias /var/www/quortex/;
+        try_files $uri $uri/ /quortextt/index.html;
+        
+        # Or proxy to GitHub Pages
+        # proxy_pass https://anicolao.github.io/quortextt/;
+    }
+
+    # Proxy API requests to Node.js server
+    location /api/ {
+        proxy_pass http://quortex_backend;
+        proxy_http_version 1.1;
+        
+        # Important: Preserve original headers
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # OAuth callback routes
+    location /auth/ {
+        proxy_pass http://quortex_backend;
+        proxy_http_version 1.1;
+        
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Health check endpoint
+    location /health {
+        proxy_pass http://quortex_backend;
+        proxy_http_version 1.1;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket endpoint for Socket.IO
+    # This is the CRITICAL part for WebSocket/WSS support
+    location /socket.io/ {
+        proxy_pass http://quortex_backend;
+        proxy_http_version 1.1;
+        
+        # WebSocket upgrade headers - REQUIRED
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeouts for long-lived connections
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+        
+        # Disable buffering for WebSocket
+        proxy_buffering off;
+        
+        # Disable caching
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# HTTP redirect to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name quortex.morpheum.dev;
+    
+    return 301 https://$server_name$request_uri;
+}
+```
+
+#### 4. Enable and Test Nginx
+
+```bash
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/quortex /etc/nginx/sites-enabled/
+
+# Test nginx configuration
+sudo nginx -t
+
+# If test passes, reload nginx
+sudo systemctl reload nginx
+```
+
+#### 5. SSL Certificate (Let's Encrypt)
+
+```bash
+# Install certbot
+sudo apt-get install certbot python3-certbot-nginx
+
+# Get certificate (nginx plugin handles config automatically)
+sudo certbot --nginx -d quortex.morpheum.dev
+
+# Auto-renewal is set up automatically
+# Test renewal:
+sudo certbot renew --dry-run
+```
+
+**How the Reverse Proxy Works:**
+
+1. **Client connects to:** `https://quortex.morpheum.dev` (port 443)
+2. **Nginx receives:** HTTPS request on port 443
+3. **Nginx terminates SSL:** Decrypts HTTPS to HTTP
+4. **Nginx proxies to:** `http://127.0.0.1:3001` (your Node.js server)
+5. **For WebSocket:**
+   - Client: `wss://quortex.morpheum.dev/socket.io/` (secure WebSocket)
+   - Nginx: Upgrades connection with `Upgrade` and `Connection` headers
+   - Backend: `ws://127.0.0.1:3001/socket.io/` (local WebSocket)
+6. **Nginx sends response back:** Encrypts and sends to client over HTTPS/WSS
+
+**Key Points:**
+- Your Node.js server only needs to listen on `http://localhost:3001`
+- Nginx handles ALL SSL/TLS encryption
+- The `Upgrade` and `Connection` headers are what make WebSocket work
+- Client always uses `https://` (which Socket.io converts to `wss://`)
+- Server never needs to know about SSL certificates
+
 ## Environment Variables
 
 ### Client Configuration (Build Time)
@@ -122,19 +361,25 @@ The client needs to know where the multiplayer server is located. This is config
 
 ```bash
 # .env.production (create this file in the repository root)
-VITE_SERVER_URL=https://your-server.com
 
-# For custom domain with standard HTTPS port (443):
+# For nginx reverse proxy (port 443 externally, nginx proxies to 3001 internally):
 VITE_SERVER_URL=https://quortex.morpheum.dev
 
-# For custom port:
-VITE_SERVER_URL=https://quortex.morpheum.dev:3001
+# For cloud platforms (Render, Railway - they handle port mapping):
+VITE_SERVER_URL=https://your-app.onrender.com
+
+# For custom port (if nginx proxies on non-standard port):
+VITE_SERVER_URL=https://quortex.morpheum.dev:8443
 ```
 
 **Important:** 
+- **With nginx:** Use standard HTTPS port (443), nginx forwards to your Node.js port internally
+  - Client connects to: `https://quortex.morpheum.dev` (port 443)
+  - Nginx proxies to: `http://localhost:3001`
+  - DO NOT include `:3001` in `VITE_SERVER_URL` when using nginx
+- **Without reverse proxy:** Include the port if not using standard HTTPS port
 - If you don't set `VITE_SERVER_URL`, the client will auto-detect based on the current page's protocol and hostname
 - For HTTPS sites, it will automatically use `https://` (which socket.io converts to `wss://` for WebSocket)
-- For production deployments, it's recommended to explicitly set `VITE_SERVER_URL` to your server's URL
 
 ### Required for Production Server
 
@@ -272,8 +517,52 @@ Error message: `Mixed Content: The page at 'https://...' was loaded over HTTPS, 
 
 4. Verify your server is accessible over HTTPS and supports WebSocket connections
 
+**Issue: WebSocket still won't connect with wss://***
+
+If you're still having connection issues after fixing the mixed content error:
+
+**Diagnosis Steps:**
+
+1. **Test the server health endpoint:**
+   ```bash
+   curl https://your-server.com/health
+   # Should return: {"status":"ok","games":0,"players":0,"storage":"file-based"}
+   ```
+
+2. **Check browser console for specific error:**
+   - Open browser DevTools (F12) → Console tab
+   - Look for connection errors
+   - Common issues:
+     - `ERR_CONNECTION_REFUSED` → Server not running or wrong URL
+     - `ERR_CONNECTION_TIMED_OUT` → Firewall blocking port or server not accessible
+     - `403 Forbidden` → CORS misconfiguration
+     - `404 Not Found` → Wrong server URL
+
+3. **Verify VITE_SERVER_URL is correct:**
+   - Should be `https://your-server.com` (without port number for Render/Railway/etc.)
+   - Should NOT include `:3001` unless you're using a custom port configuration
+   - Check the built files: `cat dist/assets/main-*.js | grep -o 'https://[^"]*'`
+
+4. **Check server CORS configuration:**
+   - Server's `CLIENT_URL` environment variable must match your client's domain
+   - For `https://quortex.morpheum.dev/quortextt/`, set `CLIENT_URL=https://quortex.morpheum.dev`
+
+5. **Platform-specific port issues:**
+   - Render.com: Uses port 10000 internally, but serves on standard HTTPS port 443 externally
+   - Railway: Auto-assigns PORT, don't hardcode
+   - DigitalOcean: Similar to Render
+   - **Solution:** Use environment variable for PORT in server code (already configured)
+
+**Common Mistakes:**
+
+❌ **Wrong:** `VITE_SERVER_URL=https://your-app.onrender.com:3001`  
+✅ **Correct:** `VITE_SERVER_URL=https://your-app.onrender.com`
+
+❌ **Wrong:** `CLIENT_URL=https://quortex.morpheum.dev/quortextt/`  
+✅ **Correct:** `CLIENT_URL=https://quortex.morpheum.dev`
+
 **Issue: CORS errors in browser**
-- Check `CLIENT_URL` environment variable matches your GitHub Pages URL
+- Check `CLIENT_URL` environment variable matches your GitHub Pages URL (without path)
 - Verify server is running and accessible
 
 **Issue: OAuth redirect fails**
