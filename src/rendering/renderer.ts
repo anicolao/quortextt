@@ -112,7 +112,8 @@ export class Renderer {
       state.ui.settings,
       state.ui.showHelp,
       state.ui.helpCorner,
-      state.ui.savedGameState !== null
+      state.ui.savedGameState !== null,
+      state.ui.gameMode
     );
 
     // Return empty UILayout for compatibility (new input handler will use LobbyLayout)
@@ -133,8 +134,7 @@ export class Renderer {
     this.currentSeatingLayout = this.seatingRenderer.render(
       this.canvas.width,
       this.canvas.height,
-      state.game,
-      state.ui.gameMode
+      state.game
     );
 
     // Return empty UILayout for compatibility

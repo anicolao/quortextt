@@ -1,6 +1,6 @@
 // Lobby UI layout calculations for the redesigned edge-based lobby
 
-import { ConfigPlayer, PLAYER_COLORS, Edge } from "../redux/types";
+import { ConfigPlayer, PLAYER_COLORS, Edge, GameMode } from "../redux/types";
 
 export interface EdgeButton {
   x: number;
@@ -103,6 +103,7 @@ export function calculateLobbyLayout(
   canvasWidth: number,
   canvasHeight: number,
   players: ConfigPlayer[],
+  gameMode: GameMode = 'tabletop',
 ): LobbyLayout {
   const minDim = Math.min(canvasWidth, canvasHeight);
   const buttonSize = Math.max(60, minDim * 0.08); // Minimum 60px for touch targets
@@ -114,6 +115,8 @@ export function calculateLobbyLayout(
   const availableColors = getAvailableColors(players);
 
   // Calculate edge buttons (+ buttons) for each edge
+  // In multiplayer mode, only show bottom edge since player is on their own device
+  // In tabletop mode, show all 4 edges since players gather around the same device
   const edgeButtons: EdgeButton[] = [];
 
   // Bottom edge (0°)
@@ -133,56 +136,59 @@ export function calculateLobbyLayout(
     });
   });
 
-  // Right edge (90° clockwise)
-  const rightX = canvasWidth - edgeMargin - buttonSize;
-  availableColors.forEach((color, index) => {
-    const totalHeight =
-      availableColors.length * buttonSize +
-      (availableColors.length - 1) * buttonSpacing;
-    const startY = (canvasHeight - totalHeight) / 2;
-    edgeButtons.push({
-      x: rightX,
-      y: startY + index * (buttonSize + buttonSpacing),
-      size: buttonSize,
-      color,
-      edge: 1,
-      rotation: 90,
+  // Only show right, top, and left edges in tabletop mode
+  if (gameMode === 'tabletop') {
+    // Right edge (90° clockwise)
+    const rightX = canvasWidth - edgeMargin - buttonSize;
+    availableColors.forEach((color, index) => {
+      const totalHeight =
+        availableColors.length * buttonSize +
+        (availableColors.length - 1) * buttonSpacing;
+      const startY = (canvasHeight - totalHeight) / 2;
+      edgeButtons.push({
+        x: rightX,
+        y: startY + index * (buttonSize + buttonSpacing),
+        size: buttonSize,
+        color,
+        edge: 1,
+        rotation: 90,
+      });
     });
-  });
 
-  // Top edge (180°)
-  const topY = edgeMargin;
-  availableColors.forEach((color, index) => {
-    const totalWidth =
-      availableColors.length * buttonSize +
-      (availableColors.length - 1) * buttonSpacing;
-    const startX = (canvasWidth - totalWidth) / 2;
-    edgeButtons.push({
-      x: startX + index * (buttonSize + buttonSpacing),
-      y: topY,
-      size: buttonSize,
-      color,
-      edge: 2,
-      rotation: 180,
+    // Top edge (180°)
+    const topY = edgeMargin;
+    availableColors.forEach((color, index) => {
+      const totalWidth =
+        availableColors.length * buttonSize +
+        (availableColors.length - 1) * buttonSpacing;
+      const startX = (canvasWidth - totalWidth) / 2;
+      edgeButtons.push({
+        x: startX + index * (buttonSize + buttonSpacing),
+        y: topY,
+        size: buttonSize,
+        color,
+        edge: 2,
+        rotation: 180,
+      });
     });
-  });
 
-  // Left edge (270° clockwise)
-  const leftX = edgeMargin;
-  availableColors.forEach((color, index) => {
-    const totalHeight =
-      availableColors.length * buttonSize +
-      (availableColors.length - 1) * buttonSpacing;
-    const startY = (canvasHeight - totalHeight) / 2;
-    edgeButtons.push({
-      x: leftX,
-      y: startY + index * (buttonSize + buttonSpacing),
-      size: buttonSize,
-      color,
-      edge: 3,
-      rotation: 270,
+    // Left edge (270° clockwise)
+    const leftX = edgeMargin;
+    availableColors.forEach((color, index) => {
+      const totalHeight =
+        availableColors.length * buttonSize +
+        (availableColors.length - 1) * buttonSpacing;
+      const startY = (canvasHeight - totalHeight) / 2;
+      edgeButtons.push({
+        x: leftX,
+        y: startY + index * (buttonSize + buttonSpacing),
+        size: buttonSize,
+        color,
+        edge: 3,
+        rotation: 270,
+      });
     });
-  });
+  }
 
   // Center start button
   const startButton: StartButton = {

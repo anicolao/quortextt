@@ -124,8 +124,18 @@ export class LobbyInputHandler {
     // Check exit buttons
     for (const exitBtn of layout.exitButtons) {
       if (isPointInCircle(x, y, exitBtn.x, exitBtn.y, exitBtn.size / 2)) {
-        // In lobby, exit means close the window
-        window.close();
+        // In multiplayer mode, return to multiplayer lobby
+        // In tabletop mode, close the window
+        const gameMode = state.ui.gameMode;
+        if (gameMode === 'multiplayer') {
+          // Return to multiplayer lobby by setting the screen
+          // This will hide the canvas and show the Svelte UI
+          import('../multiplayer/stores/multiplayerStore').then(({ multiplayerStore }) => {
+            multiplayerStore.setScreen('lobby');
+          });
+        } else {
+          window.close();
+        }
         return;
       }
     }
