@@ -157,14 +157,13 @@ To test Discord-specific features, you must run it within Discord using the Deve
 npm run build
 ```
 
-This creates optimized production files in the `dist/` directory, including:
-- `dist/discord/` - Discord Activity entry point with **relative asset paths**
-- `dist/discord/assets/` - Discord-specific bundled assets
+This creates optimized production files in the `dist/` directory:
+- `dist/discord/index.html` - Discord Activity entry point
 - `dist/index.html` - Standard multiplayer entry point
 - `dist/tabletop.html` - Tabletop mode entry point
-- `dist/assets/` - Shared assets for main and tabletop modes
+- `dist/assets/` - Shared bundled assets for all entry points
 
-**Important:** The Discord build uses **relative paths** (`./assets/...`) instead of absolute paths (`/quortextt/assets/...`) to ensure assets load correctly when served through Discord's iframe proxy. This prevents path duplication issues when the HTML is served from a subdirectory.
+All entry points use absolute paths (`/quortextt/assets/...`) and share the same asset bundles.
 
 ### 2. Deploy to Production
 
@@ -175,23 +174,24 @@ Update your Discord Application's Activity URL to point to your production URL:
 https://your-domain.com/quortextt/discord/
 ```
 
+**Important for Nginx/Production Servers:** The Discord Activity HTML uses absolute paths (`/quortextt/assets/...`) which means it expects to be served from a location where those paths are accessible. When deploying to nginx, ensure your configuration serves static files correctly. See the nginx configuration section in [PRODUCTION_DEPLOYMENT.md](../../PRODUCTION_DEPLOYMENT.md) for details.
+
 ## Architecture Overview
 
 ### Files Added/Modified
 
 **New Files:**
-- `discord/` - Entry point HTML for Discord Activity
+- `discord/index.html` - Entry point HTML for Discord Activity
 - `src/discordMain.ts` - Main TypeScript entry point for Discord mode
 - `src/discord/discordClient.ts` - Discord SDK integration and authentication
 - `src/vite-env.d.ts` - TypeScript environment variable definitions
-- `vite.discord.config.ts` - Separate Vite config for Discord build with relative paths
 - `docs/dev/DISCORD_ACTIVITY_SETUP.md` - This file
 
 **Modified Files:**
-- `vite.config.ts` - Added discord/ to build inputs (for main build)
+- `vite.config.ts` - Added discord/index.html to build inputs
 - `.env.example` - Added VITE_DISCORD_CLIENT_ID configuration
 - `src/multiplayer/stores/multiplayerStore.ts` - Added userId field and helper methods
-- `package.json` - Added @discord/embedded-app-sdk dependency and separate Discord build step
+- `package.json` - Added @discord/embedded-app-sdk dependency
 
 ### How It Works
 
@@ -414,22 +414,31 @@ In Discord Developer Portal, ensure URL mapping is correct:
 3. Check server logs for errors
 4. Ensure WebSocket connection isn't blocked by firewall/proxy
 
-### Asset 404 Errors in Production (Path Duplication)
+### Asset 404 Errors in Production
 
-**Problem**: nginx logs show 404 errors like `/quortextt/discord/quortextt/assets/...` (path is duplicated)
+**Problem**: nginx logs show 404 errors for assets when loading the Discord Activity
 
-**Root Cause**: Discord's iframe proxy may interpret absolute asset paths differently than expected, causing the base path to be applied twice.
+**Root Cause**: The Discord Activity uses absolute paths (`/quortextt/assets/...`) which must be accessible from the domain root.
 
-**Solution**: The Discord build uses a **separate Vite configuration** (`vite.discord.config.ts`) that:
-- Sets `base: './'` to use relative paths instead of absolute `/quortextt/` paths
-- Outputs to `dist/discord/` with its own `assets/` subdirectory
-- This ensures assets are referenced as `./assets/...` relative to the HTML file
-- When served from `/quortextt/discord/`, assets load from `/quortextt/discord/assets/...`
+**Solution**: Ensure your nginx configuration properly serves static files. The standard configuration in [PRODUCTION_DEPLOYMENT.md](../../PRODUCTION_DEPLOYMENT.md) handles this correctly:
+
+```nginx
+location /quortextt/ {
+    alias /var/www/quortex/;
+    try_files $uri $uri/ /quortextt/index.html;
+}
+```
+
+This configuration ensures that:
+- `/quortextt/discord/index.html` → `/var/www/quortex/discord/index.html`
+- `/quortextt/assets/...` → `/var/www/quortex/assets/...`
+
+Both paths work correctly because the `alias` directive maps the entire `/quortextt/` path to the root of your deployment directory.
 
 **Verification**:
-1. Check `dist/discord/index.html` - asset paths should be `./assets/...` not `/quortextt/assets/...`
-2. Ensure deployment copies the entire `dist/discord/` directory including `dist/discord/assets/`
-3. nginx should serve static files from the correct directory structure
+1. Check that `dist/` directory is deployed to `/var/www/quortex/`
+2. Verify asset paths in `dist/discord/index.html` use `/quortextt/assets/...`
+3. Test asset loading: `curl https://your-domain.com/quortextt/assets/discord-[hash].js`
 
 ### TypeScript Errors
 
