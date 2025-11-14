@@ -67,6 +67,10 @@
     // Return to login screen
     multiplayerStore.setScreen('login');
   }
+  
+  function viewProfile() {
+    multiplayerStore.setScreen('profile');
+  }
 </script>
 
 <div class="lobby-screen">
@@ -75,7 +79,9 @@
       <div class="header-content">
         <h1>Game Lobby</h1>
         <div class="user-info">
-          <span class="username">👤 {username}</span>
+          <button class="username-btn" on:click={viewProfile} title="View Profile">
+            👤 {username}
+          </button>
           <button class="signout-btn" on:click={handleSignOut} title="Sign Out">
             🚪 Sign Out
           </button>
@@ -219,11 +225,20 @@
     gap: 12px;
   }
 
-  .username {
+  .username-btn {
     font-size: 16px;
     background: rgba(255, 255, 255, 0.2);
     padding: 8px 16px;
     border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .username-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
   }
   
   .signout-btn {
