@@ -511,13 +511,20 @@ io.on('connection', (socket) => {
       const state = await gameStorage.getGameState(roomId);
       if (!state) return;
 
-      // Only host can start the game
-      if (state.hostId !== player.id) {
+      // Check if this is a Discord Activity room (starts with "discord-")
+      const isDiscordRoom = roomId.startsWith('discord-');
+
+      // For Discord Activities, anyone can start the game (no host restriction)
+      // For regular rooms, only the host can start
+      if (!isDiscordRoom && state.hostId !== player.id) {
         socket.emit('error', { message: 'Only host can start the game' });
         return;
       }
 
-      if (state.players.length < 2) {
+      // For Discord Activities, allow starting with 1 player (others can join during gameplay)
+      // For regular rooms, require at least 2 players
+      const minPlayers = isDiscordRoom ? 1 : 2;
+      if (state.players.length < minPlayers) {
         socket.emit('error', { message: 'Need at least 2 players to start' });
         return;
       }
