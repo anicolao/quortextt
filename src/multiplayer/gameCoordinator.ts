@@ -187,7 +187,30 @@ export class GameCoordinator {
     this.gameId = gameId;
     
     console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
-    console.log('Players should now use the configuration screen to add themselves by clicking edge buttons.');
+    
+    // Check if this is a rematch (we have stored edge assignment for this player)
+    const rematchEdge = (window as any).__localPlayerRematchEdge as number | undefined;
+    
+    if (rematchEdge !== undefined && this.localPlayerId) {
+      console.log('[GameCoordinator] This is a rematch - automatically selecting edge:', rematchEdge);
+      
+      // Clear the stored edge
+      delete (window as any).__localPlayerRematchEdge;
+      
+      // Wait a bit for all players to join, then automatically select the edge
+      setTimeout(() => {
+        if (this.localPlayerId) {
+          console.log('[GameCoordinator] Auto-selecting edge for rematch:', rematchEdge);
+          // Import selectEdge action
+          import('../redux/actions').then(({ selectEdge }) => {
+            // Post the edge selection action to server
+            socket.postAction(gameId, selectEdge(this.localPlayerId!, rematchEdge));
+          });
+        }
+      }, 500); // Small delay to ensure all players have joined
+    } else {
+      console.log('Players should now use the configuration screen to add themselves by clicking edge buttons.');
+    }
     
     // Request any existing actions to sync
     socket.getActions(gameId);
