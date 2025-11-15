@@ -216,7 +216,8 @@ router.post('/logout', (req, res) => {
 
 // Discord Activity token exchange endpoint
 // This endpoint is accessed via Discord's /.proxy path from embedded activities
-router.post('/api/token', authLimiter, async (req, res) => {
+// Mounted under /api, so this becomes /api/token
+router.post('/token', authLimiter, async (req, res) => {
   const { code } = req.body;
   
   if (!code) {
