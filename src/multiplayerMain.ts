@@ -43,6 +43,7 @@ if (!canvas) {
 let renderer: Renderer | null = null;
 let inputHandler: InputHandler | null = null;
 let gameCoordinator: GameCoordinator | null = null;
+let currentGameId: string | null = null;
 
 // Listen for game state changes
 multiplayerStore.subscribe((state) => {
@@ -64,7 +65,16 @@ multiplayerStore.subscribe((state) => {
     }
     
     // Initialize game coordinator to subscribe to actions
-    if (!gameCoordinator) {
+    // Recreate coordinator if gameId has changed (e.g., for rematch)
+    if (!gameCoordinator || currentGameId !== state.gameId) {
+      // Clean up old coordinator if it exists
+      if (gameCoordinator) {
+        console.log('[multiplayerMain] Cleaning up old coordinator for gameId:', currentGameId);
+        gameCoordinator.stop();
+      }
+      
+      console.log('[multiplayerMain] Creating new coordinator for gameId:', state.gameId);
+      currentGameId = state.gameId;
       gameCoordinator = new GameCoordinator(store, state.gameId);
       gameCoordinator.start();
     }
@@ -77,6 +87,7 @@ multiplayerStore.subscribe((state) => {
     if (gameCoordinator && state.screen !== 'game') {
       gameCoordinator.stop();
       gameCoordinator = null;
+      currentGameId = null;
     }
   }
 });
