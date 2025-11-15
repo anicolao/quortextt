@@ -58,10 +58,10 @@ describe('Flow Propagation Bug - Minimal Reproduction', () => {
     // Tile 1 should have flow (it's on the edge)
     expect(player1Flows!.has('-3,0')).toBe(true);
     
-    // BUG: Tile 2 should have flow (it's connected to tile 1) but doesn't
+    // FIXED: Tile 2 now correctly has flow (connected to tile 1)
     const hasTile2Flow = player1Flows!.has('-2,-1');
     console.log('\nExpected: Tile at (-2,-1) has flow');
-    console.log('Actual:', hasTile2Flow ? 'HAS flow ✓' : 'NO flow ✗ BUG');
+    console.log('Actual:', hasTile2Flow ? 'HAS flow ✓' : 'NO flow ✗');
     
     expect(hasTile2Flow).toBe(true);
   });

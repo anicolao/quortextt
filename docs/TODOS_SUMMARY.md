@@ -6,102 +6,129 @@ This document lists all identified TODO items and unfinished work in the Quortex
 
 ### Rendering / UI
 
-#### Tile Placement Preview UI (`src/rendering/gameplayRenderer.ts:1283-1284`)
+#### Tile Placement Preview UI - ✅ COMPLETED
 
-When a tile is being previewed at a selected position, the following UI enhancements are needed:
+The following UI enhancements have been implemented:
 
-- **TODO**: Add red border if illegal placement
-  - Show a visual indicator (red border) around the tile preview when the placement would be illegal
-  - This provides immediate feedback to the player before they confirm the move
+- ✅ **DONE**: Red border for illegal placement
+  - Implemented in `src/rendering/gameplayRenderer.ts` (~line 1403-1420)
+  - Shows a red border around the tile preview when placement would be illegal
+  - Provides immediate feedback to the player before they confirm the move
 
-- **TODO**: Show checkmark and X buttons
-  - Display interactive buttons to confirm (checkmark) or cancel (X) the tile placement
-  - Improves mobile/touch experience by providing clear action buttons
-
-**Location**: `src/rendering/gameplayRenderer.ts`, lines 1283-1284, in the `renderCurrentTilePreview()` method
-
-**Context**: These TODOs are in the tile preview rendering code, specifically when a player has selected a position on the board (`state.ui.selectedPosition` is set).
+- ✅ **DONE**: Checkmark and X buttons
+  - Implemented in `src/rendering/gameplayRenderer.ts` (~line 1554-1564)
+  - Interactive buttons to confirm (checkmark) or cancel (X) tile placement
+  - Buttons are oriented toward the player's edge for better UX
+  - Includes rotation buttons at NE and NW corners
+  - E2E tests exist in `tests/e2e/complete-game-mouse.spec.ts`
 
 ## Documentation Notes
 
-### Flow Bug Tests (Now Resolved)
+### Flow Bug Tests - ✅ RESOLVED
 
-The following test files contain comments labeled "BUG" but the tests are now **passing**:
+The flow propagation bugs have been fixed. All 99 tests in the flow bug test suite pass:
 
-- `tests/flow-bug-move5.test.ts` - Line 51: "BUG: (-2,-1) should have flow but doesn't" - ✅ Test passes
-- `tests/flow-bug-two-tiles.test.ts` - Line 61: "BUG: Tile 2 should have flow" - ✅ Test passes
+- ✅ `tests/flow-bug-move5.test.ts` - All tests pass
+- ✅ `tests/flow-bug-two-tiles.test.ts` - All 98 tests pass (including comprehensive two-tile flow tests)
 
-**Status**: These bugs appear to have been fixed. The BUG comments in the tests should be updated or removed to reflect that the tests now pass successfully.
+**Action Items:**
+- The "BUG" comments in these test files should be updated to reflect that the tests now pass successfully
 
 ## Multiplayer Implementation Status
 
-Based on `docs/MULTIPLAYER.md` (lines 105-111), the following limitations exist in the current MVP:
+Based on `docs/MULTIPLAYER.md` and `server/src/index.ts`, the multiplayer implementation has made significant progress:
 
-### Current Limitations
+### ✅ Implemented Features (MVP)
 
-- **No persistent storage**: Rooms and players are lost on server restart
-  - All data is stored in memory only
+- ✅ **File-based persistent storage**: Using event sourcing with `.jsonl` files
+  - Game actions are stored as append-only logs
+  - Data persists across server restarts
+  - Implemented in `server/src/storage/`
   
-- **No authentication**: Username only, no passwords
-  - Basic MVP login without security
+- ✅ **OAuth authentication**: Google and Discord authentication
+  - Implemented in `server/src/auth/` 
+  - Anonymous user support with automatic cleanup
   
-- **No reconnection handling**: Players can't rejoin after disconnect
-  - Connection loss means the player is removed from the game
+- ✅ **Game state persistence and replay**: Via action logs
+  - All game actions are logged with sequence numbers
+  - Can replay entire game from action history
   
-- **Game state synchronization**: Not fully implemented yet
-  - Real-time game state sync between client and server needs work
-  
-- **No spectator mode**: Can't watch games in progress
-  
-- **No chat functionality**: Players cannot communicate in-game
+- ✅ **Real-time game state synchronization**: 
+  - Socket.IO event handlers for `post_action` and `get_actions`
+  - Actions are broadcast to all players in a game room
+  - Implemented in `server/src/index.ts`
 
-### Planned Future Enhancements (from MULTIPLAYER.md)
+### Current Limitations (MVP)
+
+- ⏳ **Reconnection handling**: Partial implementation
+  - Players can disconnect and server tracks it
+  - Full reconnection flow needs more work
+  
+- ❌ **No spectator mode**: Can't watch games in progress
+  
+- ❌ **No chat functionality**: Players cannot communicate in-game
+
+### Planned Future Enhancements
 
 These are documented as planned but not yet implemented:
 
-- Database integration (MongoDB)
-- OAuth authentication (Facebook, Google, Discord, Apple)
-- Game state persistence and replay
-- Reconnection handling
+- Complete reconnection handling
 - Chat system
+- Spectator mode
 - Leaderboards
 - Tournament support
+- Migration to MongoDB when scaling needs arise (10K+ concurrent users)
 
 ## Testing
 
 ### End-to-End Testing
 
-From `docs/MULTIPLAYER.md` (line 172):
+**Single-Player E2E Tests**: ✅ Comprehensive coverage exists
+- Tile placement with checkmark/X buttons: `tests/e2e/complete-game-mouse.spec.ts`
+- Complete game flows: `tests/e2e/complete-game.spec.ts`, `tests/e2e/complete-game-clicks.spec.ts`
+- Flow propagation: `tests/e2e/flow-propagation.spec.ts`, `tests/e2e/multi-tile-flow.spec.ts`
+- Blocking detection: `tests/e2e/blocking-sharp-tiles.spec.ts`
+- AI gameplay: `tests/e2e/ai-player.spec.ts`, `tests/e2e/ai-gameplay.spec.ts`
+- Victory animations: `tests/e2e/victory-animation.spec.ts`
+- And many more in `tests/e2e/`
 
-- **TODO**: End-to-end multiplayer tests are not yet implemented
-  - Need E2E tests for multiplayer functionality
-  - Current test suite covers single-player game logic extensively
+**Multiplayer E2E Tests**: ❌ Not yet implemented
+- Need E2E tests for multiplayer room creation and joining
+- Need E2E tests for multiplayer game synchronization
+- Need E2E tests for disconnect/reconnect scenarios
 
 ## Summary
 
-### Immediate Work Items (Code TODOs)
+### ✅ Completed Items
 
-1. Add red border for illegal tile placement preview (gameplayRenderer.ts)
-2. Add checkmark and X buttons for tile placement confirmation (gameplayRenderer.ts)
+1. ~~Add red border for illegal tile placement preview~~ - **DONE** (gameplayRenderer.ts)
+2. ~~Add checkmark and X buttons for tile placement confirmation~~ - **DONE** (gameplayRenderer.ts)
+3. ~~Fix flow propagation bugs~~ - **DONE** (all tests pass)
+4. ~~Implement persistent storage for multiplayer~~ - **DONE** (file-based with event sourcing)
+5. ~~Implement OAuth authentication~~ - **DONE** (Google, Discord)
+6. ~~Implement game state synchronization~~ - **DONE** (Socket.IO with action logs)
 
-### Update/Cleanup Items
+### 🔧 Cleanup/Maintenance Items
 
-3. Update or remove "BUG" comments in flow bug test files (tests are now passing)
+1. Update "BUG" comments in flow bug test files (tests now pass successfully)
 
-### Multiplayer Work In Progress
+### 🚧 Work In Progress
 
-4. Complete game state synchronization in multiplayer
-5. Implement reconnection handling for multiplayer
-6. Add end-to-end tests for multiplayer functionality
+1. Complete reconnection handling for multiplayer (partial implementation exists)
+2. Add end-to-end tests for multiplayer functionality
 
-### Future Enhancement Tracking
+### 📋 Future Enhancements
 
-The README.md "Future Enhancements" section (lines 60-67) tracks planned features:
-- AI opponents (easy, medium difficulty levels)
-- Additional OAuth providers (Facebook, Google, Apple)
-- Database persistence (MongoDB)
-- Game notation system for replay
+The README.md "Future Enhancements" section tracks planned features:
+- AI opponents (easy, medium difficulty levels) - **Note: AI is already implemented!**
+- Additional OAuth providers (Facebook, Apple)
+- Migration to MongoDB for scaling (10K+ concurrent users)
+- Game notation system for replay - **Note: Action logs provide this!**
 - Advanced analytics and statistics
 - Additional board sizes and variants
+- Chat system
+- Spectator mode
+- Leaderboards
+- Tournament support
 
 **Note**: This document focuses on immediately necessary work already identified in the codebase. For long-term planning and future features, see README.md and the design documents in `docs/designs/`.
