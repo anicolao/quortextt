@@ -93,30 +93,7 @@ export class GameCoordinator {
     // Get stored edge assignments
     const edgeAssignments = (window as any).__rematchEdgeAssignments as Map<string, number> | undefined;
     
-    // Stop listening to old game
-    this.stop();
-    
-    // Leave the old game
-    socket.leaveRoom(oldGameId);
-    
-    // Update to new game ID
-    this.gameId = newGameId;
-    this.localActionsProcessed = 0;
-    
-    // Update the multiplayer store with the new game ID
-    // This will trigger the UI to reinitialize with the new game
-    multiplayerStore.setGameId(newGameId);
-    console.log('[GameCoordinator] Updated multiplayerStore with new gameId:', newGameId);
-    
-    // Join the new game
-    socket.joinRoom(newGameId);
-    
-    // Restart listening to new game
-    // This will also request actions from the server
-    this.start();
-    
-    // After joining, we need to preserve the edge assignments
-    // Store them so we can reapply when it's time to select edges
+    // Store edge assignments for reapplication
     if (edgeAssignments && this.localPlayerId) {
       const localPlayerEdge = edgeAssignments.get(this.localPlayerId);
       if (localPlayerEdge !== undefined) {
@@ -124,6 +101,18 @@ export class GameCoordinator {
         (window as any).__localPlayerRematchEdge = localPlayerEdge;
       }
     }
+    
+    // Leave the old game room
+    socket.leaveRoom(oldGameId);
+    
+    // Join the new game room
+    socket.joinRoom(newGameId);
+    
+    // The server will send game_ready event for the new game
+    // which will trigger multiplayerStore.setGameId() via socket event handler
+    // That will cause multiplayerMain to create a fresh coordinator for the new game
+    // So we just need to clean up this coordinator instance
+    this.stop();
     
     // Reset the rematch processing flag to allow future rematches
     this.isProcessingRematch = false;
