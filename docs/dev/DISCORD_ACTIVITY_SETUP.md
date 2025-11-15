@@ -40,8 +40,9 @@ The Discord Activity allows players to play Quortex directly within Discord usin
 
 1. Go to **OAuth2** section in your application settings
 2. Copy your **Client ID**
-3. Copy your **Client Secret** (if needed for backend OAuth)
-4. Add redirect URIs:
+3. Copy your **Client Secret**
+4. **For Discord Activity**: No redirect URIs needed (uses client-side auth)
+5. **For regular web multiplayer** (optional): Add redirect URIs:
    - Development: `http://localhost:3001/auth/discord/callback`
    - Production: `https://your-server.com/auth/discord/callback`
 
@@ -50,6 +51,28 @@ The Discord Activity allows players to play Quortex directly within Discord usin
 The Discord Activity requires the following scopes:
 - `identify` - Get Discord user info
 - `guilds` - Verify server membership (optional, for server-specific games)
+
+## Authentication Architecture
+
+This project supports **two different authentication methods** for different use cases:
+
+### Discord Activity Authentication (Client-Side)
+- **Used by**: Discord Activity embedded app (`/discord/`)
+- **Flow**: 
+  1. Client calls Discord SDK's `authorize()` to get code
+  2. Client sends code to backend via `/.proxy/api/token`
+  3. Backend exchanges code for access token
+  4. Client receives access token and calls SDK's `authenticate()`
+- **Benefits**: Works within Discord's iframe, no redirects needed
+- **Backend endpoint**: `/api/token`
+
+### Regular Web Multiplayer Authentication (OAuth Redirect)
+- **Used by**: Regular web multiplayer (`/multiplayer.html`)
+- **Flow**: Traditional OAuth2 redirect flow
+- **Benefits**: Works for standalone web apps outside Discord
+- **Backend endpoints**: `/auth/discord`, `/auth/discord/callback`, `/auth/google`, `/auth/google/callback`
+
+Both flows use the same Discord Client ID and Secret, but Discord Activities use the SDK's client-side method while regular web uses OAuth redirects.
 
 ## Local Development Setup
 
@@ -187,15 +210,22 @@ https://your-domain.com/quortextt/discord/
 - `.env.example` - Added VITE_DISCORD_CLIENT_ID configuration
 - `src/multiplayer/stores/multiplayerStore.ts` - Added userId field and helper methods
 - `package.json` - Added @discord/embedded-app-sdk dependency
+- `server/src/routes/auth.ts` - Added `/api/token` endpoint for Discord Activity auth
+- `server/src/index.ts` - Mounted API routes for Discord Activity compatibility
 
 ### How It Works
 
 1. **Discord Launch**: User clicks "Play Quortex" in Discord Activity shelf
 2. **SDK Initialization**: Discord SDK initializes in the embedded iframe
-3. **Authentication**: App authenticates user via Discord OAuth2
+3. **Client-Side Authentication**: App uses Discord's recommended 3-step flow:
+   - Step 1: SDK calls `authorize()` to get authorization code
+   - Step 2: App exchanges code for access token via `/.proxy/api/token` endpoint
+   - Step 3: SDK calls `authenticate()` with access token to complete auth
 4. **Multiplayer Setup**: User info is stored and WebSocket connection established
 5. **Game Launch**: User joins/creates a game room using existing multiplayer UI
 6. **Gameplay**: Full game runs using existing canvas renderer and game logic
+
+**Note**: Discord Activities use a special `/.proxy` path that Discord automatically routes to your backend server. This is how the client can securely exchange the authorization code for an access token without exposing client secrets.
 
 ### Code Reuse
 
