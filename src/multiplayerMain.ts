@@ -13,7 +13,7 @@ import { positionToKey } from './game/board';
 import { isPlayerBlocked } from './game/legality';
 import { multiplayerStore } from './multiplayer/stores/multiplayerStore';
 import { GameCoordinator } from './multiplayer/gameCoordinator';
-import { setGameMode } from './redux/actions';
+import { setGameMode, resetGame } from './redux/actions';
 
 // Expose store to window for testing
 declare global {
@@ -71,6 +71,10 @@ multiplayerStore.subscribe((state) => {
       if (gameCoordinator) {
         console.log('[multiplayerMain] Cleaning up old coordinator for gameId:', currentGameId);
         gameCoordinator.stop();
+        
+        // Reset the Redux game state when transitioning to a new game
+        console.log('[multiplayerMain] Resetting game state for new game');
+        store.dispatch(resetGame());
       }
       
       console.log('[multiplayerMain] Creating new coordinator for gameId:', state.gameId);
