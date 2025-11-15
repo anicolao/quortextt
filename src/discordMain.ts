@@ -87,12 +87,17 @@ async function initializeDiscordActivity() {
     const authResult = await discordClient.authenticate();
     console.log('[Discord Activity] Authenticated as:', authResult.username);
 
-    // Get Discord channel information
+    // Get Discord channel and instance information
     const { channelId, guildId } = discordClient.getChannelInfo();
-    console.log('[Discord Activity] Channel ID:', channelId, 'Guild ID:', guildId);
+    const instanceId = discordClient.getInstanceId();
+    console.log('[Discord Activity] Channel ID:', channelId, 'Guild ID:', guildId, 'Instance ID:', instanceId);
 
     if (!channelId) {
       throw new Error('Unable to determine Discord channel. Please start the Activity from a text channel.');
+    }
+
+    if (!instanceId) {
+      throw new Error('Unable to determine Discord Activity instance. Please try restarting the Activity.');
     }
 
     // Store Discord user info in multiplayer store
@@ -119,9 +124,10 @@ async function initializeDiscordActivity() {
     // Wait for identification to complete
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Create or join a Discord channel-specific game room
-    const roomName = `Discord: ${guildId ? `Guild ${guildId.slice(-6)}` : 'Activity'} - ${channelId.slice(-6)}`;
-    const roomId = `discord-${channelId}`; // Use channel ID as unique room identifier
+    // Create or join a Discord instance-specific game room
+    // Use instance ID to make each activity launch have its own unique game
+    const roomName = `Discord: ${guildId ? `Guild ${guildId.slice(-6)}` : 'Activity'} - ${instanceId.slice(-6)}`;
+    const roomId = `discord-${instanceId}`; // Use instance ID as unique room identifier per activity launch
 
     // Try to join existing room first
     console.log('[Discord Activity] Looking for existing game room:', roomId);
@@ -131,13 +137,11 @@ async function initializeDiscordActivity() {
     if (existingRoom) {
       console.log('[Discord Activity] Joining existing room:', existingRoom.name);
       socket.joinRoom(roomId);
-      // Set screen to room view - for Discord, we'll skip the room screen and go straight to game
-      multiplayerStore.setScreen('room');
       
-      // If the room has a game already, it will be handled by the game_started event
-      // Otherwise, if we're the first to join, we'll auto-start below
+      // The room has a game already - game_started event will transition to game screen
+      // No need to set screen here, it will be set by the event handler
     } else {
-      // Create new room for this Discord channel with custom room ID
+      // Create new room for this Discord Activity instance with custom room ID
       console.log('[Discord Activity] Creating new room:', roomName);
       const createdRoomId = await socket.createRoom(roomName, 6, authResult.userId, roomId);
       
@@ -147,14 +151,15 @@ async function initializeDiscordActivity() {
       
       // Join the room
       socket.joinRoom(roomId);
-      // Set screen to room view
-      multiplayerStore.setScreen('room');
       
       // Auto-start the game for Discord Activities
       // Wait a moment for the room join to complete
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log('[Discord Activity] Auto-starting game...');
       socket.startGame(roomId);
+      
+      // The game_started event will transition us to the game screen
+      // No need to manually set screen to 'room' here
     }
 
     // Hide loading screen but keep UI hidden initially
