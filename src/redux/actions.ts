@@ -82,6 +82,7 @@ export interface StartGameAction {
     seed?: number;
     supermove?: boolean;
     singleSupermove?: boolean;
+    supermoveAnyPlayer?: boolean;
   };
 }
 
@@ -316,6 +317,7 @@ export const startGame = (params?: {
   seed?: number;
   supermove?: boolean;
   singleSupermove?: boolean;
+  supermoveAnyPlayer?: boolean;
 } | number): StartGameAction => {
   // Handle legacy call with just boardRadius number
   if (typeof params === 'number') {

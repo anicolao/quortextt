@@ -120,6 +120,7 @@ export class LobbyInputHandler {
           boardRadius: state.ui.settings.boardRadius,
           supermove: state.ui.settings.supermove,
           singleSupermove: state.ui.settings.singleSupermove,
+          supermoveAnyPlayer: state.ui.settings.supermoveAnyPlayer,
         }));
         return;
       }

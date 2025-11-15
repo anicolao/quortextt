@@ -522,6 +522,24 @@ export class LobbyRenderer {
     }
     contentY += lineHeight;
 
+    // Supermove Any Player (always shown, but greyed out when supermove is disabled)
+    const supermoveAnyPlayerDisabled = !settings.supermove;
+    this.renderCheckbox(contentX + dialogWidth - 80, contentY, checkboxSize, settings.supermoveAnyPlayer, supermoveAnyPlayerDisabled);
+    this.ctx.fillStyle = supermoveAnyPlayerDisabled ? "#666666" : "#ffffff"; // Grey text when disabled
+    this.ctx.textAlign = "left"; // Ensure left alignment
+    this.ctx.fillText("Supermove Any Player", contentX, contentY + checkboxSize / 2);
+    if (!supermoveAnyPlayerDisabled) {
+      controls.push({
+        type: 'checkbox',
+        x: contentX + dialogWidth - 80,
+        y: contentY,
+        width: checkboxSize,
+        height: checkboxSize,
+        settingKey: 'supermoveAnyPlayer',
+      });
+    }
+    contentY += lineHeight;
+
     // Tile Distribution section
     contentY += 10;
     this.ctx.font = "bold 20px sans-serif";

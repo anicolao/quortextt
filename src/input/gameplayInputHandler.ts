@@ -103,7 +103,8 @@ export class GameplayInputHandler {
             currentPlayer,
             state.game.players,
             state.game.teams,
-            state.game.boardRadius
+            state.game.boardRadius,
+            state.game.supermoveAnyPlayer
           )) {
             // Replacement is not valid
             return;
