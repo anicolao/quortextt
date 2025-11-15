@@ -100,18 +100,6 @@ export class GameCoordinator {
     this.gameId = newGameId;
     this.localActionsProcessed = 0;
     
-    // Clear the old game state from Redux to prepare for the new game
-    // We need to reset to initial state but keep the game screen active
-    this.realOriginalDispatch.call(this.store, {
-      type: 'RESET_GAME'
-    });
-    
-    // Immediately go back to game screen (RESET_GAME sets it to configuration)
-    this.realOriginalDispatch.call(this.store, {
-      type: 'SETUP_GAME',
-      payload: { boardRadius: 3 }  // Will be overwritten by server actions
-    });
-    
     // Update the multiplayer store with the new game ID
     // This will trigger the UI to reinitialize with the new game
     multiplayerStore.setGameId(newGameId);
@@ -121,6 +109,8 @@ export class GameCoordinator {
     socket.joinRoom(newGameId);
     
     // Request actions for the new game
+    // The server will send all actions (SETUP_GAME, START_SEATING_PHASE, SELECT_EDGE, etc.)
+    // which will completely rebuild the Redux state for the new game
     socket.getActions(newGameId);
     
     // After joining, we need to preserve the edge assignments
