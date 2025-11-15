@@ -46,7 +46,7 @@ test.describe('Tile Rendering Tests', () => {
 
   tileTypes.forEach((tileType) => {
     test(`should render ${tileType.name} in all 6 rotations with edge labels`, async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/quortextt/tabletop.html');
       await page.waitForSelector('canvas#game-canvas');
       
       // Set up game once

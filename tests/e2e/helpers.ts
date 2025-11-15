@@ -137,7 +137,7 @@ export async function pauseAnimations(page: any) {
  * @param page - Playwright page object
  */
 export async function setupTwoPlayerGame(page: any) {
-  await page.goto('/');
+  await page.goto('/quortextt/tabletop.html');
   await page.waitForSelector('canvas#game-canvas');
   
   const canvas = page.locator('canvas#game-canvas');

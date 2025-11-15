@@ -44,7 +44,7 @@ async function setupTwoPlayerGame(page: any) {
 
 test.describe('Flow Propagation from Player Edges', () => {
   test('should show correct flows only from player edge hex directions', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Set up game with two players
@@ -90,7 +90,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Now restart and place a tile ON the player's edge
     // Reload page to reset
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     await setupTwoPlayerGame(page);

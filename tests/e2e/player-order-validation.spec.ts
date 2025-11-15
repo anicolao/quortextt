@@ -133,7 +133,7 @@ async function getHexPosition(page: any, row: number, col: number) {
 
 test.describe('Player Order Validation', () => {
   test('6-player game should follow clockwise order from starting player', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');

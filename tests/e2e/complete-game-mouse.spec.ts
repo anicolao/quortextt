@@ -234,7 +234,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       screenshotCounter++;
     };
     
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Get canvas bounding box for mouse clicks

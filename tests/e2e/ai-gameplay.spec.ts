@@ -4,7 +4,7 @@ import { getReduxState, waitForAnimationFrame } from './helpers';
 
 test.describe('AI Gameplay', () => {
   test('should auto-add AI player and play first move', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');
@@ -83,7 +83,7 @@ test.describe('AI Gameplay', () => {
   });
   
   test('should display AI scores with debug mode enabled', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');
@@ -183,7 +183,7 @@ test.describe('AI Gameplay', () => {
   });
   
   test('AI should make moves automatically', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');
@@ -267,7 +267,7 @@ test.describe('AI Gameplay', () => {
   });
   
   test('should not show scores on non-adjacent tiles', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');

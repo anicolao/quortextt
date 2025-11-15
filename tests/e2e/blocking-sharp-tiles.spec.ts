@@ -9,7 +9,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
   // This e2e test attempts to verify it works in the UI, but creating a proper blocking
   // scenario via UI interactions is complex and fragile.
   test.skip('should prevent blocking moves when using only three-sharp tiles', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Add two players
