@@ -248,8 +248,8 @@ export class GameCoordinator {
           console.log('[GameCoordinator] Auto-selecting edge for rematch:', rematchEdge);
           // Import selectEdge action
           import('../redux/actions').then(({ selectEdge }) => {
-            // Post the edge selection action to server
-            socket.postAction(gameId, selectEdge(this.localPlayerId!, rematchEdge));
+            // Dispatch locally - the interceptor will handle broadcasting
+            this.store.dispatch(selectEdge(this.localPlayerId!, rematchEdge));
           });
         }
       }, 1000); // Delay to ensure START_GAME is processed first
