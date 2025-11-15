@@ -96,9 +96,15 @@ export class GameCoordinator {
     // Leave the old game
     socket.leaveRoom(oldGameId);
     
+    // Stop listening to old game
+    this.stop();
+    
     // Update to new game ID
     this.gameId = newGameId;
     this.localActionsProcessed = 0;
+    
+    // Restart listening to new game
+    this.start();
     
     // Update the multiplayer store with the new game ID
     // This will trigger the UI to reinitialize with the new game
