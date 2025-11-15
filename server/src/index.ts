@@ -27,6 +27,8 @@ configurePassport();
 
 // Authentication routes
 app.use('/auth', authRoutes);
+// Also mount under /api for Discord Activity /.proxy compatibility
+app.use('/api', authRoutes);
 
 // Socket.IO server
 const io = new Server(httpServer, {
