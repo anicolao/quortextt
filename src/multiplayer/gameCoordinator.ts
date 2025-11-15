@@ -6,7 +6,7 @@ export class GameCoordinator {
   private store: any; // Redux store
   private gameId: string;
   private localActionsProcessed = 0;
-  private originalDispatch: any = null;
+  private realOriginalDispatch: any = null; // The actual Redux dispatch before interception
   private localPlayerId: string | null = null;
   private isRematchInitiator: boolean = false;
   private isProcessingRematch: boolean = false;
@@ -116,7 +116,9 @@ export class GameCoordinator {
     // that should be broadcast to all clients
     if (!this.store) return;
     
-    this.originalDispatch = this.store.dispatch;
+    // Save the real original dispatch before we replace it
+    this.realOriginalDispatch = this.store.dispatch;
+    
     this.store.dispatch = (action: any) => {
       // Check if this is START_GAME from lobby Play button
       if (action.type === 'START_GAME' && !action.payload?.seed) {
@@ -156,7 +158,7 @@ export class GameCoordinator {
         if (action.type === 'SELECT_EDGE') {
           console.log('[GameCoordinator] Local player selected edge:', action.payload);
           // Store the local player's game ID in the UI state
-          this.originalDispatch.call(this.store, setLocalPlayerId(action.payload.playerId));
+          this.realOriginalDispatch.call(this.store, setLocalPlayerId(action.payload.playerId));
           console.log('[GameCoordinator] Set localPlayerId to:', action.payload.playerId);
           // Also track it in the coordinator for rematch
           this.localPlayerId = action.payload.playerId;
@@ -168,7 +170,7 @@ export class GameCoordinator {
       }
       
       // For other actions (UI, etc.), dispatch normally
-      return this.originalDispatch(action);
+      return this.realOriginalDispatch(action);
     };
   }
 
@@ -271,9 +273,9 @@ export class GameCoordinator {
       return;
     }
     
-    // Dispatch to Redux store using original dispatch to avoid re-interception
-    if (this.store && this.originalDispatch) {
-      this.originalDispatch.call(this.store, {
+    // Dispatch to Redux store using the REAL original dispatch to bypass interception
+    if (this.store && this.realOriginalDispatch) {
+      this.realOriginalDispatch.call(this.store, {
         type: action.type,
         payload: action.payload
       });
@@ -290,10 +292,10 @@ export class GameCoordinator {
     
     console.log(`Syncing ${actions.length} actions`);
     
-    // Replay all actions in order using original dispatch
+    // Replay all actions in order using the REAL original dispatch
     actions.forEach((action: any) => {
-      if (action.sequence >= this.localActionsProcessed && this.store && this.originalDispatch) {
-        this.originalDispatch.call(this.store, {
+      if (action.sequence >= this.localActionsProcessed && this.store && this.realOriginalDispatch) {
+        this.realOriginalDispatch.call(this.store, {
           type: action.type,
           payload: action.payload
         });
@@ -323,8 +325,8 @@ export class GameCoordinator {
     window.removeEventListener('multiplayer:rematch-created', this.boundRematchCreated);
     
     // Restore original dispatch
-    if (this.originalDispatch && this.store) {
-      this.store.dispatch = this.originalDispatch;
+    if (this.realOriginalDispatch && this.store) {
+      this.store.dispatch = this.realOriginalDispatch;
     }
     
     this.localActionsProcessed = 0;
