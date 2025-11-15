@@ -79,6 +79,10 @@ const sessionStorage = new DataStorage(`${dataDir}/sessions`, 'sessions.jsonl');
 // Maps socket.id -> Player info (ephemeral, for current connections)
 const players = new Map<string, Player>();
 
+// Track rematch games - maps new game ID to original game's player list
+// Used to emit game_ready when players rejoin after rematch
+const rematchGames = new Map<string, { players: Array<{ id: string; username: string; playerIndex: number }>, joinedCount: number }>();
+
 // Initialize storage on startup
 async function initializeStorage() {
   await gameStorage.initialize();
@@ -480,6 +484,23 @@ io.on('connection', (socket) => {
           }))
         });
         console.log(`Player ${player.username} rejoined in-progress game ${updatedState!.name}`);
+      } else if (rematchGames.has(roomId)) {
+        // This is a rematch game - emit game_ready to the joining player
+        const rematchInfo = rematchGames.get(roomId)!;
+        rematchInfo.joinedCount++;
+        
+        socket.emit('game_ready', {
+          gameId: roomId,
+          players: rematchInfo.players
+        });
+        
+        console.log(`Player ${player.username} joined rematch game ${updatedState!.name} (${rematchInfo.joinedCount}/${rematchInfo.players.length})`);
+        
+        // If all players have joined, clean up the rematch tracking
+        if (rematchInfo.joinedCount >= rematchInfo.players.length) {
+          console.log(`All players joined rematch game ${roomId}, cleaning up tracking`);
+          rematchGames.delete(roomId);
+        }
       } else {
         console.log(`Player ${player.username} joined room ${updatedState!.name}`);
       }
@@ -670,6 +691,29 @@ io.on('connection', (socket) => {
       
       await gameStorage.createGame(newGameId, newGameName, state.hostId, state.maxPlayers);
       
+      // Add all players from the old game to the new game
+      // This ensures they're already in the game when they join the room
+      for (const oldPlayer of state.players) {
+        const joinAction: GameAction = {
+          type: 'JOIN_GAME',
+          payload: { player: oldPlayer },
+          playerId: oldPlayer.id,
+          timestamp: Date.now(),
+          sequence: 0 // Will be overwritten by storage
+        };
+        await gameStorage.appendAction(newGameId, joinAction);
+      }
+      
+      // Track this rematch game so we can emit game_ready when players join
+      rematchGames.set(newGameId, {
+        players: state.players.map((p, index) => ({
+          id: p.id,
+          username: p.username,
+          playerIndex: index
+        })),
+        joinedCount: 0
+      });
+      
       // Broadcast rematch notification to all players in the old game
       // Each client will handle joining the new game and reselecting their edge
       io.to(gameId).emit('rematch_created', {
@@ -681,7 +725,7 @@ io.on('connection', (socket) => {
         players: state.players.map(p => ({ id: p.id, username: p.username }))
       });
 
-      console.log(`Rematch game ${newGameId} created from ${gameId}`);
+      console.log(`Rematch game ${newGameId} created from ${gameId} with ${state.players.length} players`);
     } catch (error) {
       console.error('Error creating rematch:', error);
       socket.emit('error', { message: 'Failed to create rematch' });
