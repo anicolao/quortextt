@@ -126,6 +126,15 @@ export class DiscordActivityClient {
   }
 
   /**
+   * Get Discord Activity instance ID from URL parameters
+   * This is unique per activity launch
+   */
+  getInstanceId(): string | null {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('instance_id');
+  }
+
+  /**
    * Check if running in a Discord Activity context
    */
   static isDiscordActivity(): boolean {
