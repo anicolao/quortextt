@@ -50,8 +50,16 @@ export class GameCoordinator {
     const state = this.store.getState();
     const edgeAssignments = state.game?.seatingPhase?.edgeAssignments;
     
-    // Get local player ID from UI state
+    // Get local player ID from UI state or coordinator's stored value
     this.localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
+    
+    // If still null, try to infer from the game state
+    // In multiplayer, we should have the localPlayerId from when the player selected their edge
+    // But as a fallback, we can use the first player if available
+    if (!this.localPlayerId && state.game?.players?.length > 0) {
+      console.warn('[GameCoordinator] LocalPlayerId not found, using first player as fallback');
+      this.localPlayerId = state.game.players[0].id;
+    }
     
     if (!this.localPlayerId) {
       console.error('[GameCoordinator] Cannot create rematch: no local player ID');
