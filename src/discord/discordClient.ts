@@ -31,7 +31,8 @@ export class DiscordActivityClient {
   }
 
   /**
-   * Authenticate with Discord using OAuth2 flow
+   * Authenticate with Discord using client-side flow for Discord Activities
+   * This uses the Discord SDK's authorize() → token exchange → authenticate() pattern
    */
   async authenticate(): Promise<DiscordAuthResult> {
     console.log('[Discord Activity] Starting authentication...');
@@ -42,7 +43,7 @@ export class DiscordActivityClient {
         throw new Error('VITE_DISCORD_CLIENT_ID not configured');
       }
 
-      // Request authorization from Discord
+      // Step 1: Request authorization code from Discord
       const { code } = await this.sdk.commands.authorize({
         client_id: clientId,
         response_type: 'code',
@@ -56,10 +57,9 @@ export class DiscordActivityClient {
 
       console.log('[Discord Activity] Authorization code received');
 
-      // Exchange code for access token via backend
-      // Use window.location.origin to ensure absolute URL from domain root
-      const apiUrl = `${window.location.origin}/api/auth/discord`;
-      const response = await fetch(apiUrl, {
+      // Step 2: Exchange code for access token via backend
+      // Use /.proxy path which Discord automatically routes to our backend
+      const response = await fetch('/.proxy/api/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,22 +68,31 @@ export class DiscordActivityClient {
       });
 
       if (!response.ok) {
-        throw new Error(`Authentication failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('[Discord Activity] Token exchange failed:', errorText);
+        throw new Error(`Token exchange failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const { access_token } = await response.json();
+      console.log('[Discord Activity] Access token received');
+
+      // Step 3: Authenticate with Discord client using the access token
+      const auth = await this.sdk.commands.authenticate({
+        access_token,
+      });
+
+      console.log('[Discord Activity] Authentication successful:', auth.user.username);
       
       this.authResult = {
-        token: data.access_token,
-        userId: data.user.id,
-        username: data.user.username,
-        discriminator: data.user.discriminator || '0',
-        avatarUrl: data.user.avatar
-          ? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png`
+        token: access_token,
+        userId: auth.user.id,
+        username: auth.user.username,
+        discriminator: auth.user.discriminator || '0',
+        avatarUrl: auth.user.avatar
+          ? `https://cdn.discordapp.com/avatars/${auth.user.id}/${auth.user.avatar}.png`
           : null,
       };
 
-      console.log('[Discord Activity] Authentication successful:', this.authResult.username);
       return this.authResult;
 
     } catch (error) {
