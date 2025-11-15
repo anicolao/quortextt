@@ -31,13 +31,13 @@ This document specifies the user-facing behavior and high-level technical design
   - Other players see brief "Player temporarily disconnected" indicator
   - No data loss, game continues smoothly
 
-**Scenario 2: Extended Disconnect (30 seconds - 5 minutes)**
+**Scenario 2: Extended Disconnect**
 - User loses connection for longer period (subway tunnel, phone call, etc.)
 - System behavior:
   - Server marks player as "disconnected" but keeps their seat
-  - Game continues if it's not the disconnected player's turn
-  - If it's the disconnected player's turn, game pauses with countdown timer
-  - Other players see "Waiting for [Player Name] to reconnect... (3:45 remaining)"
+  - Game waits indefinitely for the player to reconnect
+  - Other players see "Waiting for [Player Name] to reconnect..."
+  - No timeout - players can wait as long as they want
 - Upon reconnection:
   - User sees list of active games: "Resume Game: [Game Name] - Your turn!"
   - User clicks to rejoin
@@ -48,7 +48,7 @@ This document specifies the user-facing behavior and high-level technical design
 **Scenario 3: App Closure/Browser Closure**
 - User closes app, closes tab, or navigates away
 - Upon returning later:
-  - For authenticated users: Dashboard shows "Active Games" section
+  - Dashboard shows "Active Games" section (for both authenticated and anonymous users via cookies)
   - Each active game shows:
     - Game name
     - Current status (Waiting, Your turn, Opponent's turn)
@@ -57,16 +57,6 @@ This document specifies the user-facing behavior and high-level technical design
   - User clicks "Resume" to rejoin
   - Game loads with full history
   - Play continues normally
-
-**Scenario 4: Game Abandoned by One Player**
-- If a player doesn't reconnect within timeout (5 minutes default):
-  - Other players see options:
-    - "Wait longer (extends timeout by 5 minutes)"
-    - "End game (all players get draw)"
-    - "Replace with AI player (continues game)"
-  - Majority vote determines outcome
-  - Abandoned player can still reconnect to view final state
-  - Abandoned player cannot resume playing after timeout
 
 #### 2.1.2 Authentication Requirements
 
@@ -78,11 +68,11 @@ This document specifies the user-facing behavior and high-level technical design
 - Game history saved to user profile
 
 **Anonymous Users**
-- Player ID tied to socket connection (ephemeral)
-- Can only reconnect from same browser session
-- Lose access to games if browser data cleared
-- Games auto-cleanup after 24 hours of inactivity
-- Warning shown: "Create account to save your games"
+- Player ID stored in persistent cookie (30-day expiry)
+- Can reconnect from same browser even after closing
+- Cookie enables seamless reconnection without login
+- Games auto-cleanup after 30 days of inactivity
+- Can claim anonymous account later to preserve games
 
 ### 2.2 Edge Cases to Handle
 
@@ -173,7 +163,7 @@ This document specifies the user-facing behavior and high-level technical design
      username: string;
      activeGameIds: string[];
      lastSeen: number;
-     connectionState: 'connected' | 'disconnected' | 'abandoned';
+     connectionState: 'connected' | 'disconnected';
      currentSocketId?: string; // Current active socket
      lastKnownState: {
        [gameId: string]: {
@@ -209,39 +199,17 @@ This document specifies the user-facing behavior and high-level technical design
    - Reduces bandwidth for long-running games
 
 2. **Checkpointing**
-   - Server periodically creates state snapshots (every 100 actions)
+   - Server creates state snapshots periodically (every 20-30 actions)
    - Store as `game-{id}.checkpoint-{seq}.json`
    - On reconnect with large gap, load nearest checkpoint + subsequent actions
-   - Faster than replaying thousands of actions
+   - Note: With max ~40 moves per game, this is rarely needed but helpful for spectator replay
 
 3. **Client-Side Replay Queue**
    - Buffer incoming actions during replay
    - Process in correct sequence order
    - Ensure deterministic state reconstruction
 
-#### 2.3.3 Timeout and Cleanup
-
-**Required Implementation:**
-1. **Configurable Timeouts**
-   ```typescript
-   const RECONNECT_TIMEOUTS = {
-     quickDisconnect: 30 * 1000,      // 30 seconds - no warnings
-     extendedDisconnect: 5 * 60 * 1000, // 5 minutes - show waiting message
-     abandonedGame: 15 * 60 * 1000    // 15 minutes - allow game termination
-   };
-   ```
-
-2. **Timeout Actions**
-   - After `extendedDisconnect`: Broadcast waiting message, pause turn timer
-   - After `abandonedGame`: Enable "End game" vote for other players
-   - After vote or unanimous decision: Mark game as finished, allow cleanup
-
-3. **Cleanup Strategy**
-   - Finished games: Move to archive after 7 days
-   - Abandoned games: Move to archive immediately after termination
-   - Anonymous user games: Delete after 24 hours if all players inactive
-
-#### 2.3.4 UI State Management
+#### 2.3.3 UI State Management
 
 **Client-Side Reconnection State:**
 ```typescript
@@ -266,8 +234,7 @@ interface GameSummary {
 1. Connection status indicator (always visible)
 2. "Resume Active Games" screen (on reconnect)
 3. "Player Disconnected" overlay (when opponent disconnects)
-4. "Waiting for player..." modal (with timeout countdown)
-5. "Vote to end game" modal (when timeout exceeded)
+4. "Waiting for player to reconnect..." message
 
 ## 3. Spectator Mode
 
@@ -294,7 +261,6 @@ interface GameSummary {
 
 **Scenario 2: Friend Game Spectating**
 - User receives link to friend's game: `/game/{gameId}/spectate`
-- Link works even if game is "private"
 - Opens game in spectator mode
 - All spectator UI features available
 - Can share link with others
@@ -304,7 +270,7 @@ interface GameSummary {
 - High-level games highlighted
 - Multiple spectators can watch simultaneously
 - Spectator chat available (optional)
-- No limit on spectator count (within reason)
+- No limit on spectator count (reasonable limit: ~100 per game)
 
 **Scenario 4: Post-Game Replay**
 - Finished games can be "watched" as replays
@@ -321,14 +287,13 @@ interface GameSummary {
 - View move history
 - Navigate between past moves (if replay controls enabled)
 - See flow animations and effects
-- Read game chat (if chat system exists)
+- Access help documentation and move list
 - Share spectator link with others
+- Exit to lobby (not to setup screen - players only)
 
 **What Spectators CANNOT Do:**
-- Place tiles or make any game moves
-- Vote on game decisions (end game, pause, etc.)
-- Chat directly with players (separate spectator chat only)
-- See any hidden information (N/A for Quortex, but important for other games)
+- Place tiles or make any game moves (enforced by player ID check)
+- Access setup screen or change game options
 - Disrupt or interfere with gameplay
 - Become a player mid-game (unless slot opens and invited)
 
@@ -342,42 +307,23 @@ interface GameSummary {
   - No longer counted as spectator
 
 **Player → Spectator:**
-- If player leaves game in progress:
-  - Option: "Leave and spectate" vs "Leave completely"
-  - If "Leave and spectate": Becomes spectator, can watch outcome
-  - Player slot may be filled by AI or remain empty
-  - Cannot rejoin as player once abandoned
+- If player clicks exit during game:
+  - Player is taken back to setup screen (can change options)
+  - Can rejoin game as player if desired
+- If player leaves game completely:
+  - Can rejoin as spectator to watch outcome
+  - Cannot rejoin as player
 
-**Disconnected Player as Spectator:**
-- If player is disconnected and timeout occurs:
-  - Player can still rejoin as spectator to see outcome
-  - Marked as "Former player (disconnected)"
-  - Can see final result and download replay
+**Disconnected Player:**
+- Player automatically reconnects to game when connection restored
+- No timeout - game waits indefinitely
+- Can continue playing once reconnected
 
 ### 3.2 Edge Cases to Handle
 
-#### Access Control Edge Cases
-1. **Private Game Spectating**
-   - Game marked as "private" by host
-   - Only players with direct link can spectate
-   - Not listed in public games directory
-   - Solution: Require game access token in spectator link
-
-2. **Spectator Capacity Limits**
-   - Too many spectators could overload server
-   - Solution: Set reasonable limit (e.g., 100 spectators per game)
-   - Show "Game is full (spectators)" if limit reached
-   - Priority to friends/followers
-
-3. **Banned/Blocked Users**
-   - Player has blocked a user who tries to spectate
-   - Solution: Respect player privacy settings
-   - Blocked users see "Cannot access this game"
-   - No indication that they're blocked (privacy)
-
 #### State Synchronization Edge Cases
 1. **Spectator Joins Mid-Game**
-   - Game is 100 moves in
+   - Game is 20+ moves in
    - Solution: Send full action history to spectator
    - Client rebuilds state from history
    - Same as player reconnection logic
@@ -394,6 +340,12 @@ interface GameSummary {
    - Clears local state, reloads from action history
    - Log desync for debugging
 
+4. **Spectator Capacity**
+   - Too many spectators could impact performance
+   - Solution: Set reasonable limit (~100 spectators per game)
+   - Show "Spectator limit reached" if needed
+   - Monitor server performance with many spectators
+
 #### Replay Edge Cases
 1. **Replay of In-Progress Game**
    - User scrubs back in time while game is live
@@ -406,12 +358,6 @@ interface GameSummary {
    - Solution: Show error: "Replay unavailable (data corruption)"
    - Allow download of partial action log
    - Skip corrupted sections if possible
-
-3. **Very Long Games (1000+ moves)**
-   - Replay timeline becomes unwieldy
-   - Solution: Implement "Jump to turn" feature
-   - Show major milestones (first tile by each player, major flow connections)
-   - Pagination or virtualized timeline
 
 ### 3.3 High-Level Technical Design
 
@@ -460,32 +406,46 @@ interface GameRoom {
 
 #### 3.3.2 Action Broadcasting Strategy
 
-**Two Broadcasting Modes:**
+#### 3.3.2 Action Broadcasting Strategy
 
-1. **Player Room** (existing)
-   - All players in the game
-   - Receive game actions with write privileges
-   - Can post actions to the game
+**Single Room Architecture:**
 
-2. **Spectator Room** (new)
-   - All spectators watching the game
-   - Receive same actions as players (read-only)
-   - Cannot post actions
-   - Separate socket.io room: `game-{id}-spectators`
+Both players and spectators are in the same socket.io room (`game-{id}`), receiving the same action events. Access control is enforced at the action submission level rather than the room level.
 
 **Broadcasting Flow:**
 ```typescript
 // When action is posted:
-1. Validate action from player
-2. Append to action log (storage)
-3. Broadcast to player room: io.to(`game-${gameId}`).emit('action_posted', action)
-4. Broadcast to spectator room: io.to(`game-${gameId}-spectators`).emit('action_posted', action)
+1. Validate that posting user is the current active player
+2. If not active player, reject action with error
+3. If valid, append to action log (storage)
+4. Broadcast to entire room: io.to(`game-${gameId}`).emit('action_posted', action)
 ```
 
-**Optimization:**
-- Spectators don't need action acknowledgment
-- Can batch actions for spectators if rate is high
-- No need for optimistic updates for spectators
+**Action Validation:**
+```typescript
+// Server-side validation before accepting action
+async function validateAction(gameId: string, action: Action, playerId: string): boolean {
+  const state = await gameStorage.getGameState(gameId);
+  
+  // Get the current active player
+  const currentPlayerIndex = getCurrentPlayerIndex(state);
+  const activePlayerId = state.players[currentPlayerIndex].id;
+  
+  // Only the active player can post actions
+  if (playerId !== activePlayerId) {
+    return false; // Reject action
+  }
+  
+  return true; // Allow action
+}
+```
+
+**Benefits:**
+- Simpler architecture with single room per game
+- Same events for all participants
+- Spectators naturally cannot post actions (wrong player ID)
+- Players cannot post actions when it's not their turn
+- Fixes existing bug where any player can play any other player's moves
 
 #### 3.3.3 Replay System
 
@@ -519,7 +479,7 @@ interface ReplayController {
 
 **Server-Side Support:**
 - Serve action history via REST API for finished games
-- Cache compiled game states at intervals (every 50 moves)
+- Cache compiled game states at intervals (every 20 moves)
 - Provide metadata: move count, duration, players, outcome
 
 #### 3.3.4 UI Components
@@ -529,7 +489,7 @@ interface ReplayController {
 1. **Spectator Status Bar**
    - "👁️ Spectating: [Game Name]"
    - Spectator count: "15 watching"
-   - "Stop Watching" button
+   - "Exit to Lobby" button (not setup screen)
 
 2. **Player Perspectives Toggle**
    - Tabs for each player's view
@@ -540,13 +500,13 @@ interface ReplayController {
    - Scrollable list of all moves
    - Click to jump to that point in history
    - Filter by player
-   - Search moves
+   - Access help and move list
 
 4. **Replay Controls (for finished games)**
    ```
    [<<] [<] [Play/Pause] [>] [>>]
    ─────●─────────────────────────
-   Move 42 of 156
+   Move 23 of 37
    Speed: [1x ▼]
    ```
 
@@ -571,12 +531,13 @@ interface ReplayController {
    - Enhanced session tracking with connection state
    - Automatic reconnection flow
    - Action replay optimization
+   - Cookie-based persistence for anonymous users
 
-2. **Week 2: Timeout and Cleanup**
-   - Configurable timeout system
-   - Vote to end abandoned games
-   - Cleanup jobs for old games
+2. **Week 2: Infinite Wait Implementation**
+   - Remove timeout system (games wait indefinitely)
+   - Cleanup jobs for old finished games
    - Testing various disconnect scenarios
+   - Handle edge cases (rapid disconnect, simultaneous disconnects)
 
 3. **Week 3: UI and Polish**
    - Resume games screen
@@ -590,14 +551,16 @@ interface ReplayController {
 1. **Week 1-2: Spectator Foundation**
    - Spectator session management
    - Join/leave as spectator
-   - Spectator-specific broadcasting
+   - Single room architecture (players + spectators)
+   - Action validation (only active player can post)
    - Spectator UI basics
 
 2. **Week 3: Spectator Features**
    - Public games list with spectator counts
    - Move history viewer
    - Spectator notifications
-   - Access control (private games)
+   - Help and move list access for spectators
+   - Exit to lobby (not setup) for spectators
 
 3. **Week 4: Testing and Refinement**
    - Load testing with many spectators
@@ -655,13 +618,13 @@ interface ReplayController {
 **End-to-End Tests:**
 - Simulate network disconnect
 - Rapid connect/disconnect cycles
-- Reconnect after various timeouts
+- Reconnect after extended periods
 - Multiple device reconnection
-- Anonymous vs authenticated users
+- Anonymous vs authenticated users (cookie persistence)
 
 **Load Tests:**
 - Many simultaneous reconnections
-- Large action history replay
+- Action history replay (up to ~40 moves)
 - Server restart recovery
 - Database corruption scenarios
 
@@ -669,27 +632,26 @@ interface ReplayController {
 
 **Unit Tests:**
 - Spectator session management
-- Action filtering and broadcasting
-- Access control logic
+- Action validation (active player only)
 - Replay controller
 
 **Integration Tests:**
 - Join/leave spectator flows
-- Spectator room management
+- Single room management (players + spectators)
 - Action synchronization
 - Capacity limits
 
 **End-to-End Tests:**
 - Watch live game as spectator
 - Replay finished game
-- Spectator UI interactions
+- Spectator UI interactions (help, move list)
 - Multiple simultaneous spectators
 - Transition spectator to player
 
 **Load Tests:**
 - 100+ spectators on single game
 - Many concurrent spectated games
-- Replay of very long games
+- Replay of full games (~40 moves)
 - Bandwidth usage with spectators
 
 ## 6. Success Metrics
@@ -698,7 +660,7 @@ interface ReplayController {
 - **Reconnection Success Rate**: > 95% of disconnects successfully rejoin
 - **Reconnection Time**: < 3 seconds average from reconnect to playable state
 - **Data Loss Rate**: 0% - no actions lost in reconnection
-- **Abandoned Game Rate**: < 5% of games end due to timeout
+- **Cookie Persistence**: Anonymous users can reconnect after browser restart
 
 ### Spectator Metrics
 - **Spectator Engagement**: Average watch time > 5 minutes
@@ -723,9 +685,9 @@ interface ReplayController {
 
 ### Future Enhancements
 1. **AI Replacement for Disconnected Players**
-   - Allow AI to take over for timeout players
+   - Allow AI to take over for players who permanently leave
    - AI difficulty matches player's skill level
-   - Player can return to reclaim seat within window
+   - Optional feature for casual games
 
 2. **Spectator Rewards**
    - Earn points for watching featured games
@@ -754,23 +716,25 @@ interface ReplayController {
 
 This design document provides a comprehensive specification for implementing full reconnection support and spectator mode in Quortex multiplayer. The phased approach allows for:
 
-1. **Immediate Value**: Phase 1 completes critical reconnection support
+1. **Immediate Value**: Phase 1 completes critical reconnection support with infinite wait
 2. **Progressive Enhancement**: Spectator mode adds engagement without blocking core gameplay
 3. **Future Flexibility**: Architecture supports advanced features when needed
 4. **User-Centric Design**: All decisions prioritize player experience and reliability
 
 The event sourcing architecture with action logs already in place provides an excellent foundation for both features. The main work involves:
-- Enhanced session management and timeout handling
+- Enhanced session management with cookie-based persistence for anonymous users
+- Infinite wait for disconnected players (no timeout/voting system)
 - Robust reconnection UI and flows
-- Spectator-specific broadcasting and access control
-- Replay system with timeline navigation
+- Single room architecture with action validation (only active player can post)
+- Spectator access to help/move list, exit to lobby (not setup)
+- Replay system with timeline navigation (optimized for ~40 move games)
 
 With these features fully implemented, Quortex multiplayer will provide a robust, professional-grade multiplayer experience suitable for casual play, competitive gaming, and tournament spectating.
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Last Updated:** 2025-11-15  
 **Status:** Design Specification  
-**Authors:** AI Agent (based on TODOS_SUMMARY.md analysis)  
+**Authors:** AI Agent (based on TODOS_SUMMARY.md analysis and user feedback)  
 **Next Steps:** Review and approval, then implementation in phases
