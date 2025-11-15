@@ -233,7 +233,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   console.log(`Loaded ${expectedPlacements.length} expected tile placements`);
   
   // Navigate to the game
-  await page.goto('/');
+  await page.goto('/quortextt/tabletop.html');
   await page.waitForSelector('canvas#game-canvas');
   
   const canvas = page.locator('canvas#game-canvas');

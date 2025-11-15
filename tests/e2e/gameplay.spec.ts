@@ -15,7 +15,7 @@ async function waitForNextFrame(page: any) {
 
 // Helper to setup a game with Purple and Red players (matching end of 001-player-configuration)
 async function setupTwoPlayerGame(page: any) {
-  await page.goto('/');
+  await page.goto('/quortextt/tabletop.html');
   await page.waitForSelector('canvas#game-canvas');
   
   const canvas = page.locator('canvas#game-canvas');
@@ -187,7 +187,7 @@ test.describe('Gameplay Screen Rendering', () => {
 
   // Comprehensive user story test that demonstrates complete tile placement workflow
   test('User Story: Demonstrate gameplay with tile placement, rotation, and confirmation', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');

@@ -74,7 +74,7 @@ async function getStartButtonCoordinates(page: any) {
 
 test.describe('Configuration Screen', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
   });
 

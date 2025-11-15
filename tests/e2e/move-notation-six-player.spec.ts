@@ -28,7 +28,7 @@ test.describe('Move Notation - Six Player Test', () => {
     test.setTimeout(120000); // 120 seconds for 6 players
     
     // === STEP 1: Navigate to the game ===
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     await waitForAnimationFrame(page);
 

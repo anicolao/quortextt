@@ -132,7 +132,7 @@ async function testCompleteGameFromActions(page: any, seed: string) {
   const playerCount = actions.filter(a => a.type === 'ADD_PLAYER').length;
   
   // Navigate to the game
-  await page.goto('/');
+  await page.goto('/quortextt/tabletop.html');
   await page.waitForSelector('canvas#game-canvas');
   
   // Pause animations once at the start

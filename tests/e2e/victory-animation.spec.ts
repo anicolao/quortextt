@@ -5,7 +5,7 @@ import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimation
 
 test.describe('Victory Animation', () => {
   test('should display animated victory modals in all corners with pulsing flow', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     
     // Wait for the page to load
     await page.waitForSelector('canvas#game-canvas');
@@ -91,7 +91,7 @@ test.describe('Victory Animation', () => {
   });
   
   test('should display victory animation for team victory', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Set up a 4-player game (2 teams)

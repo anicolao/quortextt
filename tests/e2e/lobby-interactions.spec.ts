@@ -149,7 +149,7 @@ async function getRemoveButtonCoordinates(page: any, playerIndex: number) {
 
 test.describe('Lobby Mouse Interactions', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
   });
 

@@ -4,7 +4,7 @@ import { getReduxState, waitForAnimationFrame, pauseAnimations } from './helpers
 
 test.describe('AI Player', () => {
   test('should auto-add AI opponent when single player starts game', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Add one player
@@ -40,7 +40,7 @@ test.describe('AI Player', () => {
   });
   
   test('should not add AI when multiple players start game', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Add two players
@@ -68,7 +68,7 @@ test.describe('AI Player', () => {
   });
   
   test('AI should automatically select an edge during seating', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');
@@ -128,7 +128,7 @@ test.describe('AI Player', () => {
   });
   
   test('AI should automatically take turns during gameplay', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');
@@ -214,7 +214,7 @@ test.describe('AI Player', () => {
   });
   
   test('DEBUG_AI_SCORING should show scores without NaN', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // Enable debug AI scoring

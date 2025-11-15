@@ -4,7 +4,7 @@ import { completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from '.
 
 test.describe('Multi-Tile Flow Progression', () => {
   test('should generate screenshots showing correct flow behavior', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');

@@ -9,7 +9,7 @@ test.describe('Move Notation with Rotation', () => {
   test('should display notation for Type 1 tiles placed on edges with sharp corner pointing SE', async ({ page }) => {
     test.setTimeout(60000); // 60 seconds
     
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     const canvas = page.locator('canvas#game-canvas');

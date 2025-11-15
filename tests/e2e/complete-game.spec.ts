@@ -13,7 +13,7 @@ test.describe('Complete 2-Player Game', () => {
     // Increase timeout as deterministic gameplay may take longer
     test.setTimeout(60000); // 60 seconds
     
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
     // === STEP 1: Initial configuration screen ===
