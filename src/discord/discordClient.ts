@@ -116,6 +116,16 @@ export class DiscordActivityClient {
   }
 
   /**
+   * Get Discord channel and guild information
+   */
+  getChannelInfo(): { channelId: string | null; guildId: string | null } {
+    return {
+      channelId: this.sdk.channelId,
+      guildId: this.sdk.guildId,
+    };
+  }
+
+  /**
    * Check if running in a Discord Activity context
    */
   static isDiscordActivity(): boolean {

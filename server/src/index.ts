@@ -241,7 +241,7 @@ app.get('/api/rooms', async (req, res) => {
 
 // Create a new room
 app.post('/api/rooms', async (req, res) => {
-  const { name, maxPlayers, hostId } = req.body;
+  const { name, maxPlayers, hostId, roomId } = req.body;
   
   if (!name || !hostId || !maxPlayers) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -251,11 +251,21 @@ app.post('/api/rooms', async (req, res) => {
     return res.status(400).json({ error: 'maxPlayers must be between 2 and 6' });
   }
 
-  const roomId = uuidv4();
+  // Use custom roomId if provided (for Discord Activities), otherwise generate one
+  const finalRoomId = roomId || uuidv4();
   
   try {
-    await gameStorage.createGame(roomId, name, hostId, maxPlayers);
-    res.json({ room: { id: roomId, name, maxPlayers } });
+    // Check if room already exists (for Discord channel rooms)
+    if (roomId) {
+      const existingState = await gameStorage.getGameState(roomId);
+      if (existingState) {
+        // Room already exists, return it
+        return res.json({ room: { id: roomId, name: existingState.name, maxPlayers: existingState.maxPlayers } });
+      }
+    }
+    
+    await gameStorage.createGame(finalRoomId, name, hostId, maxPlayers);
+    res.json({ room: { id: finalRoomId, name, maxPlayers } });
   } catch (error) {
     console.error('Error creating room:', error);
     res.status(500).json({ error: 'Failed to create room' });
