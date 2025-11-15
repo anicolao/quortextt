@@ -182,12 +182,12 @@ class MultiplayerSocket {
     }
   }
 
-  async createRoom(name: string, maxPlayers: number, hostId: string): Promise<string | null> {
+  async createRoom(name: string, maxPlayers: number, hostId: string, roomId?: string): Promise<string | null> {
     try {
       const response = await fetch(`${this.serverUrl}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, maxPlayers, hostId })
+        body: JSON.stringify({ name, maxPlayers, hostId, roomId })
       });
       const data = await response.json();
       return data.room?.id || null;

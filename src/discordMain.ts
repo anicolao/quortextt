@@ -87,8 +87,15 @@ async function initializeDiscordActivity() {
     const authResult = await discordClient.authenticate();
     console.log('[Discord Activity] Authenticated as:', authResult.username);
 
+    // Get Discord channel information
+    const { channelId, guildId } = discordClient.getChannelInfo();
+    console.log('[Discord Activity] Channel ID:', channelId, 'Guild ID:', guildId);
+
+    if (!channelId) {
+      throw new Error('Unable to determine Discord channel. Please start the Activity from a text channel.');
+    }
+
     // Store Discord user info in multiplayer store
-    // This will be used when connecting to the game server
     const multiplayerState = multiplayerStore.get();
     multiplayerStore.set({
       ...multiplayerState,
@@ -97,8 +104,48 @@ async function initializeDiscordActivity() {
       playerId: authResult.userId, // Use Discord user ID as player ID
     });
 
-    // Hide loading screen and mount Svelte app
+    // Import socket for multiplayer communication
+    const { socket } = await import('./multiplayer/socket');
+
+    // Connect to the multiplayer server
+    await socket.connect();
+    
+    // Identify with the server
+    socket.identify(authResult.username);
+
+    // Wait for identification to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Create or join a Discord channel-specific game room
+    const roomName = `Discord: ${guildId ? `Guild ${guildId.slice(-6)}` : 'Activity'} - ${channelId.slice(-6)}`;
+    const roomId = `discord-${channelId}`; // Use channel ID as unique room identifier
+
+    // Try to join existing room first
+    console.log('[Discord Activity] Looking for existing game room:', roomId);
+    const rooms = await socket.fetchRooms(authResult.userId);
+    const existingRoom = rooms.find(r => r.id === roomId);
+
+    if (existingRoom) {
+      console.log('[Discord Activity] Joining existing room:', existingRoom.name);
+      socket.joinRoom(roomId);
+    } else {
+      // Create new room for this Discord channel with custom room ID
+      console.log('[Discord Activity] Creating new room:', roomName);
+      const createdRoomId = await socket.createRoom(roomName, 6, authResult.userId, roomId);
+      
+      if (!createdRoomId) {
+        throw new Error('Failed to create game room');
+      }
+      
+      // Join the room
+      socket.joinRoom(roomId);
+    }
+
+    // Hide loading screen but keep UI hidden initially
+    // The UI will be shown when we're in the room waiting state
     hideLoading();
+
+    // Mount the Svelte app (will show room screen)
     mount(App, {
       target: multiplayerUiElement as HTMLElement,
     });
