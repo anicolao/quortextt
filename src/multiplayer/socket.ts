@@ -6,6 +6,7 @@ import type { Room, Player } from './stores/multiplayerStore';
 class MultiplayerSocket {
   private socket: Socket | null = null;
   private serverUrl: string;
+  private useDiscordProxy: boolean = false;
 
   constructor() {
     // Use environment variable or auto-detect based on current protocol
@@ -24,6 +25,14 @@ class MultiplayerSocket {
     }
   }
 
+  /**
+   * Enable Discord proxy mode for Discord Activities
+   * This uses Discord's /.proxy path to bypass CSP restrictions
+   */
+  setDiscordProxyMode(enabled: boolean) {
+    this.useDiscordProxy = enabled;
+  }
+
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.socket?.connected) {
@@ -31,7 +40,10 @@ class MultiplayerSocket {
         return;
       }
 
-      this.socket = io(this.serverUrl, {
+      // Use Discord proxy path if in Discord Activity mode
+      const socketUrl = this.useDiscordProxy ? '/.proxy' : this.serverUrl;
+
+      this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
       });
 
@@ -63,7 +75,10 @@ class MultiplayerSocket {
         return;
       }
 
-      this.socket = io(this.serverUrl, {
+      // Use Discord proxy path if in Discord Activity mode
+      const socketUrl = this.useDiscordProxy ? '/.proxy' : this.serverUrl;
+
+      this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         auth: {
           token: token
@@ -168,10 +183,13 @@ class MultiplayerSocket {
 
   async fetchRooms(userId?: string): Promise<Room[]> {
     try {
+      // Use Discord proxy if enabled, otherwise use server URL
+      const baseUrl = this.useDiscordProxy ? '/.proxy' : this.serverUrl;
+      
       // Include userId parameter if provided to get user's active games
       const url = userId 
-        ? `${this.serverUrl}/api/rooms?userId=${encodeURIComponent(userId)}`
-        : `${this.serverUrl}/api/rooms`;
+        ? `${baseUrl}/api/rooms?userId=${encodeURIComponent(userId)}`
+        : `${baseUrl}/api/rooms`;
       
       const response = await fetch(url);
       const data = await response.json();
@@ -184,7 +202,10 @@ class MultiplayerSocket {
 
   async createRoom(name: string, maxPlayers: number, hostId: string, roomId?: string): Promise<string | null> {
     try {
-      const response = await fetch(`${this.serverUrl}/api/rooms`, {
+      // Use Discord proxy if enabled, otherwise use server URL
+      const baseUrl = this.useDiscordProxy ? '/.proxy' : this.serverUrl;
+      
+      const response = await fetch(`${baseUrl}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, maxPlayers, hostId, roomId })
