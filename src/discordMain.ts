@@ -107,7 +107,10 @@ async function initializeDiscordActivity() {
     // Import socket for multiplayer communication
     const { socket } = await import('./multiplayer/socket');
 
-    // Connect to the multiplayer server
+    // Enable Discord proxy mode to bypass CSP restrictions
+    socket.setDiscordProxyMode(true);
+
+    // Connect to the multiplayer server (via Discord proxy)
     await socket.connect();
     
     // Identify with the server
