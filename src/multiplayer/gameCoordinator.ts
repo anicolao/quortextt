@@ -9,10 +9,23 @@ export class GameCoordinator {
   private originalDispatch: any = null;
   private localPlayerId: string | null = null;
   private isRematchInitiator: boolean = false;
+  private isProcessingRematch: boolean = false;
+  
+  // Store bound event handlers so we can properly remove them
+  private boundGameReady: EventListener;
+  private boundActionReceived: EventListener;
+  private boundActionsSync: EventListener;
+  private boundRematchCreated: EventListener;
 
   constructor(reduxStore: any, gameId: string) {
     this.store = reduxStore;
     this.gameId = gameId;
+    
+    // Bind event handlers once
+    this.boundGameReady = this.handleGameReady.bind(this) as EventListener;
+    this.boundActionReceived = this.handleActionReceived.bind(this) as EventListener;
+    this.boundActionsSync = this.handleActionsSync.bind(this) as EventListener;
+    this.boundRematchCreated = this.handleRematchCreated.bind(this) as EventListener;
   }
 
   start() {
@@ -27,6 +40,12 @@ export class GameCoordinator {
   }
 
   private handleRematch() {
+    // Prevent duplicate rematch requests
+    if (this.isProcessingRematch) {
+      console.log('[GameCoordinator] Rematch already in progress, ignoring duplicate request');
+      return;
+    }
+    
     // Get the current game state to extract player edge assignments
     const state = this.store.getState();
     const edgeAssignments = state.game?.seatingPhase?.edgeAssignments;
@@ -40,6 +59,9 @@ export class GameCoordinator {
     }
     
     console.log('[GameCoordinator] Requesting rematch...');
+    
+    // Mark that we're processing a rematch
+    this.isProcessingRematch = true;
     
     // Mark this player as the rematch initiator
     this.isRematchInitiator = true;
@@ -84,6 +106,9 @@ export class GameCoordinator {
         (window as any).__localPlayerRematchEdge = localPlayerEdge;
       }
     }
+    
+    // Reset the rematch processing flag to allow future rematches
+    this.isProcessingRematch = false;
   }
 
   private interceptReduxDispatch() {
@@ -173,16 +198,16 @@ export class GameCoordinator {
 
   private setupEventListeners() {
     // Game ready - initialize game with seed
-    window.addEventListener('multiplayer:game-ready', this.handleGameReady.bind(this) as EventListener);
+    window.addEventListener('multiplayer:game-ready', this.boundGameReady);
     
     // Action received from server - replay it
-    window.addEventListener('multiplayer:action', this.handleActionReceived.bind(this) as EventListener);
+    window.addEventListener('multiplayer:action', this.boundActionReceived);
     
     // Sync all actions (for reconnection)
-    window.addEventListener('multiplayer:actions-sync', this.handleActionsSync.bind(this) as EventListener);
+    window.addEventListener('multiplayer:actions-sync', this.boundActionsSync);
     
     // Rematch created - transition to new game
-    window.addEventListener('multiplayer:rematch-created', this.handleRematchCreated.bind(this) as EventListener);
+    window.addEventListener('multiplayer:rematch-created', this.boundRematchCreated);
   }
 
   private handleGameReady(event: Event) {
@@ -290,10 +315,10 @@ export class GameCoordinator {
   }
 
   private cleanup() {
-    window.removeEventListener('multiplayer:game-ready', this.handleGameReady.bind(this) as EventListener);
-    window.removeEventListener('multiplayer:action', this.handleActionReceived.bind(this) as EventListener);
-    window.removeEventListener('multiplayer:actions-sync', this.handleActionsSync.bind(this) as EventListener);
-    window.removeEventListener('multiplayer:rematch-created', this.handleRematchCreated.bind(this) as EventListener);
+    window.removeEventListener('multiplayer:game-ready', this.boundGameReady);
+    window.removeEventListener('multiplayer:action', this.boundActionReceived);
+    window.removeEventListener('multiplayer:actions-sync', this.boundActionsSync);
+    window.removeEventListener('multiplayer:rematch-created', this.boundRematchCreated);
     
     // Restore original dispatch
     if (this.originalDispatch && this.store) {
