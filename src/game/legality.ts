@@ -615,10 +615,29 @@ export function wouldReplacementUnblock(
   return !isPlayerBlocked(testBoard, player, players, teams, boardRadius);
 }
 
+// Check if replacing a tile would unblock ANY player
+// Used when supermoveAnyPlayer option is enabled
+export function wouldReplacementUnblockAnyPlayer(
+  board: Map<string, PlacedTile>,
+  replacementPosition: HexPosition,
+  newTile: PlacedTile,
+  players: Player[],
+  teams: Team[],
+  boardRadius: number
+): boolean {
+  // Check if this replacement would unblock any player
+  for (const player of players) {
+    if (wouldReplacementUnblock(board, replacementPosition, newTile, player, players, teams, boardRadius)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Check if a replacement move is valid for supermove
 // A replacement is valid if:
-// 1. The player is currently blocked
-// 2. The replacement would unblock them
+// 1. With supermoveAnyPlayer=false: The player is currently blocked AND the replacement would unblock them
+// 2. With supermoveAnyPlayer=true: The replacement would unblock ANY player (not necessarily the current player)
 // 3. The new tile being placed at the replacement position is valid
 export function isValidReplacementMove(
   board: Map<string, PlacedTile>,
@@ -628,17 +647,13 @@ export function isValidReplacementMove(
   currentPlayer: Player,
   players: Player[],
   teams: Team[],
-  boardRadius: number
+  boardRadius: number,
+  supermoveAnyPlayer: boolean = false
 ): boolean {
   const posKey = positionToKey(replacementPosition);
   
   // Position must be occupied
   if (!board.has(posKey)) {
-    return false;
-  }
-  
-  // Player must be blocked
-  if (!isPlayerBlocked(board, currentPlayer, players, teams, boardRadius)) {
     return false;
   }
   
@@ -649,6 +664,17 @@ export function isValidReplacementMove(
     position: replacementPosition,
   };
   
-  // Check if this replacement would unblock the player
-  return wouldReplacementUnblock(board, replacementPosition, newTile, currentPlayer, players, teams, boardRadius);
+  if (supermoveAnyPlayer) {
+    // With supermoveAnyPlayer enabled, check if replacement unblocks ANY player
+    // This allows any player to make a supermove as long as they unblock someone
+    return wouldReplacementUnblockAnyPlayer(board, replacementPosition, newTile, players, teams, boardRadius);
+  } else {
+    // Original behavior: current player must be blocked and replacement must unblock them
+    if (!isPlayerBlocked(board, currentPlayer, players, teams, boardRadius)) {
+      return false;
+    }
+    
+    // Check if this replacement would unblock the player
+    return wouldReplacementUnblock(board, replacementPosition, newTile, currentPlayer, players, teams, boardRadius);
+  }
 }

@@ -68,6 +68,7 @@ export interface GameState {
   // Game rules (copied from UI settings when game starts)
   supermove: boolean;              // Whether supermove is enabled for this game
   singleSupermove: boolean;        // If true with supermove, replaced tile returns to bag
+  supermoveAnyPlayer: boolean;     // If true with supermove, any player can supermove to unblock any player
   
   // Supermove state
   supermoveInProgress: boolean;    // True when player has replaced a tile and needs to place it
@@ -96,6 +97,7 @@ export interface GameSettings {
   boardRadius: number;
   supermove: boolean;
   singleSupermove: boolean; // If true with supermove, replaced tile returns to bag and turn passes to next player
+  supermoveAnyPlayer: boolean; // If true with supermove, any player can supermove to unblock any other player
   debugShowEdgeLabels: boolean;
   debugShowVictoryEdges: boolean;
   debugLegalityTest: boolean;

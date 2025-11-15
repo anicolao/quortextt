@@ -54,6 +54,7 @@ export const initialState: GameState = {
   moveHistory: [],
   supermove: true,  // Default to true
   singleSupermove: false,  // Default to false
+  supermoveAnyPlayer: false,  // Default to false
   supermoveInProgress: false,
   lastPlacedTilePosition: null,
 };
@@ -361,6 +362,7 @@ export function gameReducer(
         seed, // Store seed for later use when shuffling tiles
         supermove: action.payload?.supermove ?? state.supermove,
         singleSupermove: action.payload?.singleSupermove ?? state.singleSupermove,
+        supermoveAnyPlayer: action.payload?.supermoveAnyPlayer ?? state.supermoveAnyPlayer,
         seatingPhase: {
           active: true,
           seatingOrder,

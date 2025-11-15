@@ -43,6 +43,7 @@ export const initialUIState: UIState = {
     boardRadius: 3,
     supermove: true,
     singleSupermove: true,
+    supermoveAnyPlayer: false,
     debugShowEdgeLabels: false,
     debugShowVictoryEdges: false,
     debugLegalityTest: false,
