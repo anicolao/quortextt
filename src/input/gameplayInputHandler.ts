@@ -70,7 +70,7 @@ export class GameplayInputHandler {
     if (state.ui.selectedPosition) {
       // Check for button clicks when tile is placed on board
       const tileCenter = hexToPixel(state.ui.selectedPosition, layout);
-      const buttonSize = layout.size * 0.8;
+      const buttonSize = layout.size * 0.8 * 1.5; // 1.5x larger radius to match visual size
       const buttonSpacing = layout.size * 2;
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
@@ -170,7 +170,7 @@ export class GameplayInputHandler {
       }
       
       // Check rotation buttons
-      const rotationButtonSize = buttonSize * 0.6;
+      const rotationButtonSize = buttonSize * 0.6 * 1.5; // 1.5x larger size to match visual size
       const distToRotateNE = Math.sqrt(
         Math.pow(x - buttonPositions.rotateNE.x, 2) + 
         Math.pow(y - buttonPositions.rotateNE.y, 2)
@@ -519,7 +519,7 @@ export class GameplayInputHandler {
     if (state.ui.selectedPosition) {
       // Check for button hovers when tile is placed on board
       const tileCenter = hexToPixel(state.ui.selectedPosition, layout);
-      const buttonSize = layout.size * 0.8;
+      const buttonSize = layout.size * 0.8 * 1.5; // 1.5x larger radius to match visual size
       const buttonSpacing = layout.size * 2;
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
@@ -532,7 +532,7 @@ export class GameplayInputHandler {
       );
       
       // Check rotation buttons first (smaller)
-      const rotationButtonSize = buttonSize * 0.6;
+      const rotationButtonSize = buttonSize * 0.6 * 1.5; // 1.5x larger size to match visual size
       const distToRotateNE = Math.sqrt(
         Math.pow(x - buttonPositions.rotateNE.x, 2) + 
         Math.pow(y - buttonPositions.rotateNE.y, 2)
