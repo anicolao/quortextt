@@ -1321,8 +1321,24 @@ export class GameplayRenderer {
 
       this.renderTile(tile, state, 0.7); // 70% opacity
 
-      // TODO: Add red border if illegal placement
-      // TODO: Show checkmark and X buttons
+      // Add red border if illegal placement
+      const isLegal = isLegalMove(
+        state.game.board,
+        tile,
+        state.game.players,
+        state.game.teams,
+        state.game.boardRadius,
+        state.game.supermove,
+      );
+
+      if (!isLegal) {
+        const center = hexToPixel(state.ui.selectedPosition, this.layout);
+        this.ctx.save();
+        this.ctx.strokeStyle = "#FF0000"; // Red
+        this.ctx.lineWidth = 2;
+        this.drawHexagon(center, this.layout.size, false);
+        this.ctx.restore();
+      }
     } else {
       // Render tile by player's edge (beyond the board edge)
       const edgePos = getPlayerEdgePosition(
@@ -1373,7 +1389,7 @@ export class GameplayRenderer {
 
     // Calculate button positions relative to selected hex
     const center = hexToPixel(state.ui.selectedPosition, this.layout);
-    const buttonSize = this.layout.size * 0.8;
+    const buttonSize = this.layout.size * 0.8 * 1.5; // 1.5x larger radius
     const buttonSpacing = this.layout.size * 2;
 
     // Check if the move is legal
@@ -1471,13 +1487,13 @@ export class GameplayRenderer {
     // Rotation buttons at NE and NW corners
     this.renderRotationButton(
       buttonPositions.rotateNE,
-      buttonSize * 0.6,
+      buttonSize * 0.6 * 1.5, // 1.5x larger size
       true,
       playerEdge,
     );
     this.renderRotationButton(
       buttonPositions.rotateNW,
-      buttonSize * 0.6,
+      buttonSize * 0.6 * 1.5, // 1.5x larger size
       false,
       playerEdge,
     );
