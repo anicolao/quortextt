@@ -344,12 +344,9 @@ io.on('connection', (socket) => {
       const existingPlayer = state.players.find(p => p.id === player.id);
       const isRejoining = existingPlayer !== undefined;
 
-      // Allow rejoining in-progress games, but don't allow new players to join
-      if (!isRejoining && state.status !== 'waiting') {
-        socket.emit('error', { message: 'Room is not accepting new players' });
-        return;
-      }
-
+      // Allow joining in-progress games (both new and rejoining players)
+      // Players can join during setup phase or as spectators later
+      
       if (!isRejoining && state.players.length >= state.maxPlayers) {
         socket.emit('error', { message: 'Room is full' });
         return;
