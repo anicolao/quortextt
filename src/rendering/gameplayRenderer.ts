@@ -1995,8 +1995,12 @@ export class GameplayRenderer {
       "Game Rules:",
       "• Connect your edge to the opposite edge",
       "• Place tiles to build flowing paths",
-      "• Each tile must keep paths open for all players",
     ];
+    
+    // Only show "must keep paths open" rule when supermove is disabled
+    if (!settings.supermove) {
+      helpLines.push("• Each tile must keep paths open for all players");
+    }
 
     // Add supermove rule if enabled
     if (settings.supermove) {
@@ -2005,15 +2009,20 @@ export class GameplayRenderer {
         ? "any player may replace a tile"
         : "a blocked player may replace a tile";
       
+      // Determine who gets unblocked
+      const whoGetsUnblocked = settings.supermoveAnyPlayer
+        ? "unblock someone"
+        : "unblock themselves";
+      
       // Determine what happens with the tile
       if (settings.singleSupermove) {
         helpLines.push(`• If a player is blocked, ${whoCanSupermove}`);
-        helpLines.push("  on the board to unblock someone and");
+        helpLines.push(`  on the board to ${whoGetsUnblocked} and`);
         helpLines.push("  return it to the bag");
       } else {
         helpLines.push(`• If a player is blocked, ${whoCanSupermove}`);
-        helpLines.push("  on the board to unblock someone and");
-        helpLines.push("  place that tile in one turn");
+        helpLines.push(`  on the board to ${whoGetsUnblocked} and also`);
+        helpLines.push("  play the replaced tile in the same turn");
       }
     }
 
