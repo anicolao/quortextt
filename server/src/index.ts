@@ -272,6 +272,43 @@ app.post('/api/rooms', async (req, res) => {
   }
 });
 
+// Create a rematch game (new game with same players and settings)
+app.post('/api/rooms/:roomId/rematch', async (req, res) => {
+  const { roomId } = req.params;
+  const { playerId } = req.body;
+  
+  if (!playerId) {
+    return res.status(400).json({ error: 'Missing playerId' });
+  }
+  
+  try {
+    const currentState = await gameStorage.getGameState(roomId);
+    
+    if (!currentState) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    
+    // Create a new game with the same settings
+    const newGameId = uuidv4();
+    const newGameName = `${currentState.name} (Rematch)`;
+    
+    await gameStorage.createGame(newGameId, newGameName, currentState.hostId, currentState.maxPlayers);
+    
+    // Return the new game information
+    res.json({ 
+      newGameId,
+      oldGameId: roomId,
+      name: newGameName,
+      maxPlayers: currentState.maxPlayers,
+      hostId: currentState.hostId,
+      players: currentState.players.map(p => ({ id: p.id, username: p.username }))
+    });
+  } catch (error) {
+    console.error('Error creating rematch:', error);
+    res.status(500).json({ error: 'Failed to create rematch' });
+  }
+});
+
 // Get user's active games (for reconnection)
 app.get('/api/users/:userId/games', async (req, res) => {
   const { userId } = req.params;
@@ -607,6 +644,47 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error getting actions:', error);
       socket.emit('error', { message: 'Failed to get actions' });
+    }
+  });
+
+  // Request a rematch (create new game with same players)
+  socket.on('request_rematch', async (data: { gameId: string }) => {
+    const { gameId } = data;
+    const player = players.get(socket.id);
+
+    if (!player) {
+      socket.emit('error', { message: 'Player not identified' });
+      return;
+    }
+
+    try {
+      const state = await gameStorage.getGameState(gameId);
+      if (!state) {
+        socket.emit('error', { message: 'Game not found' });
+        return;
+      }
+
+      // Create a new game with the same settings
+      const newGameId = uuidv4();
+      const newGameName = `${state.name} (Rematch)`;
+      
+      await gameStorage.createGame(newGameId, newGameName, state.hostId, state.maxPlayers);
+      
+      // Broadcast rematch notification to all players in the old game
+      // Each client will handle joining the new game and reselecting their edge
+      io.to(gameId).emit('rematch_created', {
+        newGameId,
+        oldGameId: gameId,
+        name: newGameName,
+        maxPlayers: state.maxPlayers,
+        hostId: state.hostId,
+        players: state.players.map(p => ({ id: p.id, username: p.username }))
+      });
+
+      console.log(`Rematch game ${newGameId} created from ${gameId}`);
+    } catch (error) {
+      console.error('Error creating rematch:', error);
+      socket.emit('error', { message: 'Failed to create rematch' });
     }
   });
 

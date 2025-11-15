@@ -175,6 +175,23 @@ class MultiplayerSocket {
       }));
     });
 
+    // Rematch created - server notifies all players
+    this.socket.on('rematch_created', (data: {
+      newGameId: string;
+      oldGameId: string;
+      name: string;
+      maxPlayers: number;
+      hostId: string;
+      players: Array<{ id: string; username: string }>;
+    }) => {
+      console.log('Rematch created:', data.newGameId);
+      
+      // Broadcast rematch event to the game coordinator
+      window.dispatchEvent(new CustomEvent('multiplayer:rematch-created', {
+        detail: data
+      }));
+    });
+
     // Error handling
     this.socket.on('error', (data: { message: string }) => {
       console.error('Server error:', data.message);
@@ -248,6 +265,11 @@ class MultiplayerSocket {
   getActions(gameId: string) {
     if (!this.socket) return;
     this.socket.emit('get_actions', { gameId });
+  }
+
+  requestRematch(gameId: string) {
+    if (!this.socket) return;
+    this.socket.emit('request_rematch', { gameId });
   }
 
   disconnect() {
