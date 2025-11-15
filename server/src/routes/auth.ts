@@ -297,6 +297,59 @@ router.post('/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
+// Discord Activity token exchange endpoint
+// This endpoint is accessed via Discord's /.proxy path from embedded activities
+router.post('/api/token', authLimiter, async (req, res) => {
+  const { code } = req.body;
+  
+  if (!code) {
+    return res.status(400).json({ error: 'Authorization code required' });
+  }
+
+  try {
+    const clientId = process.env.DISCORD_CLIENT_ID;
+    const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.error('Discord OAuth credentials not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'authorization_code',
+        code: code,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('Discord token exchange failed:', errorText);
+      return res.status(tokenResponse.status).json({ 
+        error: 'Failed to exchange authorization code' 
+      });
+    }
+
+    const tokens = await tokenResponse.json() as { access_token: string };
+    
+    // Return the access token to the client
+    // The Discord SDK will use this to call authenticate()
+    res.json({
+      access_token: tokens.access_token,
+    });
+  } catch (error) {
+    console.error('Error in Discord Activity token exchange:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Error page redirect
 router.get('/error', (req, res) => {
   res.status(401).json({ 

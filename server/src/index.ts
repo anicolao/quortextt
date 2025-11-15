@@ -30,6 +30,8 @@ configurePassport();
 
 // Authentication routes
 app.use('/auth', authRoutes);
+// Also mount under /api for Discord Activity /.proxy compatibility
+app.use('/api', authRoutes);
 
 // Profile routes
 app.use('/api/profile', profileRoutes);
