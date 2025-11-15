@@ -40,12 +40,13 @@ class MultiplayerSocket {
         return;
       }
 
-      // Use Discord proxy path if in Discord Activity mode
-      const socketUrl = this.useDiscordProxy ? '/.proxy' : this.serverUrl;
+      // When using Discord proxy, we need to connect to the current origin
+      // and specify the full proxy path for Socket.IO
+      const socketUrl = this.useDiscordProxy ? window.location.origin : this.serverUrl;
 
       this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
-        // Specify the Socket.IO path explicitly to work with Discord proxy
+        // Specify the Socket.IO path - for Discord proxy, use the full proxy path
         path: this.useDiscordProxy ? '/.proxy/socket.io' : '/socket.io',
       });
 
@@ -77,12 +78,13 @@ class MultiplayerSocket {
         return;
       }
 
-      // Use Discord proxy path if in Discord Activity mode
-      const socketUrl = this.useDiscordProxy ? '/.proxy' : this.serverUrl;
+      // When using Discord proxy, we need to connect to the current origin
+      // and specify the full proxy path for Socket.IO
+      const socketUrl = this.useDiscordProxy ? window.location.origin : this.serverUrl;
 
       this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
-        // Specify the Socket.IO path explicitly to work with Discord proxy
+        // Specify the Socket.IO path - for Discord proxy, use the full proxy path
         path: this.useDiscordProxy ? '/.proxy/socket.io' : '/socket.io',
         auth: {
           token: token
