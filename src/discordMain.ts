@@ -131,8 +131,11 @@ async function initializeDiscordActivity() {
     if (existingRoom) {
       console.log('[Discord Activity] Joining existing room:', existingRoom.name);
       socket.joinRoom(roomId);
-      // Set screen to room view
+      // Set screen to room view - for Discord, we'll skip the room screen and go straight to game
       multiplayerStore.setScreen('room');
+      
+      // If the room has a game already, it will be handled by the game_started event
+      // Otherwise, if we're the first to join, we'll auto-start below
     } else {
       // Create new room for this Discord channel with custom room ID
       console.log('[Discord Activity] Creating new room:', roomName);
@@ -146,6 +149,12 @@ async function initializeDiscordActivity() {
       socket.joinRoom(roomId);
       // Set screen to room view
       multiplayerStore.setScreen('room');
+      
+      // Auto-start the game for Discord Activities
+      // Wait a moment for the room join to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[Discord Activity] Auto-starting game...');
+      socket.startGame(roomId);
     }
 
     // Hide loading screen but keep UI hidden initially
