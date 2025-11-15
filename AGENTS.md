@@ -76,6 +76,7 @@ This document provides essential guidelines for AI agents working on the Quortex
 - TypeScript strict mode is enabled
 - All game logic must have unit tests
 - UI changes require E2E tests with screenshots
+- **CRITICAL**: When making visual changes to the UI (rendering, colors, layouts, backgrounds, etc.), you **MUST** regenerate all E2E screenshots by running `npm run test:e2e`. Do not skip this step.
 - Code should be self-documenting with clear naming
 - Add JSDoc comments for exported functions
 
