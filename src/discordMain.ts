@@ -131,6 +131,8 @@ async function initializeDiscordActivity() {
     if (existingRoom) {
       console.log('[Discord Activity] Joining existing room:', existingRoom.name);
       socket.joinRoom(roomId);
+      // Set screen to room view
+      multiplayerStore.setScreen('room');
     } else {
       // Create new room for this Discord channel with custom room ID
       console.log('[Discord Activity] Creating new room:', roomName);
@@ -142,6 +144,8 @@ async function initializeDiscordActivity() {
       
       // Join the room
       socket.joinRoom(roomId);
+      // Set screen to room view
+      multiplayerStore.setScreen('room');
     }
 
     // Hide loading screen but keep UI hidden initially
