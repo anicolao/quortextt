@@ -34,6 +34,7 @@ import {
 } from "../game/legality";
 import { drawCircularArrow } from "./circularArrow";
 import { formatMoveHistory } from "../game/notation";
+import cherryImageUrl from "../../assets/cherry.jpg";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -47,6 +48,9 @@ export class GameplayRenderer {
   private layout: HexLayout;
   private bezierLengthCache: Map<string, number> = new Map();
   private boardRadius: number;
+  private woodBackgroundCanvas: HTMLCanvasElement | null = null;
+  private woodImage: HTMLImageElement | null = null;
+  private woodImageLoaded: boolean = false;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -57,6 +61,7 @@ export class GameplayRenderer {
     this.ctx = ctx;
     this.boardRadius = boardRadius;
     this.layout = calculateHexLayout(canvasWidth, canvasHeight, boardRadius);
+    this.loadWoodTexture();
   }
 
   updateLayout(canvasWidth: number, canvasHeight: number): void {
@@ -67,6 +72,72 @@ export class GameplayRenderer {
     );
     // Clear cache when layout changes
     this.bezierLengthCache.clear();
+    // Regenerate wood background for new canvas size
+    this.woodBackgroundCanvas = null;
+  }
+
+  private loadWoodTexture(): void {
+    this.woodImage = new Image();
+    this.woodImage.onload = () => {
+      this.woodImageLoaded = true;
+      // Clear cached background so it regenerates with the loaded image
+      this.woodBackgroundCanvas = null;
+    };
+    this.woodImage.src = cherryImageUrl;
+  }
+
+  private createWoodBackground(): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = this.layout.canvasWidth;
+    canvas.height = this.layout.canvasHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx || !this.woodImage || !this.woodImageLoaded) {
+      // Fallback to solid color if image not loaded
+      if (ctx) {
+        ctx.fillStyle = CANVAS_BG;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      return canvas;
+    }
+
+    // Create laminated board effect by slicing the image into horizontal boards
+    // to match the grain direction in the cherry wood image
+    const boardHeight = 120; // Height of each board in pixels
+    const numBoards = Math.ceil(canvas.height / boardHeight) + 1;
+    
+    // Calculate how many horizontal slices we can get from the source image
+    const sourceWidth = this.woodImage.width;
+    const sourceHeight = this.woodImage.height;
+    const sliceHeight = Math.floor(sourceHeight / 8); // Divide source into ~8 slices
+    
+    // Draw each board
+    for (let i = 0; i < numBoards; i++) {
+      const y = i * boardHeight;
+      
+      // Vary which slice of the source image we use for visual variety
+      const sliceIndex = i % 8;
+      const sourceY = sliceIndex * sliceHeight;
+      
+      // Draw the slice stretched to fill the board width and height
+      ctx.drawImage(
+        this.woodImage,
+        0, sourceY, sourceWidth, sliceHeight,  // Source rectangle
+        0, y, canvas.width, boardHeight        // Destination rectangle
+      );
+      
+      // Draw subtle board edge line for laminate effect
+      if (i > 0) {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+    
+    return canvas;
   }
 
   render(state: RootState): void {
@@ -190,8 +261,16 @@ export class GameplayRenderer {
   }
 
   private renderBackground(): void {
-    this.ctx.fillStyle = CANVAS_BG;
-    this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
+    // Regenerate background if image just loaded and we don't have a proper wood background yet
+    if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
+      this.woodBackgroundCanvas = this.createWoodBackground();
+    } else if (!this.woodBackgroundCanvas) {
+      // Create initial background (will be gray until image loads)
+      this.woodBackgroundCanvas = this.createWoodBackground();
+    }
+    
+    // Draw the wood background
+    this.ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
   }
 
   private renderBoardHexagon(state: RootState): void {
