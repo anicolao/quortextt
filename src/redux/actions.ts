@@ -57,6 +57,7 @@ export interface AddPlayerAction {
     color?: string;
     edge?: number; // 0=bottom, 1=right, 2=top, 3=left
     isAI?: boolean; // Whether this is an AI player
+    playerId?: string; // Optional: use specific playerId (for rematch in multiplayer)
   };
 }
 
@@ -294,9 +295,9 @@ export type UIAction =
   | NavigateMoveListAction;
 
 // Configuration action creators
-export const addPlayer = (color: string, edge: number): AddPlayerAction => ({
+export const addPlayer = (color: string, edge: number, playerId?: string): AddPlayerAction => ({
   type: ADD_PLAYER,
-  payload: { color, edge },
+  payload: { color, edge, playerId },
 });
 
 export const removePlayer = (playerId: string): RemovePlayerAction => ({

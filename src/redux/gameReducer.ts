@@ -251,7 +251,7 @@ export function gameReducer(
       }
 
       const newPlayer: ConfigPlayer = {
-        id: generatePlayerId(),
+        id: payload.playerId || generatePlayerId(), // Use provided playerId or generate new one
         color,
         edge: edge as 0 | 1 | 2 | 3,
         isAI,
