@@ -1,6 +1,7 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
 import { setLocalPlayerId } from '../redux/actions';
+import { multiplayerStore } from './stores/multiplayerStore';
 
 export class GameCoordinator {
   private store: any; // Redux store
@@ -98,6 +99,11 @@ export class GameCoordinator {
     // Update to new game ID
     this.gameId = newGameId;
     this.localActionsProcessed = 0;
+    
+    // Update the multiplayer store with the new game ID
+    // This will trigger the UI to reinitialize with the new game
+    multiplayerStore.setGameId(newGameId);
+    console.log('[GameCoordinator] Updated multiplayerStore with new gameId:', newGameId);
     
     // Join the new game
     socket.joinRoom(newGameId);
