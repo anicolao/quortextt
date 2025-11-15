@@ -147,19 +147,21 @@ export class GameCoordinator {
         return;
       }
       
-      // Check if this is SELECT_EDGE from the local player
-      if (action.type === 'SELECT_EDGE') {
-        console.log('[GameCoordinator] Local player selected edge:', action.payload);
-        // Store the local player's game ID in the UI state
-        this.originalDispatch.call(this.store, setLocalPlayerId(action.payload.playerId));
-        console.log('[GameCoordinator] Set localPlayerId to:', action.payload.playerId);
-        // Also track it in the coordinator for rematch
-        this.localPlayerId = action.payload.playerId;
-      }
-      
       // Check if this is a player action that should be broadcast
       if (this.shouldBroadcastAction(action.type)) {
         console.log(`Broadcasting action: ${action.type}`);
+        
+        // Special handling for SELECT_EDGE from the local player
+        // Track the local player ID before broadcasting
+        if (action.type === 'SELECT_EDGE') {
+          console.log('[GameCoordinator] Local player selected edge:', action.payload);
+          // Store the local player's game ID in the UI state
+          this.originalDispatch.call(this.store, setLocalPlayerId(action.payload.playerId));
+          console.log('[GameCoordinator] Set localPlayerId to:', action.payload.playerId);
+          // Also track it in the coordinator for rematch
+          this.localPlayerId = action.payload.playerId;
+        }
+        
         socket.postAction(this.gameId, action);
         // Don't dispatch locally - wait for server broadcast
         return;
