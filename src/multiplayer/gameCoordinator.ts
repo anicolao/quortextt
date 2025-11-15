@@ -7,6 +7,7 @@ export class GameCoordinator {
   private gameId: string;
   private localActionsProcessed = 0;
   private originalDispatch: any = null;
+  private localPlayerId: string | null = null;
 
   constructor(reduxStore: any, gameId: string) {
     this.store = reduxStore;
@@ -22,6 +23,63 @@ export class GameCoordinator {
 
   stop() {
     this.cleanup();
+  }
+
+  private handleRematch() {
+    // Get the current game state to extract player edge assignments
+    const state = this.store.getState();
+    const edgeAssignments = state.game?.seatingPhase?.edgeAssignments;
+    
+    // Get local player ID from UI state
+    this.localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
+    
+    if (!this.localPlayerId) {
+      console.error('[GameCoordinator] Cannot create rematch: no local player ID');
+      return;
+    }
+    
+    console.log('[GameCoordinator] Requesting rematch...');
+    
+    // Store edge assignments for later use
+    if (edgeAssignments) {
+      (window as any).__rematchEdgeAssignments = new Map(edgeAssignments);
+    }
+    
+    // Request rematch via socket (server will broadcast to all players)
+    socket.requestRematch(this.gameId);
+  }
+
+  private handleRematchCreated(event: Event) {
+    const customEvent = event as CustomEvent;
+    const { newGameId, oldGameId } = customEvent.detail;
+    
+    console.log('[GameCoordinator] Rematch created, transitioning from', oldGameId, 'to', newGameId);
+    
+    // Get stored edge assignments
+    const edgeAssignments = (window as any).__rematchEdgeAssignments as Map<string, number> | undefined;
+    
+    // Leave the old game
+    socket.leaveRoom(oldGameId);
+    
+    // Update to new game ID
+    this.gameId = newGameId;
+    this.localActionsProcessed = 0;
+    
+    // Join the new game
+    socket.joinRoom(newGameId);
+    
+    // Request actions for the new game
+    socket.getActions(newGameId);
+    
+    // After joining, we need to preserve the edge assignments
+    // Store them so we can reapply when it's time to select edges
+    if (edgeAssignments && this.localPlayerId) {
+      const localPlayerEdge = edgeAssignments.get(this.localPlayerId);
+      if (localPlayerEdge !== undefined) {
+        console.log('[GameCoordinator] Will reselect edge:', localPlayerEdge);
+        (window as any).__localPlayerRematchEdge = localPlayerEdge;
+      }
+    }
   }
 
   private interceptReduxDispatch() {
@@ -52,12 +110,22 @@ export class GameCoordinator {
         return;
       }
       
+      // Check if this is REMATCH_GAME - handle specially for multiplayer
+      if (action.type === 'REMATCH_GAME') {
+        console.log('[GameCoordinator] Rematch requested - creating new game');
+        this.handleRematch();
+        // Don't dispatch locally - we'll transition to a new game instead
+        return;
+      }
+      
       // Check if this is SELECT_EDGE from the local player
       if (action.type === 'SELECT_EDGE') {
         console.log('[GameCoordinator] Local player selected edge:', action.payload);
         // Store the local player's game ID in the UI state
         this.originalDispatch.call(this.store, setLocalPlayerId(action.payload.playerId));
         console.log('[GameCoordinator] Set localPlayerId to:', action.payload.playerId);
+        // Also track it in the coordinator for rematch
+        this.localPlayerId = action.payload.playerId;
       }
       
       // Check if this is a player action that should be broadcast
@@ -108,6 +176,9 @@ export class GameCoordinator {
     
     // Sync all actions (for reconnection)
     window.addEventListener('multiplayer:actions-sync', this.handleActionsSync.bind(this) as EventListener);
+    
+    // Rematch created - transition to new game
+    window.addEventListener('multiplayer:rematch-created', this.handleRematchCreated.bind(this) as EventListener);
   }
 
   private handleGameReady(event: Event) {
@@ -183,6 +254,7 @@ export class GameCoordinator {
     window.removeEventListener('multiplayer:game-ready', this.handleGameReady.bind(this) as EventListener);
     window.removeEventListener('multiplayer:action', this.handleActionReceived.bind(this) as EventListener);
     window.removeEventListener('multiplayer:actions-sync', this.handleActionsSync.bind(this) as EventListener);
+    window.removeEventListener('multiplayer:rematch-created', this.handleRematchCreated.bind(this) as EventListener);
     
     // Restore original dispatch
     if (this.originalDispatch && this.store) {
