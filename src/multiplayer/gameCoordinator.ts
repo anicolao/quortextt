@@ -109,9 +109,13 @@ export class GameCoordinator {
     // Get stored player data
     const playerData = (window as any).__rematchPlayerData as Map<string, { color: string; edge: number }> | undefined;
     
+    // Get localPlayerId from Redux state (more reliable than instance variable)
+    const state = this.store.getState();
+    const localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
+    
     // Store player data for reapplication
-    if (playerData && this.localPlayerId) {
-      const localPlayerData = playerData.get(this.localPlayerId);
+    if (playerData && localPlayerId) {
+      const localPlayerData = playerData.get(localPlayerId);
       if (localPlayerData) {
         console.log('[GameCoordinator] Will restore player data:', localPlayerData);
         (window as any).__localPlayerRematchData = localPlayerData;
@@ -247,8 +251,15 @@ export class GameCoordinator {
     // Check if this is a rematch (we have stored player data for this player)
     const rematchData = (window as any).__localPlayerRematchData as { color: string; edge: number } | undefined;
     
-    if (rematchData && this.localPlayerId) {
+    // Get localPlayerId from Redux state (it persists across coordinator instances)
+    const state = this.store.getState();
+    const localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
+    
+    if (rematchData && localPlayerId) {
       console.log('[GameCoordinator] This is a rematch, will restore player setup:', rematchData);
+      
+      // Store localPlayerId for this coordinator instance
+      this.localPlayerId = localPlayerId;
       
       // If this player initiated the rematch, send START_GAME action first
       if (this.isRematchInitiator) {
@@ -267,18 +278,18 @@ export class GameCoordinator {
       
       // Wait for START_GAME to be processed, then auto-add player and select edge
       setTimeout(() => {
-        if (this.localPlayerId) {
-          console.log('[GameCoordinator] Auto-restoring player with color:', rematchData.color, 'edge:', rematchData.edge, 'playerId:', this.localPlayerId);
+        if (localPlayerId) {
+          console.log('[GameCoordinator] Auto-restoring player with color:', rematchData.color, 'edge:', rematchData.edge, 'playerId:', localPlayerId);
           
           // Import actions
           import('../redux/actions').then(({ addPlayer, selectEdge }) => {
             // Add the player with their existing playerId, color, and edge
             // This ensures all clients create the same player with the same ID
-            this.store.dispatch(addPlayer(rematchData.color, rematchData.edge, this.localPlayerId!));
+            this.store.dispatch(addPlayer(rematchData.color, rematchData.edge, localPlayerId));
             
             // Then select their edge (this will be broadcast via the interceptor)
             setTimeout(() => {
-              this.store.dispatch(selectEdge(this.localPlayerId!, rematchData.edge));
+              this.store.dispatch(selectEdge(localPlayerId, rematchData.edge));
             }, 100); // Small delay to ensure ADD_PLAYER is processed first
           });
         }
