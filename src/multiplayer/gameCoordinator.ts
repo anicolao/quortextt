@@ -8,6 +8,7 @@ export class GameCoordinator {
   private localActionsProcessed = 0;
   private originalDispatch: any = null;
   private localPlayerId: string | null = null;
+  private isRematchInitiator: boolean = false;
 
   constructor(reduxStore: any, gameId: string) {
     this.store = reduxStore;
@@ -39,6 +40,9 @@ export class GameCoordinator {
     }
     
     console.log('[GameCoordinator] Requesting rematch...');
+    
+    // Mark this player as the rematch initiator
+    this.isRematchInitiator = true;
     
     // Store edge assignments for later use
     if (edgeAssignments) {
@@ -192,12 +196,24 @@ export class GameCoordinator {
     const rematchEdge = (window as any).__localPlayerRematchEdge as number | undefined;
     
     if (rematchEdge !== undefined && this.localPlayerId) {
-      console.log('[GameCoordinator] This is a rematch - automatically selecting edge:', rematchEdge);
+      console.log('[GameCoordinator] This is a rematch');
+      
+      // If this player initiated the rematch, send START_GAME action first
+      if (this.isRematchInitiator) {
+        console.log('[GameCoordinator] Rematch initiator - sending START_GAME action');
+        this.isRematchInitiator = false; // Reset flag
+        
+        // Generate seed and send START_GAME action
+        const seed = Math.floor(Math.random() * 1000000);
+        import('../redux/actions').then(({ startGame }) => {
+          socket.postAction(gameId, startGame({ seed }));
+        });
+      }
       
       // Clear the stored edge
       delete (window as any).__localPlayerRematchEdge;
       
-      // Wait a bit for all players to join, then automatically select the edge
+      // Wait for START_GAME to be processed, then auto-select edge
       setTimeout(() => {
         if (this.localPlayerId) {
           console.log('[GameCoordinator] Auto-selecting edge for rematch:', rematchEdge);
@@ -207,7 +223,7 @@ export class GameCoordinator {
             socket.postAction(gameId, selectEdge(this.localPlayerId!, rematchEdge));
           });
         }
-      }, 500); // Small delay to ensure all players have joined
+      }, 1000); // Delay to ensure START_GAME is processed first
     } else {
       console.log('Players should now use the configuration screen to add themselves by clicking edge buttons.');
     }
