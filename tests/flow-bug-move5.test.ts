@@ -48,10 +48,10 @@ describe('Flow Bug Investigation - Move 5', () => {
     // Check if (-3,0) has flow
     expect(player1Flows!.has('-3,0')).toBe(true);
     
-    // BUG: (-2,-1) should have flow but doesn't
+    // FIXED: Flow now correctly propagates to (-2,-1)
     console.log('\nDoes (-2,-1) have flow?', player1Flows!.has('-2,-1'));
     
-    // This SHOULD pass but currently fails
+    // This now passes - flow propagation bug has been fixed
     expect(player1Flows!.has('-2,-1')).toBe(true);
   });
 });
