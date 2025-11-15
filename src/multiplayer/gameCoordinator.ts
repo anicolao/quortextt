@@ -47,9 +47,10 @@ export class GameCoordinator {
       return;
     }
     
-    // Get the current game state to extract player edge assignments
+    // Get the current game state to extract player information
     const state = this.store.getState();
     const edgeAssignments = state.game?.seatingPhase?.edgeAssignments;
+    const players = state.game?.players;
     
     // Get local player ID from UI state or coordinator's stored value
     this.localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
@@ -57,9 +58,9 @@ export class GameCoordinator {
     // If still null, try to infer from the game state
     // In multiplayer, we should have the localPlayerId from when the player selected their edge
     // But as a fallback, we can use the first player if available
-    if (!this.localPlayerId && state.game?.players?.length > 0) {
+    if (!this.localPlayerId && players && players.length > 0) {
       console.warn('[GameCoordinator] LocalPlayerId not found, using first player as fallback');
-      this.localPlayerId = state.game.players[0].id;
+      this.localPlayerId = players[0].id;
     }
     
     if (!this.localPlayerId) {
@@ -75,9 +76,24 @@ export class GameCoordinator {
     // Mark this player as the rematch initiator
     this.isRematchInitiator = true;
     
-    // Store edge assignments for later use
-    if (edgeAssignments) {
+    // Store player information for restoration in the rematch
+    if (edgeAssignments && players) {
       (window as any).__rematchEdgeAssignments = new Map(edgeAssignments);
+      
+      // Store complete player data (color, edge) for each player
+      const playerData = new Map<string, { color: string; edge: number }>();
+      players.forEach((player: any) => {
+        const edge = edgeAssignments.get(player.id);
+        if (edge !== undefined) {
+          playerData.set(player.id, {
+            color: player.color,
+            edge: edge
+          });
+        }
+      });
+      (window as any).__rematchPlayerData = playerData;
+      
+      console.log('[GameCoordinator] Stored player data for rematch:', playerData);
     }
     
     // Request rematch via socket (server will broadcast to all players)
@@ -90,15 +106,15 @@ export class GameCoordinator {
     
     console.log('[GameCoordinator] Rematch created, transitioning from', oldGameId, 'to', newGameId);
     
-    // Get stored edge assignments
-    const edgeAssignments = (window as any).__rematchEdgeAssignments as Map<string, number> | undefined;
+    // Get stored player data
+    const playerData = (window as any).__rematchPlayerData as Map<string, { color: string; edge: number }> | undefined;
     
-    // Store edge assignments for reapplication
-    if (edgeAssignments && this.localPlayerId) {
-      const localPlayerEdge = edgeAssignments.get(this.localPlayerId);
-      if (localPlayerEdge !== undefined) {
-        console.log('[GameCoordinator] Will reselect edge:', localPlayerEdge);
-        (window as any).__localPlayerRematchEdge = localPlayerEdge;
+    // Store player data for reapplication
+    if (playerData && this.localPlayerId) {
+      const localPlayerData = playerData.get(this.localPlayerId);
+      if (localPlayerData) {
+        console.log('[GameCoordinator] Will restore player data:', localPlayerData);
+        (window as any).__localPlayerRematchData = localPlayerData;
       }
     }
     
@@ -228,11 +244,11 @@ export class GameCoordinator {
     
     console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
     
-    // Check if this is a rematch (we have stored edge assignment for this player)
-    const rematchEdge = (window as any).__localPlayerRematchEdge as number | undefined;
+    // Check if this is a rematch (we have stored player data for this player)
+    const rematchData = (window as any).__localPlayerRematchData as { color: string; edge: number } | undefined;
     
-    if (rematchEdge !== undefined && this.localPlayerId) {
-      console.log('[GameCoordinator] This is a rematch');
+    if (rematchData && this.localPlayerId) {
+      console.log('[GameCoordinator] This is a rematch, will restore player setup:', rematchData);
       
       // If this player initiated the rematch, send START_GAME action first
       if (this.isRematchInitiator) {
@@ -246,17 +262,24 @@ export class GameCoordinator {
         });
       }
       
-      // Clear the stored edge
-      delete (window as any).__localPlayerRematchEdge;
+      // Clear the stored data
+      delete (window as any).__localPlayerRematchData;
       
-      // Wait for START_GAME to be processed, then auto-select edge
+      // Wait for START_GAME to be processed, then auto-add player and select edge
       setTimeout(() => {
         if (this.localPlayerId) {
-          console.log('[GameCoordinator] Auto-selecting edge for rematch:', rematchEdge);
-          // Import selectEdge action
-          import('../redux/actions').then(({ selectEdge }) => {
-            // Dispatch locally - the interceptor will handle broadcasting
-            this.store.dispatch(selectEdge(this.localPlayerId!, rematchEdge));
+          console.log('[GameCoordinator] Auto-restoring player with color:', rematchData.color, 'edge:', rematchData.edge, 'playerId:', this.localPlayerId);
+          
+          // Import actions
+          import('../redux/actions').then(({ addPlayer, selectEdge }) => {
+            // Add the player with their existing playerId, color, and edge
+            // This ensures all clients create the same player with the same ID
+            this.store.dispatch(addPlayer(rematchData.color, rematchData.edge, this.localPlayerId!));
+            
+            // Then select their edge (this will be broadcast via the interceptor)
+            setTimeout(() => {
+              this.store.dispatch(selectEdge(this.localPlayerId!, rematchData.edge));
+            }, 100); // Small delay to ensure ADD_PLAYER is processed first
           });
         }
       }, 1000); // Delay to ensure START_GAME is processed first
