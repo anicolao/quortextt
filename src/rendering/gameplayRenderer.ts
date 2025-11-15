@@ -30,6 +30,7 @@ import {
   getBlockedPlayers,
   getDebugPathInfo,
   isPlayerBlocked,
+  isValidReplacementMove,
 } from "../game/legality";
 import { drawCircularArrow } from "./circularArrow";
 import { formatMoveHistory } from "../game/notation";
@@ -1407,21 +1408,42 @@ export class GameplayRenderer {
     }
 
     // Check if this is a replacement move (supermove)
-    // Only show supermove checkmark if: supermove enabled, player is blocked, AND position is occupied
+    // Show supermove checkmark if:
+    // - supermove is enabled
+    // - position is occupied
+    // - AND either:
+    //   - current player is blocked (standard supermove), OR
+    //   - supermoveAnyPlayer is enabled and replacement would unblock someone
     const currentPlayer = state.game.players[state.game.currentPlayerIndex];
     const posKey = positionToKey(state.ui.selectedPosition);
     const isOccupied = state.game.board.has(posKey);
-    const hasSupermove =
-      state.game.supermove &&
-      currentPlayer &&
-      isOccupied &&
-      isPlayerBlocked(
-        state.game.board,
-        currentPlayer,
-        state.game.players,
-        state.game.teams,
-        state.game.boardRadius,
-      );
+    
+    let hasSupermove = false;
+    if (state.game.supermove && currentPlayer && isOccupied) {
+      if (state.game.supermoveAnyPlayer) {
+        // With supermoveAnyPlayer, check if valid replacement for anyone
+        hasSupermove = isValidReplacementMove(
+          state.game.board,
+          state.ui.selectedPosition,
+          state.game.currentTile,
+          state.ui.currentRotation,
+          currentPlayer,
+          state.game.players,
+          state.game.teams,
+          state.game.boardRadius,
+          true // supermoveAnyPlayer
+        );
+      } else {
+        // Standard supermove - current player must be blocked
+        hasSupermove = isPlayerBlocked(
+          state.game.board,
+          currentPlayer,
+          state.game.players,
+          state.game.teams,
+          state.game.boardRadius,
+        );
+      }
+    }
 
     // Get the current player's edge to orient buttons toward them
     const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
@@ -1978,15 +2000,20 @@ export class GameplayRenderer {
 
     // Add supermove rule if enabled
     if (settings.supermove) {
+      // Determine who can supermove
+      const whoCanSupermove = settings.supermoveAnyPlayer 
+        ? "any player may replace a tile"
+        : "a blocked player may replace a tile";
+      
+      // Determine what happens with the tile
       if (settings.singleSupermove) {
-        helpLines.push("• If a player is blocked, they may replace a");
-        helpLines.push("  tile on the board to get unblocked and");
+        helpLines.push(`• If a player is blocked, ${whoCanSupermove}`);
+        helpLines.push("  on the board to unblock someone and");
         helpLines.push("  return it to the bag");
       } else {
-        helpLines.push("• If a player is blocked, they have a super");
-        helpLines.push("  move that allows replacing a tile on the");
-        helpLines.push("  board that unblocks them and placing");
-        helpLines.push("  that tile in one turn");
+        helpLines.push(`• If a player is blocked, ${whoCanSupermove}`);
+        helpLines.push("  on the board to unblock someone and");
+        helpLines.push("  place that tile in one turn");
       }
     }
 
