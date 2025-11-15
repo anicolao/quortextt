@@ -45,6 +45,8 @@ class MultiplayerSocket {
 
       this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
+        // Specify the Socket.IO path explicitly to work with Discord proxy
+        path: this.useDiscordProxy ? '/.proxy/socket.io' : '/socket.io',
       });
 
       this.socket.on('connect', () => {
@@ -80,6 +82,8 @@ class MultiplayerSocket {
 
       this.socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
+        // Specify the Socket.IO path explicitly to work with Discord proxy
+        path: this.useDiscordProxy ? '/.proxy/socket.io' : '/socket.io',
         auth: {
           token: token
         }
