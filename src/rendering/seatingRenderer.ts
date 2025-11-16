@@ -63,7 +63,6 @@ export class SeatingRenderer {
       const currentPlayer = state.configPlayers.find(cp => cp.id === currentPlayerId);
       if (currentPlayer) {
         const isDisconnected = disconnectedPlayers.has(currentPlayerId);
-        console.log('🪑 [SEATING] Drawing edge buttons - Player:', currentPlayerId, 'Disconnected:', isDisconnected, 'All disconnected:', Array.from(disconnectedPlayers));
         this.drawEdgeButtons(edgeButtons, currentPlayer, state.seatingPhase.seatingIndex + 1, isDisconnected);
       }
     }
@@ -220,7 +219,6 @@ export class SeatingRenderer {
       
       // If player is disconnected, draw a red dot indicator
       if (isDisconnected) {
-        console.log('🔴 [SEATING] Drawing red dot on edge button');
         this.ctx.fillStyle = '#FF0000';
         this.ctx.shadowBlur = 6;
         this.ctx.shadowColor = '#FF0000';

@@ -171,7 +171,6 @@ export class LobbyInputHandler {
           // Get the user ID from multiplayerStore (it's stored as 'playerId' but contains the user ID like 'google:...')
           const mpState = multiplayerStore.get();
           const userId = mpState.playerId || undefined;
-          console.log('[LOBBY INPUT] Adding player in multiplayer mode with userId:', userId);
           // Pass userId in the userId field for proper ID mapping across clients
           store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge, undefined, userId));
         } else {
