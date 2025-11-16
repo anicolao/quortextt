@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { multiplayerStore } from './stores/multiplayerStore';
 import type { Room, Player } from './stores/multiplayerStore';
 import { store } from '../redux/store';
-import { setPlayerConnected, setPlayerDisconnected } from '../redux/actions';
+import { setPlayerConnected, setPlayerDisconnected, setSpectatorCount } from '../redux/actions';
 
 class MultiplayerSocket {
   private socket: Socket | null = null;
@@ -276,9 +276,7 @@ class MultiplayerSocket {
       multiplayerStore.setSpectatorCount(data.spectatorCount);
       
       // Also update Redux state
-      import('../redux/actions').then(({ setSpectatorCount }) => {
-        store.dispatch(setSpectatorCount(data.spectatorCount));
-      });
+      store.dispatch(setSpectatorCount(data.spectatorCount));
       
       // Broadcast spectator join event
       window.dispatchEvent(new CustomEvent('multiplayer:spectator-joined', {
@@ -291,9 +289,7 @@ class MultiplayerSocket {
       multiplayerStore.setSpectatorCount(data.spectatorCount);
       
       // Also update Redux state
-      import('../redux/actions').then(({ setSpectatorCount }) => {
-        store.dispatch(setSpectatorCount(data.spectatorCount));
-      });
+      store.dispatch(setSpectatorCount(data.spectatorCount));
       
       // Broadcast spectator leave event
       window.dispatchEvent(new CustomEvent('multiplayer:spectator-left', {
