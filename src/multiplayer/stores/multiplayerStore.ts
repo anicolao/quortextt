@@ -14,6 +14,7 @@ export interface Room {
   playerCount?: number; // Alternative count from API
   maxPlayers: number;
   status: 'waiting' | 'playing' | 'finished';
+  spectatorCount?: number; // Number of spectators watching
 }
 
 export interface MultiplayerState {
@@ -27,6 +28,8 @@ export interface MultiplayerState {
   screen: 'login' | 'lobby' | 'room' | 'game' | 'profile';
   gameId: string | null;
   disconnectedPlayers: Set<string>; // Track which players are disconnected
+  isSpectator: boolean; // Whether current user is spectating
+  spectatorCount: number; // Number of spectators in current game
 }
 
 const initialState: MultiplayerState = {
@@ -40,6 +43,8 @@ const initialState: MultiplayerState = {
   screen: 'login',
   gameId: null,
   disconnectedPlayers: new Set(),
+  isSpectator: false,
+  spectatorCount: 0,
 };
 
 // Create the main store
@@ -102,6 +107,12 @@ function createMultiplayerStore() {
         newDisconnectedPlayers.delete(playerId);
         return { ...state, disconnectedPlayers: newDisconnectedPlayers };
       }),
+    
+    setIsSpectator: (isSpectator: boolean) =>
+      update(state => ({ ...state, isSpectator })),
+    
+    setSpectatorCount: (spectatorCount: number) =>
+      update(state => ({ ...state, spectatorCount })),
     
     reset: () => set(initialState),
   };

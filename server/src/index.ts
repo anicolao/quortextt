@@ -52,6 +52,13 @@ interface Player {
   connected: boolean;
 }
 
+interface Spectator {
+  id: string;
+  username: string;
+  socketId: string;
+  joinedAt: number;
+}
+
 interface GameRoom {
   id: string;
   name: string;
@@ -78,6 +85,10 @@ const sessionStorage = new DataStorage(`${dataDir}/sessions`, 'sessions.jsonl');
 // In-memory cache for active socket connections
 // Maps socket.id -> Player info (ephemeral, for current connections)
 const players = new Map<string, Player>();
+
+// Track spectators for each game - maps gameId -> Map of spectators
+// spectators are keyed by socket.id for quick lookup
+const gameSpectators = new Map<string, Map<string, Spectator>>();
 
 // Track rematch games - maps new game ID to original game's player list
 // Used to emit game_ready when players rejoin after rematch
@@ -239,14 +250,20 @@ app.get('/api/rooms', async (req, res) => {
         // Include if waiting OR if it's one of the user's active games
         return room.status === 'waiting' || (userId && userGameIds.includes(room.gameId));
       })
-      .map(room => ({
-        id: room!.gameId,
-        name: room!.name,
-        hostId: room!.hostId,
-        playerCount: room!.players.length,
-        maxPlayers: room!.maxPlayers,
-        status: room!.status
-      }));
+      .map(room => {
+        const spectators = gameSpectators.get(room!.gameId);
+        const spectatorCount = spectators ? spectators.size : 0;
+        
+        return {
+          id: room!.gameId,
+          name: room!.name,
+          hostId: room!.hostId,
+          playerCount: room!.players.length,
+          maxPlayers: room!.maxPlayers,
+          status: room!.status,
+          spectatorCount
+        };
+      });
     
     res.json({ rooms: availableRooms });
   } catch (error) {
@@ -776,6 +793,99 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Join as spectator
+  socket.on('join_as_spectator', async (data: { gameId: string }) => {
+    const { gameId } = data;
+    const player = players.get(socket.id);
+
+    if (!player) {
+      socket.emit('error', { message: 'Player not identified' });
+      return;
+    }
+
+    try {
+      const state = await gameStorage.getGameState(gameId);
+      
+      if (!state) {
+        socket.emit('error', { message: 'Game not found' });
+        return;
+      }
+
+      // Check if player is already in the game as a player
+      const isPlayer = state.players.find(p => p.id === player.id);
+      if (isPlayer) {
+        socket.emit('error', { message: 'You are already a player in this game' });
+        return;
+      }
+
+      // Create spectator
+      const spectator: Spectator = {
+        id: player.id,
+        username: player.username,
+        socketId: socket.id,
+        joinedAt: Date.now()
+      };
+
+      // Initialize spectator map for this game if needed
+      if (!gameSpectators.has(gameId)) {
+        gameSpectators.set(gameId, new Map());
+      }
+
+      // Add spectator to the game
+      const spectators = gameSpectators.get(gameId)!;
+      spectators.set(socket.id, spectator);
+
+      // Join the socket.io room (same room as players)
+      socket.join(gameId);
+
+      // Send full action history to spectator for replay
+      const actions = await gameStorage.readActions(gameId);
+      socket.emit('actions_list', {
+        gameId,
+        actions
+      });
+
+      // Notify all participants (players and spectators) about new spectator
+      io.to(gameId).emit('spectator_joined', {
+        spectator: { id: spectator.id, username: spectator.username },
+        spectatorCount: spectators.size
+      });
+
+      console.log(`Spectator ${player.username} joined game ${state.name} (${spectators.size} spectators)`);
+    } catch (error) {
+      console.error('Error joining as spectator:', error);
+      socket.emit('error', { message: 'Failed to join as spectator' });
+    }
+  });
+
+  // Leave spectator
+  socket.on('leave_spectator', async (data: { gameId: string }) => {
+    const { gameId } = data;
+    
+    const spectators = gameSpectators.get(gameId);
+    if (!spectators) return;
+
+    const spectator = spectators.get(socket.id);
+    if (!spectator) return;
+
+    // Remove spectator
+    spectators.delete(socket.id);
+    socket.leave(gameId);
+
+    // Notify others
+    io.to(gameId).emit('spectator_left', {
+      spectatorId: spectator.id,
+      spectatorCount: spectators.size
+    });
+
+    // Clean up empty spectator map
+    if (spectators.size === 0) {
+      gameSpectators.delete(gameId);
+    }
+
+    console.log(`Spectator ${spectator.username} left game ${gameId}`);
+  });
+
   // Disconnect
   socket.on('disconnect', async () => {
     console.log('Client disconnected:', socket.id);
@@ -831,6 +941,27 @@ io.on('connection', (socket) => {
       // Games wait indefinitely for player to reconnect - no timeout removal
       players.delete(socket.id);
       console.log(`Player ${player.username} disconnected. Games will wait for reconnection.`);
+    }
+
+    // Also check if this was a spectator and clean up
+    for (const [gameId, spectators] of gameSpectators.entries()) {
+      const spectator = spectators.get(socket.id);
+      if (spectator) {
+        spectators.delete(socket.id);
+        
+        // Notify others
+        io.to(gameId).emit('spectator_left', {
+          spectatorId: spectator.id,
+          spectatorCount: spectators.size
+        });
+        
+        // Clean up empty spectator map
+        if (spectators.size === 0) {
+          gameSpectators.delete(gameId);
+        }
+        
+        console.log(`Spectator ${spectator.username} disconnected from game ${gameId}`);
+      }
     }
   });
 });

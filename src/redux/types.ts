@@ -159,6 +159,10 @@ export interface UIState {
   // Player connection state (for multiplayer)
   disconnectedPlayers: Set<string>; // Set of user IDs (e.g., 'google:...') that are currently disconnected
   userIdToPlayerId: Map<string, string>; // Maps user IDs to config player IDs (e.g., 'google:...' -> 'P1')
+  
+  // Spectator mode (for multiplayer)
+  isSpectator: boolean; // Whether the user is currently spectating
+  spectatorCount: number; // Number of spectators watching the current game
 }
 
 // Root state combining all state slices

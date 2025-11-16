@@ -20,6 +20,8 @@ import {
   SET_PLAYER_CONNECTED,
   SET_PLAYER_DISCONNECTED,
   SET_USER_ID_MAPPING,
+  SET_SPECTATOR_MODE,
+  SET_SPECTATOR_COUNT,
 } from './actions';
 
 // Initial UI state
@@ -44,6 +46,8 @@ export const initialUIState: UIState = {
   savedGameState: null,
   disconnectedPlayers: new Set(), // Track disconnected players in multiplayer
   userIdToPlayerId: new Map(), // Maps user IDs to config player IDs
+  isSpectator: false, // Track if user is in spectator mode
+  spectatorCount: 0, // Track number of spectators watching
   settings: {
     boardRadius: 3,
     supermove: true,
@@ -225,6 +229,20 @@ export function uiReducer(
       return {
         ...state,
         userIdToPlayerId: action.payload.mapping,
+      };
+    }
+
+    case SET_SPECTATOR_MODE: {
+      return {
+        ...state,
+        isSpectator: action.payload.isSpectator,
+      };
+    }
+
+    case SET_SPECTATOR_COUNT: {
+      return {
+        ...state,
+        spectatorCount: action.payload.count,
       };
     }
 

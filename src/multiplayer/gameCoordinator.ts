@@ -1,6 +1,7 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
 import { setLocalPlayerId, selectEdge, setUserIdMapping } from '../redux/actions';
+import { multiplayerStore } from './stores/multiplayerStore';
 
 // Interface for rematch information
 interface RematchInfo {
@@ -23,6 +24,7 @@ export class GameCoordinator {
   private isProcessingRematch: boolean = false;
   private rematchInfo?: RematchInfo;
   private pendingRematchEdges?: Map<string, number>; // Player edges to apply after START_GAME
+  private isSpectator: boolean = false; // Track if user is spectating
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;
@@ -34,11 +36,17 @@ export class GameCoordinator {
     this.store = reduxStore;
     this.gameId = gameId;
     
+    // Check if user is spectating
+    const state = multiplayerStore.get();
+    this.isSpectator = state?.isSpectator || false;
+    
     // Store rematch information if provided
     if (rematchInfo) {
       this.rematchInfo = rematchInfo;
       console.log('[GameCoordinator] Created with rematch info:', rematchInfo);
     }
+    
+    console.log('[GameCoordinator] Created for game', gameId, 'isSpectator:', this.isSpectator);
     
     // Bind event handlers once
     this.boundGameReady = this.handleGameReady.bind(this) as EventListener;
@@ -163,6 +171,13 @@ export class GameCoordinator {
     this.realOriginalDispatch = this.store.dispatch;
     
     this.store.dispatch = (action: any) => {
+      // Block all game actions for spectators (except UI actions)
+      if (this.isSpectator && this.shouldBroadcastAction(action.type)) {
+        console.log(`[GameCoordinator] Spectator mode: blocking action ${action.type}`);
+        // Ignore the action - spectators cannot modify game state
+        return;
+      }
+      
       // Check if this is START_GAME from lobby Play button
       if (action.type === 'START_GAME' && !action.payload?.seed) {
         // Generate seed and post to server
