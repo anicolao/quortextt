@@ -4,11 +4,13 @@
   import LobbyScreen from './components/LobbyScreen.svelte';
   import RoomScreen from './components/RoomScreen.svelte';
   import ProfileScreen from './components/ProfileScreen.svelte';
+  import ConnectionStatus from './components/ConnectionStatus.svelte';
 
   $: screen = $multiplayerStore.screen;
 </script>
 
 <div class="app">
+  <ConnectionStatus />
   {#if screen === 'login'}
     <LoginScreen />
   {:else if screen === 'lobby'}
