@@ -78,6 +78,10 @@ class MultiplayerSocket {
         transports: ['websocket', 'polling'],
         // Specify the Socket.IO path - for Discord proxy, use the full proxy path
         path: this.useDiscordProxy ? '/.proxy/socket.io' : '/socket.io',
+        // Exponential backoff for reconnection (Section 2.2.1, item 1)
+        reconnectionDelay: 1000,           // Start with 1 second
+        reconnectionDelayMax: 10000,       // Max 10 seconds between attempts
+        randomizationFactor: 0.5,          // Add randomization to prevent thundering herd
       });
 
       this.socket.on('connect', () => {
@@ -268,6 +272,14 @@ class MultiplayerSocket {
       window.dispatchEvent(new CustomEvent('multiplayer:rematch-created', {
         detail: data
       }));
+    });
+
+    // Handle multiple simultaneous connections (Section 2.2.3, item 3)
+    this.socket.on('connected_elsewhere', (data: { message: string }) => {
+      console.warn('Connected from another location:', data.message);
+      multiplayerStore.setConnectionStatus('connected_elsewhere');
+      // Show notification to user
+      alert(data.message);
     });
 
     // Error handling

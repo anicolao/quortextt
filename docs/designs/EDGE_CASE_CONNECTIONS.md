@@ -5,15 +5,69 @@
 This document specifies the user-facing behavior and high-level technical design for full reconnection support and spectator mode in Quortex multiplayer games. These features are identified in TODOS_SUMMARY.md as incomplete or not yet implemented.
 
 **Current State:**
-- ✅ Partial reconnection implemented (session tracking, action logs)
-- ❌ Full reconnection flow needs completion
+- ✅ **Reconnection support complete** - all core features and edge cases implemented
 - ❌ Spectator mode not yet implemented
+- ⚠️  **CRITICAL BUG**: Action validation missing - any player can post moves for any other player (out of scope for reconnection work)
 
 **Related Documents:**
 - [TODOS_SUMMARY.md](../TODOS_SUMMARY.md) - Current implementation status
 - [MULTIPLAYER.md](../MULTIPLAYER.md) - Multiplayer architecture overview
 - [UNIFIED_MULTIPLAYER.md](UNIFIED_MULTIPLAYER.md) - Multi-platform architecture
 - [server/src/storage/README.md](../../server/src/storage/README.md) - Event sourcing implementation
+
+## 1.1 Implementation Status Checklist
+
+### Reconnection Support - Core Features
+- ✅ Session tracking with `UserSession` interface (`server/src/index.ts:139-152`)
+- ✅ Heartbeat mechanism - client sends every 1s (`src/multiplayer/socket.ts:34-46`)
+- ✅ Server heartbeat handler updates `lastSeen` (`server/src/index.ts:428-445`)
+- ✅ Connection state tracking (`connectionState: 'connected' | 'disconnected'`)
+- ✅ Infinite wait for disconnected players - no timeout removal (`server/src/index.ts:830-833`)
+- ✅ Anonymous user cookie-based persistence with 30-day expiry (`server/src/routes/auth.ts:247-279`)
+- ✅ Anonymous user cleanup job runs daily (`server/src/index.ts:101-133`)
+- ✅ Action replay system - `get_actions` event (`server/src/index.ts:698-713`)
+- ✅ Simple full replay from start (no checkpointing) - design matches implementation
+- ✅ Player reconnection flow - `join_room` detects existing player (`server/src/index.ts:465-467`)
+- ✅ Reconnection notifications - `player_reconnected` event (`server/src/index.ts:501-505`)
+- ✅ Active games list sent on identify (`server/src/index.ts:406-424`)
+- ✅ Client fetches rooms with userId to show active games (`src/multiplayer/socket.ts:189-198`)
+- ✅ Resume UI in lobby - "Resume" button for in-progress games (`src/multiplayer/components/LobbyScreen.svelte:129-130`)
+- ✅ Connection status indicator shows "Reconnecting..." (`src/multiplayer/components/ConnectionStatus.svelte:21-23`)
+- ✅ Disconnect action logged to action stream (`server/src/index.ts:810-822`)
+
+### Reconnection Support - Edge Cases
+- ✅ **Multiple simultaneous connections** - latest takes over, older becomes read-only (Section 2.2.3, item 3)
+- ✅ **Rapid connect/disconnect cycles** - exponential backoff implemented (Section 2.2.1, item 1)
+- ✅ **Poor connection warning** - shows when reconnecting for >3 attempts or >15 seconds (Section 2.2.1, item 1)
+- ✅ Partial network partition - server is source of truth (implemented via event sourcing)
+- ✅ Client-server time sync - server timestamp used for all actions (`server/src/index.ts:669-683`)
+- ✅ Reconnect during action processing - atomic operations (event sourcing ensures this)
+- ✅ Reconnect with stale state - always fetch full history (Section 2.3.2)
+- ✅ Action log integrity - sequence numbers auto-assigned (`server/src/storage/GameStorage.ts`)
+- ✅ Session data mismatch - game state is truth (implicit in implementation)
+
+### Spectator Mode - Core Features
+- ❌ **Action validation** - only active player can post moves (Section 3.3.2) **CRITICAL BUG**
+- ❌ Spectator session management (Section 3.3.1)
+- ❌ `join_as_spectator` event handler
+- ❌ `leave_spectator` event handler
+- ❌ `spectator_heartbeat` event handler
+- ❌ `spectator_joined` broadcast
+- ❌ `spectator_left` broadcast
+- ❌ Single room architecture - players + spectators in same room (Section 3.3.2)
+- ❌ Spectator UI components (Section 3.3.4)
+- ❌ Public games list endpoint
+- ❌ Spectator count tracking in game state
+- ❌ Help/move list access for spectators
+- ❌ Exit to lobby (not setup) for spectators
+
+### Replay System
+- ❌ Replay controller implementation (Section 3.3.3)
+- ❌ VCR controls (play, pause, rewind, fast-forward)
+- ❌ Timeline scrubber
+- ❌ Speed controls (0.5x, 1x, 2x, 4x)
+- ❌ Replay REST API endpoints
+- ❌ Download replay feature
 
 ## 2. Reconnection Support
 
