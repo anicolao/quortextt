@@ -270,6 +270,27 @@ class MultiplayerSocket {
       }));
     });
 
+    // Spectator events
+    this.socket.on('spectator_joined', (data: { spectator: { id: string; username: string }; spectatorCount: number }) => {
+      console.log('Spectator joined:', data.spectator.username, `(${data.spectatorCount} watching)`);
+      multiplayerStore.setSpectatorCount(data.spectatorCount);
+      
+      // Broadcast spectator join event
+      window.dispatchEvent(new CustomEvent('multiplayer:spectator-joined', {
+        detail: data
+      }));
+    });
+
+    this.socket.on('spectator_left', (data: { spectatorId: string; spectatorCount: number }) => {
+      console.log('Spectator left', `(${data.spectatorCount} watching)`);
+      multiplayerStore.setSpectatorCount(data.spectatorCount);
+      
+      // Broadcast spectator leave event
+      window.dispatchEvent(new CustomEvent('multiplayer:spectator-left', {
+        detail: data
+      }));
+    });
+
     // Error handling
     this.socket.on('error', (data: { message: string }) => {
       console.error('Server error:', data.message);
@@ -348,6 +369,17 @@ class MultiplayerSocket {
   requestRematch(gameId: string) {
     if (!this.socket) return;
     this.socket.emit('request_rematch', { gameId });
+  }
+
+  // Spectator methods
+  joinAsSpectator(gameId: string) {
+    if (!this.socket) return;
+    this.socket.emit('join_as_spectator', { gameId });
+  }
+
+  leaveSpectator(gameId: string) {
+    if (!this.socket) return;
+    this.socket.emit('leave_spectator', { gameId });
   }
 
   disconnect() {
