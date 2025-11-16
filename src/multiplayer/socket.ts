@@ -7,6 +7,7 @@ class MultiplayerSocket {
   private socket: Socket | null = null;
   private serverUrl: string;
   private useDiscordProxy: boolean = false;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     // Use environment variable or auto-detect based on current protocol
@@ -22,6 +23,33 @@ class MultiplayerSocket {
       const host = window.location.hostname;
       const port = isSecure ? '3001' : '3001'; // Use same port for now
       this.serverUrl = `${protocol}//${host}:${port}`;
+    }
+  }
+
+  /**
+   * Start sending heartbeat to server every 10 seconds
+   */
+  private startHeartbeat() {
+    // Clear any existing interval
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+    
+    // Send heartbeat every 10 seconds
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        this.socket.emit('heartbeat');
+      }
+    }, 10000);
+  }
+
+  /**
+   * Stop sending heartbeat
+   */
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 
@@ -53,18 +81,21 @@ class MultiplayerSocket {
       this.socket.on('connect', () => {
         console.log('Connected to server');
         multiplayerStore.setConnected(true);
+        this.startHeartbeat();
         resolve();
       });
 
       this.socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
         multiplayerStore.setConnected(false);
+        this.stopHeartbeat();
         reject(error);
       });
 
       this.socket.on('disconnect', () => {
         console.log('Disconnected from server');
         multiplayerStore.setConnected(false);
+        this.stopHeartbeat();
       });
 
       this.setupEventHandlers();
@@ -94,18 +125,21 @@ class MultiplayerSocket {
       this.socket.on('connect', () => {
         console.log('Connected to server with authentication');
         multiplayerStore.setConnected(true);
+        this.startHeartbeat();
         resolve();
       });
 
       this.socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
         multiplayerStore.setConnected(false);
+        this.stopHeartbeat();
         reject(error);
       });
 
       this.socket.on('disconnect', () => {
         console.log('Disconnected from server');
         multiplayerStore.setConnected(false);
+        this.stopHeartbeat();
       });
 
       this.setupEventHandlers();
@@ -132,6 +166,11 @@ class MultiplayerSocket {
     this.socket.on('player_joined', (data: { player: Player; room: Room }) => {
       console.log('Player joined:', data.player.username);
       multiplayerStore.setCurrentRoom(data.room);
+    });
+
+    this.socket.on('player_reconnected', (data: { playerId: string; username: string }) => {
+      console.log('Player reconnected:', data.username);
+      // You can add UI feedback here to show player has reconnected
     });
 
     this.socket.on('player_left', (data: { playerId: string; room: Room }) => {
@@ -273,6 +312,7 @@ class MultiplayerSocket {
   }
 
   disconnect() {
+    this.stopHeartbeat();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
