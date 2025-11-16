@@ -1,6 +1,6 @@
 // Game Over screen renderer
 
-import { GameState } from '../redux/types';
+import { RootState } from '../redux/types';
 import { drawCircularArrow } from './circularArrow';
 
 export interface RematchButton {
@@ -31,12 +31,12 @@ export class GameOverRenderer {
     this.ctx = ctx;
   }
 
-  render(canvasWidth: number, canvasHeight: number, _gameState: GameState): GameOverLayout {
+  render(canvasWidth: number, canvasHeight: number, state: RootState): GameOverLayout {
     // Don't clear canvas or draw modals - just let the gameplay renderer show the board
     // with the pulsing glow animation on the winning flow.
     
-    // Draw rematch buttons in all four corners next to help buttons
-    const rematchButtons = this.renderRematchButtons(canvasWidth, canvasHeight);
+    // Draw rematch buttons in all four corners next to help buttons (only for non-spectators)
+    const rematchButtons = this.renderRematchButtons(canvasWidth, canvasHeight, state);
 
     // Create layout with rematch buttons
     this.layout = {
@@ -53,7 +53,12 @@ export class GameOverRenderer {
     return this.layout;
   }
 
-  private renderRematchButtons(canvasWidth: number, canvasHeight: number): RematchButton[] {
+  private renderRematchButtons(canvasWidth: number, canvasHeight: number, state: RootState): RematchButton[] {
+    // Don't render rematch buttons for spectators
+    if (state.ui.isSpectator) {
+      return [];
+    }
+    
     // Render circular rematch buttons after move list buttons in each corner
     // Each button has a counter-clockwise circular arrow
     const cornerSize = 50;

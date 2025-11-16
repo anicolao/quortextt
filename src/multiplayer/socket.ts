@@ -297,6 +297,18 @@ class MultiplayerSocket {
       }));
     });
 
+    // Rematch spectator rejoin
+    this.socket.on('rematch_spectator_rejoin', (data: { gameId: string; spectatorId: string }) => {
+      console.log('Rematch spectator rejoin request:', data);
+      const mpState = multiplayerStore.get();
+      
+      // If this spectator is the current user, automatically rejoin
+      if (mpState.playerId === data.spectatorId && mpState.isSpectator) {
+        console.log('Automatically rejoining rematch game as spectator');
+        this.joinAsSpectator(data.gameId);
+      }
+    });
+
     // Error handling
     this.socket.on('error', (data: { message: string }) => {
       console.error('Server error:', data.message);
