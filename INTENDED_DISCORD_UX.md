@@ -33,12 +33,12 @@ This document outlines the intended user experience (UX) for playing Quortex thr
 **Expected Behavior:**
 
 #### Before Game Start:
-- **First user** (launcher) automatically becomes the game host
 - User sees the game lobby/configuration screen
-- User can claim an available playing position by selecting a board edge
-- Available positions shown based on game configuration (2-6 players)
-- Other users who join the same instance can also claim positions
+- User can claim an available playing position by selecting a color
+- Available positions shown based on game configuration (1-6 players)
+- Other users who join the same instance can also claim colors
 - All positions are initially unclaimed and available
+- Users can join and choose not to claim a color, becoming spectators
 
 #### After Game Start:
 - New joiners become **spectators**
@@ -48,31 +48,41 @@ This document outlines the intended user experience (UX) for playing Quortex thr
 - UI clearly indicates spectator status
 
 **Position Claiming:**
-- Players claim positions by selecting their preferred board edge
-- Edge selection happens during the seating phase
-- Each edge can only be claimed by one player
-- In team games (4-6 players), opposite edges form teams
-- Once all desired positions are claimed, the host can start the game
+- Players claim positions by selecting their preferred color
+- Each color can only be claimed by one player
+- Board edge selection happens after the game starts (during the seating phase)
+- Selecting an edge opposite another player forms an implicit team (shared victory)
+- Once players have claimed their desired colors, anyone can start the game
+- If only one player claims a color and starts the game, they play against AI
 
 ### 3. Game Lifecycle
 
-#### Phase 1: Pre-Game (Lobby/Seating)
+#### Phase 1: Pre-Game (Game Setup - Choosing Colors & Options)
 **Duration:** From activity launch until game start
 
 **Behavior:**
-- Players join and claim positions
-- Host configures game settings (if applicable)
-- All joined users can see who has claimed which positions
-- Late arrivals can still claim unclaimed positions
-- Host initiates game start when ready
+- Players join and claim colors
+- Anyone can configure game settings
+- All joined users can see who has claimed which colors
+- Late arrivals can still claim unclaimed colors
+- Anyone can initiate game start when ready
 
-**Transition to Gameplay:**
-- Host clicks "Start Game" or equivalent action
-- All positions are locked
-- Game state transitions to active gameplay
+**Transition to Seating Phase:**
+- Anyone clicks "Start Game" (arrow button in the color picking UI)
+- All colors are locked
+- Game state transitions to seating phase where players select board edges
 - Any new joiners from this point become spectators
 
-#### Phase 2: Active Gameplay
+#### Phase 2: Seating Phase (Board Edge Selection)
+**Duration:** After game start, before first turn
+
+**Behavior:**
+- Players who claimed colors now select their board edges
+- Each edge can only be claimed by one player
+- Players selecting opposite edges form an implicit team
+- After all players select edges, gameplay begins
+
+#### Phase 3: Active Gameplay
 **Duration:** From game start until game end
 
 **Behavior:**
@@ -82,7 +92,7 @@ This document outlines the intended user experience (UX) for playing Quortex thr
 - Players can exit and rejoin without ending the game for others
 - If all players disconnect, game state is preserved
 
-#### Phase 3: Game Over
+#### Phase 4: Game Over
 **Duration:** After victory condition is met
 
 **Behavior:**
@@ -91,7 +101,7 @@ This document outlines the intended user experience (UX) for playing Quortex thr
 - Players can review the completed game
 - Spectators can continue viewing
 
-#### Phase 4: Post-Game
+#### Phase 5: Post-Game
 **Duration:** After all players have exited
 
 **Behavior:**
@@ -130,6 +140,7 @@ This document outlines the intended user experience (UX) for playing Quortex thr
 **When Users Become Spectators:**
 - Joining after game has started
 - Joining when all playing positions are claimed
+- Joining before game start and not claiming a color
 
 **Spectator Capabilities:**
 - View full game board in real-time
@@ -180,9 +191,11 @@ Activity Launch
       ↓
 Create Instance (unique ID)
       ↓
-Players Join & Claim Positions
+Players Join & Claim Colors
       ↓
-Host Starts Game → Lock Positions
+Anyone Starts Game → Lock Colors
+      ↓
+Seating Phase (Select Board Edges)
       ↓
 Active Gameplay
       ↓
