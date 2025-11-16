@@ -497,11 +497,7 @@ io.on('connection', (socket) => {
 
       // Allow joining in-progress games (both new and rejoining players)
       // Players can join during setup phase or as spectators later
-      
-      if (!isRejoining && state.players.length >= state.maxPlayers) {
-        socket.emit('error', { message: 'Room is full' });
-        return;
-      }
+      // Note: Room capacity check removed to support spectator mode and flexible joining
 
       // Add player via action only if they're not already in the room
       if (!existingPlayer) {
