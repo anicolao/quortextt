@@ -267,7 +267,8 @@ app.get('/api/rooms', async (req, res) => {
           playerCount: room!.players.length,
           maxPlayers: room!.maxPlayers,
           status: room!.status,
-          spectatorCount
+          spectatorCount,
+          players: room!.players.map(p => ({ id: p.id, username: p.username }))
         };
       });
     
