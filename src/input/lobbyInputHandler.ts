@@ -168,19 +168,6 @@ export class LobbyInputHandler {
         const state = store.getState();
         const playerId = state.ui.gameMode === 'multiplayer' ? state.ui.localPlayerId || undefined : undefined;
         store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge, playerId));
-        
-        // If in multiplayer, also update the mapping
-        if (state.ui.gameMode === 'multiplayer' && playerId) {
-          // Determine which config player ID this will be (based on current player count)
-          const configPlayerId = `P${state.game.configPlayers.length + 1}`;
-          const mapping = new Map(state.ui.userIdToPlayerId);
-          mapping.set(playerId, configPlayerId);
-          
-          // Import and dispatch the mapping update
-          import('../redux/actions').then(({ setUserIdMapping }) => {
-            store.dispatch(setUserIdMapping(mapping));
-          });
-        }
         return;
       }
     }
