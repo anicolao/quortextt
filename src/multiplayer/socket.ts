@@ -306,6 +306,10 @@ class MultiplayerSocket {
       // If this spectator is the current user, automatically rejoin
       if (mpState.playerId === data.spectatorId && mpState.isSpectator) {
         console.log('[Socket] Automatically rejoining rematch game as spectator:', data.gameId);
+        // Emit custom event to trigger game coordinator transition
+        window.dispatchEvent(new CustomEvent('multiplayer:spectator-rematch-transition', {
+          detail: { newGameId: data.gameId }
+        }));
         this.joinAsSpectator(data.gameId);
       } else {
         console.log('[Socket] Not rejoining - playerId mismatch or not spectator');
