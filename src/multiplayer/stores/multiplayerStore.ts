@@ -18,6 +18,7 @@ export interface Room {
 
 export interface MultiplayerState {
   connected: boolean;
+  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
   username: string | null;
   playerId: string | null;
   userId: string | null; // Discord user ID when in Discord Activity mode
@@ -29,6 +30,7 @@ export interface MultiplayerState {
 
 const initialState: MultiplayerState = {
   connected: false,
+  connectionStatus: 'disconnected',
   username: null,
   playerId: null,
   userId: null,
@@ -52,7 +54,14 @@ function createMultiplayerStore() {
     },
     
     setConnected: (connected: boolean) => 
-      update(state => ({ ...state, connected })),
+      update(state => ({ 
+        ...state, 
+        connected,
+        connectionStatus: connected ? 'connected' : 'disconnected'
+      })),
+    
+    setConnectionStatus: (connectionStatus: MultiplayerState['connectionStatus']) =>
+      update(state => ({ ...state, connectionStatus })),
     
     setUsername: (username: string, playerId: string) =>
       update(state => ({ ...state, username, playerId })),

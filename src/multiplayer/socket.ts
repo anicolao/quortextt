@@ -87,15 +87,32 @@ class MultiplayerSocket {
 
       this.socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
-        multiplayerStore.setConnected(false);
+        multiplayerStore.setConnectionStatus('reconnecting');
         this.stopHeartbeat();
         reject(error);
       });
 
-      this.socket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        multiplayerStore.setConnected(false);
+      this.socket.on('disconnect', (reason) => {
+        console.log('Disconnected from server:', reason);
+        // Socket.io will automatically try to reconnect unless disconnect was intentional
+        if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+          multiplayerStore.setConnected(false);
+        } else {
+          // Network issue - will auto-reconnect
+          multiplayerStore.setConnectionStatus('reconnecting');
+        }
         this.stopHeartbeat();
+      });
+
+      this.socket.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected to server after', attemptNumber, 'attempts');
+        multiplayerStore.setConnected(true);
+        this.startHeartbeat();
+      });
+
+      this.socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log('Attempting to reconnect...', attemptNumber);
+        multiplayerStore.setConnectionStatus('reconnecting');
       });
 
       this.setupEventHandlers();
@@ -131,15 +148,32 @@ class MultiplayerSocket {
 
       this.socket.on('connect_error', (error) => {
         console.error('Connection error:', error);
-        multiplayerStore.setConnected(false);
+        multiplayerStore.setConnectionStatus('reconnecting');
         this.stopHeartbeat();
         reject(error);
       });
 
-      this.socket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        multiplayerStore.setConnected(false);
+      this.socket.on('disconnect', (reason) => {
+        console.log('Disconnected from server:', reason);
+        // Socket.io will automatically try to reconnect unless disconnect was intentional
+        if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+          multiplayerStore.setConnected(false);
+        } else {
+          // Network issue - will auto-reconnect
+          multiplayerStore.setConnectionStatus('reconnecting');
+        }
         this.stopHeartbeat();
+      });
+
+      this.socket.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected to server after', attemptNumber, 'attempts');
+        multiplayerStore.setConnected(true);
+        this.startHeartbeat();
+      });
+
+      this.socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log('Attempting to reconnect...', attemptNumber);
+        multiplayerStore.setConnectionStatus('reconnecting');
       });
 
       this.setupEventHandlers();
