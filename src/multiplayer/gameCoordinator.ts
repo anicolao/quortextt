@@ -262,7 +262,7 @@ export class GameCoordinator {
     const { gameId, players } = customEvent.detail;
     this.gameId = gameId;
     
-    console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
+    console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`, players);
     
     // Get localPlayerId from Redux state (it persists across coordinator instances)
     const state = this.store.getState();

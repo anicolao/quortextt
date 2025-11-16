@@ -157,7 +157,8 @@ export interface UIState {
   savedGameState: GameState | null;
   
   // Player connection state (for multiplayer)
-  disconnectedPlayers: Set<string>; // Set of player IDs that are currently disconnected
+  disconnectedPlayers: Set<string>; // Set of user IDs (e.g., 'google:...') that are currently disconnected
+  userIdToPlayerId: Map<string, string>; // Maps user IDs to config player IDs (e.g., 'google:...' -> 'P1')
 }
 
 // Root state combining all state slices

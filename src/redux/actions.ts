@@ -53,6 +53,7 @@ export const NAVIGATE_MOVE_LIST = "NAVIGATE_MOVE_LIST";
 // Player connection actions
 export const SET_PLAYER_CONNECTED = "SET_PLAYER_CONNECTED";
 export const SET_PLAYER_DISCONNECTED = "SET_PLAYER_DISCONNECTED";
+export const SET_USER_ID_MAPPING = "SET_USER_ID_MAPPING";
 
 // Configuration action types
 export interface AddPlayerAction {
@@ -275,6 +276,13 @@ export interface SetPlayerDisconnectedAction {
   };
 }
 
+export interface SetUserIdMappingAction {
+  type: typeof SET_USER_ID_MAPPING;
+  payload: {
+    mapping: Map<string, string>; // userId -> configPlayerId
+  };
+}
+
 // Combined action type
 export type GameAction =
   | AddPlayerAction
@@ -313,7 +321,8 @@ export type UIAction =
   | HideMoveListAction
   | NavigateMoveListAction
   | SetPlayerConnectedAction
-  | SetPlayerDisconnectedAction;
+  | SetPlayerDisconnectedAction
+  | SetUserIdMappingAction;
 
 // Configuration action creators
 export const addPlayer = (color: string, edge: number, playerId?: string): AddPlayerAction => ({
@@ -541,4 +550,9 @@ export const setPlayerConnected = (playerId: string): SetPlayerConnectedAction =
 export const setPlayerDisconnected = (playerId: string): SetPlayerDisconnectedAction => ({
   type: SET_PLAYER_DISCONNECTED,
   payload: { playerId },
+});
+
+export const setUserIdMapping = (mapping: Map<string, string>): SetUserIdMappingAction => ({
+  type: SET_USER_ID_MAPPING,
+  payload: { mapping },
 });

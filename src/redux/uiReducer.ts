@@ -19,6 +19,7 @@ import {
   NAVIGATE_MOVE_LIST,
   SET_PLAYER_CONNECTED,
   SET_PLAYER_DISCONNECTED,
+  SET_USER_ID_MAPPING,
 } from './actions';
 
 // Initial UI state
@@ -42,6 +43,7 @@ export const initialUIState: UIState = {
   moveListIndex: -1, // -1 means showing current state, 0+ means showing historical state
   savedGameState: null,
   disconnectedPlayers: new Set(), // Track disconnected players in multiplayer
+  userIdToPlayerId: new Map(), // Maps user IDs to config player IDs
   settings: {
     boardRadius: 3,
     supermove: true,
@@ -218,6 +220,14 @@ export function uiReducer(
       return {
         ...state,
         disconnectedPlayers: newDisconnectedPlayers,
+      };
+    }
+
+    case SET_USER_ID_MAPPING: {
+      console.log('🔗 [REDUX] SET_USER_ID_MAPPING:', action.payload.mapping);
+      return {
+        ...state,
+        userIdToPlayerId: action.payload.mapping,
       };
     }
 
