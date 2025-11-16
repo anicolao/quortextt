@@ -95,7 +95,8 @@ const gameSpectators = new Map<string, Map<string, Spectator>>();
 const rematchGames = new Map<string, { 
   players: Array<{ id: string; username: string; playerIndex: number }>, 
   joinedCount: number,
-  spectators?: Array<{ id: string; username: string }>
+  spectators?: Array<{ id: string; username: string }>,
+  oldGameId?: string // Track old game ID to notify spectators
 }>();
 
 // Initialize storage on startup
@@ -721,14 +722,14 @@ io.on('connection', (socket) => {
         const rematchInfo = rematchGames.get(gameId)!;
         
         // Re-add spectators from the previous game
-        if (rematchInfo.spectators && rematchInfo.spectators.length > 0) {
+        if (rematchInfo.spectators && rematchInfo.spectators.length > 0 && rematchInfo.oldGameId) {
           console.log(`Re-adding ${rematchInfo.spectators.length} spectators to rematch game ${gameId}`);
           
           // Notify spectators to rejoin via a custom event
+          // Emit to the OLD game room where spectators are still listening
           for (const spectator of rematchInfo.spectators) {
-            // Emit event to all sockets in the old game room
-            io.to(gameId).emit('rematch_spectator_rejoin', {
-              gameId,
+            io.to(rematchInfo.oldGameId).emit('rematch_spectator_rejoin', {
+              gameId, // The NEW game ID they should join
               spectatorId: spectator.id
             });
           }
@@ -808,7 +809,8 @@ io.on('connection', (socket) => {
           playerIndex: index
         })),
         joinedCount: 0,
-        spectators: spectatorList.map(s => ({ id: s.id, username: s.username }))
+        spectators: spectatorList.map(s => ({ id: s.id, username: s.username })),
+        oldGameId: gameId // Store old game ID to notify spectators later
       });
       
       // Broadcast rematch notification to all players in the old game
