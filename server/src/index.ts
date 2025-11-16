@@ -716,38 +716,48 @@ io.on('connection', (socket) => {
       // Broadcast action to all players in the game
       io.to(gameId).emit('action_posted', finalAction);
 
-      // Check if this is the completion of seating phase in a rematch game
-      if (finalAction.type === 'COMPLETE_SEATING_PHASE' && rematchGames.has(gameId)) {
+      // Check if this is the last SELECT_EDGE in a rematch game (seating complete)
+      if (finalAction.type === 'SELECT_EDGE' && rematchGames.has(gameId)) {
         const rematchInfo = rematchGames.get(gameId)!;
+        const state = await gameStorage.getGameState(gameId);
         
-        console.log(`[Rematch] COMPLETE_SEATING_PHASE for game ${gameId}, checking for spectators...`);
-        console.log(`[Rematch] rematchInfo:`, JSON.stringify({
-          players: rematchInfo.players.length,
-          spectators: rematchInfo.spectators?.length || 0,
-          oldGameId: rematchInfo.oldGameId
-        }));
+        // Check if all players have selected their edges (seating is complete)
+        // This happens when the number of edge selections equals the number of players
+        const edgeSelectionsCount = state?.players?.length || 0;
+        const expectedPlayers = rematchInfo.players.length;
         
-        // Re-add spectators from the previous game
-        if (rematchInfo.spectators && rematchInfo.spectators.length > 0 && rematchInfo.oldGameId) {
-          console.log(`[Rematch] Re-adding ${rematchInfo.spectators.length} spectators to rematch game ${gameId}`);
-          console.log(`[Rematch] Emitting to old game room: ${rematchInfo.oldGameId}`);
+        console.log(`[Rematch] SELECT_EDGE for game ${gameId}, players with edges: ${edgeSelectionsCount}/${expectedPlayers}`);
+        
+        if (edgeSelectionsCount === expectedPlayers && edgeSelectionsCount > 0) {
+          console.log(`[Rematch] All players have selected edges (seating complete), checking for spectators...`);
+          console.log(`[Rematch] rematchInfo:`, JSON.stringify({
+            players: rematchInfo.players.length,
+            spectators: rematchInfo.spectators?.length || 0,
+            oldGameId: rematchInfo.oldGameId
+          }));
           
-          // Notify spectators to rejoin via a custom event
-          // Emit to the OLD game room where spectators are still listening
-          for (const spectator of rematchInfo.spectators) {
-            console.log(`[Rematch] Emitting rematch_spectator_rejoin for spectator ${spectator.id} (${spectator.username})`);
-            io.to(rematchInfo.oldGameId).emit('rematch_spectator_rejoin', {
-              gameId, // The NEW game ID they should join
-              spectatorId: spectator.id
-            });
+          // Re-add spectators from the previous game
+          if (rematchInfo.spectators && rematchInfo.spectators.length > 0 && rematchInfo.oldGameId) {
+            console.log(`[Rematch] Re-adding ${rematchInfo.spectators.length} spectators to rematch game ${gameId}`);
+            console.log(`[Rematch] Emitting to old game room: ${rematchInfo.oldGameId}`);
+            
+            // Notify spectators to rejoin via a custom event
+            // Emit to the OLD game room where spectators are still listening
+            for (const spectator of rematchInfo.spectators) {
+              console.log(`[Rematch] Emitting rematch_spectator_rejoin for spectator ${spectator.id} (${spectator.username})`);
+              io.to(rematchInfo.oldGameId).emit('rematch_spectator_rejoin', {
+                gameId, // The NEW game ID they should join
+                spectatorId: spectator.id
+              });
+            }
+          } else {
+            console.log(`[Rematch] No spectators to re-add or missing oldGameId`);
           }
-        } else {
-          console.log(`[Rematch] No spectators to re-add or missing oldGameId`);
+          
+          // Clean up the rematch tracking now that spectators have been notified
+          console.log(`[Rematch] Cleaning up rematch tracking for game ${gameId}`);
+          rematchGames.delete(gameId);
         }
-        
-        // Clean up the rematch tracking now that spectators have been notified
-        console.log(`[Rematch] Cleaning up rematch tracking for game ${gameId}`);
-        rematchGames.delete(gameId);
       }
 
       console.log(`Action ${finalAction.type} posted to game ${gameId} by ${player.username}`);
