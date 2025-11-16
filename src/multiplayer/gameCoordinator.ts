@@ -189,6 +189,9 @@ export class GameCoordinator {
     // Update the multiplayer store game ID so UI knows about the new game
     multiplayerStore.setGameId(newGameId);
     
+    // Set screen to game so the UI displays the game instead of lobby
+    multiplayerStore.setScreen('game');
+    
     // Join the new room so we can receive updates
     // This won't cause "room full" because we're not a player
     socket.joinRoom(newGameId);

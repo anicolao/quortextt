@@ -312,7 +312,8 @@ class MultiplayerSocket {
           detail: { newGameId: data.gameId }
         }));
         
-        // Now properly join as spectator which will trigger the full flow
+        // Now properly join as spectator which will send back the game state
+        // and trigger the full flow including game-ready event
         this.joinAsSpectator(data.gameId);
       } else {
         console.log('[Socket] Not rejoining - playerId mismatch or not spectator');
