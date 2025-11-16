@@ -31,6 +31,7 @@ export class GameCoordinator {
   private boundActionReceived: EventListener;
   private boundActionsSync: EventListener;
   private boundRematchCreated: EventListener;
+  private boundSpectatorRematchTransition: EventListener;
 
   constructor(reduxStore: any, gameId: string, rematchInfo?: RematchInfo) {
     this.store = reduxStore;
@@ -53,6 +54,7 @@ export class GameCoordinator {
     this.boundActionReceived = this.handleActionReceived.bind(this) as EventListener;
     this.boundActionsSync = this.handleActionsSync.bind(this) as EventListener;
     this.boundRematchCreated = this.handleRematchCreated.bind(this) as EventListener;
+    this.boundSpectatorRematchTransition = this.handleSpectatorRematchTransition.bind(this) as EventListener;
   }
 
   start() {
@@ -168,6 +170,23 @@ export class GameCoordinator {
     this.isProcessingRematch = false;
   }
 
+  private handleSpectatorRematchTransition(event: Event) {
+    const customEvent = event as CustomEvent;
+    const { newGameId } = customEvent.detail;
+    
+    console.log('[GameCoordinator] Spectator rematch transition to game:', newGameId);
+    
+    // Leave the old game room and join the new one
+    socket.leaveRoom(this.gameId);
+    socket.joinRoom(newGameId);
+    
+    // Update our game ID to the new one and reset action counter
+    this.gameId = newGameId;
+    this.localActionsProcessed = 0;
+    
+    console.log('[GameCoordinator] Spectator transitioned to new game:', newGameId);
+  }
+
   private interceptReduxDispatch() {
     // Intercept Redux dispatch to catch START_GAME and other actions
     // that should be broadcast to all clients
@@ -276,6 +295,9 @@ export class GameCoordinator {
     
     // Rematch created - transition to new game
     window.addEventListener('multiplayer:rematch-created', this.boundRematchCreated);
+    
+    // Spectator rematch transition - transition spectator to new game
+    window.addEventListener('multiplayer:spectator-rematch-transition', this.boundSpectatorRematchTransition);
   }
 
   private handleGameReady(event: Event) {
@@ -462,6 +484,7 @@ export class GameCoordinator {
     window.removeEventListener('multiplayer:action', this.boundActionReceived);
     window.removeEventListener('multiplayer:actions-sync', this.boundActionsSync);
     window.removeEventListener('multiplayer:rematch-created', this.boundRematchCreated);
+    window.removeEventListener('multiplayer:spectator-rematch-transition', this.boundSpectatorRematchTransition);
     
     // Restore original dispatch
     if (this.realOriginalDispatch && this.store) {
