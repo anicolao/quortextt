@@ -1,6 +1,6 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
-import { setLocalPlayerId, selectEdge, setUserIdMapping, addPlayer, startGame, resetGame } from '../redux/actions';
+import { setLocalPlayerId, selectEdge, setUserIdMapping, addPlayer, startGame } from '../redux/actions';
 import { multiplayerStore } from './stores/multiplayerStore';
 
 // Interface for rematch information
@@ -25,7 +25,6 @@ export class GameCoordinator {
   private rematchInfo?: RematchInfo;
   private pendingRematchEdges?: Map<string, number>; // Player edges to apply after START_GAME
   private isSpectator: boolean = false; // Track if user is spectating
-  private needsResetBeforeSync: boolean = false; // Flag to reset game state before syncing actions
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;

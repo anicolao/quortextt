@@ -20,6 +20,8 @@ import {
   setPlayerConnected,
   setPlayerDisconnected,
   setUserIdMapping,
+  setSpectatorMode,
+  setSpectatorCount,
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
@@ -404,6 +406,41 @@ describe('uiReducer', () => {
       expect(state.userIdToPlayerId.get('google:123')).toBe('P1');
       expect(state.userIdToPlayerId.get('google:456')).toBe('P2');
       expect(state.userIdToPlayerId.size).toBe(2);
+    });
+  });
+
+  describe('Spectator Mode', () => {
+    it('should set spectator mode to true', () => {
+      const state = uiReducer(initialUIState, setSpectatorMode(true));
+
+      expect(state.isSpectator).toBe(true);
+    });
+
+    it('should set spectator mode to false', () => {
+      let state = uiReducer(initialUIState, setSpectatorMode(true));
+      state = uiReducer(state, setSpectatorMode(false));
+
+      expect(state.isSpectator).toBe(false);
+    });
+
+    it('should set spectator count', () => {
+      const state = uiReducer(initialUIState, setSpectatorCount(5));
+
+      expect(state.spectatorCount).toBe(5);
+    });
+
+    it('should update spectator count', () => {
+      let state = uiReducer(initialUIState, setSpectatorCount(3));
+      state = uiReducer(state, setSpectatorCount(7));
+
+      expect(state.spectatorCount).toBe(7);
+    });
+
+    it('should set spectator count to zero', () => {
+      let state = uiReducer(initialUIState, setSpectatorCount(5));
+      state = uiReducer(state, setSpectatorCount(0));
+
+      expect(state.spectatorCount).toBe(0);
     });
   });
 });
