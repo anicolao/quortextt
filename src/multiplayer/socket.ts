@@ -205,10 +205,11 @@ class MultiplayerSocket {
     });
 
     this.socket.on('player_reconnected', (data: { playerId: string; username: string }) => {
-      console.log('Player reconnected:', data.username);
+      console.log('🟢 [RECONNECT] Player reconnected:', data.username, 'playerId:', data.playerId);
       // Mark player as connected in both Redux and multiplayer store
       store.dispatch(setPlayerConnected(data.playerId));
       multiplayerStore.setPlayerConnected(data.playerId);
+      console.log('🟢 [RECONNECT] State updated - removed from disconnected list');
     });
 
     this.socket.on('player_left', (data: { playerId: string; room: Room }) => {
@@ -217,10 +218,11 @@ class MultiplayerSocket {
     });
 
     this.socket.on('player_disconnected', (data: { playerId: string; username: string }) => {
-      console.log('Player disconnected:', data.username);
+      console.log('🔴 [DISCONNECT] Player disconnected:', data.username, 'playerId:', data.playerId);
       // Mark player as disconnected in both Redux and multiplayer store
       store.dispatch(setPlayerDisconnected(data.playerId));
       multiplayerStore.setPlayerDisconnected(data.playerId);
+      console.log('🔴 [DISCONNECT] State updated - added to disconnected list');
     });
 
     // Game events (event sourcing architecture)
