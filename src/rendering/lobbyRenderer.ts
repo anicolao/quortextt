@@ -301,12 +301,9 @@ export class LobbyRenderer {
     disconnectedPlayers: Set<string>,
   ): void {
     // Render player lists at all 4 edges
-    console.log('🎨 [LOBBY] Rendering player lists - Disconnected players:', Array.from(disconnectedPlayers));
-    console.log('🎨 [LOBBY] Config players:', lists.flat().map(e => ({ id: e.player.id, color: e.player.color })));
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
         const isDisconnected = disconnectedPlayers.has(entry.player.id);
-        console.log('🎨 [LOBBY] Player:', entry.player.id, 'Disconnected:', isDisconnected);
         this.renderPlayerEntry(entry, playerIndex, canvasWidth, canvasHeight, isDisconnected);
       });
     });
@@ -397,7 +394,6 @@ export class LobbyRenderer {
     
     // If player is disconnected, draw a red dot indicator on the color tile
     if (isDisconnected) {
-      console.log('🔴 [LOBBY] Drawing red dot on color tile for player');
       const dotRadius = colorSize * 0.25;
       const dotX = colorX + colorSize - dotRadius;
       const dotY = colorY + dotRadius;

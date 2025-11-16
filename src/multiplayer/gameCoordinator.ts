@@ -347,15 +347,12 @@ export class GameCoordinator {
         const state = this.store.getState();
         const configPlayerId = `P${state.game.configPlayers.length + 1}`;
         
-        console.log(`[GameCoordinator] Building mapping: ${action.payload.userId} -> ${configPlayerId}`);
-        
         // Update the mapping before dispatching ADD_PLAYER
         const mapping = new Map<string, string>(state.ui.userIdToPlayerId as Map<string, string>);
         mapping.set(action.payload.userId, configPlayerId);
         
         // Dispatch the mapping update first
         this.realOriginalDispatch.call(this.store, setUserIdMapping(mapping));
-        console.log(`[GameCoordinator] Mapped user ${action.payload.userId} to ${configPlayerId}`);
       }
       
       this.realOriginalDispatch.call(this.store, {
