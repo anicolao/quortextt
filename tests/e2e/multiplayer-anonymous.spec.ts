@@ -128,7 +128,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
     });
   });
 
-  test('should show connecting state when join button is clicked', async ({ page }) => {
+  test('should attempt connection when join button is clicked', async ({ page }) => {
     const usernameInput = page.locator('input[type="text"][placeholder="Enter username"]');
     const joinButton = page.locator('button', { hasText: 'Join Lobby' });
     
@@ -142,24 +142,30 @@ test.describe('Multiplayer Anonymous User UI', () => {
     });
     
     // Click join button (will attempt connection)
-    await joinButton.click();
+    const buttonClickPromise = joinButton.click();
     
-    // The UI should attempt to connect to the server
-    // Without a server, the button should show "Connecting..." and eventually timeout/error
-    // Wait a moment for UI to update
+    // Wait a brief moment to capture the UI state during connection attempt
     await page.waitForTimeout(200);
     
     // Take screenshot showing the state after click
-    // (The exact state depends on whether server is available)
+    // This may show "Connecting..." or already navigated to lobby if server is fast
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-connecting-state.png',
       fullPage: true
     });
     
-    // The button should either show "Connecting..." or remain as "Join Lobby" 
-    // depending on implementation - we just verify the UI doesn't crash
-    const buttonText = await joinButton.textContent();
-    expect(buttonText).toBeTruthy();
+    // Wait for the click to complete (may navigate away)
+    await buttonClickPromise;
+    
+    // If server is available, we should navigate to lobby or show error
+    // Just verify the page is in a stable state
+    await page.waitForTimeout(500);
+    
+    // Page should either show lobby (if server available) or stay on login with error
+    const hasLobbyHeading = await page.locator('h1:has-text("Game Lobby")').count() > 0;
+    const hasLoginHeading = await page.locator('h1:has-text("Quortex Multiplayer")').count() > 0;
+    
+    expect(hasLobbyHeading || hasLoginHeading).toBe(true);
   });
 });
 

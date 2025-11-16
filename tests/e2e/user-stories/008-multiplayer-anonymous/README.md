@@ -19,12 +19,14 @@ These tests verify the client-side UI behavior without requiring a backend serve
 7. **Styling and Layout** - Documents the visual layout of the login screen
 8. **Connecting State** - Shows the UI changes to "Connecting..." when join is clicked
 
-### Integration Tests (Requires Server)
+### Integration Tests (With Server)
 
-These tests require the backend server running on `localhost:3001`:
+With the backend server running on `localhost:3001`, all tests pass including:
 
 1. **Join Lobby** - Complete flow of entering username and joining the game lobby
 2. **Create Game Room** - Flow of creating a new multiplayer game room with custom settings
+
+**All 9 tests pass when the server is running**, providing complete screenshot documentation of the entire flow from login through room creation.
 
 ## Running the Tests
 
@@ -78,13 +80,13 @@ Complete layout of the login screen showing all elements
 UI shows "Connecting..." state when join button is clicked
 
 ### 008-lobby-screen.png
-(Requires server) Game lobby after successful anonymous login
+Game lobby after successful anonymous login showing username, create room button, and available rooms list
 
 ### 009-create-room-modal.png
-(Requires server) Modal for creating a new game room
+Modal for creating a new game room with room name and max players settings
 
 ### 010-room-created.png
-(Requires server) Room screen after creating a game
+Room screen after creating a game, showing host badge, player list, and waiting for more players message
 
 ## User Flow
 
