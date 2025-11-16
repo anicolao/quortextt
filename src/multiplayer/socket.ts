@@ -27,7 +27,7 @@ class MultiplayerSocket {
   }
 
   /**
-   * Start sending heartbeat to server every 10 seconds
+   * Start sending heartbeat to server every 1 second
    */
   private startHeartbeat() {
     // Clear any existing interval
@@ -35,12 +35,12 @@ class MultiplayerSocket {
       clearInterval(this.heartbeatInterval);
     }
     
-    // Send heartbeat every 10 seconds
+    // Send heartbeat every 1 second
     this.heartbeatInterval = setInterval(() => {
       if (this.socket?.connected) {
         this.socket.emit('heartbeat');
       }
-    }, 10000);
+    }, 1000);
   }
 
   /**
