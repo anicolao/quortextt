@@ -298,11 +298,13 @@ export class LobbyRenderer {
     lists: PlayerListEntry[][],
     canvasWidth: number,
     canvasHeight: number,
+    disconnectedPlayers: Set<string>,
   ): void {
     // Render player lists at all 4 edges
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
-        this.renderPlayerEntry(entry, playerIndex, canvasWidth, canvasHeight);
+        const isDisconnected = disconnectedPlayers.has(entry.player.id);
+        this.renderPlayerEntry(entry, playerIndex, canvasWidth, canvasHeight, isDisconnected);
       });
     });
   }
@@ -312,6 +314,7 @@ export class LobbyRenderer {
     index: number,
     canvasWidth: number,
     canvasHeight: number,
+    isDisconnected: boolean,
   ): void {
     this.ctx.save();
 
@@ -388,6 +391,20 @@ export class LobbyRenderer {
     this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(colorX, colorY, colorSize, colorSize);
+    
+    // If player is disconnected, draw a red dot indicator on the color tile
+    if (isDisconnected) {
+      const dotRadius = colorSize * 0.25;
+      const dotX = colorX + colorSize - dotRadius;
+      const dotY = colorY + dotRadius;
+      this.ctx.fillStyle = '#FF0000';
+      this.ctx.shadowBlur = 6;
+      this.ctx.shadowColor = '#FF0000';
+      this.ctx.beginPath();
+      this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.shadowBlur = 0; // Reset shadow
+    }
 
     // Draw player number
     this.ctx.fillStyle = "#ffffff";
