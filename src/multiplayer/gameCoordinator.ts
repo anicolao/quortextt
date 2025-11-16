@@ -25,6 +25,7 @@ export class GameCoordinator {
   private rematchInfo?: RematchInfo;
   private pendingRematchEdges?: Map<string, number>; // Player edges to apply after START_GAME
   private isSpectator: boolean = false; // Track if user is spectating
+  private needsResetBeforeSync: boolean = false; // Flag to reset game state before syncing actions
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;
@@ -179,12 +180,9 @@ export class GameCoordinator {
     // Leave the old game room
     socket.leaveRoom(this.gameId);
     
-    // Reset the game state in Redux to clear the old game's board
-    if (this.store) {
-      this.store.dispatch(resetGame());
-    }
-    
     // Update our game ID to the new one and reset action counter
+    // The action counter reset is crucial - we'll receive the full game state
+    // from the server when we join as spectator, starting from action 0
     this.gameId = newGameId;
     this.localActionsProcessed = 0;
     
