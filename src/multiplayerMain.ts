@@ -67,9 +67,18 @@ multiplayerStore.subscribe((state) => {
     // Initialize game coordinator to subscribe to actions
     // Recreate coordinator if gameId has changed (e.g., for rematch)
     if (!gameCoordinator || currentGameId !== state.gameId) {
+      let rematchInfo = null;
+      
       // Clean up old coordinator if it exists
       if (gameCoordinator) {
         console.log('[multiplayerMain] Cleaning up old coordinator for gameId:', currentGameId);
+        
+        // Get rematch info before stopping the coordinator
+        rematchInfo = gameCoordinator.getRematchInfo();
+        if (rematchInfo) {
+          console.log('[multiplayerMain] Retrieved rematch info:', rematchInfo);
+        }
+        
         gameCoordinator.stop();
         
         // Reset the Redux game state when transitioning to a new game
@@ -79,7 +88,7 @@ multiplayerStore.subscribe((state) => {
       
       console.log('[multiplayerMain] Creating new coordinator for gameId:', state.gameId);
       currentGameId = state.gameId;
-      gameCoordinator = new GameCoordinator(store, state.gameId);
+      gameCoordinator = new GameCoordinator(store, state.gameId, rematchInfo || undefined);
       gameCoordinator.start();
     }
   } else {
