@@ -3,6 +3,7 @@
 import { store } from '../redux/store';
 import { addPlayer, removePlayer, startGame, toggleSettings, updateSettings, showHelp, hideHelp, restoreGame } from '../redux/actions';
 import { LobbyLayout, isPointInButton, isPointInCircle } from '../rendering/lobbyLayout';
+import { multiplayerStore } from '../multiplayer/stores/multiplayerStore';
 
 export class LobbyInputHandler {
   handleClick(x: number, y: number, layout: LobbyLayout | null): void {
@@ -164,12 +165,15 @@ export class LobbyInputHandler {
     // Check edge buttons (+ buttons)
     for (const edgeBtn of layout.edgeButtons) {
       if (isPointInButton(x, y, edgeBtn)) {
-        // In multiplayer mode, pass both playerId and userId; in tabletop mode, let it auto-generate
+        // In multiplayer mode, pass userId; in tabletop mode, let it auto-generate
         const state = store.getState();
         if (state.ui.gameMode === 'multiplayer') {
-          const userId = state.ui.localPlayerId || undefined;
-          // Pass userId in both playerId and userId fields for multiplayer
-          store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge, userId, userId));
+          // Get the user ID from multiplayerStore (it's stored as 'playerId' but contains the user ID like 'google:...')
+          const mpState = multiplayerStore.get();
+          const userId = mpState.playerId || undefined;
+          console.log('[LOBBY INPUT] Adding player in multiplayer mode with userId:', userId);
+          // Pass userId in the userId field for proper ID mapping across clients
+          store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge, undefined, userId));
         } else {
           // Tabletop mode: auto-generate player IDs
           store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge));
