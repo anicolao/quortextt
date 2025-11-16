@@ -1,6 +1,6 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
-import { setLocalPlayerId, selectEdge, setUserIdMapping } from '../redux/actions';
+import { setLocalPlayerId, selectEdge, setUserIdMapping, addPlayer, startGame } from '../redux/actions';
 import { multiplayerStore } from './stores/multiplayerStore';
 
 // Interface for rematch information
@@ -310,28 +310,25 @@ export class GameCoordinator {
           this.pendingRematchEdges!.set(playerId, data.edge);
         });
         
-        // Import all needed actions
-        import('../redux/actions').then(({ addPlayer, startGame }) => {
-          // Step 1: Add all players
-          allPlayersData.forEach((data, playerId) => {
-            console.log('[GameCoordinator] Posting ADD_PLAYER for player', playerId, 'color:', data.color, 'edge:', data.edge);
-            this.store.dispatch(addPlayer(data.color, data.edge, playerId, playerId)); // Pass userId as 4th param
-          });
-          
-          // Step 2: Send START_GAME with game settings (wait a bit for ADD_PLAYER actions to be broadcast)
-          setTimeout(() => {
-            const seed = Math.floor(Math.random() * 1000000);
-            console.log('[GameCoordinator] Posting START_GAME with seed:', seed, 'and settings:', gameSettings);
-            socket.postAction(gameId, startGame({
-              seed,
-              boardRadius: gameSettings.boardRadius,
-              supermove: gameSettings.supermove,
-              singleSupermove: gameSettings.singleSupermove,
-              supermoveAnyPlayer: gameSettings.supermoveAnyPlayer
-            }));
-            // SELECT_EDGE will be posted when START_GAME is received and seating order is set
-          }, 200);
+        // Step 1: Add all players
+        allPlayersData.forEach((data, playerId) => {
+          console.log('[GameCoordinator] Posting ADD_PLAYER for player', playerId, 'color:', data.color, 'edge:', data.edge);
+          this.store.dispatch(addPlayer(data.color, data.edge, playerId, playerId)); // Pass userId as 4th param
         });
+        
+        // Step 2: Send START_GAME with game settings (wait a bit for ADD_PLAYER actions to be broadcast)
+        setTimeout(() => {
+          const seed = Math.floor(Math.random() * 1000000);
+          console.log('[GameCoordinator] Posting START_GAME with seed:', seed, 'and settings:', gameSettings);
+          socket.postAction(gameId, startGame({
+            seed,
+            boardRadius: gameSettings.boardRadius,
+            supermove: gameSettings.supermove,
+            singleSupermove: gameSettings.singleSupermove,
+            supermoveAnyPlayer: gameSettings.supermoveAnyPlayer
+          }));
+          // SELECT_EDGE will be posted when START_GAME is received and seating order is set
+        }, 200);
       }
       
       // Clear rematch info so we don't process it again
