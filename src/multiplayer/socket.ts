@@ -307,14 +307,13 @@ class MultiplayerSocket {
       if (mpState.playerId === data.spectatorId && mpState.isSpectator) {
         console.log('[Socket] Automatically rejoining rematch game as spectator:', data.gameId);
         // Emit custom event to trigger game coordinator transition
-        // The game coordinator will handle leaving old room and joining new room
+        // The game coordinator will handle leaving old room and updating game ID
         window.dispatchEvent(new CustomEvent('multiplayer:spectator-rematch-transition', {
           detail: { newGameId: data.gameId }
         }));
         
-        // After transition, emit socket event to server to register as spectator
-        // Don't call joinAsSpectator() since the room was already joined by the transition
-        this.socket.emit('join_as_spectator', { gameId: data.gameId });
+        // Now properly join as spectator which will trigger the full flow
+        this.joinAsSpectator(data.gameId);
       } else {
         console.log('[Socket] Not rejoining - playerId mismatch or not spectator');
       }
