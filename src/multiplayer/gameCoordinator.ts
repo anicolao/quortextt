@@ -2,6 +2,18 @@
 import { socket } from './socket';
 import { setLocalPlayerId, selectEdge } from '../redux/actions';
 
+// Interface for rematch information
+interface RematchInfo {
+  isInitiator: boolean;
+  playerData?: Map<string, { color: string; edge: number }>;
+  gameSettings?: {
+    boardRadius: number;
+    supermove: boolean;
+    singleSupermove: boolean;
+    supermoveAnyPlayer: boolean;
+  };
+}
+
 export class GameCoordinator {
   private store: any; // Redux store
   private gameId: string;
@@ -9,7 +21,7 @@ export class GameCoordinator {
   private realOriginalDispatch: any = null; // The actual Redux dispatch before interception
   private localPlayerId: string | null = null;
   private isProcessingRematch: boolean = false;
-  private rematchInfo?: { isInitiator: boolean; playerData?: { color: string; edge: number } };
+  private rematchInfo?: RematchInfo;
   private pendingRematchEdges?: Map<string, number>; // Player edges to apply after START_GAME
   
   // Store bound event handlers so we can properly remove them
@@ -18,7 +30,7 @@ export class GameCoordinator {
   private boundActionsSync: EventListener;
   private boundRematchCreated: EventListener;
 
-  constructor(reduxStore: any, gameId: string, rematchInfo?: { isInitiator: boolean; playerData?: { color: string; edge: number } }) {
+  constructor(reduxStore: any, gameId: string, rematchInfo?: RematchInfo) {
     this.store = reduxStore;
     this.gameId = gameId;
     
@@ -47,20 +59,8 @@ export class GameCoordinator {
   }
   
   // Get rematch info to pass to new coordinator
-  getRematchInfo(): { isInitiator: boolean; playerData?: { color: string; edge: number } } | null {
-    // Check if there's rematch data stored globally
-    const playerData = (window as any).__localPlayerRematchData as { color: string; edge: number } | undefined;
-    const isInitiator = (window as any).__isRematchInitiator === true;
-    
-    if (playerData) {
-      // Clear the globals since we're transferring the data
-      delete (window as any).__localPlayerRematchData;
-      delete (window as any).__isRematchInitiator;
-      
-      return { isInitiator, playerData };
-    }
-    
-    return null;
+  getRematchInfo(): RematchInfo | null {
+    return this.rematchInfo || null;
   }
 
   private handleRematch() {
@@ -70,10 +70,18 @@ export class GameCoordinator {
       return;
     }
     
-    // Get the current game state to extract player information
+    // Get the current game state to extract player information and settings
     const state = this.store.getState();
     const edgeAssignments = state.game?.seatingPhase?.edgeAssignments;
     const players = state.game?.players;
+    
+    // Extract game settings from current game state
+    const gameSettings = {
+      boardRadius: state.game?.boardRadius ?? 3,
+      supermove: state.game?.supermove ?? true,
+      singleSupermove: state.game?.singleSupermove ?? false,
+      supermoveAnyPlayer: state.game?.supermoveAnyPlayer ?? false,
+    };
     
     // Get local player ID from UI state or coordinator's stored value
     this.localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
@@ -91,20 +99,14 @@ export class GameCoordinator {
       return;
     }
     
-    console.log('[GameCoordinator] Requesting rematch...');
+    console.log('[GameCoordinator] Requesting rematch with settings:', gameSettings);
     
     // Mark that we're processing a rematch
     this.isProcessingRematch = true;
     
-    // Mark this player as the rematch initiator (store globally so new coordinator can access it)
-    (window as any).__isRematchInitiator = true;
-    
-    // Store player information for restoration in the rematch
+    // Prepare rematch info for the new coordinator
+    const playerData = new Map<string, { color: string; edge: number }>();
     if (edgeAssignments && players) {
-      (window as any).__rematchEdgeAssignments = new Map(edgeAssignments);
-      
-      // Store complete player data (color, edge) for each player
-      const playerData = new Map<string, { color: string; edge: number }>();
       players.forEach((player: any) => {
         const edge = edgeAssignments.get(player.id);
         if (edge !== undefined) {
@@ -114,10 +116,16 @@ export class GameCoordinator {
           });
         }
       });
-      (window as any).__rematchPlayerData = playerData;
       
-      console.log('[GameCoordinator] Stored player data for rematch:', playerData);
+      console.log('[GameCoordinator] Prepared player data for rematch:', playerData);
     }
+    
+    // Store rematch info in the coordinator instance for transfer to new coordinator
+    this.rematchInfo = {
+      isInitiator: true,
+      playerData,
+      gameSettings
+    };
     
     // Request rematch via socket (server will broadcast to all players)
     socket.requestRematch(this.gameId);
@@ -129,22 +137,6 @@ export class GameCoordinator {
     
     console.log('[GameCoordinator] Rematch created, transitioning from', oldGameId, 'to', newGameId);
     
-    // Get stored player data
-    const playerData = (window as any).__rematchPlayerData as Map<string, { color: string; edge: number }> | undefined;
-    
-    // Get localPlayerId from Redux state (more reliable than instance variable)
-    const state = this.store.getState();
-    const localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
-    
-    // Store player data for reapplication
-    if (playerData && localPlayerId) {
-      const localPlayerData = playerData.get(localPlayerId);
-      if (localPlayerData) {
-        console.log('[GameCoordinator] Will restore player data:', localPlayerData);
-        (window as any).__localPlayerRematchData = localPlayerData;
-      }
-    }
-    
     // Leave the old game room
     socket.leaveRoom(oldGameId);
     
@@ -154,6 +146,7 @@ export class GameCoordinator {
     // The server will send game_ready event for the new game
     // which will trigger multiplayerStore.setGameId() via socket event handler
     // That will cause multiplayerMain to create a fresh coordinator for the new game
+    // The new coordinator will receive rematch info via getRematchInfo()
     // So we just need to clean up this coordinator instance
     this.stop();
     
@@ -282,11 +275,13 @@ export class GameCoordinator {
       // Store localPlayerId for this coordinator instance
       this.localPlayerId = localPlayerId;
       
-      // Get all players' data from window globals (stored by handleRematch)
-      const allPlayersData = (window as any).__rematchPlayerData as Map<string, { color: string; edge: number }> | undefined;
+      // Get player data and game settings from rematch info
+      const allPlayersData = this.rematchInfo.playerData;
+      const gameSettings = this.rematchInfo.gameSettings;
       
-      if (allPlayersData) {
+      if (allPlayersData && gameSettings) {
         console.log('[GameCoordinator] Initiator posting setup for all', allPlayersData.size, 'players');
+        console.log('[GameCoordinator] Using game settings:', gameSettings);
         
         // Store edge assignments to apply after START_GAME
         this.pendingRematchEdges = new Map();
@@ -302,17 +297,20 @@ export class GameCoordinator {
             this.store.dispatch(addPlayer(data.color, data.edge, playerId));
           });
           
-          // Step 2: Send START_GAME (wait a bit for ADD_PLAYER actions to be broadcast)
+          // Step 2: Send START_GAME with game settings (wait a bit for ADD_PLAYER actions to be broadcast)
           setTimeout(() => {
             const seed = Math.floor(Math.random() * 1000000);
-            console.log('[GameCoordinator] Posting START_GAME with seed:', seed);
-            socket.postAction(gameId, startGame({ seed }));
+            console.log('[GameCoordinator] Posting START_GAME with seed:', seed, 'and settings:', gameSettings);
+            socket.postAction(gameId, startGame({
+              seed,
+              boardRadius: gameSettings.boardRadius,
+              supermove: gameSettings.supermove,
+              singleSupermove: gameSettings.singleSupermove,
+              supermoveAnyPlayer: gameSettings.supermoveAnyPlayer
+            }));
             // SELECT_EDGE will be posted when START_GAME is received and seating order is set
           }, 200);
         });
-        
-        // Clear the global data
-        delete (window as any).__rematchPlayerData;
       }
       
       // Clear rematch info so we don't process it again
