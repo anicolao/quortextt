@@ -362,10 +362,14 @@ export class GameCoordinator {
         if (seatingOrder && seatingOrder.length > 0) {
           console.log('[GameCoordinator] Seating order:', seatingOrder);
           
+          // Capture pending edges before clearing them
+          const edgesToApply = this.pendingRematchEdges;
+          this.pendingRematchEdges = undefined; // Clear immediately
+          
           // Post SELECT_EDGE for each player in seating order
           import('../redux/actions').then(({ selectEdge }) => {
             seatingOrder.forEach((playerId: string, index: number) => {
-              const edge = this.pendingRematchEdges!.get(playerId);
+              const edge = edgesToApply.get(playerId);
               if (edge !== undefined) {
                 console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
                 // Use setTimeout to ensure actions are sent in order
@@ -375,9 +379,6 @@ export class GameCoordinator {
               }
             });
           });
-          
-          // Clear pending edges
-          this.pendingRematchEdges = undefined;
         }
       }
     }
@@ -411,10 +412,14 @@ export class GameCoordinator {
           if (seatingOrder && seatingOrder.length > 0) {
             console.log('[GameCoordinator] Seating order:', seatingOrder);
             
+            // Capture pending edges before clearing them
+            const edgesToApply = this.pendingRematchEdges;
+            this.pendingRematchEdges = undefined; // Clear immediately
+            
             // Post SELECT_EDGE for each player in seating order
             import('../redux/actions').then(({ selectEdge }) => {
               seatingOrder.forEach((playerId: string, index: number) => {
-                const edge = this.pendingRematchEdges!.get(playerId);
+                const edge = edgesToApply.get(playerId);
                 if (edge !== undefined) {
                   console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
                   // Use setTimeout to ensure actions are sent in order
@@ -424,9 +429,6 @@ export class GameCoordinator {
                 }
               });
             });
-            
-            // Clear pending edges
-            this.pendingRematchEdges = undefined;
           }
         }
       }
