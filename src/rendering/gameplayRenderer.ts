@@ -149,35 +149,19 @@ export class GameplayRenderer {
     
     // In multiplayer mode, rotate only the board/tiles so the local player's edge is at the bottom
     if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
-      console.log('[GameplayRenderer] Multiplayer mode detected');
-      console.log('[GameplayRenderer] localPlayerId:', state.ui.localPlayerId);
-      console.log('[GameplayRenderer] Game players:', state.game.players.map(p => ({ id: p.id, edge: p.edgePosition })));
-      
       // Find the local player's info
       const localPlayer = state.game.players.find(p => p.id === state.ui.localPlayerId);
       if (localPlayer) {
-        console.log('[GameplayRenderer] Found local player:', localPlayer);
         // Calculate rotation needed to put player's edge at bottom (edge 0 position)
         // Edge positions: 0=bottom, 1=bottom-right, 2=top-right, 3=top, 4=top-left, 5=bottom-left
         // We need to rotate so that player's edge becomes edge 0, and add 180° to keep it right-side-up
         const edgeAngles = [0, 60, 120, 180, 240, 300];
         const rotationAngle = -edgeAngles[localPlayer.edgePosition] + 180; // Add 180° to flip orientation
         
-        console.log('[GameplayRenderer] Applying rotation:', rotationAngle, 'degrees');
-        
         // Rotate around the center of the canvas
         this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
         this.ctx.rotate((rotationAngle * Math.PI) / 180);
         this.ctx.translate(-this.layout.canvasWidth / 2, -this.layout.canvasHeight / 2);
-      } else {
-        console.log('[GameplayRenderer] Local player NOT found in game players!');
-      }
-    } else {
-      if (state.ui.gameMode === 'multiplayer') {
-        console.log('[GameplayRenderer] Multiplayer mode but not ready:', {
-          localPlayerId: state.ui.localPlayerId,
-          playersLength: state.game.players.length
-        });
       }
     }
 
