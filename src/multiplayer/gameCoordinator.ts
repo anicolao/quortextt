@@ -10,6 +10,8 @@ export class GameCoordinator {
   private realOriginalDispatch: any = null; // The actual Redux dispatch before interception
   private localPlayerId: string | null = null;
   private isProcessingRematch: boolean = false;
+  private rematchInfo?: { isInitiator: boolean; playerData?: { color: string; edge: number } };
+  private pendingEdgeSelection?: { playerId: string; edge: number }; // Edge to select after START_GAME
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;
@@ -17,9 +19,15 @@ export class GameCoordinator {
   private boundActionsSync: EventListener;
   private boundRematchCreated: EventListener;
 
-  constructor(reduxStore: any, gameId: string) {
+  constructor(reduxStore: any, gameId: string, rematchInfo?: { isInitiator: boolean; playerData?: { color: string; edge: number } }) {
     this.store = reduxStore;
     this.gameId = gameId;
+    
+    // Store rematch information if provided
+    if (rematchInfo) {
+      this.rematchInfo = rematchInfo;
+      console.log('[GameCoordinator] Created with rematch info:', rematchInfo);
+    }
     
     // Bind event handlers once
     this.boundGameReady = this.handleGameReady.bind(this) as EventListener;
@@ -37,6 +45,23 @@ export class GameCoordinator {
 
   stop() {
     this.cleanup();
+  }
+  
+  // Get rematch info to pass to new coordinator
+  getRematchInfo(): { isInitiator: boolean; playerData?: { color: string; edge: number } } | null {
+    // Check if there's rematch data stored globally
+    const playerData = (window as any).__localPlayerRematchData as { color: string; edge: number } | undefined;
+    const isInitiator = (window as any).__isRematchInitiator === true;
+    
+    if (playerData) {
+      // Clear the globals since we're transferring the data
+      delete (window as any).__localPlayerRematchData;
+      delete (window as any).__isRematchInitiator;
+      
+      return { isInitiator, playerData };
+    }
+    
+    return null;
   }
 
   private handleRematch() {
@@ -247,56 +272,42 @@ export class GameCoordinator {
     
     console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`);
     
-    // Check if this is a rematch (we have stored player data for this player)
-    const rematchData = (window as any).__localPlayerRematchData as { color: string; edge: number } | undefined;
-    
     // Get localPlayerId from Redux state (it persists across coordinator instances)
     const state = this.store.getState();
     const localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
     
-    // Check if this player initiated the rematch (from window global, persists across coordinators)
-    const isRematchInitiator = (window as any).__isRematchInitiator === true;
-    
-    if (rematchData && localPlayerId) {
-      console.log('[GameCoordinator] This is a rematch, will restore player setup:', rematchData);
+    // Check if this is a rematch (passed from old coordinator)
+    if (this.rematchInfo && this.rematchInfo.playerData && localPlayerId) {
+      const { playerData, isInitiator } = this.rematchInfo;
+      console.log('[GameCoordinator] This is a rematch, will restore player setup:', playerData);
       
       // Store localPlayerId for this coordinator instance
       this.localPlayerId = localPlayerId;
       
-      // If this player initiated the rematch, send START_GAME action first
-      if (isRematchInitiator) {
-        console.log('[GameCoordinator] Rematch initiator - sending START_GAME action');
-        // Clear the flag so we don't send it again
-        delete (window as any).__isRematchInitiator;
-        
-        // Generate seed and send START_GAME action
-        const seed = Math.floor(Math.random() * 1000000);
-        import('../redux/actions').then(({ startGame }) => {
-          socket.postAction(gameId, startGame({ seed }));
-        });
+      // Step 1: Add player immediately (before START_GAME)
+      console.log('[GameCoordinator] Adding player with color:', playerData.color, 'edge:', playerData.edge);
+      import('../redux/actions').then(({ addPlayer }) => {
+        this.store.dispatch(addPlayer(playerData.color, playerData.edge, localPlayerId));
+      });
+      
+      // Step 2: Store pending edge selection (will be triggered when START_GAME arrives)
+      this.pendingEdgeSelection = { playerId: localPlayerId, edge: playerData.edge };
+      console.log('[GameCoordinator] Will select edge', playerData.edge, 'when START_GAME arrives');
+      
+      // Step 3: If initiator, wait a bit for all players to add themselves, then send START_GAME
+      if (isInitiator) {
+        console.log('[GameCoordinator] Rematch initiator - will send START_GAME after delay');
+        setTimeout(() => {
+          const seed = Math.floor(Math.random() * 1000000);
+          import('../redux/actions').then(({ startGame }) => {
+            console.log('[GameCoordinator] Sending START_GAME action');
+            socket.postAction(gameId, startGame({ seed }));
+          });
+        }, 1500); // Wait for all players to add themselves
       }
       
-      // Clear the stored data
-      delete (window as any).__localPlayerRematchData;
-      
-      // Wait for START_GAME to be processed, then auto-add player and select edge
-      setTimeout(() => {
-        if (localPlayerId) {
-          console.log('[GameCoordinator] Auto-restoring player with color:', rematchData.color, 'edge:', rematchData.edge, 'playerId:', localPlayerId);
-          
-          // Import actions
-          import('../redux/actions').then(({ addPlayer, selectEdge }) => {
-            // Add the player with their existing playerId, color, and edge
-            // This ensures all clients create the same player with the same ID
-            this.store.dispatch(addPlayer(rematchData.color, rematchData.edge, localPlayerId));
-            
-            // Then select their edge (this will be broadcast via the interceptor)
-            setTimeout(() => {
-              this.store.dispatch(selectEdge(localPlayerId, rematchData.edge));
-            }, 100); // Small delay to ensure ADD_PLAYER is processed first
-          });
-        }
-      }, 1000); // Delay to ensure START_GAME is processed first
+      // Clear rematch info so we don't process it again
+      this.rematchInfo = undefined;
     } else {
       console.log('Players should now use the configuration screen to add themselves by clicking edge buttons.');
     }
@@ -325,6 +336,21 @@ export class GameCoordinator {
       });
       
       this.localActionsProcessed = action.sequence + 1;
+      
+      // Check if this is START_GAME and we have a pending edge selection
+      if (action.type === 'START_GAME' && this.pendingEdgeSelection) {
+        console.log('[GameCoordinator] START_GAME received, selecting edge:', this.pendingEdgeSelection.edge);
+        const { playerId, edge } = this.pendingEdgeSelection;
+        this.pendingEdgeSelection = undefined; // Clear it
+        
+        // Select edge after a small delay
+        setTimeout(() => {
+          import('../redux/actions').then(({ selectEdge }) => {
+            console.log('[GameCoordinator] Dispatching SELECT_EDGE for edge:', edge);
+            this.store.dispatch(selectEdge(playerId, edge));
+          });
+        }, 100);
+      }
     }
   }
 
@@ -344,6 +370,21 @@ export class GameCoordinator {
           payload: action.payload
         });
         this.localActionsProcessed = action.sequence + 1;
+        
+        // Check if this is START_GAME and we have a pending edge selection
+        if (action.type === 'START_GAME' && this.pendingEdgeSelection) {
+          console.log('[GameCoordinator] START_GAME received, selecting edge:', this.pendingEdgeSelection.edge);
+          const { playerId, edge } = this.pendingEdgeSelection;
+          this.pendingEdgeSelection = undefined; // Clear it
+          
+          // Select edge after a small delay
+          setTimeout(() => {
+            import('../redux/actions').then(({ selectEdge }) => {
+              console.log('[GameCoordinator] Dispatching SELECT_EDGE for edge:', edge);
+              this.store.dispatch(selectEdge(playerId, edge));
+            });
+          }, 100);
+        }
       }
     });
   }
