@@ -1433,7 +1433,24 @@ export class GameplayRenderer {
         "#888888", // Neutral grey for unplaced tiles
         1.0,
       );
+      
+      // If current player is disconnected, add a red dot indicator
+      if (state.ui.disconnectedPlayers.has(currentPlayer.id)) {
+        this.drawDisconnectedIndicator(edgePos);
+      }
     }
+  }
+
+  // Draw a red dot to indicate disconnected player
+  private drawDisconnectedIndicator(center: Point): void {
+    this.ctx.save();
+    this.ctx.fillStyle = '#FF0000';
+    this.ctx.shadowBlur = 8;
+    this.ctx.shadowColor = '#FF0000';
+    this.ctx.beginPath();
+    this.ctx.arc(center.x, center.y + this.layout.size * 0.6, this.layout.size * 0.2, 0, 2 * Math.PI);
+    this.ctx.fill();
+    this.ctx.restore();
   }
 
   private renderTileAtPosition(

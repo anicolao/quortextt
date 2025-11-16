@@ -37,6 +37,7 @@ export class LobbyRenderer {
     helpCorner: number | null = null,
     hasSavedGame: boolean = false,
     gameMode: import("../redux/types").GameMode = 'tabletop',
+    disconnectedPlayers: Set<string> = new Set(),
   ): LobbyLayout {
     this.layout = calculateLobbyLayout(canvasWidth, canvasHeight, players, gameMode);
 
@@ -53,7 +54,7 @@ export class LobbyRenderer {
     if (hasSavedGame) {
       this.renderBackButtons(this.layout.backButtons);
     }
-    this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight);
+    this.renderPlayerLists(this.layout.playerLists, canvasWidth, canvasHeight, disconnectedPlayers);
 
     // Render settings dialog if open
     if (showSettings && settings) {

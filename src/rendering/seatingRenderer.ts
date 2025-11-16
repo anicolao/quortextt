@@ -26,7 +26,7 @@ export class SeatingRenderer {
     this.ctx = ctx;
   }
 
-  render(canvasWidth: number, canvasHeight: number, state: GameState): SeatingLayout {
+  render(canvasWidth: number, canvasHeight: number, state: GameState, disconnectedPlayers: Set<string>): SeatingLayout {
     const hexLayout = calculateHexLayout(canvasWidth, canvasHeight, state.boardRadius);
     
     // Calculate edge button positions
@@ -62,7 +62,8 @@ export class SeatingRenderer {
       const currentPlayerId = state.seatingPhase.seatingOrder[state.seatingPhase.seatingIndex];
       const currentPlayer = state.configPlayers.find(cp => cp.id === currentPlayerId);
       if (currentPlayer) {
-        this.drawEdgeButtons(edgeButtons, currentPlayer, state.seatingPhase.seatingIndex + 1);
+        const isDisconnected = disconnectedPlayers.has(currentPlayerId);
+        this.drawEdgeButtons(edgeButtons, currentPlayer, state.seatingPhase.seatingIndex + 1, isDisconnected);
       }
     }
 
@@ -188,7 +189,7 @@ export class SeatingRenderer {
     });
   }
 
-  private drawEdgeButtons(buttons: EdgeButton[], currentPlayer: ConfigPlayer, playerNumber: number): void {
+  private drawEdgeButtons(buttons: EdgeButton[], currentPlayer: ConfigPlayer, playerNumber: number, isDisconnected: boolean): void {
     buttons.forEach(button => {
       this.ctx.save();
       
@@ -215,6 +216,17 @@ export class SeatingRenderer {
       this.ctx.fillText(playerNumber.toString(), 0, 0);
       
       this.ctx.restore();
+      
+      // If player is disconnected, draw a red dot indicator
+      if (isDisconnected) {
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.shadowBlur = 6;
+        this.ctx.shadowColor = '#FF0000';
+        this.ctx.beginPath();
+        this.ctx.arc(button.position.x + button.radius * 0.6, button.position.y - button.radius * 0.6, button.radius * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
       this.ctx.restore();
     });
   }

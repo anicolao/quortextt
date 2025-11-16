@@ -2,6 +2,8 @@
 import { io, Socket } from 'socket.io-client';
 import { multiplayerStore } from './stores/multiplayerStore';
 import type { Room, Player } from './stores/multiplayerStore';
+import { store } from '../redux/store';
+import { setPlayerConnected, setPlayerDisconnected } from '../redux/actions';
 
 class MultiplayerSocket {
   private socket: Socket | null = null;
@@ -204,7 +206,8 @@ class MultiplayerSocket {
 
     this.socket.on('player_reconnected', (data: { playerId: string; username: string }) => {
       console.log('Player reconnected:', data.username);
-      // You can add UI feedback here to show player has reconnected
+      // Mark player as connected in Redux state
+      store.dispatch(setPlayerConnected(data.playerId));
     });
 
     this.socket.on('player_left', (data: { playerId: string; room: Room }) => {
@@ -214,6 +217,8 @@ class MultiplayerSocket {
 
     this.socket.on('player_disconnected', (data: { playerId: string; username: string }) => {
       console.log('Player disconnected:', data.username);
+      // Mark player as disconnected in Redux state
+      store.dispatch(setPlayerDisconnected(data.playerId));
     });
 
     // Game events (event sourcing architecture)

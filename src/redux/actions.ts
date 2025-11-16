@@ -50,6 +50,10 @@ export const SHOW_MOVE_LIST = "SHOW_MOVE_LIST";
 export const HIDE_MOVE_LIST = "HIDE_MOVE_LIST";
 export const NAVIGATE_MOVE_LIST = "NAVIGATE_MOVE_LIST";
 
+// Player connection actions
+export const SET_PLAYER_CONNECTED = "SET_PLAYER_CONNECTED";
+export const SET_PLAYER_DISCONNECTED = "SET_PLAYER_DISCONNECTED";
+
 // Configuration action types
 export interface AddPlayerAction {
   type: typeof ADD_PLAYER;
@@ -256,6 +260,21 @@ export interface NavigateMoveListAction {
   };
 }
 
+// Player connection action types
+export interface SetPlayerConnectedAction {
+  type: typeof SET_PLAYER_CONNECTED;
+  payload: {
+    playerId: string;
+  };
+}
+
+export interface SetPlayerDisconnectedAction {
+  type: typeof SET_PLAYER_DISCONNECTED;
+  payload: {
+    playerId: string;
+  };
+}
+
 // Combined action type
 export type GameAction =
   | AddPlayerAction
@@ -292,7 +311,9 @@ export type UIAction =
   | HideHelpAction
   | ShowMoveListAction
   | HideMoveListAction
-  | NavigateMoveListAction;
+  | NavigateMoveListAction
+  | SetPlayerConnectedAction
+  | SetPlayerDisconnectedAction;
 
 // Configuration action creators
 export const addPlayer = (color: string, edge: number, playerId?: string): AddPlayerAction => ({
@@ -509,4 +530,15 @@ export const setAIScoringData = (
 ): SetAIScoringDataAction => ({
   type: SET_AI_SCORING_DATA,
   payload: data,
+});
+
+// Player connection action creators
+export const setPlayerConnected = (playerId: string): SetPlayerConnectedAction => ({
+  type: SET_PLAYER_CONNECTED,
+  payload: { playerId },
+});
+
+export const setPlayerDisconnected = (playerId: string): SetPlayerDisconnectedAction => ({
+  type: SET_PLAYER_DISCONNECTED,
+  payload: { playerId },
 });

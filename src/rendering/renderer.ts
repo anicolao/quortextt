@@ -134,7 +134,8 @@ export class Renderer {
     this.currentSeatingLayout = this.seatingRenderer.render(
       this.canvas.width,
       this.canvas.height,
-      state.game
+      state.game,
+      state.ui.disconnectedPlayers
     );
 
     // Return empty UILayout for compatibility
