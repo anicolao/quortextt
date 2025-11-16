@@ -155,6 +155,9 @@ export interface UIState {
   
   // Saved game state (for back button on lobby)
   savedGameState: GameState | null;
+  
+  // Player connection state (for multiplayer)
+  disconnectedPlayers: Set<string>; // Set of player IDs that are currently disconnected
 }
 
 // Root state combining all state slices
