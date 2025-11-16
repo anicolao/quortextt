@@ -183,6 +183,9 @@ export class GameCoordinator {
     this.gameId = newGameId;
     this.localActionsProcessed = 0;
     
+    // Update the multiplayer store game ID so UI knows about the new game
+    multiplayerStore.setGameId(newGameId);
+    
     // Join the new room so we can receive updates
     // This won't cause "room full" because we're not a player
     socket.joinRoom(newGameId);
