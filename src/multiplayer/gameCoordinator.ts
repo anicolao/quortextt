@@ -145,10 +145,16 @@ export class GameCoordinator {
     
     console.log('[GameCoordinator] Rematch created, transitioning from', oldGameId, 'to', newGameId);
     
-    // Leave the old game room
-    socket.leaveRoom(oldGameId);
+    // Spectators should NOT join immediately - they will be added after seating phase
+    if (this.isSpectator) {
+      console.log('[GameCoordinator] Spectator mode - will wait for rematch_spectator_rejoin event');
+      // Don't leave old room or join new room
+      // Don't stop the coordinator yet - we need to stay listening to old room
+      return;
+    }
     
-    // Join the new game room
+    // For players: leave the old game room and join the new one
+    socket.leaveRoom(oldGameId);
     socket.joinRoom(newGameId);
     
     // The server will send game_ready event for the new game
