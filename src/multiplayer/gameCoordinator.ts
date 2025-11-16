@@ -176,9 +176,9 @@ export class GameCoordinator {
     
     console.log('[GameCoordinator] Spectator rematch transition to game:', newGameId);
     
-    // Leave the old game room and join the new one
+    // Leave the old game room
+    // Don't call joinRoom here - the join_as_spectator socket event will handle that
     socket.leaveRoom(this.gameId);
-    socket.joinRoom(newGameId);
     
     // Update our game ID to the new one and reset action counter
     this.gameId = newGameId;
