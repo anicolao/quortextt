@@ -247,8 +247,14 @@ app.get('/api/rooms', async (req, res) => {
     const availableRooms = rooms
       .filter(room => {
         if (!room) return false;
-        // Include if waiting OR if it's one of the user's active games
-        return room.status === 'waiting' || (userId && userGameIds.includes(room.gameId));
+        // Include if:
+        // 1. Waiting (anyone can join as player)
+        // 2. Playing or finished (anyone can spectate)
+        // 3. One of the user's active games (can rejoin)
+        return room.status === 'waiting' || 
+               room.status === 'playing' || 
+               room.status === 'finished' ||
+               (userId && userGameIds.includes(room.gameId));
       })
       .map(room => {
         const spectators = gameSpectators.get(room!.gameId);
@@ -814,8 +820,9 @@ io.on('connection', (socket) => {
       // Check if player is already in the game as a player
       const isPlayer = state.players.find(p => p.id === player.id);
       if (isPlayer) {
-        socket.emit('error', { message: 'You are already a player in this game' });
-        return;
+        // Allow players to spectate their own game (useful for multi-tab scenarios)
+        // but we'll track them as spectator too
+        console.log(`Player ${player.username} is spectating their own game`);
       }
 
       // Create spectator
