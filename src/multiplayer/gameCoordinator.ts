@@ -11,7 +11,6 @@ export class GameCoordinator {
   private localPlayerId: string | null = null;
   private isProcessingRematch: boolean = false;
   private rematchInfo?: { isInitiator: boolean; playerData?: { color: string; edge: number } };
-  private pendingEdgeSelection?: { playerId: string; edge: number }; // Edge to select after START_GAME
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;
@@ -277,36 +276,53 @@ export class GameCoordinator {
     const localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
     
     // Check if this is a rematch (passed from old coordinator)
-    if (this.rematchInfo && this.rematchInfo.playerData && localPlayerId) {
-      const { playerData, isInitiator } = this.rematchInfo;
-      console.log('[GameCoordinator] This is a rematch, will restore player setup:', playerData);
+    if (this.rematchInfo && this.rematchInfo.isInitiator && localPlayerId) {
+      console.log('[GameCoordinator] This is a rematch and I am the initiator');
       
       // Store localPlayerId for this coordinator instance
       this.localPlayerId = localPlayerId;
       
-      // Step 1: Add player immediately (before START_GAME)
-      console.log('[GameCoordinator] Adding player with color:', playerData.color, 'edge:', playerData.edge);
-      import('../redux/actions').then(({ addPlayer }) => {
-        this.store.dispatch(addPlayer(playerData.color, playerData.edge, localPlayerId));
-      });
+      // Get all players' data from window globals (stored by handleRematch)
+      const allPlayersData = (window as any).__rematchPlayerData as Map<string, { color: string; edge: number }> | undefined;
       
-      // Step 2: Store pending edge selection (will be triggered when START_GAME arrives)
-      this.pendingEdgeSelection = { playerId: localPlayerId, edge: playerData.edge };
-      console.log('[GameCoordinator] Will select edge', playerData.edge, 'when START_GAME arrives');
-      
-      // Step 3: If initiator, wait a bit for all players to add themselves, then send START_GAME
-      if (isInitiator) {
-        console.log('[GameCoordinator] Rematch initiator - will send START_GAME after delay');
-        setTimeout(() => {
-          const seed = Math.floor(Math.random() * 1000000);
-          import('../redux/actions').then(({ startGame }) => {
-            console.log('[GameCoordinator] Sending START_GAME action');
-            socket.postAction(gameId, startGame({ seed }));
+      if (allPlayersData) {
+        console.log('[GameCoordinator] Initiator posting setup for all', allPlayersData.size, 'players');
+        
+        // Import all needed actions
+        import('../redux/actions').then(({ addPlayer, startGame, selectEdge }) => {
+          // Step 1: Add all players
+          const playersList: Array<{ id: string; color: string; edge: number }> = [];
+          allPlayersData.forEach((data, playerId) => {
+            console.log('[GameCoordinator] Posting ADD_PLAYER for player', playerId, 'color:', data.color, 'edge:', data.edge);
+            this.store.dispatch(addPlayer(data.color, data.edge, playerId));
+            playersList.push({ id: playerId, color: data.color, edge: data.edge });
           });
-        }, 1500); // Wait for all players to add themselves
+          
+          // Step 2: Send START_GAME (wait a bit for ADD_PLAYER actions to be broadcast)
+          setTimeout(() => {
+            const seed = Math.floor(Math.random() * 1000000);
+            console.log('[GameCoordinator] Posting START_GAME with seed:', seed);
+            socket.postAction(gameId, startGame({ seed }));
+            
+            // Step 3: Select edges for all players (wait for START_GAME to be broadcast)
+            setTimeout(() => {
+              playersList.forEach(player => {
+                console.log('[GameCoordinator] Posting SELECT_EDGE for player', player.id, 'edge:', player.edge);
+                this.store.dispatch(selectEdge(player.id, player.edge));
+              });
+            }, 100);
+          }, 200);
+        });
+        
+        // Clear the global data
+        delete (window as any).__rematchPlayerData;
       }
       
       // Clear rematch info so we don't process it again
+      this.rematchInfo = undefined;
+    } else if (this.rematchInfo && !this.rematchInfo.isInitiator) {
+      // Non-initiator: just wait for actions to arrive from initiator
+      console.log('[GameCoordinator] This is a rematch but I am NOT the initiator, waiting for setup');
       this.rematchInfo = undefined;
     } else {
       console.log('Players should now use the configuration screen to add themselves by clicking edge buttons.');
@@ -336,21 +352,6 @@ export class GameCoordinator {
       });
       
       this.localActionsProcessed = action.sequence + 1;
-      
-      // Check if this is START_GAME and we have a pending edge selection
-      if (action.type === 'START_GAME' && this.pendingEdgeSelection) {
-        console.log('[GameCoordinator] START_GAME received, selecting edge:', this.pendingEdgeSelection.edge);
-        const { playerId, edge } = this.pendingEdgeSelection;
-        this.pendingEdgeSelection = undefined; // Clear it
-        
-        // Select edge after a small delay
-        setTimeout(() => {
-          import('../redux/actions').then(({ selectEdge }) => {
-            console.log('[GameCoordinator] Dispatching SELECT_EDGE for edge:', edge);
-            this.store.dispatch(selectEdge(playerId, edge));
-          });
-        }, 100);
-      }
     }
   }
 
@@ -370,21 +371,6 @@ export class GameCoordinator {
           payload: action.payload
         });
         this.localActionsProcessed = action.sequence + 1;
-        
-        // Check if this is START_GAME and we have a pending edge selection
-        if (action.type === 'START_GAME' && this.pendingEdgeSelection) {
-          console.log('[GameCoordinator] START_GAME received, selecting edge:', this.pendingEdgeSelection.edge);
-          const { playerId, edge } = this.pendingEdgeSelection;
-          this.pendingEdgeSelection = undefined; // Clear it
-          
-          // Select edge after a small delay
-          setTimeout(() => {
-            import('../redux/actions').then(({ selectEdge }) => {
-              console.log('[GameCoordinator] Dispatching SELECT_EDGE for edge:', edge);
-              this.store.dispatch(selectEdge(playerId, edge));
-            });
-          }, 100);
-        }
       }
     });
   }
