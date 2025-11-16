@@ -302,6 +302,7 @@ export class LobbyRenderer {
   ): void {
     // Render player lists at all 4 edges
     console.log('🎨 [LOBBY] Rendering player lists - Disconnected players:', Array.from(disconnectedPlayers));
+    console.log('🎨 [LOBBY] Config players:', lists.flat().map(e => ({ id: e.player.id, color: e.player.color })));
     lists.forEach((list) => {
       list.forEach((entry, playerIndex) => {
         const isDisconnected = disconnectedPlayers.has(entry.player.id);
