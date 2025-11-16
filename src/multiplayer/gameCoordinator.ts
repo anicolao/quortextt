@@ -1,6 +1,6 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
-import { setLocalPlayerId, selectEdge } from '../redux/actions';
+import { setLocalPlayerId, selectEdge, setUserIdMapping } from '../redux/actions';
 
 // Interface for rematch information
 interface RematchInfo {
@@ -341,6 +341,21 @@ export class GameCoordinator {
     
     // Dispatch to Redux store using the REAL original dispatch to bypass interception
     if (this.store && this.realOriginalDispatch) {
+      // Special handling for ADD_PLAYER: track user ID to player ID mapping
+      if (action.type === 'ADD_PLAYER' && action.payload && action.payload.playerId) {
+        // Get current state to determine the config player ID
+        const state = this.store.getState();
+        const configPlayerId = `P${state.game.configPlayers.length + 1}`;
+        
+        // Update the mapping
+        const mapping = new Map<string, string>(state.ui.userIdToPlayerId as Map<string, string>);
+        mapping.set(action.payload.playerId, configPlayerId);
+        
+        // Dispatch the mapping update first
+        this.realOriginalDispatch.call(this.store, setUserIdMapping(mapping));
+        console.log(`[GameCoordinator] Mapped user ${action.payload.playerId} to ${configPlayerId}`);
+      }
+      
       this.realOriginalDispatch.call(this.store, {
         type: action.type,
         payload: action.payload
