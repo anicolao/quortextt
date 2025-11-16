@@ -90,9 +90,13 @@ const players = new Map<string, Player>();
 // spectators are keyed by socket.id for quick lookup
 const gameSpectators = new Map<string, Map<string, Spectator>>();
 
-// Track rematch games - maps new game ID to original game's player list
-// Used to emit game_ready when players rejoin after rematch
-const rematchGames = new Map<string, { players: Array<{ id: string; username: string; playerIndex: number }>, joinedCount: number }>();
+// Track rematch games - maps new game ID to original game's player list and spectators
+// Used to emit game_ready when players rejoin after rematch and to re-add spectators after seating
+const rematchGames = new Map<string, { 
+  players: Array<{ id: string; username: string; playerIndex: number }>, 
+  joinedCount: number,
+  spectators?: Array<{ id: string; username: string }>
+}>();
 
 // Initialize storage on startup
 async function initializeStorage() {
@@ -712,6 +716,25 @@ io.on('connection', (socket) => {
       // Broadcast action to all players in the game
       io.to(gameId).emit('action_posted', finalAction);
 
+      // Check if this is the completion of seating phase in a rematch game
+      if (finalAction.type === 'COMPLETE_SEATING_PHASE' && rematchGames.has(gameId)) {
+        const rematchInfo = rematchGames.get(gameId)!;
+        
+        // Re-add spectators from the previous game
+        if (rematchInfo.spectators && rematchInfo.spectators.length > 0) {
+          console.log(`Re-adding ${rematchInfo.spectators.length} spectators to rematch game ${gameId}`);
+          
+          // Notify spectators to rejoin via a custom event
+          for (const spectator of rematchInfo.spectators) {
+            // Emit event to all sockets in the old game room
+            io.to(gameId).emit('rematch_spectator_rejoin', {
+              gameId,
+              spectatorId: spectator.id
+            });
+          }
+        }
+      }
+
       console.log(`Action ${finalAction.type} posted to game ${gameId} by ${player.username}`);
     } catch (error) {
       console.error('Error posting action:', error);
@@ -772,14 +795,20 @@ io.on('connection', (socket) => {
         await gameStorage.appendAction(newGameId, joinAction);
       }
       
+      // Get spectators from the old game
+      const oldSpectators = gameSpectators.get(gameId);
+      const spectatorList = oldSpectators ? Array.from(oldSpectators.values()) : [];
+      
       // Track this rematch game so we can emit game_ready when players join
+      // Also store spectators to re-add them after seating
       rematchGames.set(newGameId, {
         players: state.players.map((p, index) => ({
           id: p.id,
           username: p.username,
           playerIndex: index
         })),
-        joinedCount: 0
+        joinedCount: 0,
+        spectators: spectatorList.map(s => ({ id: s.id, username: s.username }))
       });
       
       // Broadcast rematch notification to all players in the old game

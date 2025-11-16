@@ -207,7 +207,7 @@ export class Renderer {
     this.currentGameOverLayout = this.gameOverRenderer.render(
       this.canvas.width,
       this.canvas.height,
-      state.game
+      state
     );
 
     // Return empty UILayout for compatibility

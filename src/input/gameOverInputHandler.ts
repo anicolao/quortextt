@@ -58,6 +58,12 @@ export class GameOverInputHandler {
         Math.pow(x - button.x, 2) + Math.pow(y - button.y, 2),
       );
       if (distance <= button.radius) {
+        // Block rematch for spectators
+        if (state.ui.isSpectator) {
+          console.log('Spectators cannot initiate rematch');
+          return;
+        }
+        
         // Rematch button clicked - start a rematch with the same players
         store.dispatch(rematchGame());
         return;
