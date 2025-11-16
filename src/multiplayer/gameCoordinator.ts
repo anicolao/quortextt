@@ -1,6 +1,6 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
-import { setLocalPlayerId, selectEdge, setUserIdMapping, addPlayer, startGame } from '../redux/actions';
+import { setLocalPlayerId, selectEdge, setUserIdMapping, addPlayer, startGame, resetGame } from '../redux/actions';
 import { multiplayerStore } from './stores/multiplayerStore';
 
 // Interface for rematch information
@@ -178,6 +178,11 @@ export class GameCoordinator {
     
     // Leave the old game room
     socket.leaveRoom(this.gameId);
+    
+    // Reset the game state in Redux to clear the old game's board
+    if (this.store) {
+      this.store.dispatch(resetGame());
+    }
     
     // Update our game ID to the new one and reset action counter
     this.gameId = newGameId;
