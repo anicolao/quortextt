@@ -164,10 +164,16 @@ export class LobbyInputHandler {
     // Check edge buttons (+ buttons)
     for (const edgeBtn of layout.edgeButtons) {
       if (isPointInButton(x, y, edgeBtn)) {
-        // In multiplayer mode, pass the user ID; in tabletop mode, let it auto-generate
+        // In multiplayer mode, pass both playerId and userId; in tabletop mode, let it auto-generate
         const state = store.getState();
-        const playerId = state.ui.gameMode === 'multiplayer' ? state.ui.localPlayerId || undefined : undefined;
-        store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge, playerId));
+        if (state.ui.gameMode === 'multiplayer') {
+          const userId = state.ui.localPlayerId || undefined;
+          // Pass userId in both playerId and userId fields for multiplayer
+          store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge, userId, userId));
+        } else {
+          // Tabletop mode: auto-generate player IDs
+          store.dispatch(addPlayer(edgeBtn.color, edgeBtn.edge));
+        }
         return;
       }
     }

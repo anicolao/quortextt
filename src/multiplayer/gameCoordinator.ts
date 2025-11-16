@@ -294,7 +294,7 @@ export class GameCoordinator {
           // Step 1: Add all players
           allPlayersData.forEach((data, playerId) => {
             console.log('[GameCoordinator] Posting ADD_PLAYER for player', playerId, 'color:', data.color, 'edge:', data.edge);
-            this.store.dispatch(addPlayer(data.color, data.edge, playerId));
+            this.store.dispatch(addPlayer(data.color, data.edge, playerId, playerId)); // Pass userId as 4th param
           });
           
           // Step 2: Send START_GAME with game settings (wait a bit for ADD_PLAYER actions to be broadcast)
@@ -342,18 +342,20 @@ export class GameCoordinator {
     // Dispatch to Redux store using the REAL original dispatch to bypass interception
     if (this.store && this.realOriginalDispatch) {
       // Special handling for ADD_PLAYER: track user ID to player ID mapping
-      if (action.type === 'ADD_PLAYER' && action.payload && action.payload.playerId) {
-        // Get current state to determine the config player ID
+      if (action.type === 'ADD_PLAYER' && action.payload && action.payload.userId) {
+        // Get current state to determine the config player ID that will be assigned
         const state = this.store.getState();
         const configPlayerId = `P${state.game.configPlayers.length + 1}`;
         
-        // Update the mapping
+        console.log(`[GameCoordinator] Building mapping: ${action.payload.userId} -> ${configPlayerId}`);
+        
+        // Update the mapping before dispatching ADD_PLAYER
         const mapping = new Map<string, string>(state.ui.userIdToPlayerId as Map<string, string>);
-        mapping.set(action.payload.playerId, configPlayerId);
+        mapping.set(action.payload.userId, configPlayerId);
         
         // Dispatch the mapping update first
         this.realOriginalDispatch.call(this.store, setUserIdMapping(mapping));
-        console.log(`[GameCoordinator] Mapped user ${action.payload.playerId} to ${configPlayerId}`);
+        console.log(`[GameCoordinator] Mapped user ${action.payload.userId} to ${configPlayerId}`);
       }
       
       this.realOriginalDispatch.call(this.store, {
