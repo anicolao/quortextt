@@ -1,7 +1,6 @@
 // Multiplayer game coordinator - handles event sourcing and Redux integration
 import { socket } from './socket';
-import { setLocalPlayerId } from '../redux/actions';
-import { multiplayerStore } from './stores/multiplayerStore';
+import { setLocalPlayerId, selectEdge } from '../redux/actions';
 
 export class GameCoordinator {
   private store: any; // Redux store
@@ -362,23 +361,20 @@ export class GameCoordinator {
         if (seatingOrder && seatingOrder.length > 0) {
           console.log('[GameCoordinator] Seating order:', seatingOrder);
           
-          // Capture pending edges before clearing them
-          const edgesToApply = this.pendingRematchEdges;
-          this.pendingRematchEdges = undefined; // Clear immediately
-          
           // Post SELECT_EDGE for each player in seating order
-          import('../redux/actions').then(({ selectEdge }) => {
-            seatingOrder.forEach((playerId: string, index: number) => {
-              const edge = edgesToApply.get(playerId);
-              if (edge !== undefined) {
-                console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
-                // Use setTimeout to ensure actions are sent in order
-                setTimeout(() => {
-                  this.store.dispatch(selectEdge(playerId, edge));
-                }, index * 50); // Small delay between each to ensure order
-              }
-            });
+          seatingOrder.forEach((playerId: string, index: number) => {
+            const edge = this.pendingRematchEdges!.get(playerId);
+            if (edge !== undefined) {
+              console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
+              // Use setTimeout to ensure actions are sent in order
+              setTimeout(() => {
+                this.store.dispatch(selectEdge(playerId, edge));
+              }, index * 50); // Small delay between each to ensure order
+            }
           });
+          
+          // Clear pending edges after posting
+          this.pendingRematchEdges = undefined;
         }
       }
     }
@@ -412,23 +408,20 @@ export class GameCoordinator {
           if (seatingOrder && seatingOrder.length > 0) {
             console.log('[GameCoordinator] Seating order:', seatingOrder);
             
-            // Capture pending edges before clearing them
-            const edgesToApply = this.pendingRematchEdges;
-            this.pendingRematchEdges = undefined; // Clear immediately
-            
             // Post SELECT_EDGE for each player in seating order
-            import('../redux/actions').then(({ selectEdge }) => {
-              seatingOrder.forEach((playerId: string, index: number) => {
-                const edge = edgesToApply.get(playerId);
-                if (edge !== undefined) {
-                  console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
-                  // Use setTimeout to ensure actions are sent in order
-                  setTimeout(() => {
-                    this.store.dispatch(selectEdge(playerId, edge));
-                  }, index * 50); // Small delay between each to ensure order
-                }
-              });
+            seatingOrder.forEach((playerId: string, index: number) => {
+              const edge = this.pendingRematchEdges!.get(playerId);
+              if (edge !== undefined) {
+                console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
+                // Use setTimeout to ensure actions are sent in order
+                setTimeout(() => {
+                  this.store.dispatch(selectEdge(playerId, edge));
+                }, index * 50); // Small delay between each to ensure order
+              }
             });
+            
+            // Clear pending edges after posting
+            this.pendingRematchEdges = undefined;
           }
         }
       }
