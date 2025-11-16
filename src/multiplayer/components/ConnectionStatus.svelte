@@ -1,8 +1,19 @@
 <script>
   import { multiplayerStore } from '../stores/multiplayerStore';
+  import { onMount } from 'svelte';
   
   $: connectionStatus = $multiplayerStore.connectionStatus;
-  $: showStatus = connectionStatus !== 'connected';
+  $: connected = $multiplayerStore.connected;
+  
+  let hasConnectedBefore = false;
+  
+  // Track if we've ever been connected
+  $: if (connected) {
+    hasConnectedBefore = true;
+  }
+  
+  // Only show status if we've connected before and are now not connected
+  $: showStatus = hasConnectedBefore && connectionStatus !== 'connected';
 </script>
 
 {#if showStatus}
