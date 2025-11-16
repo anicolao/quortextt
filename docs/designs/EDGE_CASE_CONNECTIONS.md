@@ -191,23 +191,12 @@ This document specifies the user-facing behavior and high-level technical design
 - Actions stored in `game-{id}.actions.jsonl`
 - Can retrieve full history with `get_actions` event
 
-**Required Enhancements:**
-1. **Incremental Sync**
-   - Client stores last processed sequence number
-   - On reconnect, request only actions since that sequence
-   - Server sends `{ actions: Action[], fromSequence: number, toSequence: number }`
-   - Reduces bandwidth for long-running games
-
-2. **Checkpointing**
-   - Server creates state snapshots periodically (every 20-30 actions)
-   - Store as `game-{id}.checkpoint-{seq}.json`
-   - On reconnect with large gap, load nearest checkpoint + subsequent actions
-   - Note: With max ~40 moves per game, this is rarely needed but helpful for spectator replay
-
-3. **Client-Side Replay Queue**
-   - Buffer incoming actions during replay
-   - Process in correct sequence order
-   - Ensure deterministic state reconstruction
+**Simple Replay Strategy:**
+- Games are short (~40 moves max), so always replay from the start
+- On reconnect or spectator join: fetch full action history and replay all actions
+- No incremental sync, no checkpointing - just simple full replay
+- Client rebuilds complete state from action sequence
+- Fast enough for ~40 actions (typically <100ms to replay)
 
 #### 2.3.3 UI State Management
 
@@ -530,7 +519,7 @@ interface ReplayController {
    - Implement heartbeat mechanism
    - Enhanced session tracking with connection state
    - Automatic reconnection flow
-   - Action replay optimization
+   - Simple full replay from start (no incremental sync)
    - Cookie-based persistence for anonymous users
 
 2. **Week 2: Infinite Wait Implementation**
@@ -569,13 +558,13 @@ interface ReplayController {
    - Documentation
 
 ### Phase 3: Replay System (Lower Priority)
-**Effort: 2-3 weeks**
+**Effort: 1-2 weeks**
 
 1. **Week 1: Replay Infrastructure**
    - Replay controller implementation
-   - State checkpointing system
    - Replay API endpoints
    - Timeline navigation
+   - Simple full replay from start
 
 2. **Week 2: Replay UI**
    - VCR controls
@@ -727,14 +716,14 @@ The event sourcing architecture with action logs already in place provides an ex
 - Robust reconnection UI and flows
 - Single room architecture with action validation (only active player can post)
 - Spectator access to help/move list, exit to lobby (not setup)
-- Replay system with timeline navigation (optimized for ~40 move games)
+- Simple full replay from start (no checkpointing - games are short)
 
 With these features fully implemented, Quortex multiplayer will provide a robust, professional-grade multiplayer experience suitable for casual play, competitive gaming, and tournament spectating.
 
 ---
 
-**Document Version:** 1.1  
-**Last Updated:** 2025-11-15  
+**Document Version:** 1.2  
+**Last Updated:** 2025-11-16  
 **Status:** Design Specification  
 **Authors:** AI Agent (based on TODOS_SUMMARY.md analysis and user feedback)  
 **Next Steps:** Review and approval, then implementation in phases
