@@ -569,10 +569,9 @@ io.on('connection', (socket) => {
         
         console.log(`Player ${player.username} joined rematch game ${updatedState!.name} (${rematchInfo.joinedCount}/${rematchInfo.players.length})`);
         
-        // If all players have joined, clean up the rematch tracking
+        // Don't clean up rematch tracking yet - we need it for spectator rejoin after COMPLETE_SEATING_PHASE
         if (rematchInfo.joinedCount >= rematchInfo.players.length) {
-          console.log(`All players joined rematch game ${roomId}, cleaning up tracking`);
-          rematchGames.delete(roomId);
+          console.log(`All players joined rematch game ${roomId}, will clean up after COMPLETE_SEATING_PHASE`);
         }
       } else {
         console.log(`Player ${player.username} joined room ${updatedState!.name}`);
@@ -745,6 +744,10 @@ io.on('connection', (socket) => {
         } else {
           console.log(`[Rematch] No spectators to re-add or missing oldGameId`);
         }
+        
+        // Clean up the rematch tracking now that spectators have been notified
+        console.log(`[Rematch] Cleaning up rematch tracking for game ${gameId}`);
+        rematchGames.delete(gameId);
       }
 
       console.log(`Action ${finalAction.type} posted to game ${gameId} by ${player.username}`);
