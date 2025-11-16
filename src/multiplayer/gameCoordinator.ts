@@ -9,7 +9,6 @@ export class GameCoordinator {
   private localActionsProcessed = 0;
   private realOriginalDispatch: any = null; // The actual Redux dispatch before interception
   private localPlayerId: string | null = null;
-  private isRematchInitiator: boolean = false;
   private isProcessingRematch: boolean = false;
   
   // Store bound event handlers so we can properly remove them
@@ -73,8 +72,8 @@ export class GameCoordinator {
     // Mark that we're processing a rematch
     this.isProcessingRematch = true;
     
-    // Mark this player as the rematch initiator
-    this.isRematchInitiator = true;
+    // Mark this player as the rematch initiator (store globally so new coordinator can access it)
+    (window as any).__isRematchInitiator = true;
     
     // Store player information for restoration in the rematch
     if (edgeAssignments && players) {
@@ -255,6 +254,9 @@ export class GameCoordinator {
     const state = this.store.getState();
     const localPlayerId = state.ui?.localPlayerId || this.localPlayerId;
     
+    // Check if this player initiated the rematch (from window global, persists across coordinators)
+    const isRematchInitiator = (window as any).__isRematchInitiator === true;
+    
     if (rematchData && localPlayerId) {
       console.log('[GameCoordinator] This is a rematch, will restore player setup:', rematchData);
       
@@ -262,9 +264,10 @@ export class GameCoordinator {
       this.localPlayerId = localPlayerId;
       
       // If this player initiated the rematch, send START_GAME action first
-      if (this.isRematchInitiator) {
+      if (isRematchInitiator) {
         console.log('[GameCoordinator] Rematch initiator - sending START_GAME action');
-        this.isRematchInitiator = false; // Reset flag
+        // Clear the flag so we don't send it again
+        delete (window as any).__isRematchInitiator;
         
         // Generate seed and send START_GAME action
         const seed = Math.floor(Math.random() * 1000000);
