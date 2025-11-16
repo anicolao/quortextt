@@ -30,12 +30,10 @@ describe('LobbyInputHandler - userId propagation', () => {
         {
           x: 100,
           y: 100,
-          width: 50,
-          height: 30,
+          size: 50,
           color: '#FF0000',
           edge: 0,
-          enabled: true,
-          label: '+'
+          rotation: 0
         }
       ],
       exitButtons: [],
@@ -81,12 +79,10 @@ describe('LobbyInputHandler - userId propagation', () => {
         {
           x: 100,
           y: 100,
-          width: 50,
-          height: 30,
+          size: 50,
           color: '#FF0000',
           edge: 0,
-          enabled: true,
-          label: '+'
+          rotation: 0
         }
       ],
       exitButtons: [],
