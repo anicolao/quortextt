@@ -11,6 +11,7 @@ export class GameCoordinator {
   private localPlayerId: string | null = null;
   private isProcessingRematch: boolean = false;
   private rematchInfo?: { isInitiator: boolean; playerData?: { color: string; edge: number } };
+  private pendingRematchEdges?: Map<string, number>; // Player edges to apply after START_GAME
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;
@@ -288,14 +289,18 @@ export class GameCoordinator {
       if (allPlayersData) {
         console.log('[GameCoordinator] Initiator posting setup for all', allPlayersData.size, 'players');
         
+        // Store edge assignments to apply after START_GAME
+        this.pendingRematchEdges = new Map();
+        allPlayersData.forEach((data, playerId) => {
+          this.pendingRematchEdges!.set(playerId, data.edge);
+        });
+        
         // Import all needed actions
-        import('../redux/actions').then(({ addPlayer, startGame, selectEdge }) => {
+        import('../redux/actions').then(({ addPlayer, startGame }) => {
           // Step 1: Add all players
-          const playersList: Array<{ id: string; color: string; edge: number }> = [];
           allPlayersData.forEach((data, playerId) => {
             console.log('[GameCoordinator] Posting ADD_PLAYER for player', playerId, 'color:', data.color, 'edge:', data.edge);
             this.store.dispatch(addPlayer(data.color, data.edge, playerId));
-            playersList.push({ id: playerId, color: data.color, edge: data.edge });
           });
           
           // Step 2: Send START_GAME (wait a bit for ADD_PLAYER actions to be broadcast)
@@ -303,14 +308,7 @@ export class GameCoordinator {
             const seed = Math.floor(Math.random() * 1000000);
             console.log('[GameCoordinator] Posting START_GAME with seed:', seed);
             socket.postAction(gameId, startGame({ seed }));
-            
-            // Step 3: Select edges for all players (wait for START_GAME to be broadcast)
-            setTimeout(() => {
-              playersList.forEach(player => {
-                console.log('[GameCoordinator] Posting SELECT_EDGE for player', player.id, 'edge:', player.edge);
-                this.store.dispatch(selectEdge(player.id, player.edge));
-              });
-            }, 100);
+            // SELECT_EDGE will be posted when START_GAME is received and seating order is set
           }, 200);
         });
         
@@ -352,6 +350,36 @@ export class GameCoordinator {
       });
       
       this.localActionsProcessed = action.sequence + 1;
+      
+      // Check if START_GAME was processed and we have pending rematch edges to apply
+      if (action.type === 'START_GAME' && this.pendingRematchEdges) {
+        console.log('[GameCoordinator] START_GAME received, posting SELECT_EDGE in seating order');
+        
+        // Get the seating order from the state (just created by START_GAME)
+        const state = this.store.getState();
+        const seatingOrder = state.game?.seatingPhase?.seatingOrder;
+        
+        if (seatingOrder && seatingOrder.length > 0) {
+          console.log('[GameCoordinator] Seating order:', seatingOrder);
+          
+          // Post SELECT_EDGE for each player in seating order
+          import('../redux/actions').then(({ selectEdge }) => {
+            seatingOrder.forEach((playerId: string, index: number) => {
+              const edge = this.pendingRematchEdges!.get(playerId);
+              if (edge !== undefined) {
+                console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
+                // Use setTimeout to ensure actions are sent in order
+                setTimeout(() => {
+                  this.store.dispatch(selectEdge(playerId, edge));
+                }, index * 50); // Small delay between each to ensure order
+              }
+            });
+          });
+          
+          // Clear pending edges
+          this.pendingRematchEdges = undefined;
+        }
+      }
     }
   }
 
@@ -371,6 +399,36 @@ export class GameCoordinator {
           payload: action.payload
         });
         this.localActionsProcessed = action.sequence + 1;
+        
+        // Check if START_GAME was processed and we have pending rematch edges to apply
+        if (action.type === 'START_GAME' && this.pendingRematchEdges) {
+          console.log('[GameCoordinator] START_GAME processed, posting SELECT_EDGE in seating order');
+          
+          // Get the seating order from the state (just created by START_GAME)
+          const state = this.store.getState();
+          const seatingOrder = state.game?.seatingPhase?.seatingOrder;
+          
+          if (seatingOrder && seatingOrder.length > 0) {
+            console.log('[GameCoordinator] Seating order:', seatingOrder);
+            
+            // Post SELECT_EDGE for each player in seating order
+            import('../redux/actions').then(({ selectEdge }) => {
+              seatingOrder.forEach((playerId: string, index: number) => {
+                const edge = this.pendingRematchEdges!.get(playerId);
+                if (edge !== undefined) {
+                  console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
+                  // Use setTimeout to ensure actions are sent in order
+                  setTimeout(() => {
+                    this.store.dispatch(selectEdge(playerId, edge));
+                  }, index * 50); // Small delay between each to ensure order
+                }
+              });
+            });
+            
+            // Clear pending edges
+            this.pendingRematchEdges = undefined;
+          }
+        }
       }
     });
   }
