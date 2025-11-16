@@ -350,30 +350,7 @@ export class GameCoordinator {
       
       // Check if START_GAME was processed and we have pending rematch edges to apply
       if (action.type === 'START_GAME' && this.pendingRematchEdges) {
-        console.log('[GameCoordinator] START_GAME received, posting SELECT_EDGE in seating order');
-        
-        // Get the seating order from the state (just created by START_GAME)
-        const state = this.store.getState();
-        const seatingOrder = state.game?.seatingPhase?.seatingOrder;
-        
-        if (seatingOrder && seatingOrder.length > 0) {
-          console.log('[GameCoordinator] Seating order:', seatingOrder);
-          
-          // Post SELECT_EDGE for each player in seating order
-          seatingOrder.forEach((playerId: string, index: number) => {
-            const edge = this.pendingRematchEdges!.get(playerId);
-            if (edge !== undefined) {
-              console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
-              // Use setTimeout to ensure actions are sent in order
-              setTimeout(() => {
-                this.store.dispatch(selectEdge(playerId, edge));
-              }, index * 50); // Small delay between each to ensure order
-            }
-          });
-          
-          // Clear pending edges after posting
-          this.pendingRematchEdges = undefined;
-        }
+        this.postPendingRematchEdges();
       }
     }
   }
@@ -397,33 +374,41 @@ export class GameCoordinator {
         
         // Check if START_GAME was processed and we have pending rematch edges to apply
         if (action.type === 'START_GAME' && this.pendingRematchEdges) {
-          console.log('[GameCoordinator] START_GAME processed, posting SELECT_EDGE in seating order');
-          
-          // Get the seating order from the state (just created by START_GAME)
-          const state = this.store.getState();
-          const seatingOrder = state.game?.seatingPhase?.seatingOrder;
-          
-          if (seatingOrder && seatingOrder.length > 0) {
-            console.log('[GameCoordinator] Seating order:', seatingOrder);
-            
-            // Post SELECT_EDGE for each player in seating order
-            seatingOrder.forEach((playerId: string, index: number) => {
-              const edge = this.pendingRematchEdges!.get(playerId);
-              if (edge !== undefined) {
-                console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
-                // Use setTimeout to ensure actions are sent in order
-                setTimeout(() => {
-                  this.store.dispatch(selectEdge(playerId, edge));
-                }, index * 50); // Small delay between each to ensure order
-              }
-            });
-            
-            // Clear pending edges after posting
-            this.pendingRematchEdges = undefined;
-          }
+          this.postPendingRematchEdges();
         }
       }
     });
+  }
+
+  /**
+   * Posts SELECT_EDGE actions for all players with pending rematch edges.
+   * This is called after START_GAME has been processed and the seating order is established.
+   */
+  private postPendingRematchEdges() {
+    console.log('[GameCoordinator] START_GAME processed, posting SELECT_EDGE in seating order');
+    
+    // Get the seating order from the state (just created by START_GAME)
+    const state = this.store.getState();
+    const seatingOrder = state.game?.seatingPhase?.seatingOrder;
+    
+    if (seatingOrder && seatingOrder.length > 0) {
+      console.log('[GameCoordinator] Seating order:', seatingOrder);
+      
+      // Post SELECT_EDGE for each player in seating order
+      seatingOrder.forEach((playerId: string, index: number) => {
+        const edge = this.pendingRematchEdges!.get(playerId);
+        if (edge !== undefined) {
+          console.log('[GameCoordinator] Posting SELECT_EDGE for player', playerId, 'edge:', edge, '(position', index, 'in seating order)');
+          // Use setTimeout to ensure actions are sent in order
+          setTimeout(() => {
+            this.store.dispatch(selectEdge(playerId, edge));
+          }, index * 50); // Small delay between each to ensure order
+        }
+      });
+      
+      // Clear pending edges after posting
+      this.pendingRematchEdges = undefined;
+    }
   }
 
   // Intercept local Redux actions and post to server
