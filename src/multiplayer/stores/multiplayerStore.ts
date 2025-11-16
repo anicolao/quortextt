@@ -26,6 +26,7 @@ export interface MultiplayerState {
   availableRooms: Room[];
   screen: 'login' | 'lobby' | 'room' | 'game' | 'profile';
   gameId: string | null;
+  disconnectedPlayers: Set<string>; // Track which players are disconnected
 }
 
 const initialState: MultiplayerState = {
@@ -38,6 +39,7 @@ const initialState: MultiplayerState = {
   availableRooms: [],
   screen: 'login',
   gameId: null,
+  disconnectedPlayers: new Set(),
 };
 
 // Create the main store
@@ -86,6 +88,20 @@ function createMultiplayerStore() {
     
     setGameId: (gameId: string | null) =>
       update(state => ({ ...state, gameId })),
+    
+    setPlayerDisconnected: (playerId: string) =>
+      update(state => {
+        const newDisconnectedPlayers = new Set(state.disconnectedPlayers);
+        newDisconnectedPlayers.add(playerId);
+        return { ...state, disconnectedPlayers: newDisconnectedPlayers };
+      }),
+    
+    setPlayerConnected: (playerId: string) =>
+      update(state => {
+        const newDisconnectedPlayers = new Set(state.disconnectedPlayers);
+        newDisconnectedPlayers.delete(playerId);
+        return { ...state, disconnectedPlayers: newDisconnectedPlayers };
+      }),
     
     reset: () => set(initialState),
   };

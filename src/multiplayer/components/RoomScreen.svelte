@@ -3,6 +3,7 @@
   import { socket } from '../socket';
 
   $: room = $multiplayerStore.currentRoom;
+  $: disconnectedPlayers = $multiplayerStore.disconnectedPlayers;
   $: canStart = $isHost && room && room.players.length >= 2;
   $: emptySlots = room ? Array.from({ length: room.maxPlayers - room.players.length }) : [];
 
@@ -83,7 +84,7 @@
                   </span>
                 </div>
                 <span class="player-status">
-                  {player.connected !== false ? '🟢 Online' : '🔴 Offline'}
+                  {disconnectedPlayers.has(player.id) ? '🔴 Offline' : '🟢 Online'}
                 </span>
               </div>
             {/each}
