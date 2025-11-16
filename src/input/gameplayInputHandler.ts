@@ -382,24 +382,11 @@ export class GameplayInputHandler {
         const state = store.getState();
         
         // Check if in multiplayer mode and spectating
-        if (state.ui.gameMode === 'multiplayer') {
-          // Import socket and multiplayerStore dynamically
-          import('../multiplayer/socket').then(({ socket }) => {
-            import('../multiplayer/stores/multiplayerStore').then(({ multiplayerStore }) => {
-              const mpState = multiplayerStore.get();
-              if (mpState.isSpectator && mpState.gameId) {
-                // Spectator: leave spectator mode and return to lobby
-                socket.leaveSpectator(mpState.gameId);
-                multiplayerStore.setIsSpectator(false);
-                multiplayerStore.setScreen('lobby');
-              } else {
-                // Player: reset game and return to setup
-                store.dispatch(resetGame());
-              }
-            });
-          });
+        if (state.ui.gameMode === 'multiplayer' && state.ui.isSpectator) {
+          // Spectator: dispatch custom event for multiplayer layer to handle
+          window.dispatchEvent(new CustomEvent('multiplayer:spectator-exit'));
         } else {
-          // Non-multiplayer: reset game completely and return to lobby
+          // Player or tabletop: reset game and return to setup
           store.dispatch(resetGame());
         }
         return;

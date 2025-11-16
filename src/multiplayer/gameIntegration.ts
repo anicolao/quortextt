@@ -11,12 +11,15 @@ import { HexPosition, Rotation } from '../game/types';
 import { positionToKey } from '../game/board';
 import { isPlayerBlocked } from '../game/legality';
 import { GameCoordinator } from './gameCoordinator';
+import { socket } from './socket';
+import { multiplayerStore } from './stores/multiplayerStore';
 
 let renderer: Renderer | null = null;
 let inputHandler: InputHandler | null = null;
 let gameCoordinator: GameCoordinator | null = null;
 let animationId: number | null = null;
 let unsubscribe: (() => void) | null = null;
+let spectatorExitHandler: (() => void) | null = null;
 
 export function initGame(gameId: string) {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -42,6 +45,19 @@ export function initGame(gameId: string) {
   // Initialize game coordinator for multiplayer
   gameCoordinator = new GameCoordinator(store, gameId);
   gameCoordinator.start();
+
+  // Handle spectator exit event
+  spectatorExitHandler = () => {
+    const mpState = multiplayerStore.get();
+    if (mpState.isSpectator && mpState.gameId) {
+      // Spectator: leave spectator mode and return to lobby
+      socket.leaveSpectator(mpState.gameId);
+      multiplayerStore.setIsSpectator(false);
+      multiplayerStore.setScreen('lobby');
+    }
+  };
+  
+  window.addEventListener('multiplayer:spectator-exit', spectatorExitHandler);
 
   // Track previous state for flow preview updates and screen transitions
   let prevSelectedPosition: HexPosition | null = null;
@@ -213,6 +229,11 @@ export function cleanup() {
   if (unsubscribe) {
     unsubscribe();
     unsubscribe = null;
+  }
+  
+  if (spectatorExitHandler) {
+    window.removeEventListener('multiplayer:spectator-exit', spectatorExitHandler);
+    spectatorExitHandler = null;
   }
   
   if (gameCoordinator) {

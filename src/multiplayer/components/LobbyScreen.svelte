@@ -3,6 +3,8 @@
   import { multiplayerStore } from '../stores/multiplayerStore';
   import { socket } from '../socket';
   import type { Room } from '../stores/multiplayerStore';
+  import { store } from '../../redux/store';
+  import { setSpectatorMode } from '../../redux/actions';
 
   let rooms: Room[] = [];
   let showCreateModal = false;
@@ -60,11 +62,7 @@
     multiplayerStore.setScreen('game');
     
     // Also update Redux state
-    import('../redux/actions').then(({ setSpectatorMode }) => {
-      import('../redux/store').then(({ store }) => {
-        store.dispatch(setSpectatorMode(true));
-      });
-    });
+    store.dispatch(setSpectatorMode(true));
   }
 
   function showCreate() {
