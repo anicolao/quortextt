@@ -19,6 +19,7 @@ import {
   navigateMoveList,
   setPlayerConnected,
   setPlayerDisconnected,
+  setUserIdMapping,
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
@@ -391,6 +392,18 @@ describe('uiReducer', () => {
       expect(state.disconnectedPlayers.has('player1')).toBe(true);
       expect(state.disconnectedPlayers.has('player2')).toBe(true);
       expect(state.disconnectedPlayers.has('player3')).toBe(true);
+    });
+
+    it('should set user ID to player ID mapping', () => {
+      const mapping = new Map<string, string>();
+      mapping.set('google:123', 'P1');
+      mapping.set('google:456', 'P2');
+      
+      const state = uiReducer(initialUIState, setUserIdMapping(mapping));
+
+      expect(state.userIdToPlayerId.get('google:123')).toBe('P1');
+      expect(state.userIdToPlayerId.get('google:456')).toBe('P2');
+      expect(state.userIdToPlayerId.size).toBe(2);
     });
   });
 });

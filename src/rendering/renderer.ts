@@ -103,6 +103,15 @@ export class Renderer {
       this.lobbyRenderer = new LobbyRenderer(this.ctx);
     }
 
+    // Create a set of disconnected config player IDs by looking up the mapping
+    const disconnectedConfigPlayerIds = new Set<string>();
+    state.ui.disconnectedPlayers.forEach(userId => {
+      const configPlayerId = state.ui.userIdToPlayerId.get(userId);
+      if (configPlayerId) {
+        disconnectedConfigPlayerIds.add(configPlayerId);
+      }
+    });
+
     // Render the new lobby layout
     this.currentLobbyLayout = this.lobbyRenderer.render(
       this.canvas.width,
@@ -114,7 +123,7 @@ export class Renderer {
       state.ui.helpCorner,
       state.ui.savedGameState !== null,
       state.ui.gameMode,
-      state.ui.disconnectedPlayers
+      disconnectedConfigPlayerIds
     );
 
     // Return empty UILayout for compatibility (new input handler will use LobbyLayout)
@@ -131,12 +140,21 @@ export class Renderer {
       this.seatingRenderer = new SeatingRenderer(this.ctx);
     }
 
+    // Create a set of disconnected config player IDs by looking up the mapping
+    const disconnectedConfigPlayerIds = new Set<string>();
+    state.ui.disconnectedPlayers.forEach(userId => {
+      const configPlayerId = state.ui.userIdToPlayerId.get(userId);
+      if (configPlayerId) {
+        disconnectedConfigPlayerIds.add(configPlayerId);
+      }
+    });
+
     // Render the seating phase screen
     this.currentSeatingLayout = this.seatingRenderer.render(
       this.canvas.width,
       this.canvas.height,
       state.game,
-      state.ui.disconnectedPlayers
+      disconnectedConfigPlayerIds
     );
 
     // Return empty UILayout for compatibility
