@@ -17,6 +17,8 @@ import {
   showMoveList,
   hideMoveList,
   navigateMoveList,
+  setPlayerConnected,
+  setPlayerDisconnected,
 } from '../src/redux/actions';
 
 describe('uiReducer', () => {
@@ -362,6 +364,33 @@ describe('uiReducer', () => {
       const state = uiReducer(initialUIState, { type: 'UNKNOWN_ACTION' } as any);
 
       expect(state).toEqual(initialUIState);
+    });
+  });
+
+  describe('Player Connection State', () => {
+    it('should add disconnected player', () => {
+      const state = uiReducer(initialUIState, setPlayerDisconnected('player1'));
+
+      expect(state.disconnectedPlayers.has('player1')).toBe(true);
+    });
+
+    it('should remove reconnected player', () => {
+      let state = uiReducer(initialUIState, setPlayerDisconnected('player1'));
+      state = uiReducer(state, setPlayerDisconnected('player2'));
+      state = uiReducer(state, setPlayerConnected('player1'));
+
+      expect(state.disconnectedPlayers.has('player1')).toBe(false);
+      expect(state.disconnectedPlayers.has('player2')).toBe(true);
+    });
+
+    it('should track multiple disconnected players', () => {
+      let state = uiReducer(initialUIState, setPlayerDisconnected('player1'));
+      state = uiReducer(state, setPlayerDisconnected('player2'));
+      state = uiReducer(state, setPlayerDisconnected('player3'));
+
+      expect(state.disconnectedPlayers.has('player1')).toBe(true);
+      expect(state.disconnectedPlayers.has('player2')).toBe(true);
+      expect(state.disconnectedPlayers.has('player3')).toBe(true);
     });
   });
 });
