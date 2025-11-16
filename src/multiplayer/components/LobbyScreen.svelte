@@ -52,6 +52,21 @@
     multiplayerStore.setScreen('room');
   }
 
+  function watchGame(room: Room) {
+    // Join as spectator
+    socket.joinAsSpectator(room.id);
+    multiplayerStore.setIsSpectator(true);
+    multiplayerStore.setGameId(room.id);
+    multiplayerStore.setScreen('game');
+    
+    // Also update Redux state
+    import('../redux/actions').then(({ setSpectatorMode }) => {
+      import('../redux/store').then(({ store }) => {
+        store.dispatch(setSpectatorMode(true));
+      });
+    });
+  }
+
   function showCreate() {
     showCreateModal = true;
     roomName = `${username}'s game`;
@@ -114,6 +129,9 @@
                 <h3>{room.name}</h3>
                 <p class="room-players">
                   👥 {room.playerCount || room.players?.length || 0}/{room.maxPlayers} players
+                  {#if room.spectatorCount && room.spectatorCount > 0}
+                    <span class="spectator-count">👁️ {room.spectatorCount} watching</span>
+                  {/if}
                 </p>
                 {#if room.status === 'playing'}
                   <span class="status-badge">In Progress</span>
@@ -121,21 +139,31 @@
                   <span class="status-badge finished">Finished</span>
                 {/if}
               </div>
-              <button 
-                class="join-btn" 
-                on:click={() => joinRoom(room)}
-                disabled={room.status === 'waiting' && (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
-              >
-                {#if room.status === 'playing'}
-                  Resume
-                {:else if room.status === 'finished'}
-                  View
-                {:else if (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
-                  Full
-                {:else}
-                  Join
+              <div class="room-actions">
+                <button 
+                  class="join-btn" 
+                  on:click={() => joinRoom(room)}
+                  disabled={room.status === 'waiting' && (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
+                >
+                  {#if room.status === 'playing'}
+                    Resume
+                  {:else if room.status === 'finished'}
+                    View
+                  {:else if (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
+                    Full
+                  {:else}
+                    Join
+                  {/if}
+                </button>
+                {#if room.status === 'playing' || room.status === 'finished'}
+                  <button 
+                    class="watch-btn" 
+                    on:click={() => watchGame(room)}
+                  >
+                    👁️ Watch
+                  </button>
                 {/if}
-              </button>
+              </div>
             </div>
           {/each}
         </div>
@@ -366,6 +394,12 @@
     font-size: 14px;
   }
   
+  .spectator-count {
+    margin-left: 12px;
+    color: #2196F3;
+    font-weight: 500;
+  }
+  
   .status-badge {
     display: inline-block;
     padding: 4px 12px;
@@ -378,6 +412,12 @@
   
   .status-badge.finished {
     background: #757575;
+  }
+
+  .room-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
   }
 
   .join-btn {
@@ -399,6 +439,22 @@
   .join-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
+  }
+
+  .watch-btn {
+    padding: 10px 24px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .watch-btn:hover {
+    background: #1976D2;
   }
 
   .modal-backdrop {
