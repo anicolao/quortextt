@@ -141,17 +141,29 @@ interface UserSession {
   username: string;
   activeGameIds: string[];
   lastSeen: number;
+  connectionState: 'connected' | 'disconnected';
+  currentSocketId?: string; // Current active socket
+  lastKnownState: {
+    [gameId: string]: {
+      lastActionSequence: number; // Last action they processed
+      lastSeenTimestamp: number;
+    }
+  }
 }
 
 /**
  * Update user session with their active games
  */
-async function updateUserSession(userId: string, username: string, gameIds: string[]): Promise<void> {
+async function updateUserSession(userId: string, username: string, gameIds: string[], socketId?: string, connectionState?: 'connected' | 'disconnected'): Promise<void> {
+  const existingSession = getUserSession(userId);
   const session: UserSession = {
     userId,
     username,
     activeGameIds: gameIds,
-    lastSeen: Date.now()
+    lastSeen: Date.now(),
+    connectionState: connectionState ?? existingSession?.connectionState ?? 'connected',
+    currentSocketId: socketId ?? existingSession?.currentSocketId,
+    lastKnownState: existingSession?.lastKnownState ?? {}
   };
   await sessionStorage.set(userId, session);
 }
@@ -166,10 +178,10 @@ function getUserSession(userId: string): UserSession | null {
 /**
  * Add a game to user's session
  */
-async function addGameToUserSession(userId: string, username: string, gameId: string): Promise<void> {
+async function addGameToUserSession(userId: string, username: string, gameId: string, socketId?: string): Promise<void> {
   const session = getUserSession(userId);
   const activeGameIds = session ? [...new Set([...session.activeGameIds, gameId])] : [gameId];
-  await updateUserSession(userId, username, activeGameIds);
+  await updateUserSession(userId, username, activeGameIds, socketId, 'connected');
 }
 
 /**
@@ -395,9 +407,11 @@ io.on('connection', (socket) => {
       if (session) {
         activeGames = session.activeGameIds;
         console.log(`Player ${player.username} reconnected with ${activeGames.length} active games`);
+        // Update session with new socket ID and connection state
+        await updateUserSession(userId, data.username, session.activeGameIds, socket.id, 'connected');
       } else {
         // Create initial session
-        await updateUserSession(userId, data.username, []);
+        await updateUserSession(userId, data.username, [], socket.id, 'connected');
       }
     }
     
@@ -408,6 +422,26 @@ io.on('connection', (socket) => {
       authenticated: socket.data.authenticated,
       activeGames // Send list of games the player is in
     });
+  });
+
+  // Heartbeat mechanism - client sends periodic heartbeat to maintain connection
+  socket.on('heartbeat', async () => {
+    const player = players.get(socket.id);
+    if (!player) return;
+    
+    // Update lastSeen timestamp in session for authenticated users
+    if (socket.data.authenticated) {
+      const session = getUserSession(socket.data.userId);
+      if (session) {
+        await updateUserSession(
+          socket.data.userId, 
+          session.username, 
+          session.activeGameIds, 
+          socket.id, 
+          'connected'
+        );
+      }
+    }
   });
 
   // Join a room
@@ -456,22 +490,32 @@ io.on('connection', (socket) => {
       
       // Track session for authenticated users
       if (socket.data.authenticated) {
-        await addGameToUserSession(socket.data.userId, player.username, roomId);
+        await addGameToUserSession(socket.data.userId, player.username, roomId, socket.id);
       }
       
       // Get updated state
       const updatedState = await gameStorage.getGameState(roomId);
       
-      // Notify everyone in the room
-      io.to(roomId).emit('player_joined', {
-        player: { id: player.id, username: player.username },
-        room: {
-          id: updatedState!.gameId,
-          name: updatedState!.name,
-          players: updatedState!.players.map(p => ({ id: p.id, username: p.username })),
-          hostId: updatedState!.hostId
-        }
-      });
+      // If rejoining, notify other players
+      if (isRejoining) {
+        io.to(roomId).emit('player_reconnected', {
+          playerId: player.id,
+          username: player.username
+        });
+      }
+      
+      // Notify everyone in the room (for new joins, not reconnections to playing games)
+      if (!isRejoining || updatedState!.status === 'waiting') {
+        io.to(roomId).emit('player_joined', {
+          player: { id: player.id, username: player.username },
+          room: {
+            id: updatedState!.gameId,
+            name: updatedState!.name,
+            players: updatedState!.players.map(p => ({ id: p.id, username: p.username })),
+            hostId: updatedState!.hostId
+          }
+        });
+      }
 
       // If rejoining an in-progress or finished game, notify the player to load the game
       if (isRejoining && (updatedState!.status === 'playing' || updatedState!.status === 'finished')) {
@@ -740,6 +784,20 @@ io.on('connection', (socket) => {
     if (player) {
       player.connected = false;
 
+      // Update session state to disconnected for authenticated users
+      if (socket.data.authenticated) {
+        const session = getUserSession(socket.data.userId);
+        if (session) {
+          await updateUserSession(
+            socket.data.userId,
+            session.username,
+            session.activeGameIds,
+            undefined,
+            'disconnected'
+          );
+        }
+      }
+
       try {
         // Find and update all games this player was in
         const gameIds = await gameStorage.listGames();
@@ -769,48 +827,10 @@ io.on('connection', (socket) => {
         console.error('Error handling disconnect:', error);
       }
 
-      // Clean up after a timeout (give them a chance to reconnect)
-      setTimeout(async () => {
-        if (!player.connected) {
-          players.delete(socket.id);
-          
-          try {
-            // Remove from all games and clean up
-            const gameIds = await gameStorage.listGames();
-            for (const gameId of gameIds) {
-              const state = await gameStorage.getGameState(gameId);
-              if (state) {
-                const playerInGame = state.players.find(p => p.id === player.id);
-                if (playerInGame) {
-                  // Record leave action (sequence will be auto-assigned)
-                  const leaveAction: GameAction = {
-                    type: 'LEAVE_GAME',
-                    payload: { playerId: player.id },
-                    playerId: player.id,
-                    timestamp: Date.now(),
-                    sequence: 0 // Will be overwritten by storage
-                  };
-                  await gameStorage.appendAction(gameId, leaveAction);
-                  
-                  const updatedState = await gameStorage.getGameState(gameId);
-                  
-                  io.to(gameId).emit('player_left', {
-                    playerId: player.id,
-                    room: {
-                      id: updatedState!.gameId,
-                      name: updatedState!.name,
-                      players: updatedState!.players.map(p => ({ id: p.id, username: p.username })),
-                      hostId: updatedState!.hostId
-                    }
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error cleaning up disconnected player:', error);
-          }
-        }
-      }, 30000); // 30 second grace period
+      // Remove from in-memory map only (keep in session for reconnection)
+      // Games wait indefinitely for player to reconnect - no timeout removal
+      players.delete(socket.id);
+      console.log(`Player ${player.username} disconnected. Games will wait for reconnection.`);
     }
   });
 });
