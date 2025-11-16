@@ -19,7 +19,7 @@ export interface Room {
 
 export interface MultiplayerState {
   connected: boolean;
-  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
+  connectionStatus: 'connected' | 'disconnected' | 'reconnecting' | 'connected_elsewhere';
   username: string | null;
   playerId: string | null;
   userId: string | null; // Discord user ID when in Discord Activity mode

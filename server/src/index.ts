@@ -431,10 +431,27 @@ io.on('connection', (socket) => {
     
     // For authenticated users, load their session to find active games
     let activeGames: string[] = [];
+    let previousSocketId: string | undefined;
     if (socket.data.authenticated) {
       const session = getUserSession(userId);
       if (session) {
         activeGames = session.activeGameIds;
+        previousSocketId = session.currentSocketId;
+        
+        // Handle multiple simultaneous connections (Section 2.2.3, item 3)
+        // If user is already connected from another socket, notify that socket
+        if (previousSocketId && previousSocketId !== socket.id && players.has(previousSocketId)) {
+          const previousSocket = io.sockets.sockets.get(previousSocketId);
+          if (previousSocket) {
+            console.log(`User ${player.username} connected from new location. Notifying previous connection.`);
+            previousSocket.emit('connected_elsewhere', {
+              message: 'You have connected from another device or browser. This connection is now read-only.'
+            });
+            // Note: We don't disconnect the old socket, just notify it
+            // The client should handle this by showing a message and preventing actions
+          }
+        }
+        
         console.log(`Player ${player.username} reconnected with ${activeGames.length} active games`);
         // Update session with new socket ID and connection state
         await updateUserSession(userId, data.username, session.activeGameIds, socket.id, 'connected');
