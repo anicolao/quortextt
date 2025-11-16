@@ -16,6 +16,12 @@
   $: username = $multiplayerStore.username;
   $: playerId = $multiplayerStore.playerId;
 
+  // Helper function to check if current player is in a room
+  function isPlayerInRoom(room: Room): boolean {
+    if (!playerId || !room.players) return false;
+    return room.players.some(p => p.id === playerId);
+  }
+
   onMount(() => {
     refreshRooms();
     
@@ -138,27 +144,40 @@
                 {/if}
               </div>
               <div class="room-actions">
-                <button 
-                  class="join-btn" 
-                  on:click={() => joinRoom(room)}
-                  disabled={room.status === 'waiting' && (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
-                >
-                  {#if room.status === 'playing'}
-                    Resume
-                  {:else if room.status === 'finished'}
-                    View
-                  {:else if (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
-                    Full
-                  {:else}
-                    Join
-                  {/if}
-                </button>
                 {#if room.status === 'playing' || room.status === 'finished'}
+                  {#if isPlayerInRoom(room)}
+                    <!-- Player in game: show only Resume/View button -->
+                    <button 
+                      class="join-btn" 
+                      on:click={() => joinRoom(room)}
+                    >
+                      {#if room.status === 'playing'}
+                        Resume
+                      {:else}
+                        View
+                      {/if}
+                    </button>
+                  {:else}
+                    <!-- Not a player: show only Watch button -->
+                    <button 
+                      class="watch-btn" 
+                      on:click={() => watchGame(room)}
+                    >
+                      👁️ Watch
+                    </button>
+                  {/if}
+                {:else}
+                  <!-- Waiting room: show Join button -->
                   <button 
-                    class="watch-btn" 
-                    on:click={() => watchGame(room)}
+                    class="join-btn" 
+                    on:click={() => joinRoom(room)}
+                    disabled={(room.playerCount || room.players?.length || 0) >= room.maxPlayers}
                   >
-                    👁️ Watch
+                    {#if (room.playerCount || room.players?.length || 0) >= room.maxPlayers}
+                      Full
+                    {:else}
+                      Join
+                    {/if}
                   </button>
                 {/if}
               </div>
