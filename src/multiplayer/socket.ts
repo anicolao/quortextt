@@ -299,13 +299,16 @@ class MultiplayerSocket {
 
     // Rematch spectator rejoin
     this.socket.on('rematch_spectator_rejoin', (data: { gameId: string; spectatorId: string }) => {
-      console.log('Rematch spectator rejoin request:', data);
+      console.log('[Socket] Rematch spectator rejoin request:', data);
       const mpState = multiplayerStore.get();
+      console.log('[Socket] Current playerId:', mpState.playerId, 'isSpectator:', mpState.isSpectator);
       
       // If this spectator is the current user, automatically rejoin
       if (mpState.playerId === data.spectatorId && mpState.isSpectator) {
-        console.log('Automatically rejoining rematch game as spectator');
+        console.log('[Socket] Automatically rejoining rematch game as spectator:', data.gameId);
         this.joinAsSpectator(data.gameId);
+      } else {
+        console.log('[Socket] Not rejoining - playerId mismatch or not spectator');
       }
     });
 

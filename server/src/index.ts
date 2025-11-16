@@ -721,18 +721,29 @@ io.on('connection', (socket) => {
       if (finalAction.type === 'COMPLETE_SEATING_PHASE' && rematchGames.has(gameId)) {
         const rematchInfo = rematchGames.get(gameId)!;
         
+        console.log(`[Rematch] COMPLETE_SEATING_PHASE for game ${gameId}, checking for spectators...`);
+        console.log(`[Rematch] rematchInfo:`, JSON.stringify({
+          players: rematchInfo.players.length,
+          spectators: rematchInfo.spectators?.length || 0,
+          oldGameId: rematchInfo.oldGameId
+        }));
+        
         // Re-add spectators from the previous game
         if (rematchInfo.spectators && rematchInfo.spectators.length > 0 && rematchInfo.oldGameId) {
-          console.log(`Re-adding ${rematchInfo.spectators.length} spectators to rematch game ${gameId}`);
+          console.log(`[Rematch] Re-adding ${rematchInfo.spectators.length} spectators to rematch game ${gameId}`);
+          console.log(`[Rematch] Emitting to old game room: ${rematchInfo.oldGameId}`);
           
           // Notify spectators to rejoin via a custom event
           // Emit to the OLD game room where spectators are still listening
           for (const spectator of rematchInfo.spectators) {
+            console.log(`[Rematch] Emitting rematch_spectator_rejoin for spectator ${spectator.id} (${spectator.username})`);
             io.to(rematchInfo.oldGameId).emit('rematch_spectator_rejoin', {
               gameId, // The NEW game ID they should join
               spectatorId: spectator.id
             });
           }
+        } else {
+          console.log(`[Rematch] No spectators to re-add or missing oldGameId`);
         }
       }
 
