@@ -227,6 +227,9 @@ export class GameplayRenderer {
     // Layer 6: Exit buttons in corners (only show on current player's edge in multiplayer mode)
     this.renderExitButtons(state);
 
+    // Layer 6.4: Spectator indicator (if in spectator mode)
+    this.renderSpectatorIndicator(state);
+
     // Layer 6.5: Help buttons in corners (only show on current player's edge in multiplayer mode)
     this.renderHelpButtons(state);
 
@@ -1934,6 +1937,50 @@ export class GameplayRenderer {
 
       this.ctx.restore();
     });
+  }
+
+  private renderSpectatorIndicator(state: RootState): void {
+    // Only show in multiplayer mode
+    if (state.ui.gameMode !== 'multiplayer') return;
+    
+    // Check if the isSpectator flag is set in UI state
+    // This will be set by the multiplayer coordinator when entering spectator mode
+    const isSpectator = (state.ui as any).isSpectator || false;
+    const spectatorCount = (state.ui as any).spectatorCount || 0;
+    
+    if (!isSpectator) return;
+    
+    // Render spectator indicator at top center
+    const text = `👁️ Spectating`;
+    const watchingText = spectatorCount > 0 ? ` (${spectatorCount} watching)` : '';
+    const fullText = text + watchingText;
+    
+    this.ctx.save();
+    
+    // Background box
+    this.ctx.font = 'bold 18px sans-serif';
+    const metrics = this.ctx.measureText(fullText);
+    const boxWidth = metrics.width + 40;
+    const boxHeight = 36;
+    const x = this.layout.canvasWidth / 2;
+    const y = 20;
+    
+    this.ctx.fillStyle = 'rgba(33, 150, 243, 0.9)'; // Blue background
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    this.ctx.lineWidth = 2;
+    
+    this.ctx.beginPath();
+    this.ctx.roundRect(x - boxWidth / 2, y, boxWidth, boxHeight, 8);
+    this.ctx.fill();
+    this.ctx.stroke();
+    
+    // Text
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(fullText, x, y + boxHeight / 2);
+    
+    this.ctx.restore();
   }
 
   private renderHelpButtons(state: RootState): void {

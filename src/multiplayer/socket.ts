@@ -275,6 +275,11 @@ class MultiplayerSocket {
       console.log('Spectator joined:', data.spectator.username, `(${data.spectatorCount} watching)`);
       multiplayerStore.setSpectatorCount(data.spectatorCount);
       
+      // Also update Redux state
+      import('../redux/actions').then(({ setSpectatorCount }) => {
+        store.dispatch(setSpectatorCount(data.spectatorCount));
+      });
+      
       // Broadcast spectator join event
       window.dispatchEvent(new CustomEvent('multiplayer:spectator-joined', {
         detail: data
@@ -284,6 +289,11 @@ class MultiplayerSocket {
     this.socket.on('spectator_left', (data: { spectatorId: string; spectatorCount: number }) => {
       console.log('Spectator left', `(${data.spectatorCount} watching)`);
       multiplayerStore.setSpectatorCount(data.spectatorCount);
+      
+      // Also update Redux state
+      import('../redux/actions').then(({ setSpectatorCount }) => {
+        store.dispatch(setSpectatorCount(data.spectatorCount));
+      });
       
       // Broadcast spectator leave event
       window.dispatchEvent(new CustomEvent('multiplayer:spectator-left', {

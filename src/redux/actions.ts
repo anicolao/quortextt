@@ -55,6 +55,10 @@ export const SET_PLAYER_CONNECTED = "SET_PLAYER_CONNECTED";
 export const SET_PLAYER_DISCONNECTED = "SET_PLAYER_DISCONNECTED";
 export const SET_USER_ID_MAPPING = "SET_USER_ID_MAPPING";
 
+// Spectator mode actions
+export const SET_SPECTATOR_MODE = "SET_SPECTATOR_MODE";
+export const SET_SPECTATOR_COUNT = "SET_SPECTATOR_COUNT";
+
 // Configuration action types
 export interface AddPlayerAction {
   type: typeof ADD_PLAYER;
@@ -284,6 +288,20 @@ export interface SetUserIdMappingAction {
   };
 }
 
+export interface SetSpectatorModeAction {
+  type: typeof SET_SPECTATOR_MODE;
+  payload: {
+    isSpectator: boolean;
+  };
+}
+
+export interface SetSpectatorCountAction {
+  type: typeof SET_SPECTATOR_COUNT;
+  payload: {
+    count: number;
+  };
+}
+
 // Combined action type
 export type GameAction =
   | AddPlayerAction
@@ -323,7 +341,9 @@ export type UIAction =
   | NavigateMoveListAction
   | SetPlayerConnectedAction
   | SetPlayerDisconnectedAction
-  | SetUserIdMappingAction;
+  | SetUserIdMappingAction
+  | SetSpectatorModeAction
+  | SetSpectatorCountAction;
 
 // Configuration action creators
 export const addPlayer = (color: string, edge: number, playerId?: string, userId?: string): AddPlayerAction => ({
@@ -556,4 +576,15 @@ export const setPlayerDisconnected = (playerId: string): SetPlayerDisconnectedAc
 export const setUserIdMapping = (mapping: Map<string, string>): SetUserIdMappingAction => ({
   type: SET_USER_ID_MAPPING,
   payload: { mapping },
+});
+
+// Spectator mode action creators
+export const setSpectatorMode = (isSpectator: boolean): SetSpectatorModeAction => ({
+  type: SET_SPECTATOR_MODE,
+  payload: { isSpectator },
+});
+
+export const setSpectatorCount = (count: number): SetSpectatorCountAction => ({
+  type: SET_SPECTATOR_COUNT,
+  payload: { count },
 });

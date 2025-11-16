@@ -378,8 +378,30 @@ export class GameplayInputHandler {
         y >= corner.y &&
         y <= corner.y + corner.height
       ) {
-        // Exit button clicked - reset game completely and return to lobby
-        store.dispatch(resetGame());
+        // Exit button clicked
+        const state = store.getState();
+        
+        // Check if in multiplayer mode and spectating
+        if (state.ui.gameMode === 'multiplayer') {
+          // Import socket and multiplayerStore dynamically
+          import('../multiplayer/socket').then(({ socket }) => {
+            import('../multiplayer/stores/multiplayerStore').then(({ multiplayerStore }) => {
+              const mpState = multiplayerStore.get();
+              if (mpState.isSpectator && mpState.gameId) {
+                // Spectator: leave spectator mode and return to lobby
+                socket.leaveSpectator(mpState.gameId);
+                multiplayerStore.setIsSpectator(false);
+                multiplayerStore.setScreen('lobby');
+              } else {
+                // Player: reset game and return to setup
+                store.dispatch(resetGame());
+              }
+            });
+          });
+        } else {
+          // Non-multiplayer: reset game completely and return to lobby
+          store.dispatch(resetGame());
+        }
         return;
       }
     }
