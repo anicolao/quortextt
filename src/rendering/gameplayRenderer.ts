@@ -1435,7 +1435,10 @@ export class GameplayRenderer {
       );
       
       // If current player is disconnected, add a red dot indicator
-      if (state.ui.disconnectedPlayers.has(currentPlayer.id)) {
+      const isDisconnected = state.ui.disconnectedPlayers.has(currentPlayer.id);
+      console.log('🎮 [GAMEPLAY] Checking pending tile - Player:', currentPlayer.id, 'Disconnected:', isDisconnected, 'All disconnected:', Array.from(state.ui.disconnectedPlayers));
+      if (isDisconnected) {
+        console.log('🔴 [GAMEPLAY] Drawing red dot on pending tile for disconnected player');
         this.drawDisconnectedIndicator(edgePos);
       }
     }
@@ -1443,6 +1446,7 @@ export class GameplayRenderer {
 
   // Draw a red dot to indicate disconnected player
   private drawDisconnectedIndicator(center: Point): void {
+    console.log('🔴 [DRAW] Drawing disconnected indicator at', center);
     this.ctx.save();
     this.ctx.fillStyle = '#FF0000';
     this.ctx.shadowBlur = 8;

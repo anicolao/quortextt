@@ -204,6 +204,7 @@ export function uiReducer(
     case SET_PLAYER_CONNECTED: {
       const newDisconnectedPlayers = new Set(state.disconnectedPlayers);
       newDisconnectedPlayers.delete(action.payload.playerId);
+      console.log('🟢 [REDUX] SET_PLAYER_CONNECTED:', action.payload.playerId, 'Disconnected players:', Array.from(newDisconnectedPlayers));
       return {
         ...state,
         disconnectedPlayers: newDisconnectedPlayers,
@@ -213,6 +214,7 @@ export function uiReducer(
     case SET_PLAYER_DISCONNECTED: {
       const newDisconnectedPlayers = new Set(state.disconnectedPlayers);
       newDisconnectedPlayers.add(action.payload.playerId);
+      console.log('🔴 [REDUX] SET_PLAYER_DISCONNECTED:', action.payload.playerId, 'Disconnected players:', Array.from(newDisconnectedPlayers));
       return {
         ...state,
         disconnectedPlayers: newDisconnectedPlayers,
