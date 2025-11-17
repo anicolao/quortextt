@@ -2,7 +2,7 @@
 
 ## Overview
 
-This user story documents the complete end-to-end flow for two players creating, joining, and starting a multiplayer game. It demonstrates:
+This user story documents the complete end-to-end flow for two players creating, joining, and playing a multiplayer game. It demonstrates:
 
 1. **Isolated Sessions**: Two separate browser contexts ensure independent cookie sessions
 2. **Login Flow**: Both users authenticate as anonymous users with different usernames
@@ -10,15 +10,15 @@ This user story documents the complete end-to-end flow for two players creating,
 4. **Room Joining**: Second user joins the created room
 5. **Game Initialization**: Host starts the game, transitioning both players to the configuration canvas
 6. **Configuration Phase**: Players add themselves with colors via ADD_PLAYER actions
-7. **Game Start**: START_GAME action with coordinator-generated seed
+7. **Game Start**: START_GAME with SHUFFLE_TILES seed 888 for deterministic behavior
 8. **Seating Phase**: Both players select their starting edge positions
-9. **Gameplay Phase**: Game transitions to active gameplay state
+9. **Gameplay Phase**: First tile placement with validated state
 
 ## Current Status
 
-✅ **Complete through gameplay initialization** (Login → Lobby → Room → Configuration → Seating → Gameplay)
+✅ **Complete through first tile placement** (Login → Lobby → Room → Configuration → Seating → Gameplay → Tile Placement)
 
-This test validates the complete multiplayer flow from login through gameplay initialization, including all major phase transitions with proper Redux state validation at each step.
+This test validates the complete multiplayer flow from login through first tile placement, including all major phase transitions with proper Redux state validation at each step. Uses deterministic seed 888 for repeatable tile sequence.
 
 ## Key Technical Details
 
@@ -27,8 +27,9 @@ This test validates the complete multiplayer flow from login through gameplay in
 - **Real-time Updates**: Screenshots show how state updates synchronize between players via Socket.IO
 - **Programmatic Validation**: Test validates Redux state at each step to ensure correct phase transitions
 - **Canvas Game Integration**: Game transitions from Svelte UI to canvas-based game
-- **Action Synchronization**: Redux actions (ADD_PLAYER, START_GAME, SELECT_EDGE) synchronized via Socket.IO
-- **GameCoordinator Integration**: Properly handles multiplayer action routing and seed generation
+- **Action Synchronization**: Redux actions (ADD_PLAYER, PLACE_TILE, etc.) synchronized via Socket.IO
+- **GameCoordinator Integration**: Properly handles multiplayer action routing
+- **Deterministic Tiles**: SHUFFLE_TILES with seed 888 ensures repeatable tile order for consistent testing
 
 ## Test Coverage
 
@@ -40,9 +41,11 @@ This test verifies:
 - UI state consistency across both browser contexts
 - Game initialization and configuration phase
 - ADD_PLAYER action synchronization with color selection
-- START_GAME action with automatic seed generation via GameCoordinator
+- START_GAME with SHUFFLE_TILES seed 888 for repeatability
 - Seating phase with SELECT_EDGE action synchronization
 - Transition to gameplay phase
+- First tile placement at position (-3, 0) with rotation 1
+- Board state synchronization after tile placement
 - Redux state validation at all phase transitions
 
 ## Running the Test
@@ -297,39 +300,41 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 
 ---
 
-#### Step 25: Player 1 Ready for Tiles
+### First Tile Placement (Steps 25-28)
 
-![Player 1 Ready](025-gameplay-player1-ready.png)
+#### Step 25: Player 1 Selects Tile Position
 
-**Validation**: Gameplay phase active  
-**Player 1 Perspective**: Alice in gameplay phase, ready for tile drawing and placement.
+![Player 1 Tile Position](025-player1-tile-position-selected.png)
 
----
-
-#### Step 26: Player 2 Ready for Tiles
-
-![Player 2 Ready](026-gameplay-player2-ready.png)
-
-**Validation**: Gameplay phase active  
-**Player 2 Perspective**: Bob in gameplay phase, ready for tile drawing and placement.
+**Validation**: Position (-3, 0) selected for first tile placement  
+**Player 1 Perspective**: Alice clicks on position (-3, 0) to place the first tile. With seed 888, this follows the deterministic tile sequence.
 
 ---
 
-#### Step 27: Player 1 with Tile State
+#### Step 26: Player 1 Rotates Tile
 
-![Player 1 Tile State](027-gameplay-player1-with-tile.png)
+![Player 1 Tile Rotated](026-player1-tile-rotated.png)
 
-**Validation**: Gameplay state maintained  
-**Player 1 Perspective**: Game ready for tile operations (drawing, placement, rotation).
+**Validation**: Tile rotated to rotation 1  
+**Player 1 Perspective**: Alice presses 'r' to rotate the tile to rotation 1, matching the expected placement for seed 888.
 
 ---
 
-#### Step 28: Player 2 with Tile State
+#### Step 27: Player 1 Places Tile
 
-![Player 2 Tile State](028-gameplay-player2-with-tile.png)
+![Player 1 Tile Placed](027-player1-tile-placed.png)
 
-**Validation**: Gameplay state synchronized  
-**Player 2 Perspective**: Both players in synchronized gameplay state.
+**Validation**: Board has 1 tile, PLACE_TILE action broadcasted  
+**Player 1 Perspective**: Alice confirms placement (presses Enter or dispatches PLACE_TILE action), and the tile appears on the board.
+
+---
+
+#### Step 28: Player 2 Sees Tile Placement
+
+![Player 2 Sees Tile](028-player2-sees-tile-placed.png)
+
+**Validation**: Board synchronized with 1 tile via Socket.IO  
+**Player 2 Perspective**: Bob's view updates to show the placed tile, demonstrating **real-time tile placement synchronization**.
 
 ---
 
@@ -342,11 +347,13 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 5. **Both players** are in the room together → Alice clicks "Start Game"
 6. **Game initializes** → both players see the configuration canvas
 7. **Configuration** → Alice and Bob add themselves with colors via ADD_PLAYER
-8. **Start game** → Alice dispatches START_GAME (GameCoordinator adds seed and broadcasts)
+8. **Start game** → Alice dispatches START_GAME, then SHUFFLE_TILES with seed 888
 9. **Seating** → Both players select their starting edges (Alice: edge 0, Bob: edge 3)
-10. **Gameplay** → Game transitions to gameplay phase, ready for tile operations
+10. **Gameplay** → Game transitions to gameplay phase
+11. **First tile** → Alice places tile at position (-3, 0) with rotation 1
+12. **Synchronization** → Bob sees the placed tile via real-time Socket.IO sync
 
-**Note**: The test starts a fresh server instance with a temporary data directory for each test run, ensuring completely clean state and truly repeatable results. The temporary directory is cleaned up after the test completes.
+**Note**: The test starts a fresh server instance with a temporary data directory for each test run, ensuring completely clean state and truly repeatable results. SHUFFLE_TILES with seed 888 ensures deterministic tile order for consistent test validation. The temporary directory is cleaned up after the test completes.
 
 ## Programmatic Validations Performed
 
@@ -362,6 +369,8 @@ At each step, the test validates:
 - ✅ Configuration phase: configPlayers count increases correctly
 - ✅ Seating phase: screen transitions and edge selections
 - ✅ Gameplay phase: screen transition and player count validation
+- ✅ Tile placement: PLACE_TILE action synchronized between players
+- ✅ Board state: tile appears on both players' boards after placement
 
 ## Technical Notes
 
@@ -369,6 +378,7 @@ At each step, the test validates:
 - **Anonymous Auth**: Uses `/auth/anonymous` endpoint with unique session IDs
 - **Socket.IO**: Real-time room updates and game action synchronization
 - **Fixed Room Name**: Uses "E2E Test: Alice and Bob" for repeatable, stable screenshots
+- **Deterministic Tiles**: SHUFFLE_TILES with seed 888 ensures consistent tile order
 - **Isolated Server**: Test starts its own server instance with a temporary data directory
 - **Clean State**: Each test run has completely fresh server state (no pre-existing rooms/users)
 - **Automatic Cleanup**: Temporary data directory is removed after test completes
@@ -396,8 +406,11 @@ At each step, the test validates:
 ✅ Real-time synchronization via Socket.IO  
 ✅ Game initialization transitions to configuration canvas  
 ✅ Configuration phase: ADD_PLAYER actions synchronized  
-✅ START_GAME action with GameCoordinator seed generation  
+✅ START_GAME with SHUFFLE_TILES seed 888 for repeatability  
 ✅ Seating phase: SELECT_EDGE actions synchronized  
 ✅ Gameplay phase initialization  
+✅ First tile placement at position (-3, 0) with rotation 1  
+✅ Tile synchronization between players via Socket.IO  
+✅ Board state validation after tile placement  
 ✅ Redux state validated at all phase transitions  
-✅ Screenshots from both perspectives with validation (28 total)
+✅ Screenshots from both perspectives with validation (32 total)
