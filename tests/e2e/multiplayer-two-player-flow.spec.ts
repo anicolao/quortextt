@@ -166,7 +166,9 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       });
 
       // Set room name and max players
-      const roomName = 'Alice and Bob Game';
+      // Use timestamp to ensure unique room name for each test run
+      const timestamp = Date.now();
+      const roomName = `E2E Test Room ${timestamp}`;
       await roomNameInput.clear();
       await roomNameInput.fill(roomName);
       

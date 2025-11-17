@@ -120,8 +120,8 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 
 ![Player 1 Room Settings](008-player1-room-settings.png)
 
-**Validation**: Room name input shows "Alice and Bob Game", dropdown shows 2 players selected  
-**Player 1 Perspective**: Alice has customized the room name to "Alice and Bob Game" and selected 2 as max players. "Create Room" button is ready to click.
+**Validation**: Room name input shows unique test room name (e.g., "E2E Test Room 1731806400000"), dropdown shows 2 players selected  
+**Player 1 Perspective**: Alice has customized the room name to a unique identifier for this test run and selected 2 as max players. "Create Room" button is ready to click. The unique name ensures the test won't conflict with pre-existing rooms on the server.
 
 ---
 
@@ -138,8 +138,8 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 
 ![Player 2 Sees Room](010-player2-sees-room.png)
 
-**Validation**: Room card with text "Alice and Bob Game" is visible  
-**Player 2 Perspective**: Bob's lobby view has updated in **real-time via Socket.IO** to show the newly created room "Alice and Bob Game" in the available rooms list. The room card shows "👥 1/2 players".
+**Validation**: Room card with the unique test room name is visible  
+**Player 2 Perspective**: Bob's lobby view has updated in **real-time via Socket.IO** to show the newly created room in the available rooms list. The room card shows "👥 1/2 players". The unique room name ensures Bob joins the correct room even if other rooms exist on the server.
 
 ---
 
@@ -148,7 +148,7 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 ![Player 2 Joined Room](011-player2-joined-room.png)
 
 **Validation**: Page displays room content (after clicking room card)  
-**Player 2 Perspective**: Bob has clicked on the room card and successfully joined "Alice and Bob Game". He can see both players in the room (Alice with host icon, and himself). Room now shows "2/2 players".
+**Player 2 Perspective**: Bob has clicked on the room card and successfully joined the test room. He can see both players in the room (Alice with host icon, and himself). Room now shows "2/2 players".
 
 ---
 
@@ -174,9 +174,11 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 
 1. **Player 1 (Alice)** logs in as anonymous user → sees lobby
 2. **Player 2 (Bob)** logs in as anonymous user in separate browser context → sees lobby
-3. **Alice** creates "Alice and Bob Game" room (2 max players) → enters room as host
-4. **Bob** sees room appear in lobby list → joins room
+3. **Alice** creates a uniquely-named test room (2 max players) → enters room as host
+4. **Bob** sees the specific test room appear in lobby list → joins that room
 5. **Both players** are in the room together → ready for game start
+
+**Note**: The room name is dynamically generated using a timestamp (e.g., "E2E Test Room 1731806400000") to ensure the test works correctly even when the server has pre-existing rooms from previous test runs.
 
 ## Programmatic Validations Performed
 
@@ -200,6 +202,8 @@ At each step, the test validates:
 - **Browser Contexts**: Uses `browser.newContext()` for cookie isolation
 - **Anonymous Auth**: Uses `/auth/anonymous` endpoint with unique session IDs
 - **Socket.IO**: Real-time room updates between clients
+- **Unique Room Names**: Room name includes timestamp to avoid conflicts with pre-existing server state
+- **Stateless Testing**: Test works correctly even when server has rooms from previous runs
 - **Playwright Testing**: Comprehensive e2e testing with visual validation
 
 ## Related Files
