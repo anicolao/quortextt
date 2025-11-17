@@ -139,8 +139,6 @@ async function initializeDiscordActivity() {
       socket.joinRoom(roomId);
       
       // For Discord Activities, show the game canvas with color configuration
-      // The server won't post START_GAME yet, keeping us in lobby phase
-      await new Promise(resolve => setTimeout(resolve, 500));
       console.log('[Discord Activity] Showing color configuration screen...');
       socket.startGame(roomId);
     } else {
@@ -156,8 +154,6 @@ async function initializeDiscordActivity() {
       socket.joinRoom(roomId);
       
       // For Discord Activities, immediately show the game canvas with color configuration
-      // The server won't post START_GAME yet, keeping us in lobby phase
-      await new Promise(resolve => setTimeout(resolve, 500));
       console.log('[Discord Activity] Showing color configuration screen...');
       socket.startGame(roomId);
     }
