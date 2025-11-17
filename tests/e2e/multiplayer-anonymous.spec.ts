@@ -55,8 +55,20 @@ test.describe('Multiplayer Anonymous User UI', () => {
     // Button should now be enabled
     await expect(joinButton).toBeEnabled();
     
-    // Wait for reactive UI to update (Svelte reactivity + CSS transition)
-    await page.waitForTimeout(100);
+    // Wait for CSS transition to complete (background color transition is 0.3s)
+    // We wait for the computed background color to be the enabled state (#667eea)
+    await page.waitForFunction(
+      () => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const joinButton = buttons.find(b => b.textContent?.includes('Join Lobby'));
+        if (!joinButton) return false;
+        const style = window.getComputedStyle(joinButton);
+        const bgColor = style.backgroundColor;
+        // Convert #667eea to rgb(102, 126, 234)
+        return bgColor === 'rgb(102, 126, 234)' || bgColor === 'rgba(102, 126, 234, 1)';
+      },
+      { timeout: 1000 }
+    );
     
     // Take screenshot with username entered
     await page.screenshot({ 
