@@ -461,6 +461,14 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log('✓ Step 17: Both players on configuration screen');
       
+      // Get canvas bounding boxes for both players (needed for click coordinates)
+      const box1 = await canvas1.boundingBox();
+      const box2 = await canvas2.boundingBox();
+      
+      if (!box1 || !box2) {
+        throw new Error('Canvas not found for one or both players');
+      }
+      
       // ===== STEP 6: Configuration Phase - Add Players =====
       // In multiplayer mode, only the bottom edge buttons are shown (multiplayer each player on their device)
       // Player 1 clicks on the first color button (blue, #0173B2) on the bottom edge
