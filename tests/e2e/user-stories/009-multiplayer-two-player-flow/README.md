@@ -300,38 +300,29 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 
 ---
 
-### First Tile Placement (Steps 25-28)
+### First Tile Placement (Steps 25-27)
 
-#### Step 25: Player 1 Selects Tile Position
+#### Step 25: Player 1 Ready for Tile Placement
 
-![Player 1 Tile Position](025-player1-tile-position-selected.png)
+![Player 1 Ready](025-player1-ready-for-placement.png)
 
-**Validation**: Position (-3, 0) selected for first tile placement  
-**Player 1 Perspective**: Alice clicks on position (-3, 0) to place the first tile. With seed 888, this follows the deterministic tile sequence.
-
----
-
-#### Step 26: Player 1 Rotates Tile
-
-![Player 1 Tile Rotated](026-player1-tile-rotated.png)
-
-**Validation**: Tile rotated to rotation 1  
-**Player 1 Perspective**: Alice presses 'r' to rotate the tile to rotation 1, matching the expected placement for seed 888.
+**Validation**: Gameplay state active, currentTile available  
+**Player 1 Perspective**: Alice is ready to place the first tile. In multiplayer canvas mode, tile placement is done via PLACE_TILE Redux actions (the canvas game doesn't support keyboard controls).
 
 ---
 
-#### Step 27: Player 1 Places Tile
+#### Step 26: Player 1 Places Tile
 
-![Player 1 Tile Placed](027-player1-tile-placed.png)
+![Player 1 Tile Placed](026-player1-tile-placed.png)
 
-**Validation**: Board has 1 tile, PLACE_TILE action broadcasted  
-**Player 1 Perspective**: Alice confirms placement (presses Enter or dispatches PLACE_TILE action), and the tile appears on the board.
+**Validation**: Board has 1 tile, PLACE_TILE action broadcasted with position (-3, 0) and rotation 1  
+**Player 1 Perspective**: Alice dispatches PLACE_TILE action to place the tile at position (-3, 0) with rotation 1, matching the expected placement for seed 888.
 
 ---
 
-#### Step 28: Player 2 Sees Tile Placement
+#### Step 27: Player 2 Sees Tile Placement
 
-![Player 2 Sees Tile](028-player2-sees-tile-placed.png)
+![Player 2 Sees Tile](027-player2-sees-tile-placed.png)
 
 **Validation**: Board synchronized with 1 tile via Socket.IO  
 **Player 2 Perspective**: Bob's view updates to show the placed tile, demonstrating **real-time tile placement synchronization**.
@@ -353,7 +344,7 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 11. **First tile** → Alice places tile at position (-3, 0) with rotation 1
 12. **Synchronization** → Bob sees the placed tile via real-time Socket.IO sync
 
-**Note**: The test starts a fresh server instance with a temporary data directory for each test run, ensuring completely clean state and truly repeatable results. SHUFFLE_TILES with seed 888 ensures deterministic tile order for consistent test validation. The temporary directory is cleaned up after the test completes.
+**Note**: The test starts a fresh server instance with a temporary data directory for each test run, ensuring completely clean state and truly repeatable results. SHUFFLE_TILES with seed 888 ensures deterministic tile order for consistent test validation. Tile placement is done via PLACE_TILE Redux actions (the canvas game doesn't support keyboard controls in multiplayer mode). The temporary directory is cleaned up after the test completes.
 
 ## Programmatic Validations Performed
 
@@ -369,7 +360,7 @@ At each step, the test validates:
 - ✅ Configuration phase: configPlayers count increases correctly
 - ✅ Seating phase: screen transitions and edge selections
 - ✅ Gameplay phase: screen transition and player count validation
-- ✅ Tile placement: PLACE_TILE action synchronized between players
+- ✅ Tile placement: PLACE_TILE action dispatched and synchronized between players
 - ✅ Board state: tile appears on both players' boards after placement
 
 ## Technical Notes
@@ -379,6 +370,7 @@ At each step, the test validates:
 - **Socket.IO**: Real-time room updates and game action synchronization
 - **Fixed Room Name**: Uses "E2E Test: Alice and Bob" for repeatable, stable screenshots
 - **Deterministic Tiles**: SHUFFLE_TILES with seed 888 ensures consistent tile order
+- **Tile Placement**: Uses PLACE_TILE Redux actions (canvas game doesn't support keyboard controls)
 - **Isolated Server**: Test starts its own server instance with a temporary data directory
 - **Clean State**: Each test run has completely fresh server state (no pre-existing rooms/users)
 - **Automatic Cleanup**: Temporary data directory is removed after test completes
@@ -409,8 +401,8 @@ At each step, the test validates:
 ✅ START_GAME with SHUFFLE_TILES seed 888 for repeatability  
 ✅ Seating phase: SELECT_EDGE actions synchronized  
 ✅ Gameplay phase initialization  
-✅ First tile placement at position (-3, 0) with rotation 1  
+✅ First tile placement via PLACE_TILE action at position (-3, 0) with rotation 1  
 ✅ Tile synchronization between players via Socket.IO  
 ✅ Board state validation after tile placement  
 ✅ Redux state validated at all phase transitions  
-✅ Screenshots from both perspectives with validation (32 total)
+✅ Screenshots from both perspectives with validation (27 total)
