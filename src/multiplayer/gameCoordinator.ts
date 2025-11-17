@@ -25,6 +25,7 @@ export class GameCoordinator {
   private rematchInfo?: RematchInfo;
   private pendingRematchEdges?: Map<string, number>; // Player edges to apply after START_GAME
   private isSpectator: boolean = false; // Track if user is spectating
+  private serverSeed?: number; // Fixed seed from server (for testing)
   
   // Store bound event handlers so we can properly remove them
   private boundGameReady: EventListener;
@@ -216,8 +217,8 @@ export class GameCoordinator {
       
       // Check if this is START_GAME from lobby Play button
       if (action.type === 'START_GAME' && !action.payload?.seed) {
-        // Generate seed and post to server
-        const seed = Math.floor(Math.random() * 1000000);
+        // Use server-provided seed if available, otherwise generate random seed
+        const seed = this.serverSeed !== undefined ? this.serverSeed : Math.floor(Math.random() * 1000000);
         console.log(`Intercepted START_GAME, adding seed: ${seed}`);
         
         const actionWithSeed = {
@@ -313,8 +314,14 @@ export class GameCoordinator {
 
   private handleGameReady(event: Event) {
     const customEvent = event as CustomEvent;
-    const { gameId, players } = customEvent.detail;
+    const { gameId, players, seed: serverSeed } = customEvent.detail;
     this.gameId = gameId;
+    
+    // Store server seed if provided (for testing with --seed flag)
+    if (serverSeed !== undefined) {
+      this.serverSeed = serverSeed;
+      console.log(`Server provided fixed seed: ${serverSeed}`);
+    }
     
     console.log(`Game ready! GameId: ${gameId}, Players: ${players.length}`, players);
     
@@ -351,7 +358,8 @@ export class GameCoordinator {
         
         // Step 2: Send START_GAME with game settings (wait a bit for ADD_PLAYER actions to be broadcast)
         setTimeout(() => {
-          const seed = Math.floor(Math.random() * 1000000);
+          // Use server-provided seed if available, otherwise generate random seed
+          const seed = this.serverSeed !== undefined ? this.serverSeed : Math.floor(Math.random() * 1000000);
           console.log('[GameCoordinator] Posting START_GAME with seed:', seed, 'and settings:', gameSettings);
           socket.postAction(gameId, startGame({
             seed,

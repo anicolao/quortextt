@@ -12,6 +12,19 @@ import jwt from 'jsonwebtoken';
 import { GameStorage, DataStorage } from './storage/index.js';
 import { UserStore } from './models/User.js';
 
+// Parse command-line arguments for fixed seed (for testing)
+let FIXED_SEED: number | null = null;
+const seedArgIndex = process.argv.indexOf('--seed');
+if (seedArgIndex !== -1 && process.argv[seedArgIndex + 1]) {
+  FIXED_SEED = parseInt(process.argv[seedArgIndex + 1], 10);
+  if (!isNaN(FIXED_SEED)) {
+    console.log(`🎲 Using fixed seed: ${FIXED_SEED}`);
+  } else {
+    console.warn('⚠️  Invalid seed value provided, ignoring --seed flag');
+    FIXED_SEED = null;
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -738,8 +751,10 @@ io.on('connection', (socket) => {
 
       // Host should now post START_GAME action with seed via post_action event
       // We just notify clients that the game is ready to start
+      // If FIXED_SEED is set (via --seed command line arg), include it for testing
       io.to(roomId).emit('game_ready', {
         gameId: updatedState!.gameId,
+        seed: FIXED_SEED !== null ? FIXED_SEED : undefined, // Include fixed seed if set
         players: updatedState!.players.map((p, index) => ({ 
           id: p.id, 
           username: p.username,

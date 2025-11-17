@@ -205,6 +205,162 @@ export async function getStartButtonCoordinates(page: any) {
 }
 
 /**
+ * Helper to calculate pixel coordinates for a hex position
+ * @param page - Playwright page object
+ * @param hexPos - Hex position (row, col)
+ * @returns Pixel coordinates for clicking the hex center
+ */
+export async function getHexPixelCoords(page: any, hexPos: { row: number; col: number }) {
+  return await page.evaluate((pos: { row: number; col: number }) => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // Calculate hex layout (same as in hexLayout.ts)
+    const minDimension = Math.min(canvasWidth, canvasHeight);
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
+    const originX = canvasWidth / 2;
+    const originY = canvasHeight / 2;
+    
+    // Convert hex to pixel (pointy-top orientation)
+    const x = originX + size * (Math.sqrt(3) * pos.col + (Math.sqrt(3) / 2) * pos.row);
+    const y = originY + size * ((3 / 2) * pos.row);
+    
+    return { x, y };
+  }, hexPos);
+}
+
+/**
+ * Helper to get coordinates for clicking on left or right side of tile to rotate
+ * @param page - Playwright page object
+ * @param hexPos - Hex position where tile is placed (null if at player's edge)
+ * @param side - Which side to click ('left' or 'right')
+ * @returns Pixel coordinates for rotation click
+ */
+export async function getTileRotationCoords(page: any, hexPos: { row: number; col: number } | null, side: 'left' | 'right') {
+  return await page.evaluate((args: { pos: { row: number; col: number } | null, side: 'left' | 'right' }) => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const state = (window as any).__REDUX_STORE__.getState();
+    
+    // Calculate hex layout
+    const minDimension = Math.min(canvasWidth, canvasHeight);
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
+    const originX = canvasWidth / 2;
+    const originY = canvasHeight / 2;
+    
+    let centerX: number, centerY: number;
+    
+    if (args.pos) {
+      // Tile is placed on board
+      centerX = originX + size * (Math.sqrt(3) * args.pos.col + (Math.sqrt(3) / 2) * args.pos.row);
+      centerY = originY + size * ((3 / 2) * args.pos.row);
+    } else {
+      // Tile is at player's edge position
+      const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+      const edgePosition = currentPlayer.edgePosition;
+      
+      // Calculate player edge position (matching the fixed logic in hexLayout.ts)
+      const boardRadiusMultiplier = boardRadius * 2 + 1.2; // = 7.2 for boardRadius=3
+      const boardRadiusPixels = size * boardRadiusMultiplier;
+      
+      // Calculate maximum distance that keeps tile within canvas
+      const maxVerticalDistance = Math.min(
+        originY - size * 1.5,  // Top edge
+        canvasHeight - originY - size * 1.5  // Bottom edge
+      );
+      
+      const maxHorizontalDistance = Math.min(
+        originX - size * 1.5,  // Left edge
+        canvasWidth - originX - size * 1.5  // Right edge
+      );
+      
+      const idealDistance = boardRadiusPixels + size * 1.5;
+      const maxDistance = Math.min(maxVerticalDistance, maxHorizontalDistance);
+      const previewDistance = Math.min(idealDistance, maxDistance);
+      
+      const angles = [270, 330, 30, 90, 150, 210];
+      const angleDeg = angles[edgePosition];
+      const angleRad = (Math.PI / 180) * angleDeg;
+      
+      centerX = originX + previewDistance * Math.cos(angleRad);
+      centerY = originY + previewDistance * Math.sin(angleRad);
+    }
+    
+    // Click on left or right side of the tile
+    const offset = size * 0.6; // Click near edge of tile
+    if (args.side === 'left') {
+      return { x: centerX - offset, y: centerY };
+    } else {
+      return { x: centerX + offset, y: centerY };
+    }
+  }, { pos: hexPos, side });
+}
+
+/**
+ * Helper to get coordinates for checkmark or X button (oriented to player's edge)
+ * @param page - Playwright page object
+ * @param hexPos - Hex position where tile is placed
+ * @param button - Which button to click ('check' or 'x')
+ * @returns Pixel coordinates for button click
+ */
+export async function getConfirmationButtonCoords(page: any, hexPos: { row: number; col: number }, button: 'check' | 'x') {
+  return await page.evaluate((args: { pos: { row: number; col: number }, button: 'check' | 'x' }) => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const state = (window as any).__REDUX_STORE__.getState();
+    
+    // Calculate hex layout
+    const minDimension = Math.min(canvasWidth, canvasHeight);
+    const boardRadius = 3; // Default board size
+    const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1); // = 17 for boardRadius=3
+    const size = minDimension / canvasSizeMultiplier;
+    const originX = canvasWidth / 2;
+    const originY = canvasHeight / 2;
+    
+    // Get tile center
+    const centerX = originX + size * (Math.sqrt(3) * args.pos.col + (Math.sqrt(3) / 2) * args.pos.row);
+    const centerY = originY + size * ((3 / 2) * args.pos.row);
+    
+    // Button spacing (from gameplayInputHandler.ts)
+    const buttonSpacing = size * 2;
+    
+    // Get current player's edge to orient buttons
+    const currentPlayer = state.game.players[state.game.currentPlayerIndex];
+    const playerEdge = currentPlayer ? currentPlayer.edgePosition : 0;
+    
+    // Map edge positions to rotation angles (in degrees)
+    const edgeAngles = [0, 60, 120, 180, 240, 300];
+    const rotationAngle = edgeAngles[playerEdge];
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+    
+    // Define button positions relative to tile center for edge 0 (bottom player)
+    let baseX: number, baseY: number;
+    if (args.button === 'check') {
+      baseX = buttonSpacing;
+      baseY = 0;
+    } else {
+      baseX = -buttonSpacing;
+      baseY = 0;
+    }
+    
+    // Rotate position around tile center
+    const cos = Math.cos(rotationRad);
+    const sin = Math.sin(rotationRad);
+    const rotatedX = centerX + (baseX * cos - baseY * sin);
+    const rotatedY = centerY + (baseX * sin + baseY * cos);
+    
+    return { x: rotatedX, y: rotatedY };
+  }, { pos: hexPos, button });
+}
+
+/**
  * Helper to setup a game with two players
  * @param page - Playwright page object
  */
