@@ -114,6 +114,13 @@
     error = '';
     
     try {
+      // Check if we're already connected (e.g., from deep link restoration)
+      const currentState = multiplayerStore.get();
+      if (currentState.connected && currentState.screen !== 'login') {
+        console.log('[LoginScreen] Already connected and navigated away, skipping auto-login');
+        return;
+      }
+      
       // Fetch user info from server
       const response = await fetch(`${serverUrl}/auth/me`, {
         headers: {
@@ -133,6 +140,13 @@
       
       // Wait a bit for identification
       setTimeout(() => {
+        // Check again if we've already navigated away (from deep link)
+        const state = multiplayerStore.get();
+        if (state.screen !== 'login') {
+          console.log('[LoginScreen] Screen already changed to', state.screen, 'skipping navigation');
+          return;
+        }
+        
         // Check if this is a new user who hasn't completed profile setup
         if (!user.profileCompleted && !user.isAnonymous) {
           // New OAuth user - take them to profile screen for setup
