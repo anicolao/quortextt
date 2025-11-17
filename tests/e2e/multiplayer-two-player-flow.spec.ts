@@ -9,7 +9,7 @@ import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { getHexPixelCoords, getConfirmationButtonCoords } from './helpers';
+import { getHexPixelCoords, getConfirmationButtonCoords, waitForButtonTransition } from './helpers';
 
 test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
   let serverProcess: ChildProcess | null = null;
@@ -155,6 +155,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log(`✓ Step 2: Player 1 username "${username1}" entered, Join button enabled`);
       
+      // Wait for button transition to complete
+      await waitForButtonTransition(page1, 'Join Lobby');
+      
       // Take screenshot showing Player 1's username entered
       await page1.screenshot({
         path: `${storyDir}/002-player1-username-entered.png`,
@@ -210,6 +213,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       await expect(joinButton2).toBeEnabled();
       
       console.log(`✓ Step 5: Player 2 username "${username2}" entered, Join button enabled`);
+
+      // Wait for button transition to complete
+      await waitForButtonTransition(page2, 'Join Lobby');
 
       // Take screenshot showing Player 2's username entered
       await page2.screenshot({
