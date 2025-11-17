@@ -61,32 +61,52 @@ The integration tests will be automatically skipped if the server is not running
 ### 001-login-screen.png
 Initial multiplayer login screen with OAuth and guest login options
 
+![Login Screen](001-login-screen.png)
+
 ### 002-empty-username-disabled.png
 Join button is disabled when username field is empty
+
+![Empty Username Disabled](002-empty-username-disabled.png)
 
 ### 003-username-entered-enabled.png
 Join button becomes enabled when a valid username is entered
 
+![Username Entered Enabled](003-username-entered-enabled.png)
+
 ### 004-maxlength-enforced.png
 Username input enforces 20 character maximum
+
+![Maxlength Enforced](004-maxlength-enforced.png)
 
 ### 005-info-section.png
 Informational text about playing Quortex with friends
 
+![Info Section](005-info-section.png)
+
 ### 006-full-layout.png
 Complete layout of the login screen showing all elements
+
+![Full Layout](006-full-layout.png)
 
 ### 007-connecting-state.png
 UI shows "Connecting..." state when join button is clicked
 
+![Connecting State](007-connecting-state.png)
+
 ### 008-lobby-screen.png
 Game lobby after successful anonymous login showing username, create room button, and available rooms list
+
+![Lobby Screen](008-lobby-screen.png)
 
 ### 009-create-room-modal.png
 Modal for creating a new game room with room name and max players settings
 
+![Create Room Modal](009-create-room-modal.png)
+
 ### 010-room-created.png
 Room screen after creating a game, showing host badge, player list, and waiting for more players message
+
+![Room Created](010-room-created.png)
 
 ## User Flow
 
