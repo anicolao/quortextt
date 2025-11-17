@@ -21,6 +21,7 @@ This test currently covers the multiplayer flow up to having two players success
 - **Separate Browser Contexts**: Uses `browser.newContext()` to create isolated sessions for each player
 - **Cookie Isolation**: Each context has its own cookies, ensuring separate anonymous user sessions
 - **Real-time Updates**: Screenshots show how room state updates when the second player joins
+- **Programmatic Validation**: Test validates UI state and element visibility at each step
 
 ## Test Coverage
 
@@ -29,6 +30,7 @@ This test verifies:
 - Room creation and listing functionality
 - Real-time room updates via Socket.IO
 - Player synchronization when joining rooms
+- UI state consistency across both browser contexts
 
 ## Running the Test
 
@@ -45,79 +47,169 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts
 npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 ```
 
-## Screenshots
+## Screenshots with Programmatic Validation
 
 ### Login and Lobby (Steps 1-6)
 
-####  001-player1-login-screen.png
-**Player 1 Perspective**: Initial login screen showing OAuth options and guest login
+#### Step 1: Player 1 Login Screen
 
-#### 002-player1-username-entered.png
-**Player 1 Perspective**: Username "Alice" entered, Join Lobby button enabled
+![Player 1 Login Screen](001-player1-login-screen.png)
 
-#### 003-player1-in-lobby.png
-**Player 1 Perspective**: Successfully joined the lobby, can see Create New Room button
+**Validation**: Page title contains "Quortex Multiplayer"  
+**Player 1 Perspective**: Initial login screen showing OAuth options (Discord, Google) and guest login section with username input field.
 
-#### 004-player2-login-screen.png
-**Player 2 Perspective**: Initial login screen - demonstrates cookie isolation
+---
 
-#### 005-player2-username-entered.png
-**Player 2 Perspective**: Username "Bob" entered, Join Lobby button enabled
+#### Step 2: Player 1 Username Entered
 
-#### 006-player2-in-lobby.png
-**Player 2 Perspective**: Successfully joined lobby with own session
+![Player 1 Username Entered](002-player1-username-entered.png)
+
+**Validation**: Username input field contains "Alice", Join Lobby button is visible  
+**Player 1 Perspective**: Username "Alice" entered in the input field, Join Lobby button becomes enabled (purple background).
+
+---
+
+#### Step 3: Player 1 in Lobby
+
+![Player 1 in Lobby](003-player1-in-lobby.png)
+
+**Validation**: Page heading contains "Game Lobby"  
+**Player 1 Perspective**: Successfully joined the lobby. Alice can see the "Create New Room" button and any available rooms. Username "Alice" appears in the header.
+
+---
+
+#### Step 4: Player 2 Login Screen
+
+![Player 2 Login Screen](004-player2-login-screen.png)
+
+**Validation**: Page title contains "Quortex Multiplayer"  
+**Player 2 Perspective**: Initial login screen from Player 2's separate browser context. This demonstrates **cookie isolation** - Player 2 is NOT automatically logged in as Player 1 despite being on the same URL.
+
+---
+
+#### Step 5: Player 2 Username Entered
+
+![Player 2 Username Entered](005-player2-username-entered.png)
+
+**Validation**: Username input contains "Bob", Join Lobby button is visible  
+**Player 2 Perspective**: Username "Bob" entered, Join Lobby button enabled with the same purple styling.
+
+---
+
+#### Step 6: Player 2 in Lobby
+
+![Player 2 in Lobby](006-player2-in-lobby.png)
+
+**Validation**: Page heading contains "Game Lobby"  
+**Player 2 Perspective**: Bob successfully joined the lobby with his own independent session. Username "Bob" appears in the header, confirming separate authentication.
+
+---
 
 ### Room Creation and Joining (Steps 7-13)
 
-#### 007-player1-create-room-modal.png
-**Player 1 Perspective**: Create room modal with default settings
+#### Step 7: Create Room Modal
 
-#### 008-player1-room-settings.png
-**Player 1 Perspective**: Room configured as "Alice and Bob Game" with 2 max players
+![Player 1 Create Room Modal](007-player1-create-room-modal.png)
 
-#### 009-player1-in-room-waiting.png
-**Player 1 Perspective**: Waiting in the room with Host badge (1/2 players)
+**Validation**: Modal heading contains "Create New Room"  
+**Player 1 Perspective**: Alice clicks "Create New Room" button. Modal appears with room name input (pre-filled) and max players dropdown.
 
-#### 010-player2-sees-room.png
-**Player 2 Perspective**: Bob sees "Alice and Bob Game" in the lobby room list
+---
 
-#### 011-player2-joined-room.png
-**Player 2 Perspective**: Bob successfully joined the room (2/2 players)
+#### Step 8: Room Settings Configured
 
-#### 012-player1-sees-player2-joined.png
-**Player 1 Perspective**: Alice's view with both players in the room
+![Player 1 Room Settings](008-player1-room-settings.png)
 
-#### 013-player1-ready-to-start.png
-**Player 1 Perspective**: Room full and ready (game start flow to be completed)
+**Validation**: Room name input shows "Alice and Bob Game", dropdown shows 2 players selected  
+**Player 1 Perspective**: Alice has customized the room name to "Alice and Bob Game" and selected 2 as max players. "Create Room" button is ready to click.
+
+---
+
+#### Step 9: Player 1 Waiting in Room
+
+![Player 1 in Room Waiting](009-player1-in-room-waiting.png)
+
+**Validation**: "Host" badge is visible on the page  
+**Player 1 Perspective**: Alice is now inside the room she created. She has a "👑 You are the host" badge. Room shows "1/2 players". Alice's name appears in the player list. The room is waiting for another player to join.
+
+---
+
+#### Step 10: Player 2 Sees Room in Lobby
+
+![Player 2 Sees Room](010-player2-sees-room.png)
+
+**Validation**: Room card with text "Alice and Bob Game" is visible  
+**Player 2 Perspective**: Bob's lobby view has updated in **real-time via Socket.IO** to show the newly created room "Alice and Bob Game" in the available rooms list. The room card shows "👥 1/2 players".
+
+---
+
+#### Step 11: Player 2 Joined Room
+
+![Player 2 Joined Room](011-player2-joined-room.png)
+
+**Validation**: Page displays room content (after clicking room card)  
+**Player 2 Perspective**: Bob has clicked on the room card and successfully joined "Alice and Bob Game". He can see both players in the room (Alice with host icon, and himself). Room now shows "2/2 players".
+
+---
+
+#### Step 12: Player 1 Sees Player 2 Joined
+
+![Player 1 Sees Player 2 Joined](012-player1-sees-player2-joined.png)
+
+**Validation**: Real-time update via Socket.IO  
+**Player 1 Perspective**: Alice's view automatically updates to show Bob has joined the room. Both players are now listed. This demonstrates **real-time synchronization** between the two browser contexts.
+
+---
+
+#### Step 13: Room Ready to Start
+
+![Player 1 Ready to Start](013-player1-ready-to-start.png)
+
+**Validation**: Room has 2/2 players  
+**Player 1 Perspective**: The room is now full with both players. From this state, the host (Alice) should be able to start the game. *Note: Game start flow implementation is pending.*
+
+---
 
 ## User Flow Summary
 
-1. **Player 1 (Alice)** logs in as anonymous user
-2. **Player 2 (Bob)** logs in as anonymous user in separate browser context
-3. **Alice** creates "Alice and Bob Game" room (2 max players)
-4. **Bob** joins the room
-5. Both players are in the room together
+1. **Player 1 (Alice)** logs in as anonymous user → sees lobby
+2. **Player 2 (Bob)** logs in as anonymous user in separate browser context → sees lobby
+3. **Alice** creates "Alice and Bob Game" room (2 max players) → enters room as host
+4. **Bob** sees room appear in lobby list → joins room
+5. **Both players** are in the room together → ready for game start
+
+## Programmatic Validations Performed
+
+At each step, the test validates:
+- ✅ Page headings and titles match expected screen
+- ✅ Input fields contain expected values
+- ✅ Buttons and UI elements are visible when expected
+- ✅ Navigation between screens works correctly
+- ✅ Real-time updates propagate between browser contexts
+- ✅ Cookie isolation maintains separate sessions
 
 ## Future Enhancements
 
-- Complete game start flow
+- Complete game start flow (Start Game button interaction)
 - Add edge selection demonstration
 - Add first move screenshots
+- Validate game state synchronization during gameplay
 
 ## Technical Notes
 
 - **Browser Contexts**: Uses `browser.newContext()` for cookie isolation
-- **Anonymous Auth**: Uses `/auth/anonymous` endpoint
-- **Socket.IO**: Real-time room updates
+- **Anonymous Auth**: Uses `/auth/anonymous` endpoint with unique session IDs
+- **Socket.IO**: Real-time room updates between clients
+- **Playwright Testing**: Comprehensive e2e testing with visual validation
 
 ## Related Files
 
-- `tests/e2e/multiplayer-two-player-flow.spec.ts`
-- `src/multiplayer/components/LoginScreen.svelte`
-- `src/multiplayer/components/LobbyScreen.svelte`
-- `src/multiplayer/components/RoomScreen.svelte`
-- `src/multiplayer/socket.ts`
-- `server/src/index.ts`
+- `tests/e2e/multiplayer-two-player-flow.spec.ts` - Test implementation
+- `src/multiplayer/components/LoginScreen.svelte` - Login UI
+- `src/multiplayer/components/LobbyScreen.svelte` - Lobby UI
+- `src/multiplayer/components/RoomScreen.svelte` - Room UI
+- `src/multiplayer/socket.ts` - Socket.IO client
+- `server/src/index.ts` - Multiplayer server
 
 ## Success Criteria
 
@@ -125,5 +217,6 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 ✅ Both users log in with different anonymous accounts  
 ✅ Room creation and listing works  
 ✅ Player can join another player's room  
-✅ Screenshots from both perspectives  
+✅ Real-time synchronization via Socket.IO  
+✅ Screenshots from both perspectives with validation  
 ⚠️ Game start and gameplay - to be completed
