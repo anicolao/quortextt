@@ -34,18 +34,21 @@ This test verifies:
 
 ## Running the Test
 
-This test requires the backend server to be running:
+This test automatically manages its own server instance:
 
 ```bash
-# Terminal 1: Start the backend server
-npm run dev:server
-
-# Terminal 2: Run the test
+# Run the test - it will start/stop its own server with clean state
 npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts
 
 # Or run with UI mode for debugging
 npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 ```
+
+**How it works**:
+- Test automatically starts a fresh server instance with a temporary data directory
+- Runs the test with completely clean server state
+- Automatically stops the server and cleans up the temporary directory after the test completes
+- No manual server management required
 
 ## Screenshots with Programmatic Validation
 
@@ -121,7 +124,7 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 ![Player 1 Room Settings](008-player1-room-settings.png)
 
 **Validation**: Room name input shows "E2E Test: Alice and Bob", dropdown shows 2 players selected  
-**Player 1 Perspective**: Alice has set the room name to "E2E Test: Alice and Bob" and selected 2 as max players. "Create Room" button is ready to click. The test uses a fixed room name for repeatable screenshots, and cleans up any pre-existing room with this name before creating a new one.
+**Player 1 Perspective**: Alice has set the room name to "E2E Test: Alice and Bob" and selected 2 as max players. "Create Room" button is ready to click. The test uses a fixed room name for repeatable screenshots with a fresh server instance for each test run.
 
 ---
 
@@ -178,7 +181,7 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 4. **Bob** sees the test room appear in lobby list → joins that room
 5. **Both players** are in the room together → ready for game start
 
-**Note**: The test uses a fixed room name "E2E Test: Alice and Bob" for repeatable screenshots. Before creating the room, the test checks for and cleans up any pre-existing room with this name from previous test runs, ensuring the test works correctly with any server state.
+**Note**: The test starts a fresh server instance with a temporary data directory for each test run, ensuring completely clean state and truly repeatable results. The temporary directory is cleaned up after the test completes.
 
 ## Programmatic Validations Performed
 
@@ -203,8 +206,9 @@ At each step, the test validates:
 - **Anonymous Auth**: Uses `/auth/anonymous` endpoint with unique session IDs
 - **Socket.IO**: Real-time room updates between clients
 - **Fixed Room Name**: Uses "E2E Test: Alice and Bob" for repeatable, stable screenshots
-- **Cleanup Logic**: Automatically cleans up any pre-existing test room before creating a new one
-- **Stateless Testing**: Test works correctly even when server has rooms from previous runs
+- **Isolated Server**: Test starts its own server instance with a temporary data directory
+- **Clean State**: Each test run has completely fresh server state (no pre-existing rooms/users)
+- **Automatic Cleanup**: Temporary data directory is removed after test completes
 - **Playwright Testing**: Comprehensive e2e testing with visual validation
 
 ## Related Files

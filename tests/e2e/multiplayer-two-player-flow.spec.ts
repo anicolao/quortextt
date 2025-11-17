@@ -5,22 +5,112 @@
 // and demonstrates the complete flow from login to first move.
 
 import { test, expect, Browser } from '@playwright/test';
+import { spawn, ChildProcess } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
-test.describe('Multiplayer Two-Player Flow (requires server)', () => {
-  let serverAvailable = false;
+test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
+  let serverProcess: ChildProcess | null = null;
+  let tempDataDir: string = '';
 
-  test.beforeAll(async ({ request }) => {
-    // Check if backend server is running
-    try {
-      const response = await request.get('http://localhost:3001/health');
-      serverAvailable = response.ok();
-    } catch {
-      serverAvailable = false;
+  test.beforeAll(async () => {
+    // Create a temporary data directory for this test run
+    tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quortex-e2e-test-'));
+    console.log(`Created temporary data directory: ${tempDataDir}`);
+
+    // Start the server with the temporary data directory
+    const serverDir = path.join(process.cwd(), 'server');
+    
+    return new Promise<void>((resolve, reject) => {
+      serverProcess = spawn('npm', ['run', 'dev'], {
+        cwd: serverDir,
+        env: {
+          ...process.env,
+          DATA_DIR: tempDataDir,
+          NODE_ENV: 'test'
+        },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let serverStarted = false;
+      const timeout = setTimeout(() => {
+        if (!serverStarted) {
+          reject(new Error('Server failed to start within 30 seconds'));
+        }
+      }, 30000);
+
+      serverProcess.stdout?.on('data', (data) => {
+        const output = data.toString();
+        console.log('[SERVER]', output);
+        
+        // Look for indication that server is ready
+        if (output.includes('Server running') || output.includes('listening')) {
+          if (!serverStarted) {
+            serverStarted = true;
+            clearTimeout(timeout);
+            
+            // Give server a moment to fully initialize
+            setTimeout(() => {
+              console.log('Server started successfully');
+              resolve();
+            }, 2000);
+          }
+        }
+      });
+
+      serverProcess.stderr?.on('data', (data) => {
+        console.error('[SERVER ERROR]', data.toString());
+      });
+
+      serverProcess.on('error', (error) => {
+        console.error('Failed to start server:', error);
+        reject(error);
+      });
+
+      serverProcess.on('exit', (code) => {
+        if (!serverStarted) {
+          reject(new Error(`Server exited early with code ${code}`));
+        }
+      });
+    });
+  });
+
+  test.afterAll(async () => {
+    // Stop the server
+    if (serverProcess) {
+      console.log('Stopping server...');
+      serverProcess.kill();
+      
+      // Wait for process to exit
+      await new Promise<void>((resolve) => {
+        if (serverProcess) {
+          serverProcess.on('exit', () => {
+            console.log('Server stopped');
+            resolve();
+          });
+          
+          // Force kill after 5 seconds if graceful shutdown fails
+          setTimeout(() => {
+            if (serverProcess) {
+              serverProcess.kill('SIGKILL');
+              resolve();
+            }
+          }, 5000);
+        } else {
+          resolve();
+        }
+      });
+    }
+
+    // Clean up temporary data directory
+    if (tempDataDir && fs.existsSync(tempDataDir)) {
+      console.log(`Cleaning up temporary data directory: ${tempDataDir}`);
+      fs.rmSync(tempDataDir, { recursive: true, force: true });
     }
   });
 
   test('complete two-player flow from login to first move', async ({ browser }) => {
-    test.skip(!serverAvailable, 'Backend server not running on localhost:3001. Start with: npm run dev:server');
     test.setTimeout(120000); // Increase timeout to 120 seconds for multiplayer
 
     // Create two separate browser contexts for two different users
@@ -147,24 +237,8 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       });
 
       // ===== STEP 3: Player 1 Creates a Room =====
-      // Clean up any existing test room first (from previous test runs)
+      // Use a fixed room name for stable, repeatable screenshots
       const testRoomName = 'E2E Test: Alice and Bob';
-      const existingTestRoom = page1.locator('.room-card').filter({ hasText: testRoomName }).first();
-      const existingRoomCount = await existingTestRoom.count();
-      
-      if (existingRoomCount > 0) {
-        console.log(`Found existing test room "${testRoomName}", joining to clean it up...`);
-        await existingTestRoom.click();
-        await page1.waitForTimeout(1000);
-        
-        // Leave the room
-        const leaveButton = page1.locator('button:has-text("Leave Room")');
-        if (await leaveButton.isVisible()) {
-          await leaveButton.click();
-          await page1.waitForTimeout(1000);
-        }
-        console.log('Cleaned up existing test room');
-      }
       
       const createRoomButton = page1.locator('button:has-text("Create New Room")');
       await createRoomButton.click();
