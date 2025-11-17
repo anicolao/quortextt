@@ -17,8 +17,9 @@ import { positionToKey } from './game/board';
 import { isPlayerBlocked } from './game/legality';
 import { multiplayerStore } from './multiplayer/stores/multiplayerStore';
 import { GameCoordinator } from './multiplayer/gameCoordinator';
-import { setGameMode } from './redux/actions';
+import { setGameMode, setSpectatorMode, resetGame } from './redux/actions';
 import { DiscordActivityClient } from './discord/discordClient';
+import { Router } from './multiplayer/router';
 
 // Expose store to window for testing
 declare global {
@@ -28,6 +29,13 @@ declare global {
   }
 }
 window.__REDUX_STORE__ = store;
+
+// Initialize router with Discord context
+Router.init();
+
+// Restore state from URL on page load (for deep links within Discord)
+const initialRoute = Router.getCurrentRoute();
+console.log('[discordMain] Initial route from URL:', initialRoute);
 
 // UI Elements
 const loadingElement = document.getElementById('discord-loading');
@@ -167,7 +175,30 @@ async function initializeDiscordActivity() {
       target: multiplayerUiElement as HTMLElement,
     });
 
+    // Subscribe to router changes (browser back/forward)
+    Router.subscribe((route) => {
+      console.log('[discordMain] Route changed via browser navigation:', route);
+      
+      // Update store based on route
+      if (route.params.id) {
+        multiplayerStore.setGameId(route.params.id);
+        
+        if (route.screen === 'game' && route.params.spectate === 'true') {
+          multiplayerStore.setIsSpectator(true);
+          store.dispatch(setSpectatorMode(true));
+        }
+      }
+      
+      // Update screen without triggering navigation (to avoid infinite loop)
+      const currentState = multiplayerStore.get();
+      if (currentState.screen !== route.screen) {
+        const storeInternal = multiplayerStore as any;
+        storeInternal.update((state: any) => ({ ...state, screen: route.screen }));
+      }
+    });
+
     // Listen for game state changes
+    let currentGameId: string | null = null;
     multiplayerStore.subscribe((state) => {
       if (state.screen === 'game' && state.gameId) {
         console.log('[Discord Activity] Starting game with gameId:', state.gameId);
@@ -185,8 +216,30 @@ async function initializeDiscordActivity() {
         }
         
         // Initialize game coordinator
-        if (!gameCoordinator) {
-          gameCoordinator = new GameCoordinator(store, state.gameId);
+        // Recreate coordinator if gameId has changed (e.g., for rematch)
+        if (!gameCoordinator || currentGameId !== state.gameId) {
+          let rematchInfo = null;
+          
+          // Clean up old coordinator if it exists
+          if (gameCoordinator) {
+            console.log('[discordMain] Cleaning up old coordinator for gameId:', currentGameId);
+            
+            // Get rematch info before stopping the coordinator
+            rematchInfo = gameCoordinator.getRematchInfo();
+            if (rematchInfo) {
+              console.log('[discordMain] Retrieved rematch info:', rematchInfo);
+            }
+            
+            gameCoordinator.stop();
+            
+            // Reset the Redux game state when transitioning to a new game
+            console.log('[discordMain] Resetting game state for new game');
+            store.dispatch(resetGame());
+          }
+          
+          console.log('[discordMain] Creating new coordinator for gameId:', state.gameId);
+          currentGameId = state.gameId;
+          gameCoordinator = new GameCoordinator(store, state.gameId, rematchInfo || undefined);
           gameCoordinator.start();
         }
       } else {
@@ -198,6 +251,7 @@ async function initializeDiscordActivity() {
         if (gameCoordinator && state.screen !== 'game') {
           gameCoordinator.stop();
           gameCoordinator = null;
+          currentGameId = null;
         }
       }
     });

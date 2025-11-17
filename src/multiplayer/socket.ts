@@ -258,8 +258,8 @@ class MultiplayerSocket {
     // Game events (event sourcing architecture)
     this.socket.on("game_ready", (data: { gameId: string; players: any[]; seed?: number }) => {
       console.log("Game ready! Players should now start posting actions.");
-      multiplayerStore.setScreen("game");
       multiplayerStore.setGameId(data.gameId);
+      multiplayerStore.setScreen("game", { id: data.gameId });
 
       // Trigger game ready event - clients should initialize and subscribe to actions
       window.dispatchEvent(
