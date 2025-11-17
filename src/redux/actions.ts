@@ -151,6 +151,7 @@ export interface PlaceTileAction {
     position: HexPosition;
     rotation: Rotation;
   };
+  playerId?: string; // Optional: User ID who performed the action (added by server in multiplayer)
 }
 
 export interface ReplaceTileAction {
@@ -160,6 +161,7 @@ export interface ReplaceTileAction {
     rotation: Rotation;
     isSingleSupermove?: boolean; // If true, return tile to bag, shuffle, and advance to next player
   };
+  playerId?: string; // Optional: User ID who performed the action (added by server in multiplayer)
 }
 
 // Game flow action types
