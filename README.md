@@ -1,5 +1,7 @@
 # Quortex
 
+[![CI](https://github.com/anicolao/quortextt/actions/workflows/ci.yml/badge.svg)](https://github.com/anicolao/quortextt/actions/workflows/ci.yml)
+
 A web-based implementation of **Quortex** (also known as **Flows**), a strategic tile-placing game where players create flowing paths across a hexagonal board.
 
 **[Play the game online](https://anicolao.github.io/quortextt/)**
