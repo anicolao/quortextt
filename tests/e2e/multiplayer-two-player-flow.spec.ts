@@ -147,6 +147,25 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       });
 
       // ===== STEP 3: Player 1 Creates a Room =====
+      // Clean up any existing test room first (from previous test runs)
+      const testRoomName = 'E2E Test: Alice and Bob';
+      const existingTestRoom = page1.locator('.room-card').filter({ hasText: testRoomName }).first();
+      const existingRoomCount = await existingTestRoom.count();
+      
+      if (existingRoomCount > 0) {
+        console.log(`Found existing test room "${testRoomName}", joining to clean it up...`);
+        await existingTestRoom.click();
+        await page1.waitForTimeout(1000);
+        
+        // Leave the room
+        const leaveButton = page1.locator('button:has-text("Leave Room")');
+        if (await leaveButton.isVisible()) {
+          await leaveButton.click();
+          await page1.waitForTimeout(1000);
+        }
+        console.log('Cleaned up existing test room');
+      }
+      
       const createRoomButton = page1.locator('button:has-text("Create New Room")');
       await createRoomButton.click();
       await page1.waitForSelector('h2:has-text("Create New Room")', { timeout: 5000 });
@@ -166,21 +185,19 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       });
 
       // Set room name and max players
-      // Use timestamp to ensure unique room name for each test run
-      const timestamp = Date.now();
-      const roomName = `E2E Test Room ${timestamp}`;
+      // Use the fixed test room name for repeatable screenshots
       await roomNameInput.clear();
-      await roomNameInput.fill(roomName);
+      await roomNameInput.fill(testRoomName);
       
       // Select 2 players
       const maxPlayersSelect = page1.locator('select');
       await maxPlayersSelect.selectOption('2');
       
       // Validate settings were applied
-      await expect(roomNameInput).toHaveValue(roomName);
+      await expect(roomNameInput).toHaveValue(testRoomName);
       await expect(maxPlayersSelect).toHaveValue('2');
       
-      console.log(`✓ Step 8: Room settings configured - name: "${roomName}", max players: 2`);
+      console.log(`✓ Step 8: Room settings configured - name: "${testRoomName}", max players: 2`);
 
       // Take screenshot before creating
       await page1.screenshot({
@@ -198,13 +215,13 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       
       // Validate room name is displayed
       const roomHeading = await page1.locator('h1, h2, h3').first().textContent();
-      expect(roomHeading).toContain(roomName);
+      expect(roomHeading).toContain(testRoomName);
       
       // Validate player count shows 1/2
       const pageContent = await page1.textContent('body');
       expect(pageContent).toContain('1/2');
       
-      console.log(`✓ Step 9: Room created - Player 1 in room "${roomName}", Host badge visible, 1/2 players`);
+      console.log(`✓ Step 9: Room created - Player 1 in room "${testRoomName}", Host badge visible, 1/2 players`);
       
       // Take screenshot of Player 1 in the room
       await page1.screenshot({
@@ -217,14 +234,14 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       await page2.waitForTimeout(1000); // Wait for room list to update
 
       // Look for the room in the available rooms list
-      const roomCard = page2.locator('.room-card').filter({ hasText: roomName }).first();
+      const roomCard = page2.locator('.room-card').filter({ hasText: testRoomName }).first();
       await expect(roomCard).toBeVisible({ timeout: 5000 });
       
       // Validate room card shows 1/2 players
       const roomCardText = await roomCard.textContent();
       expect(roomCardText).toContain('1/2');
       
-      console.log(`✓ Step 10: Player 2 sees room "${roomName}" in lobby - real-time Socket.IO update confirmed, shows 1/2 players`);
+      console.log(`✓ Step 10: Player 2 sees room "${testRoomName}" in lobby - real-time Socket.IO update confirmed, shows 1/2 players`);
 
       // Take screenshot of Player 2 seeing the room
       await page2.screenshot({
@@ -240,7 +257,7 @@ test.describe('Multiplayer Two-Player Flow (requires server)', () => {
       // Verify Player 2 is in the room
       // Player 2 should see the room name
       const room2Heading = await page2.locator('h1, h2, h3').first().textContent();
-      expect(room2Heading).toContain(roomName);
+      expect(room2Heading).toContain(testRoomName);
       
       // Validate room now shows 2/2 players
       const page2Content = await page2.textContent('body');
