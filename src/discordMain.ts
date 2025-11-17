@@ -152,14 +152,8 @@ async function initializeDiscordActivity() {
       // Join the room
       socket.joinRoom(roomId);
       
-      // Auto-start the game for Discord Activities
-      // Wait a moment for the room join to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('[Discord Activity] Auto-starting game...');
-      socket.startGame(roomId);
-      
-      // The game_started event will transition us to the game screen
-      // No need to manually set screen to 'room' here
+      // Room is ready - players will see the color configuration screen
+      // They can start the game manually when ready
     }
 
     // Hide loading screen but keep UI hidden initially
