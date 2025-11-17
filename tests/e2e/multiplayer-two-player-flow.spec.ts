@@ -410,12 +410,30 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       await startGameButton.click();
       await page1.waitForTimeout(2000);
       
-      // Verify that game canvas is now visible (game started)
+      // Verify that game canvas is now visible (transitioning to configuration screen)
       // The multiplayer game uses canvas#game-canvas
       const canvas1 = page1.locator('canvas#game-canvas');
       await expect(canvas1).toBeVisible({ timeout: 10000 });
       
-      console.log('✓ Step 15: Game started - Player 1 sees game canvas');
+      // Get Redux state via page.evaluate to check game state
+      const getGameState = async (page: any) => {
+        return await page.evaluate(() => {
+          const store = (window as any).__REDUX_STORE__;
+          if (!store) return null;
+          const state = store.getState();
+          return {
+            screen: state.game?.screen,
+            phase: state.game?.phase,
+            configPlayers: state.game?.configPlayers || [],
+            players: state.game?.players || [],
+            currentTile: state.game?.currentTile,
+            board: state.game?.board ? Object.keys(state.game.board) : []
+          };
+        });
+      };
+      
+      let gameState1 = await getGameState(page1);
+      console.log(`✓ Step 15: Game canvas visible - Player 1 screen: ${gameState1?.screen}`);
       
       await page1.screenshot({
         path: `${storyDir}/014-player1-game-started.png`,
@@ -427,175 +445,42 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       const canvas2 = page2.locator('canvas#game-canvas');
       await expect(canvas2).toBeVisible({ timeout: 10000 });
       
-      console.log('✓ Step 16: Game synced - Player 2 sees game canvas via Socket.IO');
+      let gameState2 = await getGameState(page2);
+      console.log(`✓ Step 16: Game synced - Player 2 screen: ${gameState2?.screen}`);
       
       await page2.screenshot({
         path: `${storyDir}/015-player2-game-started.png`,
         fullPage: true
       });
       
-      // ===== STEP 6: Edge Selection (Seating Phase) =====
-      // Wait for seating phase to be ready
-      await page1.waitForTimeout(2000);
-      await page2.waitForTimeout(2000);
+      // NOTE: At this point, players are on the configuration screen where they need to
+      // add themselves by clicking edge buttons (which triggers ADD_PLAYER actions)
+      // This is similar to the tabletop mode configuration screen
       
-      console.log('✓ Step 17: Seating phase - both players ready to select edges');
+      // For a complete demonstration, the test would continue from here with:
+      // 1. Players clicking edges to add themselves (ADD_PLAYER actions)
+      // 2. Host posting START_GAME with a deterministic seed (like 888)
+      // 3. Seating phase where players select their starting edges
+      // 4. Gameplay phase with validated tile placements
+      //
+      // However, this requires significant additions to handle the multiplayer
+      // configuration flow which is different from the tabletop flow.
       
-      // Take screenshot of Player 1's seating phase
-      await page1.screenshot({
-        path: `${storyDir}/016-player1-seating-phase.png`,
-        fullPage: true
-      });
-      
-      // Take screenshot of Player 2's seating phase
-      await page2.screenshot({
-        path: `${storyDir}/017-player2-seating-phase.png`,
-        fullPage: true
-      });
-      
-      // Get canvas bounding boxes for both players
-      const box1 = await canvas1.boundingBox();
-      const box2 = await canvas2.boundingBox();
-      
-      if (!box1 || !box2) {
-        throw new Error('Canvas not found for one or both players');
-      }
-      
-      // Helper function to get edge button coordinates (copied from helpers.ts logic)
-      const getEdgeCoordinates = async (page: any, edgeNumber: number) => {
-        return await page.evaluate((edge: number) => {
-          const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-          const canvasWidth = canvas.width;
-          const canvasHeight = canvas.height;
-          
-          const minDimension = Math.min(canvasWidth, canvasHeight);
-          const boardRadius = 3;
-          const canvasSizeMultiplier = ((boardRadius * 2 + 2) * 2 + 1);
-          const size = minDimension / canvasSizeMultiplier;
-          const originX = canvasWidth / 2;
-          const originY = canvasHeight / 2;
-          
-          const boardRadiusMultiplier = boardRadius * 2 + 1.2;
-          const boardRadiusPixels = size * boardRadiusMultiplier + size * 0.8;
-          
-          const edgeAngles = [270, 330, 30, 90, 150, 210];
-          const angle = edgeAngles[edge];
-          const angleRad = (angle * Math.PI) / 180;
-          
-          const x = originX + boardRadiusPixels * Math.cos(angleRad);
-          const y = originY + boardRadiusPixels * Math.sin(angleRad);
-          
-          return { x, y };
-        }, edgeNumber);
-      };
-      
-      // Player 1 selects edge 0 (bottom)
-      const edge1Coords = await getEdgeCoordinates(page1, 0);
-      await page1.mouse.click(box1.x + edge1Coords.x, box1.y + edge1Coords.y);
-      await page1.waitForTimeout(1000);
-      
-      console.log('✓ Step 18: Player 1 selected edge 0 (bottom)');
-      
-      await page1.screenshot({
-        path: `${storyDir}/018-player1-edge-selected.png`,
-        fullPage: true
-      });
-      
-      // Player 2 selects edge 3 (top) - opposite side
-      const edge2Coords = await getEdgeCoordinates(page2, 3);
-      await page2.mouse.click(box2.x + edge2Coords.x, box2.y + edge2Coords.y);
-      await page2.waitForTimeout(1000);
-      
-      console.log('✓ Step 19: Player 2 selected edge 3 (top)');
-      
-      await page2.screenshot({
-        path: `${storyDir}/019-player2-edge-selected.png`,
-        fullPage: true
-      });
-      
-      // Wait for transition to gameplay phase
-      await page1.waitForTimeout(3000);
-      await page2.waitForTimeout(3000);
-      
-      console.log('✓ Step 20: Seating complete - transitioning to gameplay');
-      
-      // ===== STEP 7: First Moves =====
-      // Take screenshots showing gameplay started
-      await page1.screenshot({
-        path: `${storyDir}/020-player1-gameplay-started.png`,
-        fullPage: true
-      });
-      
-      await page2.screenshot({
-        path: `${storyDir}/021-player2-gameplay-started.png`,
-        fullPage: true
-      });
-      
-      // Player 1 makes first move (center position)
-      // Click on center of canvas to select center hex
-      await page1.mouse.click(box1.x + box1.width / 2, box1.y + box1.height / 2);
-      await page1.waitForTimeout(1000);
-      
-      console.log('✓ Step 21: Player 1 selected center position for first tile');
-      
-      await page1.screenshot({
-        path: `${storyDir}/022-player1-first-move-position.png`,
-        fullPage: true
-      });
-      
-      // Click confirm button or press Enter to place tile
-      // Try clicking in the center again to confirm
-      await page1.mouse.click(box1.x + box1.width / 2, box1.y + box1.height / 2);
-      await page1.waitForTimeout(2000);
-      
-      console.log('✓ Step 22: Player 1 placed first tile');
-      
-      await page1.screenshot({
-        path: `${storyDir}/023-player1-tile-placed.png`,
-        fullPage: true
-      });
-      
-      // Player 2 should see the update
-      await page2.waitForTimeout(2000);
-      
-      await page2.screenshot({
-        path: `${storyDir}/024-player2-sees-first-tile.png`,
-        fullPage: true
-      });
-      
-      // Player 2's turn - place a tile adjacent
-      // Click slightly offset from center
-      await page2.mouse.click(box2.x + box2.width / 2 + 50, box2.y + box2.height / 2);
-      await page2.waitForTimeout(1000);
-      
-      console.log('✓ Step 23: Player 2 selected position for second tile');
-      
-      await page2.screenshot({
-        path: `${storyDir}/025-player2-second-move-position.png`,
-        fullPage: true
-      });
-      
-      // Confirm placement
-      await page2.mouse.click(box2.x + box2.width / 2 + 50, box2.y + box2.height / 2);
-      await page2.waitForTimeout(2000);
-      
-      console.log('✓ Step 24: Player 2 placed second tile');
-      
-      await page2.screenshot({
-        path: `${storyDir}/026-player2-tile-placed.png`,
-        fullPage: true
-      });
-      
-      // Player 1 should see the update
-      await page1.waitForTimeout(2000);
-      
-      await page1.screenshot({
-        path: `${storyDir}/027-player1-sees-second-tile.png`,
-        fullPage: true
-      });
+      console.log('');
+      console.log('✓ Multiplayer flow validated through game initialization');
+      console.log('');
+      console.log('  Current state:');
+      console.log(`  - Player 1 screen: ${gameState1?.screen}, configPlayers: ${gameState1?.configPlayers.length}`);
+      console.log(`  - Player 2 screen: ${gameState2?.screen}, configPlayers: ${gameState2?.configPlayers.length}`);
+      console.log('');
+      console.log('  Note: Full gameplay flow requires additional implementation:');
+      console.log('  - Configuration screen: Players add themselves with colors (ADD_PLAYER)');
+      console.log('  - START_GAME action with deterministic seed (like 888)');
+      console.log('  - Seating phase: Players select starting edges');
+      console.log('  - Gameplay: Validated tile placements with state checks');
 
       console.log('');
-      console.log('✓ Complete two-player multiplayer flow test PASSED!');
+      console.log('✓ Two-player multiplayer flow test completed');
       console.log('');
       console.log('  Validations performed:');
       console.log('  - Login screens: OAuth buttons, guest login, empty username inputs');
@@ -605,14 +490,11 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       console.log('  - Real-time sync: Room appears in Player 2 lobby via Socket.IO');
       console.log('  - Room joining: Player count updates (1/2 → 2/2)');
       console.log('  - State synchronization: Both usernames visible to both players');
-      console.log('  - Game start: Host starts game, canvas appears for both players');
-      console.log('  - Edge selection: Both players select edges in seating phase');
-      console.log('  - Gameplay: First two moves demonstrated with real-time sync');
+      console.log('  - Game initialization: Canvas visible, ready for configuration');
       console.log('');
       console.log('  Screenshots captured:');
-      console.log('  - 27 screenshots showing complete flow from both perspectives');
+      console.log('  - 15 screenshots showing flow from login through game initialization');
       console.log('  - Each step validated programmatically before screenshot');
-      console.log('  - Covers login → lobby → room → game start → edge selection → first moves');
 
     } finally {
       // Clean up contexts
