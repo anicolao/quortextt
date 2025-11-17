@@ -43,30 +43,98 @@ const app = mount(App, {
   target: svelteRoot,
 });
 
-// Restore screen and parameters from URL
-if (initialRoute.screen !== 'login' || initialRoute.params.id) {
-  console.log('[multiplayerMain] Restoring state from URL:', initialRoute);
-  
-  // Update store state based on URL
-  if (initialRoute.params.id) {
-    multiplayerStore.setGameId(initialRoute.params.id);
-    
-    if (initialRoute.screen === 'game') {
-      // If spectating, set spectator mode
-      if (initialRoute.params.spectate === 'true') {
-        multiplayerStore.setIsSpectator(true);
-        store.dispatch(setSpectatorMode(true));
-        socket.joinAsSpectator(initialRoute.params.id);
-      }
-    }
+// Handle URL restoration with authentication
+// Deep linking requires socket connection first
+async function handleDeepLink() {
+  if (initialRoute.screen === 'login' && !initialRoute.params.id) {
+    // No deep link, just regular login screen
+    return;
   }
   
-  // Set the screen (this will also update the URL via router)
-  const params: any = {};
-  if (initialRoute.params.id) params.id = initialRoute.params.id;
-  if (initialRoute.params.spectate === 'true') params.spectate = true;
-  multiplayerStore.setScreen(initialRoute.screen, params);
+  console.log('[multiplayerMain] Handling deep link from URL:', initialRoute);
+  
+  // Check for stored auth token
+  const storedToken = localStorage.getItem('quortex_token');
+  if (!storedToken) {
+    console.log('[multiplayerMain] No auth token found, cannot restore game state');
+    // Stay on login screen but preserve the game ID for after login
+    if (initialRoute.params.id) {
+      multiplayerStore.setGameId(initialRoute.params.id);
+    }
+    return;
+  }
+  
+  try {
+    // Get server URL from environment
+    // @ts-ignore - Vite injects import.meta.env
+    const serverUrl = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:3001';
+    
+    // Validate token and get user info
+    const response = await fetch(`${serverUrl}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${storedToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      console.log('[multiplayerMain] Token invalid, clearing and staying on login');
+      localStorage.removeItem('quortex_token');
+      return;
+    }
+    
+    const user = await response.json();
+    console.log('[multiplayerMain] Authenticated as:', user.alias || user.displayName);
+    
+    // Connect to socket with authentication
+    await socket.connectWithAuth(storedToken);
+    socket.identify(user.alias || user.displayName);
+    
+    // Wait for socket to be fully connected and identified
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Now handle the deep link based on the route
+    if (initialRoute.params.id) {
+      multiplayerStore.setGameId(initialRoute.params.id);
+      
+      if (initialRoute.screen === 'game') {
+        // Join the game room to receive actions
+        const isSpectating = initialRoute.params.spectate === 'true';
+        
+        if (isSpectating) {
+          console.log('[multiplayerMain] Joining as spectator for game:', initialRoute.params.id);
+          multiplayerStore.setIsSpectator(true);
+          store.dispatch(setSpectatorMode(true));
+          socket.joinAsSpectator(initialRoute.params.id);
+        } else {
+          console.log('[multiplayerMain] Joining game room:', initialRoute.params.id);
+          socket.joinRoom(initialRoute.params.id);
+        }
+        
+        // Set the screen - this will trigger GameCoordinator to fetch actions
+        const params: any = { id: initialRoute.params.id };
+        if (isSpectating) params.spectate = true;
+        multiplayerStore.setScreen('game', params);
+      } else if (initialRoute.screen === 'room') {
+        // Joining a room (pre-game)
+        console.log('[multiplayerMain] Joining room:', initialRoute.params.id);
+        socket.joinRoom(initialRoute.params.id);
+        multiplayerStore.setScreen('room', { id: initialRoute.params.id });
+      } else {
+        // For other screens, just set the screen
+        multiplayerStore.setScreen(initialRoute.screen);
+      }
+    } else {
+      // No game ID, just navigate to the screen
+      multiplayerStore.setScreen(initialRoute.screen);
+    }
+  } catch (error) {
+    console.error('[multiplayerMain] Error handling deep link:', error);
+    // Stay on login screen on error
+  }
 }
+
+// Start deep link handling
+handleDeepLink();
 
 // Subscribe to router changes (browser back/forward)
 Router.subscribe((route) => {
