@@ -148,6 +148,49 @@ function startAnonymousUserCleanup() {
   console.log('✅ Anonymous user cleanup job scheduled (runs daily)');
 }
 
+// Validate environment variables and log warnings
+function validateEnvironment() {
+  console.log('🔍 Checking environment configuration...');
+  
+  // Check Discord OAuth/Activity credentials
+  const discordClientId = process.env.DISCORD_CLIENT_ID;
+  const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
+  
+  if (!discordClientId || !discordClientSecret) {
+    console.warn('⚠️  Discord Activity support is DISABLED');
+    console.warn('   Missing environment variables:');
+    if (!discordClientId) console.warn('   - DISCORD_CLIENT_ID');
+    if (!discordClientSecret) console.warn('   - DISCORD_CLIENT_SECRET');
+    console.warn('   Discord Activity token exchange endpoint will return 500 errors');
+    console.warn('   Set these variables to enable Discord Activity support');
+  } else {
+    console.log('✅ Discord Activity credentials configured');
+  }
+  
+  // Check other optional credentials
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  
+  if (!googleClientId || !googleClientSecret) {
+    console.warn('⚠️  Google OAuth is DISABLED (missing credentials)');
+  } else {
+    console.log('✅ Google OAuth credentials configured');
+  }
+  
+  // Check JWT secret
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret === 'dev-secret-change-in-production') {
+    console.warn('⚠️  Using default JWT_SECRET - please set a strong secret in production!');
+  } else {
+    console.log('✅ JWT_SECRET configured');
+  }
+  
+  console.log('');
+}
+
+// Validate environment
+validateEnvironment();
+
 // Call initialization
 await initializeStorage();
 

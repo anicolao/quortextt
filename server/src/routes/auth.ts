@@ -312,7 +312,10 @@ router.post('/token', authLimiter, async (req, res) => {
     const clientSecret = process.env.DISCORD_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      console.error('Discord OAuth credentials not configured');
+      console.error('[Discord Activity] Token exchange failed - Missing environment variables:');
+      console.error(`  DISCORD_CLIENT_ID: ${clientId ? 'SET' : 'MISSING'}`);
+      console.error(`  DISCORD_CLIENT_SECRET: ${clientSecret ? 'SET' : 'MISSING'}`);
+      console.error('  Please configure these environment variables for Discord Activity support');
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
