@@ -361,6 +361,33 @@ export async function getConfirmationButtonCoords(page: any, hexPos: { row: numb
 }
 
 /**
+ * Helper to wait for button background transition to complete
+ * Waits for the button with the specified text to finish its CSS transition (0.3s)
+ * @param page - Playwright page object
+ * @param buttonText - Text content of the button to wait for
+ */
+export async function waitForButtonTransition(page: any, buttonText: string) {
+  await page.waitForFunction(
+    (text: string) => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const button = buttons.find(b => b.textContent?.includes(text));
+      if (!button) return false;
+      const style = window.getComputedStyle(button);
+      const bgColor = style.backgroundColor;
+      // Check if button has the enabled state color (#667eea = rgb(102, 126, 234))
+      // or disabled state color (rgb(204, 204, 204))
+      // We're looking for stable state after transition
+      return bgColor === 'rgb(102, 126, 234)' || 
+             bgColor === 'rgba(102, 126, 234, 1)' ||
+             bgColor === 'rgb(204, 204, 204)' ||
+             bgColor === 'rgba(204, 204, 204, 1)';
+    },
+    buttonText,
+    { timeout: 1000 }
+  );
+}
+
+/**
  * Helper to setup a game with two players
  * @param page - Playwright page object
  */
