@@ -133,6 +133,78 @@ export async function pauseAnimations(page: any) {
 }
 
 /**
+ * Helper to get edge button coordinates for lobby/configuration screen
+ * @param page - Playwright page object
+ * @param edge - Edge number (0-3: bottom, right, top, left)
+ * @param colorIndex - Index of the color button on that edge (0 for first color)
+ * @returns Coordinates for clicking the edge button
+ */
+export async function getLobbyEdgeButtonCoordinates(page: any, edge: number, colorIndex: number = 0) {
+  return await page.evaluate(({edgeNum, colorIdx}: {edgeNum: number, colorIdx: number}) => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    // Constants matching lobbyLayout.ts
+    const buttonSize = 80;
+    const buttonSpacing = 20;
+    const edgeMargin = 40;
+    
+    // Get available colors (6 standard colors)
+    const availableColors = 6;
+    
+    let x = 0;
+    let y = 0;
+    
+    if (edgeNum === 0) {
+      // Bottom edge
+      const totalWidth = availableColors * buttonSize + (availableColors - 1) * buttonSpacing;
+      const startX = (canvasWidth - totalWidth) / 2;
+      x = startX + colorIdx * (buttonSize + buttonSpacing) + buttonSize / 2;
+      y = canvasHeight - edgeMargin - buttonSize + buttonSize / 2;
+    } else if (edgeNum === 1) {
+      // Right edge
+      const totalHeight = availableColors * buttonSize + (availableColors - 1) * buttonSpacing;
+      const startY = (canvasHeight - totalHeight) / 2;
+      x = canvasWidth - edgeMargin - buttonSize + buttonSize / 2;
+      y = startY + colorIdx * (buttonSize + buttonSpacing) + buttonSize / 2;
+    } else if (edgeNum === 2) {
+      // Top edge
+      const totalWidth = availableColors * buttonSize + (availableColors - 1) * buttonSpacing;
+      const startX = (canvasWidth - totalWidth) / 2;
+      x = startX + colorIdx * (buttonSize + buttonSpacing) + buttonSize / 2;
+      y = edgeMargin + buttonSize / 2;
+    } else if (edgeNum === 3) {
+      // Left edge
+      const totalHeight = availableColors * buttonSize + (availableColors - 1) * buttonSpacing;
+      const startY = (canvasHeight - totalHeight) / 2;
+      x = edgeMargin + buttonSize / 2;
+      y = startY + colorIdx * (buttonSize + buttonSpacing) + buttonSize / 2;
+    }
+    
+    return { x, y };
+  }, {edgeNum: edge, colorIdx: colorIndex});
+}
+
+/**
+ * Helper to get start button coordinates for lobby/configuration screen
+ * @param page - Playwright page object
+ * @returns Coordinates for clicking the start button
+ */
+export async function getStartButtonCoordinates(page: any) {
+  return await page.evaluate(() => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    
+    return { 
+      x: canvasWidth / 2, 
+      y: canvasHeight / 2 
+    };
+  });
+}
+
+/**
  * Helper to setup a game with two players
  * @param page - Playwright page object
  */
