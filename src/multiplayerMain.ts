@@ -13,7 +13,9 @@ import { positionToKey } from './game/board';
 import { isPlayerBlocked } from './game/legality';
 import { multiplayerStore } from './multiplayer/stores/multiplayerStore';
 import { GameCoordinator } from './multiplayer/gameCoordinator';
-import { setGameMode, resetGame } from './redux/actions';
+import { setGameMode, resetGame, setSpectatorMode } from './redux/actions';
+import { Router } from './multiplayer/router';
+import { socket } from './multiplayer/socket';
 
 // Expose store to window for testing
 declare global {
@@ -24,6 +26,13 @@ declare global {
 }
 window.__REDUX_STORE__ = store;
 
+// Initialize router
+Router.init();
+
+// Restore state from URL on page load
+const initialRoute = Router.getCurrentRoute();
+console.log('[multiplayerMain] Initial route from URL:', initialRoute);
+
 // Mount Svelte app
 const svelteRoot = document.getElementById('multiplayer-ui');
 if (!svelteRoot) {
@@ -32,6 +41,55 @@ if (!svelteRoot) {
 
 const app = mount(App, {
   target: svelteRoot,
+});
+
+// Restore screen and parameters from URL
+if (initialRoute.screen !== 'login' || initialRoute.params.id) {
+  console.log('[multiplayerMain] Restoring state from URL:', initialRoute);
+  
+  // Update store state based on URL
+  if (initialRoute.params.id) {
+    multiplayerStore.setGameId(initialRoute.params.id);
+    
+    if (initialRoute.screen === 'game') {
+      // If spectating, set spectator mode
+      if (initialRoute.params.spectate === 'true') {
+        multiplayerStore.setIsSpectator(true);
+        store.dispatch(setSpectatorMode(true));
+        socket.joinAsSpectator(initialRoute.params.id);
+      }
+    }
+  }
+  
+  // Set the screen (this will also update the URL via router)
+  const params: any = {};
+  if (initialRoute.params.id) params.id = initialRoute.params.id;
+  if (initialRoute.params.spectate === 'true') params.spectate = true;
+  multiplayerStore.setScreen(initialRoute.screen, params);
+}
+
+// Subscribe to router changes (browser back/forward)
+Router.subscribe((route) => {
+  console.log('[multiplayerMain] Route changed via browser navigation:', route);
+  
+  // Update store based on route
+  if (route.params.id) {
+    multiplayerStore.setGameId(route.params.id);
+    
+    if (route.screen === 'game' && route.params.spectate === 'true') {
+      multiplayerStore.setIsSpectator(true);
+      store.dispatch(setSpectatorMode(true));
+    }
+  }
+  
+  // Update screen without triggering navigation (to avoid infinite loop)
+  // We directly update the store's internal state
+  const currentState = multiplayerStore.get();
+  if (currentState.screen !== route.screen) {
+    // Use internal update to avoid calling Router.navigate again
+    const storeInternal = multiplayerStore as any;
+    storeInternal.update((state: any) => ({ ...state, screen: route.screen }));
+  }
 });
 
 // Initialize game canvas (hidden initially)

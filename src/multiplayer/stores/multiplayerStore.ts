@@ -1,5 +1,6 @@
 // Multiplayer state management using Svelte stores
 import { writable, derived } from 'svelte/store';
+import { Router } from '../router';
 
 export interface Player {
   id: string;
@@ -54,6 +55,7 @@ function createMultiplayerStore() {
   return {
     subscribe,
     set, // Expose set for Discord Activity to directly update state
+    update, // Expose update for internal use (e.g., from router)
     get: () => {
       let value: MultiplayerState = initialState;
       subscribe(v => value = v)();
@@ -73,8 +75,17 @@ function createMultiplayerStore() {
     setUsername: (username: string, playerId: string) =>
       update(state => ({ ...state, username, playerId })),
     
-    setScreen: (screen: MultiplayerState['screen']) =>
-      update(state => ({ ...state, screen })),
+    setScreen: (screen: MultiplayerState['screen'], params?: { id?: string; spectate?: boolean }) =>
+      update(state => {
+        // Update URL via router
+        const routeParams: any = {};
+        if (params?.id) routeParams.id = params.id;
+        if (params?.spectate) routeParams.spectate = 'true';
+        if (Router.isDiscordContext()) routeParams.discord = 'true';
+        
+        Router.navigate(screen, routeParams);
+        return { ...state, screen };
+      }),
     
     setAvailableRooms: (rooms: Room[]) =>
       update(state => ({ ...state, availableRooms: rooms })),
@@ -92,7 +103,16 @@ function createMultiplayerStore() {
       }),
     
     setGameId: (gameId: string | null) =>
-      update(state => ({ ...state, gameId })),
+      update(state => {
+        // If we're setting a gameId and on the game screen, update the URL
+        if (gameId && state.screen === 'game') {
+          const routeParams: any = { id: gameId };
+          if (state.isSpectator) routeParams.spectate = 'true';
+          if (Router.isDiscordContext()) routeParams.discord = 'true';
+          Router.navigate('game', routeParams);
+        }
+        return { ...state, gameId };
+      }),
     
     setPlayerDisconnected: (playerId: string) =>
       update(state => {

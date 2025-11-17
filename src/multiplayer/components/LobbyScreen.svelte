@@ -65,7 +65,7 @@
     socket.joinAsSpectator(room.id);
     multiplayerStore.setIsSpectator(true);
     multiplayerStore.setGameId(room.id);
-    multiplayerStore.setScreen('game');
+    multiplayerStore.setScreen('game', { id: room.id, spectate: true });
     
     // Also update Redux state
     store.dispatch(setSpectatorMode(true));
