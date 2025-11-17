@@ -160,6 +160,12 @@
     const returnTo = encodeURIComponent(window.location.href);
     window.location.href = `${serverUrl}/auth/google?returnTo=${returnTo}`;
   }
+  
+  function handleFacebookLogin() {
+    // Redirect to Facebook OAuth with current URL as returnTo
+    const returnTo = encodeURIComponent(window.location.href);
+    window.location.href = `${serverUrl}/auth/facebook?returnTo=${returnTo}`;
+  }
 
   function handleKeyPress(e: KeyboardEvent) {
     if (e.key === 'Enter') {
@@ -195,7 +201,14 @@
           </svg>
           {connecting ? 'Connecting...' : 'Continue with Google'}
         </button>
-        <p class="oauth-description">Sign in with Discord or Google</p>
+        
+        <button class="facebook-button" on:click={handleFacebookLogin} disabled={connecting}>
+          <svg class="facebook-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          {connecting ? 'Connecting...' : 'Continue with Facebook'}
+        </button>
+        <p class="oauth-description">Sign in with Discord, Google, or Facebook</p>
       </div>
       
       <div class="divider">
@@ -331,6 +344,36 @@
   }
 
   .google-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .facebook-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 24px;
+    background: #1877F2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .facebook-button:hover:not(:disabled) {
+    background: #0e6bd6;
+  }
+
+  .facebook-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .facebook-icon {
     width: 24px;
     height: 24px;
   }
