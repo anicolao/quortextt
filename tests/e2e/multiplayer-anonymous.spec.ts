@@ -55,6 +55,9 @@ test.describe('Multiplayer Anonymous User UI', () => {
     // Button should now be enabled
     await expect(joinButton).toBeEnabled();
     
+    // Wait for reactive UI to update (Svelte reactivity + CSS transition)
+    await page.waitForTimeout(100);
+    
     // Take screenshot with username entered
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/003-username-entered-enabled.png',
