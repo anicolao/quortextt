@@ -140,6 +140,66 @@ Key findings:
 - Player on edge 4: shows as NE orientation in notation
 - This demonstrates the rotation notation is player-perspective relative
 
+### 008-multiplayer-anonymous
+**As a user, I want to join multiplayer mode as an anonymous guest**
+
+Screenshots demonstrate:
+1. Login screen with OAuth options and guest login
+2. Username input validation and enabled/disabled states
+3. Joining the lobby as an anonymous user
+4. Creating a new game room with custom settings
+5. Room screen showing host badge and waiting for players
+
+This story validates the anonymous user authentication flow and basic multiplayer UI without requiring a live server for most tests.
+
+### 009-multiplayer-two-player-flow
+**As two users, we want to create a game, join it, and play together**
+
+This comprehensive story demonstrates the complete multiplayer experience from both players' perspectives:
+
+**Login Phase (Steps 1-6)**:
+1. Player 1 (Alice) logs in as anonymous user
+2. Player 2 (Bob) logs in as anonymous user in separate browser context
+3. Both players successfully join the lobby with isolated sessions
+
+**Room Creation and Joining (Steps 7-12)**:
+4. Alice creates a game room "Alice and Bob Game" (2 players max)
+5. Bob sees the room in the lobby
+6. Bob joins the room
+7. Both players see each other in the room
+
+**Color Selection (Steps 13-16)**:
+8. Alice selects Blue as her color
+9. Bob selects Orange as his color
+10. Both selections are synchronized between clients
+
+**Game Start (Steps 17-22)**:
+11. Alice (host) starts the game
+12. Both players enter edge selection phase
+13. Alice selects bottom edge (edge 0)
+14. Bob selects top edge (edge 3)
+
+**Gameplay (Steps 23-28)**:
+15. Game starts with both edges marked in player colors
+16. Alice makes the first move (places a tile)
+17. Bob sees Alice's move in real-time
+18. Bob makes his move (places a tile)
+19. Alice sees Bob's move in real-time
+
+This story demonstrates:
+- Browser context isolation for separate cookie sessions
+- Anonymous user authentication for multiple users
+- Real-time room synchronization via Socket.IO
+- Color selection with proper exclusivity
+- Seating phase with edge selection
+- Turn-based gameplay with move synchronization
+- Screenshots from both users' perspectives at each key step
+
+Technical requirements:
+- Requires backend server running (`npm run dev:server`)
+- Uses separate browser contexts for session isolation
+- Demonstrates canvas-based game interaction
+
 ## Testing Strategy
 
 ### Creating New User Stories
@@ -186,6 +246,8 @@ Contributors can verify test expectations by:
 - `complete-game.spec.ts` → `005-complete-game/`
 - `tile-rendering.spec.ts` → `006-tile-rendering/`
 - `move-notation-rotation.spec.ts` → `007-move-notation/`
+- `multiplayer-anonymous.spec.ts` → `008-multiplayer-anonymous/`
+- `multiplayer-two-player-flow.spec.ts` → `009-multiplayer-two-player-flow/`
 
 ## Running E2E Tests
 
