@@ -462,24 +462,36 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       console.log('✓ Step 17: Both players on configuration screen');
       
       // ===== STEP 6: Configuration Phase - Add Players =====
-      // In multiplayer, players add themselves via ADD_PLAYER actions
-      // We'll use the same colors as the tabletop test with seed 888: #0173B2 and #DE8F05
+      // In multiplayer mode, only the bottom edge buttons are shown (multiplayer each player on their device)
+      // Player 1 clicks on the first color button (blue, #0173B2) on the bottom edge
       
-      // Player 1 adds themselves with blue color at edge 0
-      await page1.evaluate(() => {
-        const store = (window as any).__REDUX_STORE__;
-        store.dispatch({ 
-          type: 'ADD_PLAYER', 
-          payload: { color: '#0173B2', edge: 0 } 
-        });
+      // Get edge button coordinates - bottom edge (0), first color (index 0 = blue)
+      const edgeBtn1Coords = await page1.evaluate(() => {
+        const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        
+        const buttonSize = 80;
+        const buttonSpacing = 20;
+        const edgeMargin = 40;
+        const availableColors = 6;
+        
+        const totalWidth = availableColors * buttonSize + (availableColors - 1) * buttonSpacing;
+        const startX = (canvasWidth - totalWidth) / 2;
+        const x = startX + 0 * (buttonSize + buttonSpacing) + buttonSize / 2; // First color (blue)
+        const y = canvasHeight - edgeMargin - buttonSize + buttonSize / 2;
+        
+        return { x, y };
       });
       
+      await page1.mouse.click(box1.x + edgeBtn1Coords.x, box1.y + edgeBtn1Coords.y);
       await page1.waitForTimeout(1500);
       
       // Validate Player 1 was added
       gameState1 = await getGameState(page1);
       expect(gameState1?.configPlayers.length).toBe(1);
-      console.log(`✓ Step 18: Player 1 added to configuration - configPlayers: ${gameState1?.configPlayers.length}`);
+      expect(gameState1?.configPlayers[0].color).toBe('#0173B2'); // Blue
+      console.log(`✓ Step 18: Player 1 clicked blue color button and was added - color: ${gameState1?.configPlayers[0].color}`);
       
       await page1.screenshot({
         path: `${storyDir}/016-player1-added-to-config.png`,
@@ -491,28 +503,40 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       gameState2 = await getGameState(page2);
       expect(gameState2?.configPlayers.length).toBe(1);
       
-      // Player 2 adds themselves with orange color at edge 1
-      await page2.evaluate(() => {
-        const store = (window as any).__REDUX_STORE__;
-        store.dispatch({ 
-          type: 'ADD_PLAYER', 
-          payload: { color: '#DE8F05', edge: 1 } 
-        });
+      // Player 2 clicks on the second color button (orange, #DE8F05) on the bottom edge
+      const edgeBtn2Coords = await page2.evaluate(() => {
+        const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        
+        const buttonSize = 80;
+        const buttonSpacing = 20;
+        const edgeMargin = 40;
+        const availableColors = 6;
+        
+        const totalWidth = availableColors * buttonSize + (availableColors - 1) * buttonSpacing;
+        const startX = (canvasWidth - totalWidth) / 2;
+        const x = startX + 1 * (buttonSize + buttonSpacing) + buttonSize / 2; // Second color (orange)
+        const y = canvasHeight - edgeMargin - buttonSize + buttonSize / 2;
+        
+        return { x, y };
       });
       
+      await page2.mouse.click(box2.x + edgeBtn2Coords.x, box2.y + edgeBtn2Coords.y);
       await page2.waitForTimeout(1500);
       
       // Validate Player 2 was added
       gameState2 = await getGameState(page2);
       expect(gameState2?.configPlayers.length).toBe(2);
-      console.log(`✓ Step 19: Player 2 added to configuration - configPlayers: ${gameState2?.configPlayers.length}`);
+      expect(gameState2?.configPlayers[1].color).toBe('#DE8F05'); // Orange
+      console.log(`✓ Step 19: Player 2 clicked orange color button and was added - color: ${gameState2?.configPlayers[1].color}`);
       
       await page2.screenshot({
         path: `${storyDir}/017-player2-added-to-config.png`,
         fullPage: true
       });
       
-      // Player 1 should see both players now
+      // Player 1 should see both players now (real-time Socket.IO sync)
       await page1.waitForTimeout(1000);
       gameState1 = await getGameState(page1);
       expect(gameState1?.configPlayers.length).toBe(2);
@@ -522,39 +546,28 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         fullPage: true
       });
       
-      // ===== STEP 7: Start Game with Seed =====
-      // Now that both players are configured, start the game with deterministic behavior
-      // We dispatch START_GAME without seed (so coordinator broadcasts it)
-      // Then we'll dispatch SHUFFLE_TILES with seed 888 for deterministic tile order
+      // ===== STEP 7: Start Game =====
+      // Player 1 (host in multiplayer) clicks the center start button
       
-      // Get canvas bounding boxes for later interactions
-      const box1 = await canvas1.boundingBox();
-      const box2 = await canvas2.boundingBox();
-      
-      if (!box1 || !box2) {
-        throw new Error('Canvas not found for one or both players');
-      }
-      
-      await page1.evaluate(() => {
-        const store = (window as any).__REDUX_STORE__;
-        // Dispatch START_GAME without seed so it gets broadcast properly
-        store.dispatch({ type: 'START_GAME', payload: {} });
+      // Get start button coordinates
+      const startBtnCoords = await page1.evaluate(() => {
+        const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        
+        return { 
+          x: canvasWidth / 2, 
+          y: canvasHeight / 2 
+        };
       });
       
-      await page1.waitForTimeout(1000);
-      
-      // Now dispatch SHUFFLE_TILES with seed 888 for deterministic tile order
-      await page1.evaluate(() => {
-        const store = (window as any).__REDUX_STORE__;
-        store.dispatch({ type: 'SHUFFLE_TILES', payload: { seed: 888 } });
-      });
-      
+      await page1.mouse.click(box1.x + startBtnCoords.x, box1.y + startBtnCoords.y);
       await page1.waitForTimeout(2000);
       
       // Validate transition to seating phase
       gameState1 = await getGameState(page1);
       expect(gameState1?.screen).toBe('seating');
-      console.log(`✓ Step 20: START_GAME with SHUFFLE_TILES seed 888 - screen: ${gameState1?.screen}`);
+      console.log(`✓ Step 20: Player 1 clicked Start button - screen transitioned to: ${gameState1?.screen}`);
       
       await page1.screenshot({
         path: `${storyDir}/019-seating-phase-player1.png`,
@@ -664,16 +677,21 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
       
       // ===== STEP 9: First Tile Placement =====
-      // With seed 888, the first tile should be placed at (-3, 0) with rotation 1
-      // In multiplayer canvas mode, tile placement is done via PLACE_TILE actions (not keyboard controls)
+      // After seating phase completes, first player should draw a tile
+      // In multiplayer mode, tiles are drawn via DRAW_TILE action
       
-      // Wait for tile to be drawn and check state
-      await page1.waitForTimeout(3000);
+      // Wait for gameplay state to stabilize
+      await page1.waitForTimeout(2000);
       
       gameState1 = await getGameState(page1);
       console.log(`✓ Step 24: Gameplay state - currentTile: ${gameState1?.currentTile !== null}, currentPlayerIndex: ${gameState1?.game?.currentPlayerIndex}`);
       
-      // If no tile, dispatch DRAW_TILE
+      // Verify we're in gameplay phase with correct state
+      expect(gameState1?.screen).toBe('gameplay');
+      expect(gameState1?.phase).toBe('playing');
+      expect(gameState1?.players.length).toBe(2);
+      
+      // If no tile yet, player 1 draws a tile
       if (!gameState1?.currentTile) {
         await page1.evaluate(() => {
           const store = (window as any).__REDUX_STORE__;
@@ -681,7 +699,8 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         });
         await page1.waitForTimeout(2000);
         gameState1 = await getGameState(page1);
-        console.log(`  After DRAW_TILE - currentTile: ${gameState1?.currentTile !== null}`);
+        expect(gameState1?.currentTile).not.toBeNull();
+        console.log(`  After DRAW_TILE - currentTile type: ${gameState1?.currentTile}`);
       }
       
       await page1.screenshot({
@@ -689,9 +708,20 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         fullPage: true
       });
       
-      // In multiplayer canvas mode, we dispatch PLACE_TILE action directly
-      // (canvas game doesn't support keyboard controls for tile placement)
-      console.log('✓ Step 25: Placing tile at position (-3, 0) with rotation 1 via PLACE_TILE action');
+      // Player 1 places tile via canvas interaction
+      // In multiplayer canvas mode, we need to:
+      // 1. Click on a hex position to select it
+      // 2. Set rotation if needed (via rotation controls or keyboard)
+      // 3. Confirm placement via checkmark button or Enter key
+      
+      // For now, we use PLACE_TILE action directly but verify all results programmatically
+      // TODO: Replace with actual canvas hex clicks once canvas interaction helper is available
+      console.log('✓ Step 25: Placing tile at position (-3, 0) with rotation 1');
+      
+      // Get initial board state to verify tile placement
+      const initialBoardKeys = Object.keys(gameState1?.board || {});
+      const initialBoardSize = initialBoardKeys.length;
+      const currentTileType = gameState1?.currentTile;
       
       await page1.evaluate(() => {
         const store = (window as any).__REDUX_STORE__;
@@ -701,20 +731,37 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         });
       });
       
-      await page1.waitForTimeout(3000); // Wait for server broadcast
+      await page1.waitForTimeout(2000);
       
-      // Also dispatch NEXT_PLAYER
+      // Verify tile was placed correctly
+      gameState1 = await getGameState(page1);
+      const newBoardKeys = Object.keys(gameState1?.board || {});
+      const newBoardSize = newBoardKeys.length;
+      
+      expect(newBoardSize).toBe(initialBoardSize + 1);
+      expect(gameState1?.currentTile).toBeNull(); // Tile should be placed, hand empty
+      
+      // Verify the specific position has a tile
+      const placedTile = gameState1?.board?.['-3,0'];
+      expect(placedTile).toBeDefined();
+      expect(placedTile?.type).toBe(currentTileType);
+      expect(placedTile?.rotation).toBe(1);
+      
+      console.log(`✓ Step 26: Tile placed and verified - board size: ${initialBoardSize} -> ${newBoardSize}, tile type: ${placedTile?.type}, rotation: ${placedTile?.rotation}`);
+      
+      // Advance to next player
       await page1.evaluate(() => {
         const store = (window as any).__REDUX_STORE__;
         store.dispatch({ type: 'NEXT_PLAYER' });
       });
       await page1.waitForTimeout(2000);
       
-      // Validate tile was placed
+      // Verify turn advanced
       gameState1 = await getGameState(page1);
-      const finalBoardSize = gameState1?.board?.length || 0;
-      expect(finalBoardSize).toBeGreaterThan(0);
-      console.log(`✓ Step 26: Player 1 placed first tile - board has ${finalBoardSize} tile(s)`);
+      const nextPlayerIndex = gameState1?.game?.currentPlayerIndex;
+      expect(nextPlayerIndex).toBe(1); // Should be player 2's turn
+      
+      console.log(`✓ Step 27: Turn advanced - currentPlayerIndex: 0 -> ${nextPlayerIndex}`);
       
       await page1.screenshot({
         path: `${storyDir}/026-player1-tile-placed.png`,
@@ -724,10 +771,19 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       // Player 2 should see the tile placement via synchronization
       await page2.waitForTimeout(2000);
       gameState2 = await getGameState(page2);
-      const boardSize2 = gameState2?.board?.length || 0;
-      expect(boardSize2).toBeGreaterThan(0);
+      const boardSize2 = Object.keys(gameState2?.board || {}).length;
       
-      console.log(`✓ Step 27: Player 2 sees tile placement synchronized - board has ${boardSize2} tile(s)`);
+      // Verify Player 2 sees the same board state
+      expect(boardSize2).toBe(newBoardSize);
+      const placedTile2 = gameState2?.board?.['-3,0'];
+      expect(placedTile2).toBeDefined();
+      expect(placedTile2?.type).toBe(currentTileType);
+      expect(placedTile2?.rotation).toBe(1);
+      
+      // Verify Player 2 sees it's their turn
+      expect(gameState2?.game?.currentPlayerIndex).toBe(1);
+      
+      console.log(`✓ Step 28: Player 2 sees synchronized state - board size: ${boardSize2}, current player: ${gameState2?.game?.currentPlayerIndex}, tile verified at (-3,0)`);
       
       await page2.screenshot({
         path: `${storyDir}/027-player2-sees-tile-placed.png`,
@@ -737,21 +793,29 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       console.log('');
       console.log('✓ Complete two-player multiplayer flow test PASSED!');
       console.log('');
-      console.log('  Full flow validated:');
-      console.log('  - Login and authentication');
-      console.log('  - Room creation and joining');
-      console.log('  - Game initialization');
-      console.log('  - Configuration phase (ADD_PLAYER with colors)');
-      console.log('  - START_GAME with SHUFFLE_TILES seed 888 for repeatability');
-      console.log('  - Seating phase (SELECT_EDGE)');
-      console.log('  - Gameplay with first tile placement via PLACE_TILE action');
-      console.log('  - Real-time synchronization throughout all phases');
-      console.log('  - Tile placement at position (-3, 0) with rotation 1');
+      console.log('  Full flow validated with proper UI interactions:');
+      console.log('  ✅ Login and authentication via UI');
+      console.log('  ✅ Room creation via UI buttons');
+      console.log('  ✅ Room joining via UI clicks');
+      console.log('  ✅ Game initialization via UI');
+      console.log('  ✅ Configuration phase - Players click edge color buttons (not ADD_PLAYER dispatch)');
+      console.log('  ✅ START_GAME via clicking center start button (not action dispatch)');
+      console.log('  ✅ Seating phase - Players click edge positions via canvas');
+      console.log('  ⚠️  Tile drawing via DRAW_TILE action (multiplayer requirement)');
+      console.log('  ⚠️  Tile placement via PLACE_TILE action with full verification:');
+      console.log('      - Board size increase verified');
+      console.log('      - Placed tile position, type, and rotation verified');
+      console.log('      - Current tile cleared from hand verified');
+      console.log('      - Turn advancement verified');
+      console.log('  ✅ Real-time synchronization verified throughout all phases');
+      console.log('  ✅ Game state programmatically verified at each step');
       console.log('');
       console.log('  Screenshots captured:');
       console.log('  - 27 screenshots showing complete flow including first tile placement');
       console.log('  - Each step validated programmatically with Redux state checks');
-      console.log('  - SHUFFLE_TILES with seed 888 ensures repeatable tile order');
+      console.log('  - All UI interactions use actual button/canvas clicks where possible');
+      console.log('  - Tile placement results fully verified (board state, tile properties, turn order)');
+
 
     } finally {
       // Clean up contexts
