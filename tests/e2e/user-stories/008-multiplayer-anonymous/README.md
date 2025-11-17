@@ -10,14 +10,11 @@ This user story documents the end-to-end flow for an anonymous user joining the 
 
 These tests verify the client-side UI behavior without requiring a backend server:
 
-1. **Login Screen Display** - Verifies the multiplayer login screen loads correctly
-2. **Guest Login Option** - Confirms guest login UI is visible and accessible
-3. **Username Input Validation** - Tests that join button is disabled/enabled based on username
-4. **Maxlength Enforcement** - Verifies username is limited to 20 characters
-5. **Placeholder Text** - Confirms proper placeholder text is shown
-6. **Info Section** - Verifies informational text about multiplayer is displayed
-7. **Styling and Layout** - Documents the visual layout of the login screen
-8. **Connecting State** - Shows the UI changes to "Connecting..." when join is clicked
+1. **Login Screen Display** - Verifies the multiplayer login screen loads correctly with OAuth buttons, guest login section, info text, and proper styling
+2. **Username Input Validation** - Tests that join button is disabled/enabled based on username
+3. **Maxlength Enforcement** - Verifies username is limited to 20 characters
+4. **Placeholder Text** - Confirms proper placeholder text is shown
+5. **Connection Attempt** - Shows the UI changes when join is clicked
 
 ### Integration Tests (With Server)
 
@@ -59,7 +56,12 @@ The integration tests will be automatically skipped if the server is not running
 ## Screenshots
 
 ### 001-login-screen.png
-Initial multiplayer login screen with OAuth and guest login options
+Initial multiplayer login screen showing:
+- **Title**: "Quortex Multiplayer" heading
+- **OAuth options**: Discord and Google login buttons
+- **Guest login**: Username input field with "Join as guest" section
+- **Info section**: Informational text at bottom ("Play Quortex with friends online!", "Create or join a game room to start playing")
+- **Styling**: Complete layout with centered login container and gradient background
 
 ![Login Screen](001-login-screen.png)
 
@@ -77,16 +79,6 @@ Join button becomes enabled when a valid username is entered
 Username input enforces 20 character maximum
 
 ![Maxlength Enforced](004-maxlength-enforced.png)
-
-### 005-info-section.png
-Informational text about playing Quortex with friends
-
-![Info Section](005-info-section.png)
-
-### 006-full-layout.png
-Complete layout of the login screen showing all elements
-
-![Full Layout](006-full-layout.png)
 
 ### 007-connecting-state.png
 UI shows "Connecting..." state when join button is clicked

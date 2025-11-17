@@ -29,6 +29,14 @@ test.describe('Multiplayer Anonymous User UI', () => {
     await expect(page.locator('button', { hasText: 'Continue with Discord' })).toBeVisible();
     await expect(page.locator('button', { hasText: 'Continue with Google' })).toBeVisible();
     
+    // Verify the info section at the bottom exists
+    await expect(page.locator('text=/Play Quortex with friends/i')).toBeVisible();
+    await expect(page.locator('text=/Create or join a game room/i')).toBeVisible();
+    
+    // Verify the login container is properly styled
+    const loginContainer = page.locator('.login-container');
+    await expect(loginContainer).toBeVisible();
+    
     // Take screenshot of initial login screen
     await page.screenshot({ 
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/001-login-screen.png',
@@ -109,38 +117,6 @@ test.describe('Multiplayer Anonymous User UI', () => {
     
     // Verify the input starts empty
     await expect(usernameInput).toHaveValue('');
-  });
-
-  test('should display info section about multiplayer', async ({ page }) => {
-    // Verify the info section exists
-    await expect(page.locator('text=/Play Quortex with friends/i')).toBeVisible();
-    await expect(page.locator('text=/Create or join a game room/i')).toBeVisible();
-    
-    // Take screenshot showing info section
-    await page.screenshot({ 
-      path: 'tests/e2e/user-stories/008-multiplayer-anonymous/005-info-section.png',
-      fullPage: true
-    });
-  });
-
-  test('should have proper styling and layout', async ({ page }) => {
-    // Verify the login container exists and is styled
-    const loginContainer = page.locator('.login-container');
-    await expect(loginContainer).toBeVisible();
-    
-    // Verify buttons are styled
-    const joinButton = page.locator('button', { hasText: 'Join Lobby' });
-    const discordButton = page.locator('button', { hasText: 'Continue with Discord' });
-    
-    // All buttons should be visible
-    await expect(joinButton).toBeVisible();
-    await expect(discordButton).toBeVisible();
-    
-    // Take full page screenshot to document layout
-    await page.screenshot({ 
-      path: 'tests/e2e/user-stories/008-multiplayer-anonymous/006-full-layout.png',
-      fullPage: true
-    });
   });
 
   test('should attempt connection when join button is clicked', async ({ page }) => {
