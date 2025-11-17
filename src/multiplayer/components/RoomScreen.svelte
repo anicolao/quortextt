@@ -4,10 +4,7 @@
 
   $: room = $multiplayerStore.currentRoom;
   $: disconnectedPlayers = $multiplayerStore.disconnectedPlayers;
-  // For Discord rooms (ID starts with "discord-"), anyone can start with any number of players
-  // For regular rooms, only host can start and need at least 2 players
-  $: isDiscordRoom = room?.id?.startsWith('discord-') ?? false;
-  $: canStart = isDiscordRoom ? (room && room.players.length >= 1) : ($isHost && room && room.players.length >= 2);
+  $: canStart = $isHost && room && room.players.length >= 2;
   $: emptySlots = room ? Array.from({ length: room.maxPlayers - room.players.length }) : [];
 
   function leaveRoom() {
@@ -20,7 +17,7 @@
 
   function startGame() {
     if (room && canStart) {
-      console.log('Starting game for room:', room.id);
+      console.log('Host starting game for room:', room.id);
       socket.startGame(room.id);
     }
   }
