@@ -22,6 +22,7 @@ export interface ConfigPlayer {
   color: string;
   edge: Edge; // Which edge they joined from
   isAI: boolean; // Whether this is an AI player
+  userId?: string; // Optional: User ID for multiplayer (e.g., 'google:123') - associates user with claimed color
 }
 
 // Move history entry

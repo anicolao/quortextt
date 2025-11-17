@@ -46,6 +46,7 @@ export interface Player {
   readonly color: string;
   readonly edgePosition: number; // 0-5, which edge of hexagon
   readonly isAI: boolean;
+  readonly userId?: string; // Optional: User ID for multiplayer (e.g., 'google:123') - associates user with claimed color
 }
 
 // Team pairing (for 4-6 player games)

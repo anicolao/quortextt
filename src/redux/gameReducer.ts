@@ -255,6 +255,7 @@ export function gameReducer(
         color,
         edge: edge as 0 | 1 | 2 | 3,
         isAI,
+        userId: payload.userId, // Store userId to associate user with claimed color
       };
 
       return {
@@ -342,6 +343,7 @@ export function gameReducer(
           color: aiColor,
           edge: aiEdge,
           isAI: true,
+          userId: undefined, // AI players don't have a userId
         };
 
         configPlayers = [...configPlayers, aiPlayer];
@@ -471,6 +473,7 @@ export function gameReducer(
               color: cp.color,
               edgePosition: cp.id === playerId ? edgeNumber : -1,
               isAI: cp.isAI,
+              userId: cp.userId, // Propagate userId to Player
             }));
 
       // Increment seating index
@@ -630,6 +633,20 @@ export function gameReducer(
         return state;
       }
 
+      // Validate that the action is from the current player (multiplayer authorization)
+      // In tabletop mode, action.playerId is undefined so we skip this check
+      // In multiplayer mode, action.playerId is the userId (e.g., 'google:123') added by server
+      if (action.playerId !== undefined && state.players.length > 0) {
+        const currentPlayer = state.players[state.currentPlayerIndex];
+        // Check if the current player's userId matches the action's playerId
+        if (currentPlayer.userId !== action.playerId) {
+          console.warn(
+            `[PLACE_TILE] Authorization failed: action from ${action.playerId} but current player is ${currentPlayer.id} with userId ${currentPlayer.userId}`
+          );
+          return state;
+        }
+      }
+
       const { position, rotation } = action.payload;
       const posKey = positionToKey(position);
 
@@ -701,6 +718,20 @@ export function gameReducer(
       // Handle supermove tile replacement
       if (state.currentTile === null) {
         return state;
+      }
+
+      // Validate that the action is from the current player (multiplayer authorization)
+      // In tabletop mode, action.playerId is undefined so we skip this check
+      // In multiplayer mode, action.playerId is the userId (e.g., 'google:123') added by server
+      if (action.playerId !== undefined && state.players.length > 0) {
+        const currentPlayer = state.players[state.currentPlayerIndex];
+        // Check if the current player's userId matches the action's playerId
+        if (currentPlayer.userId !== action.playerId) {
+          console.warn(
+            `[REPLACE_TILE] Authorization failed: action from ${action.playerId} but current player is ${currentPlayer.id} with userId ${currentPlayer.userId}`
+          );
+          return state;
+        }
       }
 
       const { position, rotation, isSingleSupermove } = action.payload;
