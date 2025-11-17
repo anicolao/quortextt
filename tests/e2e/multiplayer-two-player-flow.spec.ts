@@ -127,7 +127,6 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
     try {
       // ===== STEP 1: Player 1 Login =====
       await page1.goto('/quortextt/');
-      await page1.waitForTimeout(1000);
 
       // Verify login screen - validate expected elements are present
       await expect(page1.locator('h1')).toContainText('Quortex Multiplayer');
@@ -185,7 +184,6 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
 
       // ===== STEP 2: Player 2 Login =====
       await page2.goto('/quortextt/');
-      await page2.waitForTimeout(1000);
 
       // Verify login screen for Player 2 - should NOT be auto-logged in (cookie isolation test)
       await expect(page2.locator('h1')).toContainText('Quortex Multiplayer');
@@ -289,7 +287,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       // Create the room
       const createButton = page1.locator('button:has-text("Create Room")').first();
       await createButton.click();
-      await page1.waitForTimeout(2000);
+      await page1.waitForTimeout(500);
 
       // Verify Player 1 is in the room
       await expect(page1.locator('text=Host')).toBeVisible();
@@ -312,7 +310,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
 
       // ===== STEP 4: Player 2 Joins the Room =====
       // Player 2 should see the room in the lobby (real-time Socket.IO update)
-      await page2.waitForTimeout(1000); // Wait for room list to update
+      await page2.waitForTimeout(300); // Wait for room list to update
 
       // Look for the room in the available rooms list
       const roomCard = page2.locator('.room-card').filter({ hasText: testRoomName }).first();
@@ -340,7 +338,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       } catch {
         // If no Host badge appears, we're in the room but not as host - that's fine
         // Wait a bit more for the room to load
-        await page2.waitForTimeout(2000);
+        await page2.waitForTimeout(500);
       }
 
       // Verify Player 2 is in the room
@@ -355,7 +353,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         const joinButton = page2.locator('button:has-text("Join")').first();
         if (await joinButton.isVisible({ timeout: 1000 }).catch(() => false)) {
           await joinButton.click();
-          await page2.waitForTimeout(2000);
+          await page2.waitForTimeout(500);
         }
       }
       
@@ -382,7 +380,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
 
       // Player 1's view should update to show Player 2
-      await page1.waitForTimeout(3000); // Wait longer for socket update
+      await page1.waitForTimeout(800); // Wait for socket update
 
       // Validate Player 1's view updated (real-time Socket.IO sync)
       const page1UpdatedContent = await page1.textContent('body');
@@ -398,7 +396,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
 
       // Take final screenshot showing both players in the room
-      await page1.waitForTimeout(1000);
+      await page1.waitForTimeout(300);
       
       console.log('✓ Step 13: Room ready - both players in room, ready for game start');
       
@@ -415,7 +413,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       console.log('✓ Step 14: Start Game button enabled for host');
       
       await startGameButton.click();
-      await page1.waitForTimeout(2000);
+      await page1.waitForTimeout(500);
       
       // Verify that game canvas is now visible (transitioning to configuration screen)
       // The multiplayer game uses canvas#game-canvas
@@ -450,7 +448,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
       
       // Player 2 should also see the game canvas now (real-time sync)
-      await page2.waitForTimeout(2000);
+      await page2.waitForTimeout(500);
       const canvas2 = page2.locator('canvas#game-canvas');
       await expect(canvas2).toBeVisible({ timeout: 10000 });
       
@@ -490,7 +488,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         });
       });
       
-      await page1.waitForTimeout(1500);
+      await page1.waitForTimeout(400);
       
       // Validate Player 1 was added
       gameState1 = await getGameState(page1);
@@ -504,7 +502,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
       
       // Player 2 should see the update
-      await page2.waitForTimeout(1000);
+      await page2.waitForTimeout(300);
       gameState2 = await getGameState(page2);
       expect(gameState2?.configPlayers.length).toBe(1);
       
@@ -517,7 +515,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         });
       });
       
-      await page2.waitForTimeout(1500);
+      await page2.waitForTimeout(400);
       
       // Validate Player 2 was added
       gameState2 = await getGameState(page2);
@@ -531,7 +529,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
       
       // Player 1 should see both players now (real-time Socket.IO sync)
-      await page1.waitForTimeout(1000);
+      await page1.waitForTimeout(300);
       gameState1 = await getGameState(page1);
       expect(gameState1?.configPlayers.length).toBe(2);
       
@@ -550,7 +548,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         store.dispatch({ type: 'START_GAME', payload: {} });
       });
       
-      await page1.waitForTimeout(2000);
+      await page1.waitForTimeout(500);
       
       // Validate transition to seating phase
       gameState1 = await getGameState(page1);
@@ -566,7 +564,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       // The START_GAME action needs to be broadcast from server to all clients
       let retries = 0;
       while (gameState2?.screen !== 'seating' && retries < 15) {
-        await page2.waitForTimeout(1500);
+        await page2.waitForTimeout(400);
         gameState2 = await getGameState(page2);
         retries++;
         const configCount = gameState2?.configPlayers?.length || 0;
@@ -620,7 +618,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       // Player 1 selects edge 0 (bottom) for seating
       const seating1Coords = await getSeatingEdgeCoordinates(page1, 0);
       await page1.mouse.click(box1.x + seating1Coords.x, box1.y + seating1Coords.y);
-      await page1.waitForTimeout(1500);
+      await page1.waitForTimeout(400);
       
       console.log('✓ Step 21: Player 1 selected seating edge 0');
       
@@ -632,7 +630,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       // Player 2 selects edge 3 (top) for seating
       const seating2Coords = await getSeatingEdgeCoordinates(page2, 3);
       await page2.mouse.click(box2.x + seating2Coords.x, box2.y + seating2Coords.y);
-      await page2.waitForTimeout(2000);
+      await page2.waitForTimeout(500);
       
       console.log('✓ Step 22: Player 2 selected seating edge 3');
       
@@ -642,8 +640,8 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
       
       // Wait for transition to gameplay
-      await page1.waitForTimeout(2000);
-      await page2.waitForTimeout(2000);
+      await page1.waitForTimeout(500);
+      await page2.waitForTimeout(500);
       
       // Validate gameplay screen
       gameState1 = await getGameState(page1);
@@ -669,7 +667,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       // DRAW_TILE happens automatically after SELECT_EDGE, but we need to wait for it
       
       // Wait for gameplay state to stabilize
-      await page1.waitForTimeout(2000);
+      await page1.waitForTimeout(500);
       
       gameState1 = await getGameState(page1);
       console.log(`✓ Step 24: Gameplay state - currentTile: ${gameState1?.currentTile !== null}, currentPlayerIndex: ${gameState1?.game?.currentPlayerIndex}`);
@@ -685,7 +683,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
           const store = (window as any).__REDUX_STORE__;
           store.dispatch({ type: 'DRAW_TILE' });
         });
-        await page1.waitForTimeout(2000);
+        await page1.waitForTimeout(500);
         gameState1 = await getGameState(page1);
         expect(gameState1?.currentTile).not.toBeNull();
         console.log(`  After DRAW_TILE - currentTile type: ${gameState1?.currentTile}`);
@@ -713,14 +711,14 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         });
       });
       
-      await page1.waitForTimeout(5000); // Wait for server broadcast and action replay
+      await page1.waitForTimeout(1000); // Wait for server broadcast and action replay
       
       // Also dispatch NEXT_PLAYER
       await page1.evaluate(() => {
         const store = (window as any).__REDUX_STORE__;
         store.dispatch({ type: 'NEXT_PLAYER' });
       });
-      await page1.waitForTimeout(3000);
+      await page1.waitForTimeout(800);
       
       // Verify tile was placed correctly
       gameState1 = await getGameState(page1);
@@ -751,7 +749,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       });
       
       // Player 2 should see the tile placement via synchronization
-      await page2.waitForTimeout(2000);
+      await page2.waitForTimeout(500);
       gameState2 = await getGameState(page2);
       
       // Check board size for Player 2
