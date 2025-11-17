@@ -361,6 +361,85 @@ export async function getConfirmationButtonCoords(page: any, hexPos: { row: numb
 }
 
 /**
+ * Helper to wait for all CSS transitions and animations to complete
+ * This ensures consistent screenshots by waiting for all visual changes to settle
+ * 
+ * Usage examples:
+ * - After navigating to a new screen with animated elements (e.g., lobby, room)
+ * - Before taking screenshots of pages with CSS transitions
+ * - After user interactions that trigger CSS animations (e.g., button clicks, form submissions)
+ * 
+ * @param page - Playwright page object
+ * @param selector - Optional CSS selector to check specific elements (default: check all elements)
+ * @param maxWaitMs - Maximum time to wait in milliseconds (default: 1000ms)
+ */
+export async function waitForCSSAnimations(page: any, selector: string = '*', maxWaitMs: number = 1000) {
+  // Wait for all transitions and animations to complete
+  await page.evaluate(
+    ({ sel, timeout }: { sel: string, timeout: number }) => {
+      return new Promise<void>((resolve) => {
+        const startTime = Date.now();
+        let animatingElements = new Set<Element>();
+        
+        // Function to check if an element has ongoing transitions or animations
+        const hasActiveAnimation = (element: Element): boolean => {
+          const style = window.getComputedStyle(element);
+          
+          // Check for running transitions
+          const transitionDuration = style.transitionDuration;
+          if (transitionDuration && transitionDuration !== '0s') {
+            return true;
+          }
+          
+          // Check for running animations
+          const animationDuration = style.animationDuration;
+          if (animationDuration && animationDuration !== '0s') {
+            return true;
+          }
+          
+          return false;
+        };
+        
+        // Function to update the set of animating elements
+        const updateAnimatingElements = () => {
+          animatingElements.clear();
+          const elements = document.querySelectorAll(sel);
+          elements.forEach(el => {
+            if (hasActiveAnimation(el)) {
+              animatingElements.add(el);
+            }
+          });
+        };
+        
+        // Check periodically until no animations are running or timeout
+        const checkInterval = setInterval(() => {
+          updateAnimatingElements();
+          
+          // If no animations or timeout reached, resolve
+          if (animatingElements.size === 0 || Date.now() - startTime > timeout) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 50); // Check every 50ms
+        
+        // Initial check
+        updateAnimatingElements();
+        if (animatingElements.size === 0) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      });
+    },
+    { sel: selector, timeout: maxWaitMs }
+  );
+  
+  // Wait one more animation frame to ensure rendering is complete
+  await page.evaluate(() => {
+    return new Promise(resolve => requestAnimationFrame(resolve));
+  });
+}
+
+/**
  * Helper to wait for button background transition to complete
  * Waits for the button with the specified text to finish its CSS transition (0.3s)
  * @param page - Playwright page object

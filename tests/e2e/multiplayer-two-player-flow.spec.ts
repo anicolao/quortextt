@@ -9,7 +9,7 @@ import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { getHexPixelCoords, getConfirmationButtonCoords, waitForButtonTransition } from './helpers';
+import { getHexPixelCoords, getConfirmationButtonCoords, waitForButtonTransition, waitForCSSAnimations } from './helpers';
 
 test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
   let serverProcess: ChildProcess | null = null;
@@ -176,6 +176,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log(`✓ Step 3: Player 1 in lobby - heading verified, Create Room button visible, username "${username1}" in header`);
 
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page1);
+
       // Take screenshot of Player 1's lobby
       await page1.screenshot({
         path: `${storyDir}/003-player1-in-lobby.png`,
@@ -235,6 +238,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log(`✓ Step 6: Player 2 in lobby - separate session confirmed, username "${username2}" in header (not "${username1}")`);
 
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page2);
+
       // Take screenshot of Player 2's lobby
       await page2.screenshot({
         path: `${storyDir}/006-player2-in-lobby.png`,
@@ -256,6 +262,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       await expect(page1.locator('select')).toBeVisible();
       
       console.log('✓ Step 7: Create Room modal opened - heading, name input, and max players dropdown visible');
+
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page1);
 
       // Take screenshot of Player 1's create room modal
       await page1.screenshot({
@@ -302,6 +311,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log(`✓ Step 9: Room created - Player 1 in room "${testRoomName}", Host badge visible, 1/2 players`);
       
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page1);
+
       // Take screenshot of Player 1 in the room
       await page1.screenshot({
         path: `${storyDir}/009-player1-in-room-waiting.png`,
@@ -321,6 +333,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       expect(roomCardText).toContain('1/2');
       
       console.log(`✓ Step 10: Player 2 sees room "${testRoomName}" in lobby - real-time Socket.IO update confirmed, shows 1/2 players`);
+
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page2);
 
       // Take screenshot of Player 2 seeing the room
       await page2.screenshot({
@@ -373,6 +388,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log(`✓ Step 11: Player 2 joined room - now shows 2/2 players, both "${username1}" and "${username2}" visible`);
       
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page2);
+
       // Take screenshot of Player 2 in the room
       await page2.screenshot({
         path: `${storyDir}/011-player2-joined-room.png`,
@@ -389,6 +407,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log(`✓ Step 12: Player 1's view updated - real-time Socket.IO sync confirmed, now shows 2 players with "${username2}" visible`);
 
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page1);
+
       // Take screenshot of Player 1 seeing Player 2 join
       await page1.screenshot({
         path: `${storyDir}/012-player1-sees-player2-joined.png`,
@@ -400,6 +421,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       console.log('✓ Step 13: Room ready - both players in room, ready for game start');
       
+      // Wait for CSS animations to complete before taking screenshot
+      await waitForCSSAnimations(page1);
+
       await page1.screenshot({
         path: `${storyDir}/013-player1-ready-to-start.png`,
         fullPage: true
