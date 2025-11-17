@@ -724,14 +724,18 @@ io.on('connection', (socket) => {
       }
 
       // Record start game action (sequence will be auto-assigned)
-      const startAction: GameAction = {
-        type: 'START_GAME',
-        payload: {},
-        playerId: player.id,
-        timestamp: Date.now(),
-        sequence: 0 // Will be overwritten by storage
-      };
-      await gameStorage.appendAction(roomId, startAction);
+      // For Discord Activities, don't post START_GAME yet - let players configure colors first
+      // For regular rooms, post START_GAME to transition to seating phase
+      if (!isDiscordRoom) {
+        const startAction: GameAction = {
+          type: 'START_GAME',
+          payload: {},
+          playerId: player.id,
+          timestamp: Date.now(),
+          sequence: 0 // Will be overwritten by storage
+        };
+        await gameStorage.appendAction(roomId, startAction);
+      }
 
       // Get updated state
       const updatedState = await gameStorage.getGameState(roomId);

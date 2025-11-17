@@ -152,8 +152,11 @@ async function initializeDiscordActivity() {
       // Join the room
       socket.joinRoom(roomId);
       
-      // Room is ready - players will see the color configuration screen
-      // They can start the game manually when ready
+      // For Discord Activities, immediately show the game canvas with color configuration
+      // The server won't post START_GAME yet, keeping us in lobby phase
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[Discord Activity] Showing color configuration screen...');
+      socket.startGame(roomId);
     }
 
     // Hide loading screen but keep UI hidden initially
