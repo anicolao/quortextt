@@ -2,19 +2,21 @@
 
 ## Overview
 
-This user story documents the end-to-end flow for two players creating and joining a multiplayer game room. It demonstrates:
+This user story documents the complete end-to-end flow for two players creating, joining, and playing a multiplayer game. It demonstrates:
 
 1. **Isolated Sessions**: Two separate browser contexts ensure independent cookie sessions
 2. **Login Flow**: Both users authenticate as anonymous users with different usernames
 3. **Room Creation**: First user creates a game room with custom settings
 4. **Room Joining**: Second user joins the created room
+5. **Game Start**: Host starts the game, transitioning both players to the game canvas
+6. **Edge Selection**: Both players select their starting edges during the seating phase
+7. **Gameplay**: First two moves are demonstrated with real-time synchronization
 
 ## Current Status
 
-✅ **Working**: Login, lobby, room creation, and room joining  
-⚠️ **In Progress**: Game start, edge selection, and first moves
+✅ **Complete**: Full multiplayer flow from login through first moves
 
-This test currently covers the multiplayer flow up to having two players successfully in the same room. Additional work is needed to complete the game start and gameplay portions.
+This test covers the complete multiplayer flow including login, lobby, room creation, joining, game start, edge selection, and the first two moves of gameplay.
 
 ## Key Technical Details
 
@@ -22,6 +24,8 @@ This test currently covers the multiplayer flow up to having two players success
 - **Cookie Isolation**: Each context has its own cookies, ensuring separate anonymous user sessions
 - **Real-time Updates**: Screenshots show how room state updates when the second player joins
 - **Programmatic Validation**: Test validates UI state and element visibility at each step
+- **Canvas Game Integration**: Game transitions from Svelte UI to canvas-based gameplay
+- **Action Synchronization**: Redux actions are synchronized between players via Socket.IO
 
 ## Test Coverage
 
@@ -31,6 +35,11 @@ This test verifies:
 - Real-time room updates via Socket.IO
 - Player synchronization when joining rooms
 - UI state consistency across both browser contexts
+- Game start flow from host perspective
+- Canvas game integration for multiplayer
+- Seating phase (edge selection) for both players
+- Gameplay phase with tile placement
+- Real-time game state synchronization during moves
 
 ## Running the Test
 
@@ -168,8 +177,138 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 
 ![Player 1 Ready to Start](013-player1-ready-to-start.png)
 
-**Validation**: Room has 2/2 players  
-**Player 1 Perspective**: The room is now full with both players. From this state, the host (Alice) should be able to start the game. *Note: Game start flow implementation is pending.*
+**Validation**: Room has 2/2 players, Start Game button is enabled  
+**Player 1 Perspective**: The room is now full with both players. The host (Alice) can now start the game by clicking the "🎮 Start Game" button.
+
+---
+
+### Game Start and Seating Phase (Steps 14-20)
+
+#### Step 14: Player 1 Game Started
+
+![Player 1 Game Started](014-player1-game-started.png)
+
+**Validation**: Canvas element is visible  
+**Player 1 Perspective**: Alice clicks "Start Game" and the game canvas appears. The UI transitions from the Svelte room screen to the canvas-based game.
+
+---
+
+#### Step 15: Player 2 Game Started
+
+![Player 2 Game Started](015-player2-game-started.png)
+
+**Validation**: Canvas element is visible via real-time sync  
+**Player 2 Perspective**: Bob's view automatically updates to show the game canvas. This demonstrates **real-time game start synchronization** via Socket.IO.
+
+---
+
+#### Step 16: Player 1 Seating Phase
+
+![Player 1 Seating Phase](016-player1-seating-phase.png)
+
+**Validation**: Seating phase UI displayed  
+**Player 1 Perspective**: Alice sees the edge selection screen where she must choose her starting position on the hexagonal board.
+
+---
+
+#### Step 17: Player 2 Seating Phase
+
+![Player 2 Seating Phase](017-player2-seating-phase.png)
+
+**Validation**: Seating phase UI displayed  
+**Player 2 Perspective**: Bob also sees the edge selection screen, ready to choose his starting position.
+
+---
+
+#### Step 18: Player 1 Edge Selected
+
+![Player 1 Edge Selected](018-player1-edge-selected.png)
+
+**Validation**: Edge 0 (bottom) selected  
+**Player 1 Perspective**: Alice clicks on the bottom edge (edge 0) to select her starting position.
+
+---
+
+#### Step 19: Player 2 Edge Selected
+
+![Player 2 Edge Selected](019-player2-edge-selected.png)
+
+**Validation**: Edge 3 (top) selected  
+**Player 2 Perspective**: Bob clicks on the top edge (edge 3), opposite from Alice, to select his starting position.
+
+---
+
+#### Step 20: Player 1 Gameplay Started
+
+![Player 1 Gameplay Started](020-player1-gameplay-started.png)
+
+**Validation**: Seating complete, gameplay phase active  
+**Player 1 Perspective**: After both players select edges, the game transitions to the gameplay phase. The board is now visible with player edges marked.
+
+---
+
+### First Moves (Steps 21-27)
+
+#### Step 21: Player 2 Gameplay Started
+
+![Player 2 Gameplay Started](021-player2-gameplay-started.png)
+
+**Validation**: Gameplay phase synchronized  
+**Player 2 Perspective**: Bob's view also shows the gameplay phase with both players' edges marked on the board.
+
+---
+
+#### Step 22: Player 1 First Move Position
+
+![Player 1 First Move Position](022-player1-first-move-position.png)
+
+**Validation**: Position selected for tile placement  
+**Player 1 Perspective**: Alice selects the center position on the board to place her first tile.
+
+---
+
+#### Step 23: Player 1 Tile Placed
+
+![Player 1 Tile Placed](023-player1-tile-placed.png)
+
+**Validation**: Tile placed at center position  
+**Player 1 Perspective**: Alice confirms the placement and her tile appears on the board at the center position.
+
+---
+
+#### Step 24: Player 2 Sees First Tile
+
+![Player 2 Sees First Tile](024-player2-sees-first-tile.png)
+
+**Validation**: Tile placement synchronized via Socket.IO  
+**Player 2 Perspective**: Bob's view updates to show Alice's placed tile. This demonstrates **real-time gameplay synchronization**.
+
+---
+
+#### Step 25: Player 2 Second Move Position
+
+![Player 2 Second Move Position](025-player2-second-move-position.png)
+
+**Validation**: Position selected for second tile  
+**Player 2 Perspective**: Bob selects an adjacent position for his tile placement.
+
+---
+
+#### Step 26: Player 2 Tile Placed
+
+![Player 2 Tile Placed](026-player2-tile-placed.png)
+
+**Validation**: Second tile placed  
+**Player 2 Perspective**: Bob confirms placement and his tile appears on the board.
+
+---
+
+#### Step 27: Player 1 Sees Second Tile
+
+![Player 1 Sees Second Tile](027-player1-sees-second-tile.png)
+
+**Validation**: Second tile synchronized  
+**Player 1 Perspective**: Alice's view updates to show Bob's placed tile, completing the demonstration of the first two moves.
 
 ---
 
@@ -179,7 +318,12 @@ npx playwright test tests/e2e/multiplayer-two-player-flow.spec.ts --ui
 2. **Player 2 (Bob)** logs in as anonymous user in separate browser context → sees lobby
 3. **Alice** creates test room "E2E Test: Alice and Bob" (2 max players) → enters room as host
 4. **Bob** sees the test room appear in lobby list → joins that room
-5. **Both players** are in the room together → ready for game start
+5. **Both players** are in the room together → Alice clicks "Start Game"
+6. **Game starts** → both players see the game canvas (real-time sync)
+7. **Edge selection** → Alice selects bottom edge, Bob selects top edge
+8. **Gameplay begins** → Alice places first tile at center
+9. **Turn progression** → Bob places second tile adjacent to first
+10. **Both players** see all moves synchronized in real-time
 
 **Note**: The test starts a fresh server instance with a temporary data directory for each test run, ensuring completely clean state and truly repeatable results. The temporary directory is cleaned up after the test completes.
 
@@ -192,24 +336,22 @@ At each step, the test validates:
 - ✅ Navigation between screens works correctly
 - ✅ Real-time updates propagate between browser contexts
 - ✅ Cookie isolation maintains separate sessions
-
-## Future Enhancements
-
-- Complete game start flow (Start Game button interaction)
-- Add edge selection demonstration
-- Add first move screenshots
-- Validate game state synchronization during gameplay
+- ✅ Canvas game integration works correctly
+- ✅ Edge selection is synchronized between players
+- ✅ Tile placements are synchronized in real-time
 
 ## Technical Notes
 
 - **Browser Contexts**: Uses `browser.newContext()` for cookie isolation
 - **Anonymous Auth**: Uses `/auth/anonymous` endpoint with unique session IDs
-- **Socket.IO**: Real-time room updates between clients
+- **Socket.IO**: Real-time room updates and game action synchronization
 - **Fixed Room Name**: Uses "E2E Test: Alice and Bob" for repeatable, stable screenshots
 - **Isolated Server**: Test starts its own server instance with a temporary data directory
 - **Clean State**: Each test run has completely fresh server state (no pre-existing rooms/users)
 - **Automatic Cleanup**: Temporary data directory is removed after test completes
 - **Playwright Testing**: Comprehensive e2e testing with visual validation
+- **Canvas Interaction**: Uses coordinate calculations to click edge buttons and board positions
+- **Redux + Socket.IO**: Game actions are dispatched via Redux and synchronized via Socket.IO
 
 ## Related Files
 
@@ -218,6 +360,7 @@ At each step, the test validates:
 - `src/multiplayer/components/LobbyScreen.svelte` - Lobby UI
 - `src/multiplayer/components/RoomScreen.svelte` - Room UI
 - `src/multiplayer/socket.ts` - Socket.IO client
+- `src/multiplayer/gameCoordinator.ts` - Game action coordination
 - `server/src/index.ts` - Multiplayer server
 
 ## Success Criteria
@@ -227,5 +370,9 @@ At each step, the test validates:
 ✅ Room creation and listing works  
 ✅ Player can join another player's room  
 ✅ Real-time synchronization via Socket.IO  
-✅ Screenshots from both perspectives with validation  
-⚠️ Game start and gameplay - to be completed
+✅ Game start flow from host works correctly  
+✅ Canvas game integration functional  
+✅ Edge selection (seating phase) works for both players  
+✅ Gameplay phase with tile placement  
+✅ Real-time game state synchronization during moves  
+✅ Screenshots from both perspectives with validation
