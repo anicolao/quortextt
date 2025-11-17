@@ -138,8 +138,11 @@ async function initializeDiscordActivity() {
       console.log('[Discord Activity] Joining existing room:', existingRoom.name);
       socket.joinRoom(roomId);
       
-      // The room has a game already - game_started event will transition to game screen
-      // No need to set screen here, it will be set by the event handler
+      // For Discord Activities, show the game canvas with color configuration
+      // The server won't post START_GAME yet, keeping us in lobby phase
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[Discord Activity] Showing color configuration screen...');
+      socket.startGame(roomId);
     } else {
       // Create new room for this Discord Activity instance with custom room ID
       console.log('[Discord Activity] Creating new room:', roomName);
