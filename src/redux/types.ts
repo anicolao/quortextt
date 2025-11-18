@@ -105,6 +105,9 @@ export interface GameSettings {
   debugAIScoring: boolean; // Show AI evaluation scores for tile placements
   debugHitTest: boolean; // Show hit test areas with red outlines on hover
   tileDistribution: [number, number, number, number]; // [NoSharps, OneSharp, TwoSharps, ThreeSharps]
+  enableDirtyRendering: boolean; // Enable dirty region tracking (Phase 1: track but still full redraw)
+  debugShowDirtyRegions: boolean; // Show dirty regions as red rectangles
+  debugShowRenderMetrics: boolean; // Show rendering performance metrics on screen
 }
 
 // Game mode type
