@@ -468,15 +468,6 @@ Buttons don't need full redraws:
 3. More than 20 separate dirty regions
 4. During full-screen animations (victory, screen transitions)
 
-**Feature Detection:**
-```typescript
-// Disable on low-end devices if needed
-const enableOptimizations = 
-  !state.ui.settings.debugDisableOptimizations &&
-  canvasWidth * canvasHeight < 5_000_000 && // Disable on very large displays
-  navigator.hardwareConcurrency >= 4;  // Require decent CPU
-```
-
 ### Measuring Impact
 
 **Metrics to Track:**
