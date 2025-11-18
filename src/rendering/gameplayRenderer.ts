@@ -35,6 +35,9 @@ import {
 import { drawCircularArrow } from "./circularArrow";
 import { formatMoveHistory } from "../game/notation";
 import cherryImageUrl from "../../assets/cherry.jpg";
+import { DirtyRegionTracker } from "./dirtyRegion";
+import { LayerCache } from "./layerCache";
+import { DirtyDetector } from "./dirtyDetector";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -51,6 +54,19 @@ export class GameplayRenderer {
   private woodBackgroundCanvas: HTMLCanvasElement | null = null;
   private woodImage: HTMLImageElement | null = null;
   private woodImageLoaded: boolean = false;
+  
+  // Phase 1: Dirty region tracking infrastructure
+  private dirtyRegionTracker: DirtyRegionTracker;
+  private layerCache: LayerCache;
+  private dirtyDetector: DirtyDetector;
+  
+  // Render metrics for debugging
+  private renderMetrics = {
+    frameTime: 0,
+    pixelsPainted: 0,
+    dirtyRegionCount: 0,
+    lastFrameTimestamp: 0,
+  };
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -62,6 +78,11 @@ export class GameplayRenderer {
     this.boardRadius = boardRadius;
     this.layout = calculateHexLayout(canvasWidth, canvasHeight, boardRadius);
     this.loadWoodTexture();
+    
+    // Initialize Phase 1 infrastructure
+    this.dirtyRegionTracker = new DirtyRegionTracker(canvasWidth, canvasHeight);
+    this.layerCache = new LayerCache(canvasWidth, canvasHeight);
+    this.dirtyDetector = new DirtyDetector();
   }
 
   updateLayout(canvasWidth: number, canvasHeight: number): void {
@@ -74,6 +95,11 @@ export class GameplayRenderer {
     this.bezierLengthCache.clear();
     // Regenerate wood background for new canvas size
     this.woodBackgroundCanvas = null;
+    
+    // Update Phase 1 infrastructure for new canvas size
+    this.dirtyRegionTracker.updateCanvasSize(canvasWidth, canvasHeight);
+    this.layerCache.updateCanvasSize(canvasWidth, canvasHeight);
+    this.dirtyDetector.reset();
   }
 
   private loadWoodTexture(): void {
@@ -141,6 +167,38 @@ export class GameplayRenderer {
   }
 
   render(state: RootState): void {
+    const startTime = performance.now();
+    
+    // Phase 1: Track dirty regions (but still do full redraw)
+    if (state.ui.settings.enableDirtyRendering) {
+      // Detect what changed
+      const dirtyRects = this.dirtyDetector.detectDirtyRegions(
+        state,
+        this.layout.canvasWidth,
+        this.layout.canvasHeight
+      );
+      
+      // Mark dirty regions
+      dirtyRects.forEach(rect => this.dirtyRegionTracker.markDirty(rect));
+      
+      // Get optimized dirty regions (for metrics/visualization)
+      const optimizedRegions = this.dirtyRegionTracker.getDirtyRegions();
+      
+      // Update metrics
+      this.renderMetrics.dirtyRegionCount = optimizedRegions.length;
+      this.renderMetrics.pixelsPainted = optimizedRegions.reduce(
+        (sum, rect) => sum + rect.width * rect.height,
+        0
+      );
+    } else {
+      // When disabled, track that we're painting full canvas
+      this.renderMetrics.dirtyRegionCount = 1;
+      this.renderMetrics.pixelsPainted = this.layout.canvasWidth * this.layout.canvasHeight;
+    }
+    
+    // Phase 1: Still do full redraw (same as before)
+    // In later phases, we'll use the dirty regions to optimize
+    
     // Layer 1: Background
     this.renderBackground();
 
@@ -244,6 +302,26 @@ export class GameplayRenderer {
     // Layer 6.8: Move list dialog if open
     if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
       this.renderMoveListDialog(state.ui.moveListCorner, state);
+    }
+    
+    // Phase 1: Debug visualization for dirty regions
+    if (state.ui.settings.enableDirtyRendering && state.ui.settings.debugShowDirtyRegions) {
+      this.renderDirtyRegionVisualization();
+    }
+    
+    // Phase 1: Render performance metrics
+    if (state.ui.settings.debugShowRenderMetrics) {
+      this.renderPerformanceMetrics(state);
+    }
+    
+    // Update frame time metric
+    const endTime = performance.now();
+    this.renderMetrics.frameTime = endTime - startTime;
+    this.renderMetrics.lastFrameTimestamp = endTime;
+    
+    // Clear dirty regions for next frame
+    if (state.ui.settings.enableDirtyRendering) {
+      this.dirtyRegionTracker.clear();
     }
   }
 
@@ -3069,5 +3147,90 @@ export class GameplayRenderer {
       x: rotatedX + centerX,
       y: rotatedY + centerY
     };
+  }
+
+  /**
+   * Phase 1: Visualize dirty regions as red rectangles
+   */
+  private renderDirtyRegionVisualization(): void {
+    const dirtyRegions = this.dirtyRegionTracker.getDirtyRegions();
+    
+    this.ctx.save();
+    this.ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+    this.ctx.lineWidth = 2;
+    this.ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+    
+    for (const region of dirtyRegions) {
+      this.ctx.strokeRect(region.x, region.y, region.width, region.height);
+      this.ctx.fillRect(region.x, region.y, region.width, region.height);
+    }
+    
+    this.ctx.restore();
+  }
+
+  /**
+   * Phase 1: Render performance metrics overlay
+   */
+  private renderPerformanceMetrics(state: RootState): void {
+    this.ctx.save();
+    
+    // Create semi-transparent background
+    const padding = 10;
+    const lineHeight = 20;
+    const x = 10;
+    const y = 10;
+    const width = 350;
+    const height = 180;
+    
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(x, y, width, height);
+    
+    // Draw border
+    this.ctx.strokeStyle = '#00ff00';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, width, height);
+    
+    // Draw metrics text
+    this.ctx.fillStyle = '#00ff00';
+    this.ctx.font = '14px monospace';
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    
+    let currentY = y + padding;
+    const lines = [
+      '=== RENDER METRICS (Phase 1) ===',
+      `Frame Time: ${this.renderMetrics.frameTime.toFixed(2)}ms`,
+      `Target: 16.67ms (60fps)`,
+      `Dirty Regions: ${this.renderMetrics.dirtyRegionCount}`,
+      `Pixels Painted: ${this.renderMetrics.pixelsPainted.toLocaleString()}`,
+      `Canvas Size: ${(this.layout.canvasWidth * this.layout.canvasHeight).toLocaleString()}`,
+      `Dirty Enabled: ${state.ui.settings.enableDirtyRendering ? 'YES' : 'NO'}`,
+      ``,
+    ];
+    
+    lines.forEach(line => {
+      this.ctx.fillText(line, x + padding, currentY);
+      currentY += lineHeight;
+    });
+    
+    // Add tracker stats if enabled
+    if (state.ui.settings.enableDirtyRendering) {
+      const trackerStats = this.dirtyRegionTracker.getStats();
+      
+      this.ctx.fillStyle = '#ffff00';
+      const statsLines = [
+        `Regions Marked: ${trackerStats.totalRegionsMarked}`,
+        `Regions Merged: ${trackerStats.totalRegionsMerged}`,
+        `Full Redraws: ${trackerStats.totalFullRedraws}`,
+        `Cache Memory: ${this.layerCache.getMemoryUsage().toFixed(2)}MB`,
+      ];
+      
+      statsLines.forEach(line => {
+        this.ctx.fillText(line, x + padding, currentY);
+        currentY += lineHeight;
+      });
+    }
+    
+    this.ctx.restore();
   }
 }
