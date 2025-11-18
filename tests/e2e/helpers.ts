@@ -371,67 +371,13 @@ export async function getConfirmationButtonCoords(page: any, hexPos: { row: numb
  * 
  * @param page - Playwright page object
  * @param selector - Optional CSS selector to check specific elements (default: check all elements)
- * @param maxWaitMs - Maximum time to wait in milliseconds (default: 1000ms)
+ * @param maxWaitMs - Maximum time to wait in milliseconds (default: 1500ms, increased to allow for 0.3s transitions to complete)
  */
-export async function waitForCSSAnimations(page: any, selector: string = '*', maxWaitMs: number = 1000) {
-  // Wait for all transitions and animations to complete
-  await page.evaluate(
-    ({ sel, timeout }: { sel: string, timeout: number }) => {
-      return new Promise<void>((resolve) => {
-        const startTime = Date.now();
-        let animatingElements = new Set<Element>();
-        
-        // Function to check if an element has ongoing transitions or animations
-        const hasActiveAnimation = (element: Element): boolean => {
-          const style = window.getComputedStyle(element);
-          
-          // Check for running transitions
-          const transitionDuration = style.transitionDuration;
-          if (transitionDuration && transitionDuration !== '0s') {
-            return true;
-          }
-          
-          // Check for running animations
-          const animationDuration = style.animationDuration;
-          if (animationDuration && animationDuration !== '0s') {
-            return true;
-          }
-          
-          return false;
-        };
-        
-        // Function to update the set of animating elements
-        const updateAnimatingElements = () => {
-          animatingElements.clear();
-          const elements = document.querySelectorAll(sel);
-          elements.forEach(el => {
-            if (hasActiveAnimation(el)) {
-              animatingElements.add(el);
-            }
-          });
-        };
-        
-        // Check periodically until no animations are running or timeout
-        const checkInterval = setInterval(() => {
-          updateAnimatingElements();
-          
-          // If no animations or timeout reached, resolve
-          if (animatingElements.size === 0 || Date.now() - startTime > timeout) {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 50); // Check every 50ms
-        
-        // Initial check
-        updateAnimatingElements();
-        if (animatingElements.size === 0) {
-          clearInterval(checkInterval);
-          resolve();
-        }
-      });
-    },
-    { sel: selector, timeout: maxWaitMs }
-  );
+export async function waitForCSSAnimations(page: any, selector: string = '*', maxWaitMs: number = 1500) {
+  // Wait a fixed duration for common CSS transitions (0.3s) to complete
+  // This is more reliable than trying to detect active transitions/animations
+  // since many elements have transition properties defined even when not transitioning
+  await page.waitForTimeout(350);
   
   // Wait one more animation frame to ensure rendering is complete
   await page.evaluate(() => {
@@ -464,6 +410,10 @@ export async function waitForButtonTransition(page: any, buttonText: string) {
     buttonText,
     { timeout: 1000 }
   );
+  
+  // Wait an additional 350ms to ensure the 0.3s CSS transition completes fully
+  // This prevents screenshot inconsistencies from capturing mid-transition frames
+  await page.waitForTimeout(350);
 }
 
 /**
