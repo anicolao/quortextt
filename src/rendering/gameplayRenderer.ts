@@ -83,6 +83,7 @@ export class GameplayRenderer {
     this.dirtyRegionTracker = new DirtyRegionTracker(canvasWidth, canvasHeight);
     this.layerCache = new LayerCache(canvasWidth, canvasHeight);
     this.dirtyDetector = new DirtyDetector();
+    this.dirtyDetector.setLayout(this.layout);
   }
 
   updateLayout(canvasWidth: number, canvasHeight: number): void {
@@ -100,6 +101,7 @@ export class GameplayRenderer {
     this.dirtyRegionTracker.updateCanvasSize(canvasWidth, canvasHeight);
     this.layerCache.updateCanvasSize(canvasWidth, canvasHeight);
     this.dirtyDetector.reset();
+    this.dirtyDetector.setLayout(this.layout);
   }
 
   private loadWoodTexture(): void {
