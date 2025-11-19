@@ -108,6 +108,8 @@ export class GameplayRenderer {
       this.woodImageLoaded = true;
       // Clear cached background so it regenerates with the loaded image
       this.woodBackgroundCanvas = null;
+      // Phase 2: Also invalidate the layer cache
+      this.layerCache.invalidateBackground();
     };
     this.woodImage.src = cherryImageUrl;
   }
