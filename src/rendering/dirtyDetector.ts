@@ -32,46 +32,37 @@ export class DirtyDetector {
       return [{ x: 0, y: 0, width: canvasWidth, height: canvasHeight }];
     }
 
-    // Check for board changes
+    // Check for board changes - mark entire canvas dirty since tiles affect flows
     if (this.previousState.game.board !== currentState.game.board) {
-      // For now, mark entire canvas dirty
-      // In later phases, we'll mark only affected tile regions
       dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
     }
 
-    // Check for flow changes
+    // Check for flow changes - mark entire canvas dirty
     if (this.previousState.game.flows !== currentState.game.flows) {
-      // For now, mark entire canvas dirty
-      // In later phases, we'll mark only affected flow regions
       dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
     }
 
-    // Check for selected position changes (preview tile)
+    // Check for selected position changes (preview tile) - mark entire canvas dirty
     if (this.previousState.ui.selectedPosition !== currentState.ui.selectedPosition) {
-      // For now, mark entire canvas dirty
-      // In later phases, we'll mark only preview regions
       dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
     }
 
-    // Check for rotation changes
+    // Check for rotation changes - mark entire canvas dirty
     if (this.previousState.ui.currentRotation !== currentState.ui.currentRotation) {
-      // For now, mark entire canvas dirty
-      // In later phases, we'll mark only preview region
       dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
     }
 
-    // Check for hover changes
-    if (this.previousState.ui.hoveredElement !== currentState.ui.hoveredElement) {
-      // For now, mark entire canvas dirty
-      // In later phases, we'll mark only hovered element regions
-      dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
-    }
+    // Check for hover changes - only mark dirty if hover actually changed, not on every frame
+    // Skip marking dirty for hover changes - they don't typically change visual state
+    // in this game (no visible hover effects)
 
-    // Check for animation changes
+    // Check for animation frame counter - only mark dirty if there are actual animations
     if (this.previousState.animation.frameCounter !== currentState.animation.frameCounter) {
-      // Animations are active - mark entire canvas dirty
-      // In later phases, animations will register their own dirty regions
-      dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+      // Only mark dirty if animations are actually running
+      if (currentState.animation.animations.length > 0) {
+        dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+      }
+      // Otherwise, don't mark dirty - idle animation frames should not trigger redraws
     }
 
     // Check for settings changes (debug overlays, etc.)

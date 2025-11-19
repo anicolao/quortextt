@@ -3250,6 +3250,18 @@ export class GameplayRenderer {
     return this.layout;
   }
 
+  /**
+   * Get current render metrics for testing and debugging
+   */
+  getRenderMetrics() {
+    return {
+      ...this.renderMetrics,
+      dirtyTrackerStats: this.dirtyRegionTracker.getStats(),
+      layerCacheStats: this.layerCache.getStats(),
+      layerCacheMemory: this.layerCache.getMemoryUsage(),
+    };
+  }
+
   private renderDebugHitTestOutline(
     element: import("../redux/types").HoveredElementType,
   ): void {
