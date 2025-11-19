@@ -200,11 +200,8 @@ export class GameplayRenderer {
       if (optimizedRegions.length === 0) {
         // Nothing to draw - skip rendering entirely!
         this.dirtyRegionTracker.clear();
-        return;
-      }
-      
-      // Check if we need full redraw
-      if (this.dirtyRegionTracker.isFullRedraw()) {
+        // Note: Don't return early - still need to render debug overlays and update metrics
+      } else if (this.dirtyRegionTracker.isFullRedraw()) {
         this.renderFull(state);
       } else {
         this.renderDirtyRegions(state, optimizedRegions);
@@ -241,6 +238,10 @@ export class GameplayRenderer {
    * Phase 3: Render full canvas (legacy path and fallback)
    */
   private renderFull(state: RootState): void {
+    // Clear canvas (parent might have skipped clearing for dirty rendering optimization)
+    this.ctx.fillStyle = '#1a1a2e';
+    this.ctx.fillRect(0, 0, this.layout.canvasWidth, this.layout.canvasHeight);
+    
     // Layer 1: Background (cached)
     this.renderBackgroundCached();
 
