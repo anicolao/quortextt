@@ -409,8 +409,8 @@ export class GameplayRenderer {
       // Clear dirty region
       this.ctx.clearRect(region.x, region.y, region.width, region.height);
       
-      // Composite cached background layer
-      this.compositeLayerRegion('background', region);
+      // Render background directly (avoid O(canvas size) drawImage from cached canvas)
+      this.renderBackgroundDirect();
       
       // Apply board rotation for rotated layers
       this.ctx.save();
@@ -426,8 +426,8 @@ export class GameplayRenderer {
         }
       }
       
-      // Composite cached board layer
-      this.compositeLayerRegion('board', region);
+      // Render board directly (avoid O(canvas size) drawImage from cached canvas)
+      this.renderBoardDirect(state);
       
       // OPTIMIZATION: Only render tiles that intersect this dirty region
       const tilesInRegion = this.getTilesInRegion(boardToRender, region);
@@ -516,65 +516,21 @@ export class GameplayRenderer {
   }
 
   /**
-   * Phase 3: Composite a specific layer region to the main canvas
+   * Phase 3: Render background directly to main canvas (for dirty rendering)
+   * Avoids O(canvas size) drawImage from cached canvas
    */
-  private compositeLayerRegion(layer: 'background' | 'board', region: import('./dirtyRegion').DirtyRect): void {
-    let cachedCanvas: HTMLCanvasElement | null = null;
-    
-    if (layer === 'background') {
-      // Get cached background (will render if not cached)
-      cachedCanvas = this.layerCache.getOrRenderBackground((ctx) => {
-        if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
-          this.woodBackgroundCanvas = this.createWoodBackground();
-        } else if (!this.woodBackgroundCanvas) {
-          this.woodBackgroundCanvas = this.createWoodBackground();
-        }
-        
-        if (this.woodBackgroundCanvas) {
-          ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
-        }
-      });
-    } else if (layer === 'board') {
-      // Get cached board (will render if not cached)
-      const state = store.getState();
-      cachedCanvas = this.layerCache.getOrRenderBoard((ctx) => {
-        const center = this.layout.origin;
-        const boardRadius = this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
-
-        ctx.fillStyle = BOARD_HEX_BG;
-        this.drawFlatTopHexagonToContext(ctx, center, boardRadius, true);
-
-        if (state.game.players.length > 0) {
-          state.game.players.forEach((player) => {
-            this.renderPlayerEdgeToContext(
-              ctx,
-              center,
-              boardRadius,
-              player.edgePosition,
-              player.color,
-              state.game.boardRadius,
-            );
-          });
-        }
-
-        const positions = getAllBoardPositions(state.game.boardRadius);
-        ctx.strokeStyle = "#666666";
-        ctx.lineWidth = 1;
-
-        positions.forEach((pos) => {
-          const hexCenter = hexToPixel(pos, this.layout);
-          this.drawHexagonToContext(ctx, hexCenter, this.layout.size, false);
-        });
-      });
+  private renderBackgroundDirect(): void {
+    // Regenerate background if image just loaded
+    if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
+      this.woodBackgroundCanvas = this.createWoodBackground();
+    } else if (!this.woodBackgroundCanvas) {
+      // Create initial background (will be gray until image loads)
+      this.woodBackgroundCanvas = this.createWoodBackground();
     }
     
-    if (cachedCanvas) {
-      // Draw only the dirty region from the cached layer
-      this.ctx.drawImage(
-        cachedCanvas,
-        region.x, region.y, region.width, region.height,  // source rect
-        region.x, region.y, region.width, region.height   // dest rect
-      );
+    // Draw the wood background directly to main canvas
+    if (this.woodBackgroundCanvas) {
+      this.ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
     }
   }
 
@@ -599,6 +555,44 @@ export class GameplayRenderer {
     
     // Composite cached background to main canvas
     this.ctx.drawImage(canvas, 0, 0);
+  }
+
+  /**
+   * Phase 3: Render board structure directly to main canvas (for dirty rendering)
+   * Avoids O(canvas size) drawImage from cached canvas
+   */
+  private renderBoardDirect(state: RootState): void {
+    const center = this.layout.origin;
+    const boardRadius =
+      this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
+
+    // Draw board as a large hexagon with flat-top orientation
+    this.ctx.fillStyle = BOARD_HEX_BG;
+    this.drawFlatTopHexagonToContext(this.ctx, center, boardRadius, true);
+
+    // Draw colored edges for each player
+    if (state.game.players.length > 0) {
+      state.game.players.forEach((player) => {
+        this.renderPlayerEdgeToContext(
+          this.ctx,
+          center,
+          boardRadius,
+          player.edgePosition,
+          player.color,
+          state.game.boardRadius,
+        );
+      });
+    }
+
+    // Render all hex positions (grid)
+    const positions = getAllBoardPositions(state.game.boardRadius);
+    this.ctx.strokeStyle = "#666666";
+    this.ctx.lineWidth = 1;
+
+    positions.forEach((pos) => {
+      const hexCenter = hexToPixel(pos, this.layout);
+      this.drawHexagonToContext(this.ctx, hexCenter, this.layout.size, false);
+    });
   }
 
   /**
