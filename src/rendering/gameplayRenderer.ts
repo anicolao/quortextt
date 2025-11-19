@@ -171,7 +171,7 @@ export class GameplayRenderer {
   render(state: RootState): void {
     const startTime = performance.now();
     
-    // Phase 1: Track dirty regions (but still do full redraw)
+    // Phase 3: Use dirty rendering when enabled
     if (state.ui.settings.enableDirtyRendering) {
       // Detect what changed
       const dirtyRects = this.dirtyDetector.detectDirtyRegions(
@@ -195,15 +195,52 @@ export class GameplayRenderer {
       
       // Phase 2: Invalidate caches based on state changes
       this.invalidateCachesBasedOnState(state);
+      
+      // Phase 3: Use dirty region rendering
+      if (optimizedRegions.length === 0) {
+        // Nothing to draw - skip rendering entirely!
+        this.dirtyRegionTracker.clear();
+        return;
+      }
+      
+      // Check if we need full redraw
+      if (this.dirtyRegionTracker.isFullRedraw()) {
+        this.renderFull(state);
+      } else {
+        this.renderDirtyRegions(state, optimizedRegions);
+      }
     } else {
-      // When disabled, track that we're painting full canvas
+      // When disabled, do full redraw (legacy behavior)
       this.renderMetrics.dirtyRegionCount = 1;
       this.renderMetrics.pixelsPainted = this.layout.canvasWidth * this.layout.canvasHeight;
+      this.renderFull(state);
     }
     
-    // Phase 1: Still do full redraw (same as before)
-    // Phase 2: Composite from cached layers where available
+    // Phase 3: Debug visualization for dirty regions
+    if (state.ui.settings.enableDirtyRendering && state.ui.settings.debugShowDirtyRegions) {
+      this.renderDirtyRegionVisualization();
+    }
     
+    // Phase 3: Render performance metrics
+    if (state.ui.settings.debugShowRenderMetrics) {
+      this.renderPerformanceMetrics(state);
+    }
+    
+    // Update frame time metric
+    const endTime = performance.now();
+    this.renderMetrics.frameTime = endTime - startTime;
+    this.renderMetrics.lastFrameTimestamp = endTime;
+    
+    // Clear dirty regions for next frame
+    if (state.ui.settings.enableDirtyRendering) {
+      this.dirtyRegionTracker.clear();
+    }
+  }
+
+  /**
+   * Phase 3: Render full canvas (legacy path and fallback)
+   */
+  private renderFull(state: RootState): void {
     // Layer 1: Background (cached)
     this.renderBackgroundCached();
 
@@ -230,12 +267,6 @@ export class GameplayRenderer {
 
     // Layer 2: Board hexagon with colored edges (cached)
     this.renderBoardCached(state);
-
-    // Layer 2.5: Render all hex positions (for debugging/visibility) - part of board cache
-    // Now included in renderBoardCached
-
-    // Layer 2.6: Color source hexagon edges with player colors
-    //this.renderSourceHexagonEdges(state);
 
     // Layer 2.7: Debug - Draw edge direction labels (0-5) inside each hexagon
     if (state.ui.settings.debugShowEdgeLabels) {
@@ -308,25 +339,164 @@ export class GameplayRenderer {
     if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
       this.renderMoveListDialog(state.ui.moveListCorner, state);
     }
+  }
+
+  /**
+   * Phase 3: Render only dirty regions of the canvas
+   */
+  private renderDirtyRegions(state: RootState, regions: import('./dirtyRegion').DirtyRect[]): void {
+    // Save full canvas state
+    this.ctx.save();
     
-    // Phase 1: Debug visualization for dirty regions
-    if (state.ui.settings.enableDirtyRendering && state.ui.settings.debugShowDirtyRegions) {
-      this.renderDirtyRegionVisualization();
+    for (const region of regions) {
+      // Set up clipping for this dirty region
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.rect(region.x, region.y, region.width, region.height);
+      this.ctx.clip();
+      
+      // Clear dirty region
+      this.ctx.clearRect(region.x, region.y, region.width, region.height);
+      
+      // Composite cached background layer
+      this.compositeLayerRegion('background', region);
+      
+      // Apply board rotation for rotated layers
+      this.ctx.save();
+      if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
+        const localPlayer = state.game.players.find(p => p.id === state.ui.localPlayerId);
+        if (localPlayer) {
+          const edgeAngles = [0, 60, 120, 180, 240, 300];
+          const rotationAngle = -edgeAngles[localPlayer.edgePosition] + 180;
+          
+          this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
+          this.ctx.rotate((rotationAngle * Math.PI) / 180);
+          this.ctx.translate(-this.layout.canvasWidth / 2, -this.layout.canvasHeight / 2);
+        }
+      }
+      
+      // Composite cached board layer
+      this.compositeLayerRegion('board', region);
+      
+      // Render dynamic elements that might be in this region
+      // Note: These are not cached and must be redrawn
+      if (state.ui.settings.debugShowEdgeLabels) {
+        this.renderEdgeDirectionLabels(state.game.boardRadius);
+      }
+      
+      if (state.ui.settings.debugShowVictoryEdges) {
+        this.renderVictoryConditionEdges(state);
+      }
+      
+      if (state.ui.settings.debugAIScoring && state.game.aiScoringData) {
+        this.renderAIScoring(state);
+      }
+      
+      this.renderPlacedTiles(state);
+      this.renderLastPlacedTileHighlight(state);
+      this.renderCurrentTilePreview(state);
+      this.renderActionButtons(state);
+      
+      if (state.game.screen === "game-over") {
+        this.renderVictoryStars(state);
+      }
+      
+      if (state.ui.settings.debugLegalityTest) {
+        this.renderDebugLegalityPaths(state);
+      }
+      
+      if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
+        this.renderDebugHitTestOutline(state.ui.hoveredElement);
+      }
+      
+      if (state.ui.settings.debugHitTest) {
+        this.renderDebugApexVertex(state);
+      }
+      
+      // Restore rotation
+      this.ctx.restore();
+      
+      // Render UI elements (not rotated)
+      this.renderExitButtons(state);
+      this.renderSpectatorIndicator(state);
+      this.renderHelpButtons(state);
+      this.renderMoveListButtons(state);
+      
+      if (state.ui.showHelp && state.ui.helpCorner !== null) {
+        this.renderHelpDialog(state.ui.helpCorner, state);
+      }
+      
+      if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
+        this.renderMoveListDialog(state.ui.moveListCorner, state);
+      }
+      
+      // Restore clipping region
+      this.ctx.restore();
     }
     
-    // Phase 1: Render performance metrics
-    if (state.ui.settings.debugShowRenderMetrics) {
-      this.renderPerformanceMetrics(state);
+    this.ctx.restore();
+  }
+
+  /**
+   * Phase 3: Composite a specific layer region to the main canvas
+   */
+  private compositeLayerRegion(layer: 'background' | 'board', region: import('./dirtyRegion').DirtyRect): void {
+    let cachedCanvas: HTMLCanvasElement | null = null;
+    
+    if (layer === 'background') {
+      // Get cached background (will render if not cached)
+      cachedCanvas = this.layerCache.getOrRenderBackground((ctx) => {
+        if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
+          this.woodBackgroundCanvas = this.createWoodBackground();
+        } else if (!this.woodBackgroundCanvas) {
+          this.woodBackgroundCanvas = this.createWoodBackground();
+        }
+        
+        if (this.woodBackgroundCanvas) {
+          ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
+        }
+      });
+    } else if (layer === 'board') {
+      // Get cached board (will render if not cached)
+      const state = store.getState();
+      cachedCanvas = this.layerCache.getOrRenderBoard((ctx) => {
+        const center = this.layout.origin;
+        const boardRadius = this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
+
+        ctx.fillStyle = BOARD_HEX_BG;
+        this.drawFlatTopHexagonToContext(ctx, center, boardRadius, true);
+
+        if (state.game.players.length > 0) {
+          state.game.players.forEach((player) => {
+            this.renderPlayerEdgeToContext(
+              ctx,
+              center,
+              boardRadius,
+              player.edgePosition,
+              player.color,
+              state.game.boardRadius,
+            );
+          });
+        }
+
+        const positions = getAllBoardPositions(state.game.boardRadius);
+        ctx.strokeStyle = "#666666";
+        ctx.lineWidth = 1;
+
+        positions.forEach((pos) => {
+          const hexCenter = hexToPixel(pos, this.layout);
+          this.drawHexagonToContext(ctx, hexCenter, this.layout.size, false);
+        });
+      });
     }
     
-    // Update frame time metric
-    const endTime = performance.now();
-    this.renderMetrics.frameTime = endTime - startTime;
-    this.renderMetrics.lastFrameTimestamp = endTime;
-    
-    // Clear dirty regions for next frame
-    if (state.ui.settings.enableDirtyRendering) {
-      this.dirtyRegionTracker.clear();
+    if (cachedCanvas) {
+      // Draw only the dirty region from the cached layer
+      this.ctx.drawImage(
+        cachedCanvas,
+        region.x, region.y, region.width, region.height,  // source rect
+        region.x, region.y, region.width, region.height   // dest rect
+      );
     }
   }
 
