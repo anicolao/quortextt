@@ -2,7 +2,7 @@
 
 import { RootState } from '../redux/types';
 import { DirtyRect } from './dirtyRegion';
-import { hexToPixel, HexLayout } from '../game/hexLayout';
+import { hexToPixel, HexLayout } from './hexLayout';
 import { keyToPosition } from '../game/board';
 
 /**
@@ -22,10 +22,10 @@ export class DirtyDetector {
   /**
    * Get dirty regions for active animations
    */
-  private getAnimationDirtyRegions(state: RootState): DirtyRect[] {
+  private getAnimationDirtyRegions(_state: RootState): DirtyRect[] {
     if (!this.layout) {
-      // No layout available, mark full canvas dirty as fallback
-      return [{ x: 0, y: 0, width: this.layout?.canvasWidth || 1920, height: this.layout?.canvasHeight || 1080 }];
+      // No layout available, return empty array (will fallback to full redraw if needed)
+      return [];
     }
 
     const dirtyRects: DirtyRect[] = [];
@@ -124,7 +124,15 @@ export class DirtyDetector {
       if (currentState.animation.animations.length > 0) {
         // Get granular dirty regions for active animations
         const animDirtyRects = this.getAnimationDirtyRegions(currentState);
-        dirtyRects.push(...animDirtyRects);
+        
+        // If we got specific animation regions, use them
+        // Otherwise fall back to full canvas (e.g., if layout not set yet)
+        if (animDirtyRects.length > 0) {
+          dirtyRects.push(...animDirtyRects);
+        } else {
+          // Fallback: mark entire canvas dirty if we can't determine specific regions
+          dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+        }
       }
       // Otherwise, don't mark dirty - idle animation frames should not trigger redraws
     }
