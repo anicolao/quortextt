@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - copilot/verify-phase-completion-implement-phase-3  # Temporary: for testing
   workflow_dispatch: # Allow manual deployment
 
 permissions:
