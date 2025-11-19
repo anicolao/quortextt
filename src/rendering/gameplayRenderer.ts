@@ -67,6 +67,9 @@ export class GameplayRenderer {
     dirtyRegionCount: 0,
     lastFrameTimestamp: 0,
   };
+  
+  // Track if we're currently doing dirty region rendering (to disable expensive effects)
+  private isDirtyRendering = false;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -387,6 +390,9 @@ export class GameplayRenderer {
    * Phase 3: Render only dirty regions of the canvas
    */
   private renderDirtyRegions(state: RootState, regions: import('./dirtyRegion').DirtyRect[]): void {
+    // Mark that we're doing dirty rendering (disables expensive effects like shadows)
+    this.isDirtyRendering = true;
+    
     // Save full canvas state
     this.ctx.save();
     
@@ -502,7 +508,11 @@ export class GameplayRenderer {
       this.ctx.restore();
     }
     
+    // Restore full canvas state
     this.ctx.restore();
+    
+    // Done with dirty rendering
+    this.isDirtyRendering = false;
   }
 
   /**
@@ -1029,9 +1039,11 @@ export class GameplayRenderer {
 
     this.ctx.save();
 
-    // Add glow effect
-    this.ctx.shadowBlur = 15 * pulseIntensity;
-    this.ctx.shadowColor = color;
+    // Add glow effect (disabled during dirty rendering for performance)
+    if (!this.isDirtyRendering) {
+      this.ctx.shadowBlur = 15 * pulseIntensity;
+      this.ctx.shadowColor = color;
+    }
     this.ctx.globalAlpha = 0.9 + 0.1 * pulseIntensity;
 
     this.ctx.fillStyle = color;
@@ -1683,7 +1695,8 @@ export class GameplayRenderer {
     }
 
     // Add pulsing glow effect if this is a winning flow
-    if (withGlow) {
+    // NOTE: Shadow blur is O(canvas size), so disable during dirty rendering
+    if (withGlow && !this.isDirtyRendering) {
       // Get current glow intensity from animation state
       const glowIntensity = victoryAnimationState.glowIntensity;
 
@@ -1841,8 +1854,11 @@ export class GameplayRenderer {
   private drawDisconnectedIndicator(center: Point): void {
     this.ctx.save();
     this.ctx.fillStyle = '#FF0000';
-    this.ctx.shadowBlur = 8;
-    this.ctx.shadowColor = '#FF0000';
+    // Disabled shadow during dirty rendering for performance
+    if (!this.isDirtyRendering) {
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = '#FF0000';
+    }
     this.ctx.beginPath();
     this.ctx.arc(center.x, center.y + this.layout.size * 0.6, this.layout.size * 0.2, 0, 2 * Math.PI);
     this.ctx.fill();
@@ -2069,8 +2085,8 @@ export class GameplayRenderer {
 
     this.ctx.save();
 
-    // Add glow effect for supermove
-    if (hasSupermove) {
+    // Add glow effect for supermove (disabled during dirty rendering for performance)
+    if (hasSupermove && !this.isDirtyRendering) {
       // White glow for supermove
       this.ctx.shadowBlur = 20 * glowIntensity;
       this.ctx.shadowColor = "#FFFFFF";
