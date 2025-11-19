@@ -60,7 +60,7 @@ export const initialUIState: UIState = {
     debugAIScoring: false,
     debugHitTest: false, // Disabled by default - can be enabled in settings
     tileDistribution: [1, 1, 1, 1], // Default balanced distribution
-    enableDirtyRendering: false, // Phase 3 complete: can be enabled for testing (still disabled by default)
+    enableDirtyRendering: true, // TEMPORARILY ENABLED FOR TESTING ON TABLETOP
     debugShowDirtyRegions: false, // Show dirty regions visualization
     debugShowRenderMetrics: false, // Show rendering performance metrics
   },
