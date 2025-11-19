@@ -15,6 +15,7 @@ import { isPlayerBlocked } from './game/legality';
 declare global {
   interface Window {
     __REDUX_STORE__: typeof store;
+    __RENDERER__: Renderer;
     ANIMATIONS_DEBUG_SLOWDOWN?: number;
   }
 }
@@ -29,6 +30,9 @@ function init() {
 
   const renderer = new Renderer(canvas);
   const inputHandler = new InputHandler(renderer);
+
+  // Expose renderer to window for testing
+  window.__RENDERER__ = renderer;
 
   // Main render function
   function render() {
