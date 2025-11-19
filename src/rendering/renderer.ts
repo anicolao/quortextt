@@ -74,9 +74,14 @@ export class Renderer {
   render(state: RootState): UILayout {
     const { screen } = state.game;
 
-    // Clear canvas
-    this.ctx.fillStyle = '#1a1a2e';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // Clear canvas (unless dirty rendering is enabled in gameplay mode)
+    // When dirty rendering is enabled, the gameplayRenderer manages its own clearing
+    const skipClear = screen === 'gameplay' && state.ui.settings.enableDirtyRendering;
+    
+    if (!skipClear) {
+      this.ctx.fillStyle = '#1a1a2e';
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
 
     if (screen === 'configuration') {
       return this.renderConfigurationScreenNew(state);
