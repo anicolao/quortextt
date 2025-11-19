@@ -353,11 +353,45 @@ export class GameplayRenderer {
   }
 
   /**
+   * Phase 3: Get tiles that intersect with a dirty region (spatial filtering)
+   */
+  private getTilesInRegion(board: Map<string, PlacedTile>, region: import('./dirtyRegion').DirtyRect): PlacedTile[] {
+    const tilesInRegion: PlacedTile[] = [];
+    
+    // Iterate through all tiles and check if they intersect the dirty region
+    board.forEach((tile) => {
+      const pixelPos = hexToPixel(tile.position, this.layout);
+      const tileRadius = this.layout.size * 1.3; // Add margin for tile + flow rendering
+      
+      // Check if tile's bounding box intersects with dirty region
+      const tileBounds = {
+        x: pixelPos.x - tileRadius,
+        y: pixelPos.y - tileRadius,
+        width: tileRadius * 2,
+        height: tileRadius * 2,
+      };
+      
+      // Rectangle intersection test
+      if (!(tileBounds.x + tileBounds.width < region.x ||
+            tileBounds.x > region.x + region.width ||
+            tileBounds.y + tileBounds.height < region.y ||
+            tileBounds.y > region.y + region.height)) {
+        tilesInRegion.push(tile);
+      }
+    });
+    
+    return tilesInRegion;
+  }
+
+  /**
    * Phase 3: Render only dirty regions of the canvas
    */
   private renderDirtyRegions(state: RootState, regions: import('./dirtyRegion').DirtyRect[]): void {
     // Save full canvas state
     this.ctx.save();
+    
+    // Get board to render (handles move history)
+    const boardToRender = this.getBoardAtMoveIndex(state);
     
     for (const region of regions) {
       // Set up clipping for this dirty region
@@ -389,8 +423,32 @@ export class GameplayRenderer {
       // Composite cached board layer
       this.compositeLayerRegion('board', region);
       
-      // Render dynamic elements that might be in this region
-      // Note: These are not cached and must be redrawn
+      // OPTIMIZATION: Only render tiles that intersect this dirty region
+      const tilesInRegion = this.getTilesInRegion(boardToRender, region);
+      
+      // Multi-pass rendering for correct layering (only for tiles in region)
+      // Pass 1: Draw tile backgrounds
+      tilesInRegion.forEach((tile) => {
+        this.renderTileBackground(tile, 1.0);
+      });
+      
+      // Pass 2: Draw grey channels (unfilled connections)
+      tilesInRegion.forEach((tile) => {
+        this.renderGreyChannels(tile, state);
+      });
+      
+      // Pass 3: Draw filled flows
+      tilesInRegion.forEach((tile) => {
+        this.renderFilledFlows(tile, state);
+      });
+      
+      // Pass 4: Draw animating flows
+      tilesInRegion.forEach((tile) => {
+        this.renderAnimatingFlows(tile, state);
+      });
+      
+      // Render other dynamic elements that might be in this region
+      // Note: These still iterate all elements but are typically small sets
       if (state.ui.settings.debugShowEdgeLabels) {
         this.renderEdgeDirectionLabels(state.game.boardRadius);
       }
@@ -403,7 +461,6 @@ export class GameplayRenderer {
         this.renderAIScoring(state);
       }
       
-      this.renderPlacedTiles(state);
       this.renderLastPlacedTileHighlight(state);
       this.renderCurrentTilePreview(state);
       this.renderActionButtons(state);
