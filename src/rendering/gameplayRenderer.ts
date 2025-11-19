@@ -190,6 +190,9 @@ export class GameplayRenderer {
         (sum, rect) => sum + rect.width * rect.height,
         0
       );
+      
+      // Phase 2: Invalidate caches based on state changes
+      this.invalidateCachesBasedOnState(state);
     } else {
       // When disabled, track that we're painting full canvas
       this.renderMetrics.dirtyRegionCount = 1;
@@ -197,10 +200,10 @@ export class GameplayRenderer {
     }
     
     // Phase 1: Still do full redraw (same as before)
-    // In later phases, we'll use the dirty regions to optimize
+    // Phase 2: Composite from cached layers where available
     
-    // Layer 1: Background
-    this.renderBackground();
+    // Layer 1: Background (cached)
+    this.renderBackgroundCached();
 
     // Save canvas state before applying board rotation
     this.ctx.save();
@@ -223,11 +226,11 @@ export class GameplayRenderer {
       }
     }
 
-    // Layer 2: Board hexagon with colored edges
-    this.renderBoardHexagon(state);
+    // Layer 2: Board hexagon with colored edges (cached)
+    this.renderBoardCached(state);
 
-    // Layer 2.5: Render all hex positions (for debugging/visibility)
-    this.renderHexPositions(state.game.boardRadius);
+    // Layer 2.5: Render all hex positions (for debugging/visibility) - part of board cache
+    // Now included in renderBoardCached
 
     // Layer 2.6: Color source hexagon edges with player colors
     //this.renderSourceHexagonEdges(state);
@@ -325,46 +328,139 @@ export class GameplayRenderer {
     }
   }
 
-  private renderBackground(): void {
-    // Regenerate background if image just loaded and we don't have a proper wood background yet
-    if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
-      this.woodBackgroundCanvas = this.createWoodBackground();
-    } else if (!this.woodBackgroundCanvas) {
-      // Create initial background (will be gray until image loads)
-      this.woodBackgroundCanvas = this.createWoodBackground();
-    }
+  /**
+   * Phase 2: Render background from cache
+   */
+  private renderBackgroundCached(): void {
+    const canvas = this.layerCache.getOrRenderBackground((ctx) => {
+      // Regenerate background if image just loaded
+      if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
+        this.woodBackgroundCanvas = this.createWoodBackground();
+      } else if (!this.woodBackgroundCanvas) {
+        // Create initial background (will be gray until image loads)
+        this.woodBackgroundCanvas = this.createWoodBackground();
+      }
+      
+      // Draw the wood background to the cache canvas
+      if (this.woodBackgroundCanvas) {
+        ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
+      }
+    });
     
-    // Draw the wood background
-    this.ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
+    // Composite cached background to main canvas
+    this.ctx.drawImage(canvas, 0, 0);
   }
 
-  private renderBoardHexagon(state: RootState): void {
-    const center = this.layout.origin;
-    // Calculate board radius based on the game's board radius setting
-    // The board background should be boardRadius * 2 + 1.2 times the hex size
-    const boardRadius =
-      this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
+  /**
+   * Phase 2: Render board structure from cache
+   */
+  private renderBoardCached(state: RootState): void {
+    const canvas = this.layerCache.getOrRenderBoard((ctx) => {
+      const center = this.layout.origin;
+      const boardRadius =
+        this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
 
-    // Draw board as a large hexagon with flat-top orientation (rotated 30° from pointy-top)
-    this.ctx.fillStyle = BOARD_HEX_BG;
-    this.drawFlatTopHexagon(center, boardRadius, true);
+      // Draw board as a large hexagon with flat-top orientation
+      ctx.fillStyle = BOARD_HEX_BG;
+      this.drawFlatTopHexagonToContext(ctx, center, boardRadius, true);
 
-    // Draw colored edges for each player
-    // Each player owns one edge of the board hexagon
-    if (state.game.players.length > 0) {
-      state.game.players.forEach((player) => {
-        this.renderPlayerEdge(
-          center,
-          boardRadius,
-          player.edgePosition,
-          player.color,
-          state.game.boardRadius,
-        );
+      // Draw colored edges for each player
+      if (state.game.players.length > 0) {
+        state.game.players.forEach((player) => {
+          this.renderPlayerEdgeToContext(
+            ctx,
+            center,
+            boardRadius,
+            player.edgePosition,
+            player.color,
+            state.game.boardRadius,
+          );
+        });
+      }
+
+      // Render all hex positions (grid)
+      const positions = getAllBoardPositions(state.game.boardRadius);
+      ctx.strokeStyle = "#666666";
+      ctx.lineWidth = 1;
+
+      positions.forEach((pos) => {
+        const hexCenter = hexToPixel(pos, this.layout);
+        this.drawHexagonToContext(ctx, hexCenter, this.layout.size, false);
       });
+    });
+    
+    // Composite cached board to main canvas
+    this.ctx.drawImage(canvas, 0, 0);
+  }
+
+  /**
+   * Phase 2: Invalidate caches based on state changes
+   */
+  private invalidateCachesBasedOnState(state: RootState): void {
+    // Track previous state for comparison
+    if (!this.previousStateForCache) {
+      this.previousStateForCache = {
+        boardRadius: state.game.boardRadius,
+        players: state.game.players.map(p => ({ id: p.id, color: p.color, edgePosition: p.edgePosition })),
+        canvasWidth: this.layout.canvasWidth,
+        canvasHeight: this.layout.canvasHeight,
+      };
+      return;
+    }
+
+    // Check if background should be invalidated
+    if (this.previousStateForCache.canvasWidth !== this.layout.canvasWidth ||
+        this.previousStateForCache.canvasHeight !== this.layout.canvasHeight) {
+      this.layerCache.invalidateBackground();
+      this.previousStateForCache.canvasWidth = this.layout.canvasWidth;
+      this.previousStateForCache.canvasHeight = this.layout.canvasHeight;
+    }
+
+    // Check if board should be invalidated
+    const playersChanged = 
+      this.previousStateForCache.players.length !== state.game.players.length ||
+      this.previousStateForCache.players.some((p, i) => {
+        const currentPlayer = state.game.players[i];
+        return !currentPlayer || 
+               p.id !== currentPlayer.id || 
+               p.color !== currentPlayer.color || 
+               p.edgePosition !== currentPlayer.edgePosition;
+      });
+    
+    const boardRadiusChanged = this.previousStateForCache.boardRadius !== state.game.boardRadius;
+
+    if (playersChanged || boardRadiusChanged || 
+        this.previousStateForCache.canvasWidth !== this.layout.canvasWidth ||
+        this.previousStateForCache.canvasHeight !== this.layout.canvasHeight) {
+      this.layerCache.invalidateBoard();
+      this.previousStateForCache.boardRadius = state.game.boardRadius;
+      this.previousStateForCache.players = state.game.players.map(p => ({ id: p.id, color: p.color, edgePosition: p.edgePosition }));
     }
   }
 
+  private previousStateForCache: {
+    boardRadius: number;
+    players: Array<{ id: string; color: string; edgePosition: number }>;
+    canvasWidth: number;
+    canvasHeight: number;
+  } | null = null;
+
+  /**
   private renderPlayerEdge(
+    center: Point,
+    radius: number,
+    edgePosition: number,
+    color: string,
+    boardRadius: number,
+  ): void {
+    this.renderPlayerEdgeToContext(this.ctx, center, radius, edgePosition, color, boardRadius);
+  }
+
+  /**
+   * Phase 2: Render player edge to a specific context
+   */
+  private renderPlayerEdgeToContext(
+    ctx: CanvasRenderingContext2D,
     center: Point,
     radius: number,
     edgePosition: number,
@@ -546,46 +642,46 @@ export class GameplayRenderer {
     ); // 60° in radians
 
     // Build the polygon
-    this.ctx.beginPath();
+    ctx.beginPath();
 
     // Start from the farther corner
-    this.ctx.moveTo(fartherCorner.x, fartherCorner.y);
+    ctx.moveTo(fartherCorner.x, fartherCorner.y);
 
     // Go to the closest point
-    this.ctx.lineTo(closestPoint.x, closestPoint.y);
+    ctx.lineTo(closestPoint.x, closestPoint.y);
 
     // Connect to the closer endpoint
-    this.ctx.lineTo(closerEndpoint.x, closerEndpoint.y);
+    ctx.lineTo(closerEndpoint.x, closerEndpoint.y);
 
     // Draw all the zig-zag vertices
     if (closerEndpoint === firstEndpoint) {
       // Draw forward through the zig-zag
       for (let i = 1; i < zigzagVertices.length; i++) {
-        this.ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
+        ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
       }
     } else {
       // Draw backward through the zig-zag
       for (let i = zigzagVertices.length - 2; i >= 0; i--) {
-        this.ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
+        ctx.lineTo(zigzagVertices[i].x, zigzagVertices[i].y);
       }
     }
 
     // Connect to the rotated point
-    this.ctx.lineTo(rotatedPoint.x, rotatedPoint.y);
+    ctx.lineTo(rotatedPoint.x, rotatedPoint.y);
 
     // Close the polygon (back to farther corner)
-    this.ctx.closePath();
+    ctx.closePath();
 
     // Fill and stroke
-    this.ctx.fillStyle = color;
-    this.ctx.globalAlpha = 1.0;
-    this.ctx.fill();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 1.0;
+    ctx.fill();
 
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = 1;
-    this.ctx.lineCap = "round";
-    this.ctx.lineJoin = "round";
-    this.ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
   }
 
   // Render victory stars at player edges
@@ -761,19 +857,6 @@ export class GameplayRenderer {
       x: center.x + dx * cos - dy * sin,
       y: center.y + dx * sin + dy * cos,
     };
-  }
-
-  private renderHexPositions(radius: number): void {
-    // Render all hex positions with subtle outlines
-    const positions = getAllBoardPositions(radius);
-
-    this.ctx.strokeStyle = "#666666"; // Dark gray outline
-    this.ctx.lineWidth = 1;
-
-    positions.forEach((pos) => {
-      const center = hexToPixel(pos, this.layout);
-      this.drawHexagon(center, this.layout.size, false);
-    });
   }
 
   private renderVictoryConditionEdges(state: RootState): void {
@@ -2752,21 +2835,43 @@ export class GameplayRenderer {
     }
   }
 
-  // Draw a flat-top hexagon (rotated 30° from pointy-top)
-  private drawFlatTopHexagon(center: Point, size: number, fill: boolean): void {
+  /**
+   * Phase 2: Draw flat-top hexagon to a specific context
+   */
+  private drawFlatTopHexagonToContext(ctx: CanvasRenderingContext2D, center: Point, size: number, fill: boolean): void {
     const vertices = this.getFlatTopHexVertices(center, size);
 
-    this.ctx.beginPath();
-    this.ctx.moveTo(vertices[0].x, vertices[0].y);
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x, vertices[0].y);
     for (let i = 1; i < vertices.length; i++) {
-      this.ctx.lineTo(vertices[i].x, vertices[i].y);
+      ctx.lineTo(vertices[i].x, vertices[i].y);
     }
-    this.ctx.closePath();
+    ctx.closePath();
 
     if (fill) {
-      this.ctx.fill();
+      ctx.fill();
     } else {
-      this.ctx.stroke();
+      ctx.stroke();
+    }
+  }
+
+  /**
+   * Phase 2: Draw hexagon to a specific context
+   */
+  private drawHexagonToContext(ctx: CanvasRenderingContext2D, center: Point, size: number, fill: boolean): void {
+    const vertices = getHexVertices(center, size);
+
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x, vertices[0].y);
+    for (let i = 1; i < vertices.length; i++) {
+      ctx.lineTo(vertices[i].x, vertices[i].y);
+    }
+    ctx.closePath();
+
+    if (fill) {
+      ctx.fill();
+    } else {
+      ctx.stroke();
     }
   }
 
