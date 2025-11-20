@@ -151,6 +151,15 @@ export class DirtyDetector {
       // Dialog visibility changed - full redraw
       dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
     }
+    
+    // Check for current player or current tile changes (affects tile preview at player edge)
+    if (
+      this.previousState.game.currentPlayerIndex !== currentState.game.currentPlayerIndex ||
+      this.previousState.game.currentTile !== currentState.game.currentTile
+    ) {
+      // Current player/tile changed - full redraw to update tile preview
+      dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+    }
 
     // Update previous state
     this.previousState = currentState;
