@@ -177,7 +177,13 @@ export class Renderer {
         this.ctx,
         this.canvas.width,
         this.canvas.height,
-        state.game.boardRadius
+        state.game.boardRadius,
+        () => {
+          // Trigger re-render when async resources (like wood texture) load
+          if (this.onRenderNeeded) {
+            this.onRenderNeeded();
+          }
+        }
       );
     }
 
@@ -198,7 +204,13 @@ export class Renderer {
         this.ctx,
         this.canvas.width,
         this.canvas.height,
-        state.game.boardRadius
+        state.game.boardRadius,
+        () => {
+          // Trigger re-render when async resources (like wood texture) load
+          if (this.onRenderNeeded) {
+            this.onRenderNeeded();
+          }
+        }
       );
     }
     this.gameplayRenderer.render(state);

@@ -70,16 +70,21 @@ export class GameplayRenderer {
   
   // Track if we're currently doing dirty region rendering (to disable expensive effects)
   private isDirtyRendering = false;
+  
+  // Callback to trigger re-render when async resources load
+  private onRenderNeeded: (() => void) | null = null;
 
   constructor(
     ctx: CanvasRenderingContext2D,
     canvasWidth: number,
     canvasHeight: number,
     boardRadius: number,
+    onRenderNeeded?: () => void,
   ) {
     this.ctx = ctx;
     this.boardRadius = boardRadius;
     this.layout = calculateHexLayout(canvasWidth, canvasHeight, boardRadius);
+    this.onRenderNeeded = onRenderNeeded || null;
     this.loadWoodTexture();
     
     // Initialize Phase 1 infrastructure
@@ -115,6 +120,10 @@ export class GameplayRenderer {
       this.woodBackgroundCanvas = null;
       // Phase 2: Also invalidate the layer cache
       this.layerCache.invalidateBackground();
+      // Trigger a re-render to show the loaded wood texture
+      if (this.onRenderNeeded) {
+        this.onRenderNeeded();
+      }
     };
     this.woodImage.src = cherryImageUrl;
   }
