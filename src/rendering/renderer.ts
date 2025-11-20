@@ -74,9 +74,9 @@ export class Renderer {
   render(state: RootState): UILayout {
     const { screen } = state.game;
 
-    // Clear canvas (unless dirty rendering is enabled in gameplay mode)
+    // Clear canvas (unless dirty rendering is enabled in gameplay or game-over mode)
     // When dirty rendering is enabled, the gameplayRenderer manages its own clearing
-    const skipClear = screen === 'gameplay' && state.ui.settings.enableDirtyRendering;
+    const skipClear = (screen === 'gameplay' || screen === 'game-over') && state.ui.settings.enableDirtyRendering;
     
     if (!skipClear) {
       this.ctx.fillStyle = '#1a1a2e';
