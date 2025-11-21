@@ -59,6 +59,7 @@ export class GameplayInputHandler {
     }
 
     // Check for exit button clicks in corners with UNTRANSFORMED coordinates
+    // These will dispatch resetGame which is fine for game-over too
     this.checkExitButtons(canvasX, canvasY, layout);
     
     // After corner buttons, check if we already handled the click
@@ -357,28 +358,38 @@ export class GameplayInputHandler {
     const margin = 10;
 
     const corners = [
-      { x: margin, y: margin, width: cornerSize, height: cornerSize },
+      { x: margin, y: margin, width: cornerSize, height: cornerSize, edge: 3 },
       {
         x: layout.canvasWidth - margin - cornerSize,
         y: margin,
         width: cornerSize,
         height: cornerSize,
+        edge: 2,
       },
       {
         x: layout.canvasWidth - margin - cornerSize,
         y: layout.canvasHeight - margin - cornerSize,
         width: cornerSize,
         height: cornerSize,
+        edge: 1,
       },
       {
         x: margin,
         y: layout.canvasHeight - margin - cornerSize,
         width: cornerSize,
         height: cornerSize,
+        edge: 0,
       },
     ];
 
+    const state = store.getState();
+
     for (const corner of corners) {
+      // In multiplayer mode, only allow clicks on bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && corner.edge !== 0) {
+        continue;
+      }
+
       if (
         x >= corner.x &&
         x <= corner.x + corner.width &&
@@ -386,7 +397,6 @@ export class GameplayInputHandler {
         y <= corner.y + corner.height
       ) {
         // Exit button clicked
-        const state = store.getState();
         
         // Check if in multiplayer mode and spectating
         if (state.ui.gameMode === 'multiplayer' && state.ui.isSpectator) {
@@ -438,8 +448,14 @@ export class GameplayInputHandler {
     ];
 
     const radius = cornerSize / 2;
+    const state = store.getState();
 
     for (const button of helpButtons) {
+      // In multiplayer mode, only allow clicks on bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && button.corner !== 0) {
+        continue;
+      }
+
       const dist = Math.sqrt(
         Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
       );
@@ -471,7 +487,9 @@ export class GameplayInputHandler {
 
     // Check if we're in gameplay mode (or game-over)
     if (state.game.screen !== 'gameplay' && state.game.screen !== 'game-over') return;
-    // For game-over we might not have currentTile, but we still want hover for buttons
+
+    // Handle gameplay screen check: must have currentTile for hover effects on board
+    // Game-over screen doesn't need currentTile for buttons
     if (state.game.screen === 'gameplay' && state.game.currentTile == null) return;
 
     const layout = this.renderer.getLayout();
@@ -482,28 +500,36 @@ export class GameplayInputHandler {
     const margin = 10;
 
     const corners = [
-      { x: margin, y: margin, width: cornerSize, height: cornerSize },
+      { x: margin, y: margin, width: cornerSize, height: cornerSize, edge: 3 },
       {
         x: layout.canvasWidth - margin - cornerSize,
         y: margin,
         width: cornerSize,
         height: cornerSize,
+        edge: 2,
       },
       {
         x: layout.canvasWidth - margin - cornerSize,
         y: layout.canvasHeight - margin - cornerSize,
         width: cornerSize,
         height: cornerSize,
+        edge: 1,
       },
       {
         x: margin,
         y: layout.canvasHeight - margin - cornerSize,
         width: cornerSize,
         height: cornerSize,
+        edge: 0,
       },
     ];
 
     for (const corner of corners) {
+      // In multiplayer mode, only allow hover on bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && corner.edge !== 0) {
+        continue;
+      }
+
       if (
         canvasX >= corner.x &&
         canvasX <= corner.x + corner.width &&
@@ -658,8 +684,14 @@ export class GameplayInputHandler {
     ];
 
     const radius = cornerSize / 2;
+    const state = store.getState();
 
     for (const button of moveListButtons) {
+      // In multiplayer mode, only allow clicks on bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && button.corner !== 0) {
+        continue;
+      }
+
       const dist = Math.sqrt(
         Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
       );
@@ -717,6 +749,11 @@ export class GameplayInputHandler {
     const radius = cornerSize / 2;
 
     for (const button of rematchButtons) {
+      // In multiplayer mode, only allow clicks on bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && button.corner !== 0) {
+        continue;
+      }
+
       const dist = Math.sqrt(
         Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
       );
