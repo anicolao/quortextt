@@ -120,18 +120,34 @@ export class DirtyDetector {
 
     // Check for animation frame counter - get specific dirty regions for animations
     if (this.previousState.animation.frameCounter !== currentState.animation.frameCounter) {
-      // Only mark dirty if animations are actually running
-      if (currentState.animation.animations.length > 0) {
-        // Get granular dirty regions for active animations
-        const animDirtyRects = this.getAnimationDirtyRegions(currentState);
-        
-        // If we got specific animation regions, use them
-        // Otherwise fall back to full canvas (e.g., if layout not set yet)
-        if (animDirtyRects.length > 0) {
-          dirtyRects.push(...animDirtyRects);
+      // Check for global animations (victory/supermove glow) that affect many parts of the screen
+      // If game over screen is active, we assume victory animation is running
+      if (currentState.game.screen === 'game-over') {
+        dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+      }
+      // Check for active animations in registry
+      else if (currentState.animation.animations.length > 0) {
+        // Check for global animations by name
+        const hasGlobalAnimation = currentState.animation.animations.some(anim =>
+          anim.animationName === 'victory-flow-glow' ||
+          anim.animationName === 'supermove-glow'
+        );
+
+        if (hasGlobalAnimation) {
+           // Global animation active - full redraw
+           dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
         } else {
-          // Fallback: mark entire canvas dirty if we can't determine specific regions
-          dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+          // Get granular dirty regions for active animations
+          const animDirtyRects = this.getAnimationDirtyRegions(currentState);
+
+          // If we got specific animation regions, use them
+          // Otherwise fall back to full canvas (e.g., if layout not set yet)
+          if (animDirtyRects.length > 0) {
+            dirtyRects.push(...animDirtyRects);
+          } else {
+            // Fallback: mark entire canvas dirty if we can't determine specific regions
+            dirtyRects.push({ x: 0, y: 0, width: canvasWidth, height: canvasHeight });
+          }
         }
       }
       // Otherwise, don't mark dirty - idle animation frames should not trigger redraws

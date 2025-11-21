@@ -40,8 +40,8 @@ function init() {
     const layout = renderer.render(state);
     inputHandler.setCurrentLayout(layout);
 
-    // Set up gameplay input handler if in gameplay mode
-    if (state.game.screen === 'gameplay') {
+    // Set up gameplay input handler if in gameplay mode or game-over
+    if (state.game.screen === 'gameplay' || state.game.screen === 'game-over') {
       const gameplayRenderer = renderer.getGameplayRenderer();
       if (gameplayRenderer) {
         const gameplayInput = new GameplayInputHandler(gameplayRenderer);

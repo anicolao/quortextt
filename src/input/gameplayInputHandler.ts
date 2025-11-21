@@ -51,13 +51,20 @@ export class GameplayInputHandler {
       return;
     }
 
+    // Check for rematch buttons if game over
+    if (state.game.screen === 'game-over') {
+      if (this.checkRematchButtons(canvasX, canvasY, layout)) {
+        return;
+      }
+    }
+
     // Check for exit button clicks in corners with UNTRANSFORMED coordinates
     this.checkExitButtons(canvasX, canvasY, layout);
     
     // After corner buttons, check if we already handled the click
     // (checkExitButtons dispatches resetGame which will change the state)
     const stateAfterExit = store.getState();
-    if (stateAfterExit.game.screen !== 'gameplay') {
+    if (stateAfterExit.game.screen !== 'gameplay' && stateAfterExit.game.screen !== 'game-over') {
       return;
     }
 
@@ -462,9 +469,10 @@ export class GameplayInputHandler {
       return;
     }
 
-    // Check if we're in gameplay mode
-    if (state.game.screen !== 'gameplay') return;
-    if (state.game.currentTile == null) return;
+    // Check if we're in gameplay mode (or game-over)
+    if (state.game.screen !== 'gameplay' && state.game.screen !== 'game-over') return;
+    // For game-over we might not have currentTile, but we still want hover for buttons
+    if (state.game.screen === 'gameplay' && state.game.currentTile == null) return;
 
     const layout = this.renderer.getLayout();
     let hoveredElement: HoveredElementType = null;
@@ -658,6 +666,65 @@ export class GameplayInputHandler {
       if (dist <= radius) {
         // Move list button clicked
         store.dispatch(showMoveList(button.corner as 0 | 1 | 2 | 3));
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private checkRematchButtons(
+    x: number,
+    y: number,
+    layout: { canvasWidth: number; canvasHeight: number }
+  ): boolean {
+    const state = store.getState();
+    // No rematch buttons for spectators
+    if (state.ui.isSpectator) return false;
+
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+    const tripleSpacing = 3 * (cornerSize + spacing);
+
+    const rematchButtons = [
+      {
+        // Edge 0 (bottom): after exit, help, and move list buttons
+        centerX: margin + cornerSize / 2 + tripleSpacing,
+        centerY: layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+      },
+      {
+        // Edge 1 (right): after exit, help, and move list buttons
+        centerX: layout.canvasWidth - margin - cornerSize / 2,
+        centerY: layout.canvasHeight - margin - cornerSize / 2 - tripleSpacing,
+        corner: 1,
+      },
+      {
+        // Edge 2 (top): after exit, help, and move list buttons
+        centerX: layout.canvasWidth - margin - cornerSize / 2 - tripleSpacing,
+        centerY: margin + cornerSize / 2,
+        corner: 2,
+      },
+      {
+        // Edge 3 (left): after exit, help, and move list buttons
+        centerX: margin + cornerSize / 2,
+        centerY: margin + cornerSize / 2 + tripleSpacing,
+        corner: 3,
+      },
+    ];
+
+    const radius = cornerSize / 2;
+
+    for (const button of rematchButtons) {
+      const dist = Math.sqrt(
+        Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
+      );
+      if (dist <= radius) {
+        // Rematch button clicked - reset game
+        // In multiplayer mode, this might need to send a rematch request,
+        // but resetGame handles returning to lobby which is standard flow
+        store.dispatch(resetGame());
         return true;
       }
     }
