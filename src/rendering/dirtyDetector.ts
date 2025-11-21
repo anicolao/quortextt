@@ -128,8 +128,8 @@ export class DirtyDetector {
       // Check for active animations in registry
       else if (currentState.animation.animations.length > 0) {
         // Check for global animations by name
-        const hasGlobalAnimation = currentState.animation.animations.some(anim =>
-          anim.animationName === 'victory-flow-glow' ||
+        const hasGlobalAnimation = currentState.animation.animations.some(anim => 
+          anim.animationName === 'victory-flow-glow' || 
           anim.animationName === 'supermove-glow'
         );
 
@@ -139,7 +139,7 @@ export class DirtyDetector {
         } else {
           // Get granular dirty regions for active animations
           const animDirtyRects = this.getAnimationDirtyRegions(currentState);
-
+          
           // If we got specific animation regions, use them
           // Otherwise fall back to full canvas (e.g., if layout not set yet)
           if (animDirtyRects.length > 0) {
