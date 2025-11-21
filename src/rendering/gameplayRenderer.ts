@@ -38,6 +38,7 @@ import cherryImageUrl from "../../assets/cherry.jpg";
 import { DirtyRegionTracker } from "./dirtyRegion";
 import { LayerCache } from "./layerCache";
 import { DirtyDetector } from "./dirtyDetector";
+import { OverlayCanvasPool } from "./overlayCanvasPool";
 
 // UI Colors from design spec
 const CANVAS_BG = "#e8e8e8"; // Light gray "table"
@@ -59,6 +60,7 @@ export class GameplayRenderer {
   private dirtyRegionTracker: DirtyRegionTracker;
   private layerCache: LayerCache;
   private dirtyDetector: DirtyDetector;
+  private overlayPool: OverlayCanvasPool | null;
   
   // Render metrics for debugging
   private renderMetrics = {
@@ -79,11 +81,13 @@ export class GameplayRenderer {
     canvasWidth: number,
     canvasHeight: number,
     boardRadius: number,
+    overlayPool: OverlayCanvasPool | null,
     onRenderNeeded?: () => void,
   ) {
     this.ctx = ctx;
     this.boardRadius = boardRadius;
     this.layout = calculateHexLayout(canvasWidth, canvasHeight, boardRadius);
+    this.overlayPool = overlayPool;
     this.onRenderNeeded = onRenderNeeded || null;
     this.loadWoodTexture();
     
@@ -416,114 +420,141 @@ export class GameplayRenderer {
     
     // Get board to render (handles move history)
     const boardToRender = this.getBoardAtMoveIndex(state);
+    const originalCtx = this.ctx;
     
     for (const region of regions) {
-      // Set up clipping for this dirty region
-      this.ctx.save();
-      this.ctx.beginPath();
-      this.ctx.rect(region.x, region.y, region.width, region.height);
-      this.ctx.clip();
+      let overlay: import('./overlayCanvasPool').OverlayCanvas | null = null;
+
+      // Use overlay pool if available, otherwise fall back to clipping
+      if (this.overlayPool) {
+        overlay = this.overlayPool.acquire(region);
+        this.ctx = overlay.ctx;
+
+        // Translate context so that drawing at (region.x, region.y) lands at (0, 0) of overlay
+        this.ctx.save();
+        this.ctx.translate(-region.x, -region.y);
+      } else {
+        // Set up clipping for this dirty region on main canvas
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(region.x, region.y, region.width, region.height);
+        this.ctx.clip();
+
+        // Clear dirty region
+        this.ctx.clearRect(region.x, region.y, region.width, region.height);
+      }
       
-      // Clear dirty region
-      this.ctx.clearRect(region.x, region.y, region.width, region.height);
-      
-      // Render background directly (optimized to only draw dirty part)
-      this.renderBackgroundDirect(region);
-      
-      // Apply board rotation for rotated layers
-      this.ctx.save();
-      if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
-        const localPlayer = state.game.players.find(p => p.id === state.ui.localPlayerId);
-        if (localPlayer) {
-          const edgeAngles = [0, 60, 120, 180, 240, 300];
-          const rotationAngle = -edgeAngles[localPlayer.edgePosition] + 180;
+      try {
+        // Render background directly (optimized to only draw dirty part)
+        this.renderBackgroundDirect(region);
+
+        // Apply board rotation for rotated layers
+        this.ctx.save();
+        if (state.ui.gameMode === 'multiplayer' && state.ui.localPlayerId && state.game.players.length > 0) {
+          const localPlayer = state.game.players.find(p => p.id === state.ui.localPlayerId);
+          if (localPlayer) {
+            const edgeAngles = [0, 60, 120, 180, 240, 300];
+            const rotationAngle = -edgeAngles[localPlayer.edgePosition] + 180;
+
+            this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
+            this.ctx.rotate((rotationAngle * Math.PI) / 180);
+            this.ctx.translate(-this.layout.canvasWidth / 2, -this.layout.canvasHeight / 2);
+          }
+        }
+
+        // Render board directly (optimized to filter elements)
+        this.renderBoardDirect(state, region);
+
+        // OPTIMIZATION: Only render tiles that intersect this dirty region
+        const tilesInRegion = this.getTilesInRegion(boardToRender, region, state);
+
+        // Multi-pass rendering for correct layering (only for tiles in region)
+        // Pass 1: Draw tile backgrounds
+        tilesInRegion.forEach((tile) => {
+          this.renderTileBackground(tile, 1.0);
+        });
+
+        // Pass 2: Draw grey channels (unfilled connections)
+        tilesInRegion.forEach((tile) => {
+          this.renderGreyChannels(tile, state);
+        });
+
+        // Pass 3: Draw filled flows
+        tilesInRegion.forEach((tile) => {
+          this.renderFilledFlows(tile, state);
+        });
+
+        // Pass 4: Draw animating flows
+        tilesInRegion.forEach((tile) => {
+          this.renderAnimatingFlows(tile, state);
+        });
+
+        // Render other dynamic elements that might be in this region
+        // Note: These still iterate all elements but are typically small sets
+        if (state.ui.settings.debugShowEdgeLabels) {
+          this.renderEdgeDirectionLabels(state.game.boardRadius);
+        }
+
+        if (state.ui.settings.debugShowVictoryEdges) {
+          this.renderVictoryConditionEdges(state);
+        }
+
+        if (state.ui.settings.debugAIScoring && state.game.aiScoringData) {
+          this.renderAIScoring(state);
+        }
+
+        this.renderLastPlacedTileHighlight(state);
+        this.renderCurrentTilePreview(state);
+        this.renderActionButtons(state);
+
+        if (state.game.screen === "game-over") {
+          this.renderVictoryStars(state);
+        }
+
+        if (state.ui.settings.debugLegalityTest) {
+          this.renderDebugLegalityPaths(state);
+        }
+
+        if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
+          this.renderDebugHitTestOutline(state.ui.hoveredElement);
+        }
+
+        if (state.ui.settings.debugHitTest) {
+          this.renderDebugApexVertex(state);
+        }
+
+        // Restore rotation
+        this.ctx.restore();
+
+        // Render UI elements (not rotated)
+        this.renderExitButtons(state);
+        this.renderSpectatorIndicator(state);
+        this.renderHelpButtons(state);
+        this.renderMoveListButtons(state);
+
+        if (state.ui.showHelp && state.ui.helpCorner !== null) {
+          this.renderHelpDialog(state.ui.helpCorner, state);
+        }
+
+        if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
+          this.renderMoveListDialog(state.ui.moveListCorner, state);
+        }
+      } finally {
+        // Restore context state (clipping or translation)
+        this.ctx.restore();
+
+        // If using overlay, blit to main canvas and cleanup
+        if (overlay && this.overlayPool) {
+          // Blit overlay to main canvas
+          originalCtx.drawImage(overlay.canvas, region.x, region.y);
+
+          // Restore original context for next iteration/cleanup
+          this.ctx = originalCtx;
           
-          this.ctx.translate(this.layout.canvasWidth / 2, this.layout.canvasHeight / 2);
-          this.ctx.rotate((rotationAngle * Math.PI) / 180);
-          this.ctx.translate(-this.layout.canvasWidth / 2, -this.layout.canvasHeight / 2);
+          // Release overlay
+          this.overlayPool.release(overlay);
         }
       }
-      
-      // Render board directly (optimized to filter elements)
-      this.renderBoardDirect(state, region);
-      
-      // OPTIMIZATION: Only render tiles that intersect this dirty region
-      const tilesInRegion = this.getTilesInRegion(boardToRender, region, state);
-      
-      // Multi-pass rendering for correct layering (only for tiles in region)
-      // Pass 1: Draw tile backgrounds
-      tilesInRegion.forEach((tile) => {
-        this.renderTileBackground(tile, 1.0);
-      });
-      
-      // Pass 2: Draw grey channels (unfilled connections)
-      tilesInRegion.forEach((tile) => {
-        this.renderGreyChannels(tile, state);
-      });
-      
-      // Pass 3: Draw filled flows
-      tilesInRegion.forEach((tile) => {
-        this.renderFilledFlows(tile, state);
-      });
-      
-      // Pass 4: Draw animating flows
-      tilesInRegion.forEach((tile) => {
-        this.renderAnimatingFlows(tile, state);
-      });
-      
-      // Render other dynamic elements that might be in this region
-      // Note: These still iterate all elements but are typically small sets
-      if (state.ui.settings.debugShowEdgeLabels) {
-        this.renderEdgeDirectionLabels(state.game.boardRadius);
-      }
-      
-      if (state.ui.settings.debugShowVictoryEdges) {
-        this.renderVictoryConditionEdges(state);
-      }
-      
-      if (state.ui.settings.debugAIScoring && state.game.aiScoringData) {
-        this.renderAIScoring(state);
-      }
-      
-      this.renderLastPlacedTileHighlight(state);
-      this.renderCurrentTilePreview(state);
-      this.renderActionButtons(state);
-      
-      if (state.game.screen === "game-over") {
-        this.renderVictoryStars(state);
-      }
-      
-      if (state.ui.settings.debugLegalityTest) {
-        this.renderDebugLegalityPaths(state);
-      }
-      
-      if (state.ui.settings.debugHitTest && state.ui.hoveredElement) {
-        this.renderDebugHitTestOutline(state.ui.hoveredElement);
-      }
-      
-      if (state.ui.settings.debugHitTest) {
-        this.renderDebugApexVertex(state);
-      }
-      
-      // Restore rotation
-      this.ctx.restore();
-      
-      // Render UI elements (not rotated)
-      this.renderExitButtons(state);
-      this.renderSpectatorIndicator(state);
-      this.renderHelpButtons(state);
-      this.renderMoveListButtons(state);
-      
-      if (state.ui.showHelp && state.ui.helpCorner !== null) {
-        this.renderHelpDialog(state.ui.helpCorner, state);
-      }
-      
-      if (state.ui.showMoveList && state.ui.moveListCorner !== null) {
-        this.renderMoveListDialog(state.ui.moveListCorner, state);
-      }
-      
-      // Restore clipping region
-      this.ctx.restore();
     }
     
     // Restore full canvas state
