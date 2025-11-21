@@ -1,10 +1,14 @@
 /**
  * Overlay Canvas Pool
  * 
- * Manages a pool of reusable overlay canvases for dirty region rendering.
+ * Manages a pool of reusable off-screen canvases for dirty region rendering.
  * On Pi 5, canvas GPU operations scale with canvas pixel dimensions, so rendering
  * to small overlay canvases positioned over dirty regions provides true O(dirty region)
  * performance instead of O(full canvas).
+ *
+ * Note: These canvases are NOT added to the DOM. They serve as off-screen buffers
+ * which are then blitted to the main canvas. Adding them to the DOM caused
+ * performance issues due to layout/compositing overhead.
  */
 
 import { DirtyRect } from './dirtyRegion';
@@ -17,11 +21,10 @@ export interface OverlayCanvas {
 
 export class OverlayCanvasPool {
   private pool: OverlayCanvas[] = [];
-  private container: HTMLElement;
   private maxPoolSize = 10; // Limit pool size to avoid memory issues
 
-  constructor(container: HTMLElement) {
-    this.container = container;
+  constructor() {
+    // No container needed as we use off-screen canvases
   }
 
   /**
@@ -46,14 +49,10 @@ export class OverlayCanvasPool {
     // Mark as in use
     overlay.inUse = true;
 
-    // Size and position the canvas to match the dirty region
-    this.positionOverlay(overlay, region);
-
-    // Make visible
-    overlay.canvas.style.opacity = '1';
-
-    // Clear the canvas
-    overlay.ctx.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
+    // Set canvas size (physical pixels)
+    // Setting width/height clears the canvas content and resets context state
+    overlay.canvas.width = region.width;
+    overlay.canvas.height = region.height;
 
     return overlay;
   }
@@ -63,16 +62,13 @@ export class OverlayCanvasPool {
    */
   release(overlay: OverlayCanvas): void {
     overlay.inUse = false;
-    // Hide the canvas
-    overlay.canvas.style.opacity = '0';
   }
 
   /**
-   * Hide all overlay canvases (used when doing full repaint)
+   * Reset all overlay canvases (used when doing full repaint)
    */
   hideAll(): void {
     this.pool.forEach(overlay => {
-      overlay.canvas.style.opacity = '0';
       overlay.inUse = false;
     });
   }
@@ -88,43 +84,15 @@ export class OverlayCanvasPool {
       throw new Error('Failed to get 2D context for overlay canvas');
     }
 
-    // Style the canvas
-    canvas.style.position = 'absolute';
-    canvas.style.pointerEvents = 'none'; // Don't intercept mouse events
-    canvas.style.opacity = '0'; // Hidden by default
-    canvas.style.zIndex = '10'; // Above main canvas
-    canvas.style.imageRendering = 'auto';
-
-    // Add to container
-    this.container.appendChild(canvas);
+    // We don't style the canvas or add it to DOM anymore
 
     return { canvas, ctx, inUse: false };
-  }
-
-  /**
-   * Position and size an overlay canvas to match a dirty region
-   */
-  private positionOverlay(overlay: OverlayCanvas, region: DirtyRect): void {
-    const { canvas } = overlay;
-
-    // Set canvas size (physical pixels)
-    canvas.width = region.width;
-    canvas.height = region.height;
-
-    // Position using CSS
-    canvas.style.left = `${region.x}px`;
-    canvas.style.top = `${region.y}px`;
-    canvas.style.width = `${region.width}px`;
-    canvas.style.height = `${region.height}px`;
   }
 
   /**
    * Clean up all overlay canvases (call on component unmount)
    */
   destroy(): void {
-    this.pool.forEach(overlay => {
-      this.container.removeChild(overlay.canvas);
-    });
     this.pool = [];
   }
 }

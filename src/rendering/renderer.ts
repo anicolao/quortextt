@@ -40,9 +40,7 @@ export class Renderer {
     this.ctx = ctx;
 
     // Initialize overlay pool for dirty region optimization
-    if (canvas.parentElement) {
-      this.overlayCanvasPool = new OverlayCanvasPool(canvas.parentElement);
-    }
+    this.overlayCanvasPool = new OverlayCanvasPool();
 
     this.resizeCanvas();
   }
