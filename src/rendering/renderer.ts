@@ -8,7 +8,6 @@ import { LobbyRenderer } from './lobbyRenderer';
 import { LobbyLayout } from './lobbyLayout';
 import { SeatingRenderer } from './seatingRenderer';
 import { SeatingLayout } from './seatingRenderer';
-import { GameOverRenderer, GameOverLayout } from './gameOverRenderer';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -21,8 +20,6 @@ export class Renderer {
   private currentLobbyLayout: LobbyLayout | null = null;
   private seatingRenderer: SeatingRenderer | null = null;
   private currentSeatingLayout: SeatingLayout | null = null;
-  private gameOverRenderer: GameOverRenderer | null = null;
-  private currentGameOverLayout: GameOverLayout | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -95,10 +92,9 @@ export class Renderer {
       return this.renderConfigurationScreenNew(state);
     } else if (screen === 'seating') {
       return this.renderSeatingScreen(state);
-    } else if (screen === 'gameplay') {
+    } else if (screen === 'gameplay' || screen === 'game-over') {
+      // Treat game-over as gameplay screen (just with different overlays)
       return this.renderGameplayScreen(state);
-    } else if (screen === 'game-over') {
-      return this.renderGameOverScreen(state);
     }
 
     return this.createEmptyLayout();
@@ -204,45 +200,6 @@ export class Renderer {
 
   getGameplayRenderer(): GameplayRenderer | null {
     return this.gameplayRenderer;
-  }
-
-  private renderGameOverScreen(state: RootState): UILayout {
-    // First render the gameplay board so the winning flow is visible
-    if (!this.gameplayRenderer) {
-      this.gameplayRenderer = new GameplayRenderer(
-        this.ctx,
-        this.canvas.width,
-        this.canvas.height,
-        state.game.boardRadius,
-        this.overlayCanvasPool,
-        () => {
-          // Trigger re-render when async resources (like wood texture) load
-          if (this.onRenderNeeded) {
-            this.onRenderNeeded();
-          }
-        }
-      );
-    }
-    this.gameplayRenderer.render(state);
-
-    // Then render the victory modals on top
-    if (!this.gameOverRenderer) {
-      this.gameOverRenderer = new GameOverRenderer(this.ctx);
-    }
-
-    // Render the game over screen (victory modals)
-    this.currentGameOverLayout = this.gameOverRenderer.render(
-      this.canvas.width,
-      this.canvas.height,
-      state
-    );
-
-    // Return empty UILayout for compatibility
-    return this.createEmptyLayout();
-  }
-
-  getGameOverLayout(): GameOverLayout | null {
-    return this.currentGameOverLayout;
   }
 
   private createEmptyLayout(): UILayout {
