@@ -2770,7 +2770,7 @@ export class GameplayRenderer {
     if (state.ui.isSpectator) {
       return;
     }
-
+    
     // Render circular rematch buttons after move list buttons in each corner
     // Each button has a counter-clockwise circular arrow
     const cornerSize = 50;
@@ -2780,9 +2780,9 @@ export class GameplayRenderer {
     const tripleSpacing = 3 * (cornerSize + spacing); // Position after exit, help, and move list buttons
 
     const corners = [
-      {
+      { 
         // Edge 0 (bottom): after exit, help, and move list buttons
-        x: margin + cornerSize / 2 + tripleSpacing,
+        x: margin + cornerSize / 2 + tripleSpacing, 
         y: this.layout.canvasHeight - margin - cornerSize / 2,
         corner: 0,
         edge: 0, // Bottom edge
@@ -2804,7 +2804,7 @@ export class GameplayRenderer {
       {
         // Edge 3 (left): after exit, help, and move list buttons
         x: margin + cornerSize / 2,
-        y: margin + cornerSize / 2 + tripleSpacing,
+        y: margin + cornerSize / 2 + tripleSpacing, 
         corner: 3,
         edge: 3, // Left edge
       },

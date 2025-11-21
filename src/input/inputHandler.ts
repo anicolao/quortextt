@@ -12,7 +12,6 @@ import {
 import { GameplayInputHandler } from './gameplayInputHandler';
 import { LobbyInputHandler } from './lobbyInputHandler';
 import { SeatingInputHandler } from './seatingInputHandler';
-import { GameOverInputHandler } from './gameOverInputHandler';
 
 export class InputHandler {
   private renderer: Renderer;
@@ -20,13 +19,11 @@ export class InputHandler {
   private gameplayInputHandler: GameplayInputHandler | null = null;
   private lobbyInputHandler: LobbyInputHandler;
   private seatingInputHandler: SeatingInputHandler;
-  private gameOverInputHandler: GameOverInputHandler;
 
   constructor(renderer: Renderer) {
     this.renderer = renderer;
     this.lobbyInputHandler = new LobbyInputHandler();
     this.seatingInputHandler = new SeatingInputHandler();
-    this.gameOverInputHandler = new GameOverInputHandler();
     this.setupEventListeners();
   }
 
@@ -87,10 +84,9 @@ export class InputHandler {
       return;
     }
 
-    // Game over screen handling
-    if (state.game.screen === 'game-over') {
-      const gameOverLayout = this.renderer.getGameOverLayout();
-      this.gameOverInputHandler.handleClick(x, y, gameOverLayout, canvas.width, canvas.height);
+    // Game over screen handling - now handled by gameplay input handler (same renderer)
+    if (state.game.screen === 'game-over' && this.gameplayInputHandler) {
+      this.gameplayInputHandler.handleClick(x, y);
       return;
     }
 
@@ -159,9 +155,9 @@ export class InputHandler {
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
 
-    // Check if in gameplay mode
+    // Check if in gameplay or game-over mode
     const state = store.getState();
-    if (state.game.screen === 'gameplay' && this.gameplayInputHandler) {
+    if ((state.game.screen === 'gameplay' || state.game.screen === 'game-over') && this.gameplayInputHandler) {
       this.gameplayInputHandler.handleMouseMove(x, y);
       return;
     }

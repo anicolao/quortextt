@@ -35,9 +35,12 @@ export class GameplayInputHandler {
       return;
     }
 
-    // Check if we're in gameplay mode
-    if (state.game.screen !== 'gameplay') return;
-    if (state.game.currentTile == null) return;
+    // Check if we're in gameplay or game-over mode
+    if (state.game.screen !== 'gameplay' && state.game.screen !== 'game-over') return;
+    
+    // For gameplay, we need a current tile to do most things (except corner buttons)
+    // For game-over, we don't have a current tile but still need to handle buttons
+    if (state.game.screen === 'gameplay' && state.game.currentTile == null) return;
 
     const layout = this.renderer.getLayout();
 
@@ -96,6 +99,9 @@ export class GameplayInputHandler {
         Math.pow(y - buttonPositions.checkmark.y, 2)
       );
       if (distToCheck < buttonSize / 2) {
+      // Ensure currentTile is set (should be if we're in this block, but TS doesn't know)
+      if (state.game.currentTile == null) return;
+      
         // Checkmark clicked - place or replace the tile
         const posKey = positionToKey(state.ui.selectedPosition);
         const isOccupied = state.game.board.has(posKey);
@@ -487,7 +493,7 @@ export class GameplayInputHandler {
 
     // Check if we're in gameplay mode (or game-over)
     if (state.game.screen !== 'gameplay' && state.game.screen !== 'game-over') return;
-
+    
     // Handle gameplay screen check: must have currentTile for hover effects on board
     // Game-over screen doesn't need currentTile for buttons
     if (state.game.screen === 'gameplay' && state.game.currentTile == null) return;
@@ -720,9 +726,9 @@ export class GameplayInputHandler {
     const tripleSpacing = 3 * (cornerSize + spacing);
 
     const rematchButtons = [
-      {
+      { 
         // Edge 0 (bottom): after exit, help, and move list buttons
-        centerX: margin + cornerSize / 2 + tripleSpacing,
+        centerX: margin + cornerSize / 2 + tripleSpacing, 
         centerY: layout.canvasHeight - margin - cornerSize / 2,
         corner: 0,
       },
@@ -741,7 +747,7 @@ export class GameplayInputHandler {
       {
         // Edge 3 (left): after exit, help, and move list buttons
         centerX: margin + cornerSize / 2,
-        centerY: margin + cornerSize / 2 + tripleSpacing,
+        centerY: margin + cornerSize / 2 + tripleSpacing, 
         corner: 3,
       },
     ];
@@ -759,7 +765,7 @@ export class GameplayInputHandler {
       );
       if (dist <= radius) {
         // Rematch button clicked - reset game
-        // In multiplayer mode, this might need to send a rematch request,
+        // In multiplayer mode, this might need to send a rematch request, 
         // but resetGame handles returning to lobby which is standard flow
         store.dispatch(resetGame());
         return true;
