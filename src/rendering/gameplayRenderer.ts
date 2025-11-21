@@ -367,18 +367,27 @@ export class GameplayRenderer {
   /**
    * Phase 3: Get tiles that intersect with a dirty region (spatial filtering)
    */
-  private getTilesInRegion(board: Map<string, PlacedTile>, region: import('./dirtyRegion').DirtyRect): PlacedTile[] {
+  private getTilesInRegion(
+    board: Map<string, PlacedTile>,
+    region: import('./dirtyRegion').DirtyRect,
+    state: RootState
+  ): PlacedTile[] {
     const tilesInRegion: PlacedTile[] = [];
     
     // Iterate through all tiles and check if they intersect the dirty region
     board.forEach((tile) => {
-      const pixelPos = hexToPixel(tile.position, this.layout);
+      // Get tile position in canonical space
+      const canonicalPos = hexToPixel(tile.position, this.layout);
+
+      // Transform to screen space (accounting for rotation)
+      const screenPos = this.transformCanonicalToScreen(canonicalPos.x, canonicalPos.y, state);
+
       const tileRadius = this.layout.size * 1.3; // Add margin for tile + flow rendering
       
       // Check if tile's bounding box intersects with dirty region
       const tileBounds = {
-        x: pixelPos.x - tileRadius,
-        y: pixelPos.y - tileRadius,
+        x: screenPos.x - tileRadius,
+        y: screenPos.y - tileRadius,
         width: tileRadius * 2,
         height: tileRadius * 2,
       };
@@ -418,8 +427,8 @@ export class GameplayRenderer {
       // Clear dirty region
       this.ctx.clearRect(region.x, region.y, region.width, region.height);
       
-      // Render background directly (avoid O(canvas size) drawImage from cached canvas)
-      this.renderBackgroundDirect();
+      // Render background directly (optimized to only draw dirty part)
+      this.renderBackgroundDirect(region);
       
       // Apply board rotation for rotated layers
       this.ctx.save();
@@ -435,11 +444,11 @@ export class GameplayRenderer {
         }
       }
       
-      // Render board directly (avoid O(canvas size) drawImage from cached canvas)
-      this.renderBoardDirect(state);
+      // Render board directly (optimized to filter elements)
+      this.renderBoardDirect(state, region);
       
       // OPTIMIZATION: Only render tiles that intersect this dirty region
-      const tilesInRegion = this.getTilesInRegion(boardToRender, region);
+      const tilesInRegion = this.getTilesInRegion(boardToRender, region, state);
       
       // Multi-pass rendering for correct layering (only for tiles in region)
       // Pass 1: Draw tile backgrounds
@@ -526,9 +535,9 @@ export class GameplayRenderer {
 
   /**
    * Phase 3: Render background directly to main canvas (for dirty rendering)
-   * Avoids O(canvas size) drawImage from cached canvas
+   * Avoids O(canvas size) drawImage from cached canvas by only drawing dirty region
    */
-  private renderBackgroundDirect(): void {
+  private renderBackgroundDirect(region?: import('./dirtyRegion').DirtyRect): void {
     // Regenerate background if image just loaded
     if (this.woodImageLoaded && !this.woodBackgroundCanvas) {
       this.woodBackgroundCanvas = this.createWoodBackground();
@@ -539,7 +548,16 @@ export class GameplayRenderer {
     
     // Draw the wood background directly to main canvas
     if (this.woodBackgroundCanvas) {
-      this.ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
+      if (region) {
+        // Draw only the dirty region from the background canvas
+        this.ctx.drawImage(
+          this.woodBackgroundCanvas,
+          region.x, region.y, region.width, region.height, // source rect
+          region.x, region.y, region.width, region.height  // dest rect
+        );
+      } else {
+        this.ctx.drawImage(this.woodBackgroundCanvas, 0, 0);
+      }
     }
   }
 
@@ -567,29 +585,85 @@ export class GameplayRenderer {
   }
 
   /**
+   * Transform canonical coordinates (unrotated) to screen coordinates (possibly rotated)
+   */
+  private transformCanonicalToScreen(x: number, y: number, state: RootState): { x: number; y: number } {
+    const rotationAngle = this.getBoardRotationAngle(state);
+    if (rotationAngle === 0) {
+      return { x, y };
+    }
+
+    const centerX = this.layout.canvasWidth / 2;
+    const centerY = this.layout.canvasHeight / 2;
+
+    // Translate to origin
+    const translatedX = x - centerX;
+    const translatedY = y - centerY;
+
+    // Rotate (forward rotation)
+    const rotationRad = (rotationAngle * Math.PI) / 180;
+    const cos = Math.cos(rotationRad);
+    const sin = Math.sin(rotationRad);
+
+    const rotatedX = translatedX * cos - translatedY * sin;
+    const rotatedY = translatedX * sin + translatedY * cos;
+
+    // Translate back
+    return {
+      x: rotatedX + centerX,
+      y: rotatedY + centerY
+    };
+  }
+
+  /**
    * Phase 3: Render board structure directly to main canvas (for dirty rendering)
    * Avoids O(canvas size) drawImage from cached canvas
    */
-  private renderBoardDirect(state: RootState): void {
+  private renderBoardDirect(state: RootState, region?: import('./dirtyRegion').DirtyRect): void {
     const center = this.layout.origin;
     const boardRadius =
       this.layout.size * calculateBoardRadiusMultiplier(state.game.boardRadius);
 
-    // Draw board as a large hexagon with flat-top orientation
+    // Draw board as a large hexagon with flat-top orientation (background)
+    // Since this is a single large polygon, we just draw it (clipping handles the rest)
     this.ctx.fillStyle = BOARD_HEX_BG;
     this.drawFlatTopHexagonToContext(this.ctx, center, boardRadius, true);
 
     // Draw colored edges for each player
     if (state.game.players.length > 0) {
       state.game.players.forEach((player) => {
-        this.renderPlayerEdgeToContext(
-          this.ctx,
-          center,
-          boardRadius,
-          player.edgePosition,
-          player.color,
-          state.game.boardRadius,
-        );
+        // Optimization: Check if edge is in dirty region
+        let shouldDraw = true;
+        if (region) {
+          // Approximate check: convert player edge center to screen and check intersection
+          // This is a rough approximation but safe
+          const edgePos = getPlayerEdgePosition(player.edgePosition, this.layout, state.game.boardRadius);
+          const screenPos = this.transformCanonicalToScreen(edgePos.x, edgePos.y, state);
+          const edgeRadius = this.layout.size * 2; // Large radius to cover the whole edge area
+
+          const edgeBounds = {
+            x: screenPos.x - edgeRadius,
+            y: screenPos.y - edgeRadius,
+            width: edgeRadius * 2,
+            height: edgeRadius * 2,
+          };
+
+          shouldDraw = !(edgeBounds.x + edgeBounds.width < region.x ||
+                        edgeBounds.x > region.x + region.width ||
+                        edgeBounds.y + edgeBounds.height < region.y ||
+                        edgeBounds.y > region.y + region.height);
+        }
+
+        if (shouldDraw) {
+          this.renderPlayerEdgeToContext(
+            this.ctx,
+            center,
+            boardRadius,
+            player.edgePosition,
+            player.color,
+            state.game.boardRadius,
+          );
+        }
       });
     }
 
@@ -600,6 +674,21 @@ export class GameplayRenderer {
 
     positions.forEach((pos) => {
       const hexCenter = hexToPixel(pos, this.layout);
+
+      // Optimization: Check if hex is in dirty region
+      if (region) {
+        const screenPos = this.transformCanonicalToScreen(hexCenter.x, hexCenter.y, state);
+        const hexRadius = this.layout.size;
+
+        // Quick bounding box check
+        if (screenPos.x + hexRadius < region.x ||
+            screenPos.x - hexRadius > region.x + region.width ||
+            screenPos.y + hexRadius < region.y ||
+            screenPos.y - hexRadius > region.y + region.height) {
+          return; // Skip this hex
+        }
+      }
+
       this.drawHexagonToContext(this.ctx, hexCenter, this.layout.size, false);
     });
   }
