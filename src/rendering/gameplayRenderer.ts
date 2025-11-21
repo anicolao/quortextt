@@ -188,6 +188,12 @@ export class GameplayRenderer {
 
   render(state: RootState): void {
     const startTime = performance.now();
+
+    // Phase 0: Don't render anything if the wood texture hasn't loaded yet
+    // This prevents the "white flash" or "solid color" appearance on startup
+    if (!this.woodImageLoaded && !this.woodBackgroundCanvas) {
+      return;
+    }
     
     // Phase 3: Use dirty rendering when enabled
     if (state.ui.settings.enableDirtyRendering) {
@@ -356,6 +362,11 @@ export class GameplayRenderer {
 
     // Layer 6.6: Move list buttons in corners (only show on current player's edge in multiplayer mode)
     this.renderMoveListButtons(state);
+
+    // Layer 6.65: Rematch buttons (if game over and not spectator)
+    if (state.game.screen === 'game-over') {
+      this.renderRematchButtons(state);
+    }
 
     // Layer 6.7: Help dialog if open
     if (state.ui.showHelp && state.ui.helpCorner !== null) {
@@ -2752,6 +2763,102 @@ export class GameplayRenderer {
 
     // Restore context state
     this.ctx.restore();
+  }
+
+  private renderRematchButtons(state: RootState): void {
+    // Don't render rematch buttons for spectators
+    if (state.ui.isSpectator) {
+      return;
+    }
+
+    // Render circular rematch buttons after move list buttons in each corner
+    // Each button has a counter-clockwise circular arrow
+    const cornerSize = 50;
+    const margin = 10;
+    const spacing = cornerSize * 0.15;
+    const radius = cornerSize / 2;
+    const tripleSpacing = 3 * (cornerSize + spacing); // Position after exit, help, and move list buttons
+
+    const corners = [
+      {
+        // Edge 0 (bottom): after exit, help, and move list buttons
+        x: margin + cornerSize / 2 + tripleSpacing,
+        y: this.layout.canvasHeight - margin - cornerSize / 2,
+        corner: 0,
+        edge: 0, // Bottom edge
+      },
+      {
+        // Edge 1 (right): after exit, help, and move list buttons
+        x: this.layout.canvasWidth - margin - cornerSize / 2,
+        y: this.layout.canvasHeight - margin - cornerSize / 2 - tripleSpacing,
+        corner: 1,
+        edge: 1, // Right edge
+      },
+      {
+        // Edge 2 (top): after exit, help, and move list buttons
+        x: this.layout.canvasWidth - margin - cornerSize / 2 - tripleSpacing,
+        y: margin + cornerSize / 2,
+        corner: 2,
+        edge: 2, // Top edge
+      },
+      {
+        // Edge 3 (left): after exit, help, and move list buttons
+        x: margin + cornerSize / 2,
+        y: margin + cornerSize / 2 + tripleSpacing,
+        corner: 3,
+        edge: 3, // Left edge
+      },
+    ];
+
+    corners.forEach((corner) => {
+      // In multiplayer mode, only show buttons on the bottom edge (edge 0)
+      if (state.ui.gameMode === 'multiplayer' && corner.edge !== 0) {
+        return;
+      }
+
+      const centerX = corner.x;
+      const centerY = corner.y;
+
+      // Draw circle background
+      this.ctx.fillStyle = "#4CAF50"; // Green for rematch
+      this.ctx.beginPath();
+      this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      this.ctx.fill();
+
+      // Draw border
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // Calculate rotation for the arrow to face the edge
+      let rotation = corner.edge * 90;
+      if (corner.edge === 1 || corner.edge === 3) {
+        rotation += 180;
+      }
+
+      this.ctx.save();
+      this.ctx.translate(centerX, centerY);
+      this.ctx.rotate((rotation * Math.PI) / 180);
+
+      // Draw counter-clockwise circular arrow with bigger angles
+      const arrowSize = cornerSize;
+      const arrowRadius = arrowSize * 0.25;
+      const startAngle = Math.PI * 0.0; // Start at 0° (bigger arc)
+      const endAngle = Math.PI * 1.5; // End at 270° (bigger arc)
+
+      drawCircularArrow(
+        this.ctx,
+        0,
+        0,
+        arrowRadius,
+        startAngle,
+        endAngle,
+        false, // counter-clockwise
+        arrowSize
+      );
+
+      this.ctx.restore();
+    });
   }
 
   private renderMoveListButtons(state: RootState): void {
