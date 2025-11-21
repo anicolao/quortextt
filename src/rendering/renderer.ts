@@ -3,6 +3,7 @@
 import { RootState } from '../redux/types';
 import { UILayout } from './layout';
 import { GameplayRenderer } from './gameplayRenderer';
+import { OverlayCanvasPool } from './overlayCanvasPool';
 import { LobbyRenderer } from './lobbyRenderer';
 import { LobbyLayout } from './lobbyLayout';
 import { SeatingRenderer } from './seatingRenderer';
@@ -15,6 +16,7 @@ export class Renderer {
   private colorPickerPlayerId: string | null = null;
   private onRenderNeeded: (() => void) | null = null;
   private gameplayRenderer: GameplayRenderer | null = null;
+  private overlayCanvasPool: OverlayCanvasPool | null = null;
   private lobbyRenderer: LobbyRenderer | null = null;
   private currentLobbyLayout: LobbyLayout | null = null;
   private seatingRenderer: SeatingRenderer | null = null;
@@ -36,6 +38,12 @@ export class Renderer {
       throw new Error('Failed to get 2D context');
     }
     this.ctx = ctx;
+
+    // Initialize overlay pool for dirty region optimization
+    if (canvas.parentElement) {
+      this.overlayCanvasPool = new OverlayCanvasPool(canvas.parentElement);
+    }
+
     this.resizeCanvas();
   }
 
@@ -178,6 +186,7 @@ export class Renderer {
         this.canvas.width,
         this.canvas.height,
         state.game.boardRadius,
+        this.overlayCanvasPool,
         () => {
           // Trigger re-render when async resources (like wood texture) load
           if (this.onRenderNeeded) {
@@ -205,6 +214,7 @@ export class Renderer {
         this.canvas.width,
         this.canvas.height,
         state.game.boardRadius,
+        this.overlayCanvasPool,
         () => {
           // Trigger re-render when async resources (like wood texture) load
           if (this.onRenderNeeded) {
