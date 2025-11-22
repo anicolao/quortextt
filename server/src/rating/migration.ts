@@ -20,6 +20,12 @@ export async function migrateUsersToRatings(): Promise<void> {
   let skipped = 0;
   
   for (const user of users) {
+    // Skip null users (deleted user tombstones from DataStorage)
+    if (!user) {
+      skipped++;
+      continue;
+    }
+    
     // Check if user already has ratings
     if (user.ratings) {
       skipped++;
@@ -53,5 +59,5 @@ export async function migrateUsersToRatings(): Promise<void> {
  */
 export function checkMigrationNeeded(): boolean {
   const users = UserStore.getAll();
-  return users.some(user => !user.ratings);
+  return users.some(user => user && !user.ratings);
 }
