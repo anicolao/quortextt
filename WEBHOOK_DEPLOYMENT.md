@@ -187,15 +187,18 @@ app.listen(PORT, () => {
    - Verify repository name matches expected value
    - Check ref is exactly `refs/heads/main`
    ```javascript
+   const ALLOWED_REPOSITORY = process.env.ALLOWED_REPOSITORY || 'anicolao/quortextt';
+   const ALLOWED_BRANCH = process.env.ALLOWED_BRANCH || 'refs/heads/main';
+
    function validatePayload(body) {
      if (!body.ref || !body.repository || !body.repository.full_name) {
        throw new Error('Invalid payload structure');
      }
-     if (body.repository.full_name !== 'anicolao/quortextt') {
-       throw new Error('Invalid repository');
+     if (body.repository.full_name !== ALLOWED_REPOSITORY) {
+       throw new Error(`Invalid repository: ${body.repository.full_name}`);
      }
-     if (body.ref !== 'refs/heads/main') {
-       throw new Error('Invalid branch');
+     if (body.ref !== ALLOWED_BRANCH) {
+       throw new Error(`Invalid branch: ${body.ref}`);
      }
    }
    ```
@@ -365,10 +368,16 @@ sudo chmod +x /opt/quortex/scripts/deploy.sh
 
 # Allow deploy-user to reload systemd service without password
 # File: /etc/sudoers.d/quortex-deploy
-echo "deploy-user ALL=(ALL) NOPASSWD: /bin/systemctl reload-or-restart quortex-server" | sudo tee /etc/sudoers.d/quortex-deploy
-echo "deploy-user ALL=(ALL) NOPASSWD: /bin/systemctl restart quortex-server" | sudo tee -a /etc/sudoers.d/quortex-deploy
-echo "deploy-user ALL=(ALL) NOPASSWD: /bin/systemctl is-active quortex-server" | sudo tee -a /etc/sudoers.d/quortex-deploy
+# SECURITY NOTE: Only grant specific commands needed for deployment
+# Use full paths to binaries for additional security
+cat << 'EOF' | sudo tee /etc/sudoers.d/quortex-deploy
+deploy-user ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload-or-restart quortex-server
+deploy-user ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart quortex-server
+deploy-user ALL=(ALL) NOPASSWD: /usr/bin/systemctl is-active quortex-server
+deploy-user ALL=(ALL) NOPASSWD: /usr/bin/systemctl status quortex-server
+EOF
 sudo chmod 440 /etc/sudoers.d/quortex-deploy
+sudo visudo -c  # Validate sudoers syntax
 ```
 
 ---
@@ -485,26 +494,55 @@ For Node.js applications to support zero-downtime reload, the application needs 
 // In server/src/index.ts
 
 let server;
+let isShuttingDown = false;
 
-function gracefulShutdown(signal) {
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    console.log('Shutdown already in progress...');
+    return;
+  }
+  
+  isShuttingDown = true;
   console.log(`${signal} received. Closing server gracefully...`);
   
-  server.close(() => {
-    console.log('Server closed. Process exiting.');
-    process.exit(0);
+  // Stop accepting new connections
+  server.close(async () => {
+    console.log('Server closed. Running cleanup...');
+    
+    // Perform cleanup tasks
+    try {
+      // Close database connections, finish pending operations, etc.
+      await performCleanup();
+      console.log('Cleanup completed. Process exiting.');
+      process.exit(0);
+    } catch (error) {
+      console.error('Cleanup failed:', error);
+      process.exit(1);
+    }
   });
 
-  // Force close after 30 seconds
+  // Force close after 30 seconds if graceful shutdown fails
   setTimeout(() => {
     console.error('Forcing shutdown after timeout');
     process.exit(1);
-  }, 30000);
+  }, 30000).unref(); // unref() allows process to exit naturally if shutdown completes
 }
 
 // Handle signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+
+// Handle uncaught errors gracefully
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
+});
 
 // Start server
 server = app.listen(PORT, () => {
@@ -553,8 +591,10 @@ server {
     access_log /var/log/nginx/webhook_access.log;
     error_log /var/log/nginx/webhook_error.log;
 
-    # GitHub webhook IPs (update periodically from https://api.github.com/meta)
-    # Example IPs - check GitHub API for current ranges
+    # GitHub webhook IPs (IMPORTANT: Update periodically from https://api.github.com/meta)
+    # Last verified: 2025-11-22
+    # Auto-update script: /opt/quortex/scripts/update-github-ips.sh (run monthly via cron)
+    # To get latest IPs: curl https://api.github.com/meta | jq -r '.hooks[]'
     allow 192.30.252.0/22;
     allow 185.199.108.0/22;
     allow 140.82.112.0/20;
@@ -1527,8 +1567,16 @@ See Section 4.1 for the nginx configuration.
 ```bash
 # File: /etc/quortex/webhook.env
 
-# Webhook secret (same as configured in GitHub)
+# WARNING: Generate a strong secret before using in production!
+# Generate with: openssl rand -base64 32
+# NEVER use the example values below in production
 WEBHOOK_SECRET=your-secret-here-change-this
+
+# Allowed repository (format: owner/repo)
+ALLOWED_REPOSITORY=anicolao/quortextt
+
+# Allowed branch for deployment
+ALLOWED_BRANCH=refs/heads/main
 
 # Port for webhook service
 WEBHOOK_PORT=3002
@@ -1554,10 +1602,13 @@ PORT=3001
 # Client URL (for CORS)
 CLIENT_URL=https://quortex.morpheum.dev
 
-# JWT secret
+# WARNING: Generate strong secrets before using in production!
+# Generate JWT secret with: openssl rand -base64 32
+# NEVER use the example values below in production
 JWT_SECRET=your-jwt-secret-change-this
 
 # OAuth credentials (if used)
+# Get these from Discord Developer Portal
 DISCORD_CLIENT_ID=your-discord-client-id
 DISCORD_CLIENT_SECRET=your-discord-client-secret
 DISCORD_CALLBACK_URL=https://quortex.morpheum.dev/auth/discord/callback
