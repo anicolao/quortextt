@@ -220,7 +220,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
 
   test('should play through a full game using only mouse clicks', async ({ page }) => {
     // Increase timeout for this long-running test
-    test.setTimeout(120000); // 2 minutes
+    test.setTimeout(90000); // 90 seconds (test takes ~58s)
     
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
