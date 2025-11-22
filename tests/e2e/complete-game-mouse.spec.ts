@@ -220,13 +220,11 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
 
   test('should play through a full game using only mouse clicks', async ({ page }) => {
     // Increase timeout for this long-running test
-    test.setTimeout(90000); // 90 seconds (test now takes ~52.7s, keeping buffer for CI variations)
+    test.setTimeout(90000); // 90 seconds (test now takes ~49.9s, keeping buffer for CI variations)
     
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
     const takeScreenshot = async (description: string) => {
-      // Wait for one animation frame to ensure UI is stable before screenshot
-      await waitForAnimationFrame(page);
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
       await page.screenshot({ 
         path: `${SCREENSHOT_DIR}/${filename}`,
