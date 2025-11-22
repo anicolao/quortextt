@@ -222,15 +222,25 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     // Increase timeout for this long-running test
     test.setTimeout(90000); // 90 seconds (test now takes ~49.9s, keeping buffer for CI variations)
     
+    // Timing instrumentation
+    let totalScreenshotTime = 0;
+    let screenshotCount = 0;
+    const testStartTime = Date.now();
+    
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
     const takeScreenshot = async (description: string) => {
+      const screenshotStartTime = Date.now();
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
       await page.screenshot({ 
         path: `${SCREENSHOT_DIR}/${filename}`,
         fullPage: false
       });
       screenshotCounter++;
+      const screenshotEndTime = Date.now();
+      const screenshotDuration = screenshotEndTime - screenshotStartTime;
+      totalScreenshotTime += screenshotDuration;
+      screenshotCount++;
     };
     
     await page.goto('/quortextt/tabletop.html');
@@ -556,5 +566,18 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       expect(state.game.phase).toBe('playing');
       console.log(`  - Game in progress (no winner yet)`);
     }
+    
+    // Log timing summary
+    const testEndTime = Date.now();
+    const totalTestTime = testEndTime - testStartTime;
+    const nonScreenshotTime = totalTestTime - totalScreenshotTime;
+    const avgScreenshotTime = screenshotCount > 0 ? (totalScreenshotTime / screenshotCount).toFixed(1) : 0;
+    
+    console.log(`\n📊 Performance Timing:`);
+    console.log(`  - Total test time: ${(totalTestTime / 1000).toFixed(1)}s`);
+    console.log(`  - Screenshot time: ${(totalScreenshotTime / 1000).toFixed(1)}s (${screenshotCount} screenshots, avg ${avgScreenshotTime}ms each)`);
+    console.log(`  - Screenshot percentage: ${((totalScreenshotTime / totalTestTime) * 100).toFixed(1)}%`);
+    console.log(`  - Non-screenshot time: ${(nonScreenshotTime / 1000).toFixed(1)}s`);
+    console.log(`  - Non-screenshot percentage: ${((nonScreenshotTime / totalTestTime) * 100).toFixed(1)}%`);
   });
 });
