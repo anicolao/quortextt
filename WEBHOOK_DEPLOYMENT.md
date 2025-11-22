@@ -81,8 +81,14 @@ if (!WEBHOOK_SECRET) {
 }
 
 // SECURITY: Warn if using an insecure/example secret
-const INSECURE_SECRETS = ['your-secret-here', 'change-this', 'secret', 'password'];
-if (INSECURE_SECRETS.includes(WEBHOOK_SECRET)) {
+const INSECURE_SECRETS = [
+  'your-secret-here', 
+  'change-this', 
+  'secret', 
+  'password',
+  'REPLACE_WITH_SECURE_SECRET_FROM_OPENSSL'
+];
+if (INSECURE_SECRETS.some(bad => WEBHOOK_SECRET.includes(bad))) {
   console.error('FATAL: WEBHOOK_SECRET appears to be an insecure example value!');
   console.error('Generate a secure secret with: openssl rand -base64 32');
   process.exit(1);
@@ -121,15 +127,18 @@ app.get('/health', (req, res) => {
 app.post('/webhook/deploy', verifyGitHubSignature, async (req, res) => {
   const { ref, repository, pusher } = req.body;
 
-  // Only deploy on push to main branch
-  if (ref !== 'refs/heads/main') {
-    return res.json({ 
-      message: 'Skipping deployment - not main branch',
-      ref 
+  // Validate payload structure and content
+  try {
+    validatePayload(req.body);
+  } catch (error) {
+    console.warn('Webhook validation failed:', error.message);
+    return res.status(400).json({ 
+      error: 'Invalid webhook payload',
+      message: error.message 
     });
   }
 
-  console.log(`Deployment triggered by ${pusher.name} for ${repository.full_name}`);
+  console.log(`Deployment triggered by ${pusher.name} for ${repository.full_name} (${ref})`);
 
   // Respond immediately to avoid webhook timeout
   res.json({ 
@@ -614,10 +623,15 @@ server {
     access_log /var/log/nginx/webhook_access.log;
     error_log /var/log/nginx/webhook_error.log;
 
-    # GitHub webhook IPs (IMPORTANT: Update periodically from https://api.github.com/meta)
-    # Last verified: 2025-11-22
+    # ⚠️ SECURITY CRITICAL: GitHub webhook IPs (MUST UPDATE REGULARLY)
+    # These IP ranges can change - GitHub provides no advance notice
+    # Last verified: 2025-11-22 - REVIEW MONTHLY
     # Auto-update script: /opt/quortex/scripts/update-github-ips.sh (run monthly via cron)
-    # To get latest IPs: curl https://api.github.com/meta | jq -r '.hooks[]'
+    # Get current IPs: curl https://api.github.com/meta | jq -r '.hooks[]'
+    # 
+    # ALTERNATIVE: Use webhook secret validation only (more maintainable)
+    # If GitHub IPs are too dynamic to manage, rely solely on HMAC verification
+    # and remove IP restrictions below (less secure but more reliable)
     allow 192.30.252.0/22;
     allow 185.199.108.0/22;
     allow 140.82.112.0/20;
@@ -1590,10 +1604,11 @@ See Section 4.1 for the nginx configuration.
 ```bash
 # File: /etc/quortex/webhook.env
 
-# WARNING: Generate a strong secret before using in production!
+# ⚠️ CRITICAL: Generate a strong secret before using in production!
 # Generate with: openssl rand -base64 32
-# NEVER use the example values below in production
-WEBHOOK_SECRET=your-secret-here-change-this
+# Example output: Xk7mP9vQw2Rn8Lj4Hf6Gy5Tz3Bc1Na0Md=
+# DO NOT use the placeholder below - the webhook service will refuse to start
+WEBHOOK_SECRET=REPLACE_WITH_SECURE_SECRET_FROM_OPENSSL
 
 # Allowed repository (format: owner/repo)
 ALLOWED_REPOSITORY=anicolao/quortextt
@@ -1625,10 +1640,11 @@ PORT=3001
 # Client URL (for CORS)
 CLIENT_URL=https://quortex.morpheum.dev
 
-# WARNING: Generate strong secrets before using in production!
+# ⚠️ CRITICAL: Generate strong secrets before using in production!
 # Generate JWT secret with: openssl rand -base64 32
-# NEVER use the example values below in production
-JWT_SECRET=your-jwt-secret-change-this
+# Example output: Bk2nF8pYx1Wm7Kj3Qg5Hz4Rv6Sc9Ld0Oe=
+# DO NOT use the placeholder below
+JWT_SECRET=REPLACE_WITH_SECURE_JWT_SECRET_FROM_OPENSSL
 
 # OAuth credentials (if used)
 # Get these from Discord Developer Portal
