@@ -1,6 +1,6 @@
 // E2E test for dirty rendering optimization
 import { test, expect, Page } from '@playwright/test';
-import { getReduxState, waitForAnimationFrame, setupTwoPlayerGame } from './helpers';
+import { getReduxState, waitForAnimationFrame } from './helpers';
 
 /**
  * Get render metrics from the gameplayRenderer
@@ -56,7 +56,7 @@ test.describe('Dirty Rendering Optimization', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('#game-canvas');
-    // Game setup will be done in each test after navigating
+    // Game setup is done inline in each test using Redux actions
   });
 
   test('should skip rendering on idle frames with no state changes', async ({ page }) => {
