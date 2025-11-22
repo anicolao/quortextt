@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('verify texture loading and victory animation', async ({ page }) => {
   // Increase timeout for this test as it involves waiting for game state
-  test.setTimeout(60000);
+  test.setTimeout(10000); // 10 seconds (test takes ~2.8s)
 
   // 1. Navigate to the game
   await page.goto('http://localhost:5173/quortextt/tabletop.html');

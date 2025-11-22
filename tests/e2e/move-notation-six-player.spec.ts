@@ -25,7 +25,7 @@ async function getReduxState(page: Page) {
 
 test.describe('Move Notation - Six Player Test', () => {
   test('should display notation for all 6 edges with Type 1 tiles in A1 position', async ({ page }) => {
-    test.setTimeout(120000); // 120 seconds for 6 players
+    test.setTimeout(10000); // 10 seconds (test takes ~2.1s)
     
     // === STEP 1: Navigate to the game ===
     await page.goto('/quortextt/tabletop.html');

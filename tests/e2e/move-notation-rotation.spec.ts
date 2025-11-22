@@ -7,7 +7,7 @@ import { getReduxState, pauseAnimations, waitForAnimationFrame } from './helpers
 
 test.describe('Move Notation with Rotation', () => {
   test('should display notation for Type 1 tiles placed on edges with sharp corner pointing SE', async ({ page }) => {
-    test.setTimeout(60000); // 60 seconds
+    test.setTimeout(10000); // 10 seconds (test takes ~2.2s)
     
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
