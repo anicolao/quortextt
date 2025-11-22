@@ -104,32 +104,21 @@ export async function completeSeatingPhase(page: any, canvas: any, box: any) {
  * @param page - Playwright page object
  */
 export async function pauseAnimations(page: any) {
+  // Dispatch PAUSE_ANIMATIONS and wait for rendering in a single evaluate call
+  // This is much faster than multiple separate evaluate calls
   await page.evaluate(() => {
     const store = (window as any).__REDUX_STORE__;
     store.dispatch({ type: 'PAUSE_ANIMATIONS' });
-  });
-  // Wait for multiple animation frames to ensure rendering is complete
-  await page.evaluate(() => {
+    
+    // Wait for a single animation frame - Redux is synchronous so state is already updated
+    // The canvas will be redrawn on the next frame with paused=true
     return new Promise(resolve => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(resolve);
-          });
-        });
+        // One more frame to ensure the paused render is complete
+        requestAnimationFrame(resolve);
       });
     });
   });
-  // Force a canvas rendering flush by reading canvas data
-  await page.evaluate(() => {
-    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      // Reading pixel data forces the canvas to flush any pending operations
-      ctx.getImageData(0, 0, 1, 1);
-    }
-  });
-  // Redux is synchronous, animation frames above are sufficient
 }
 
 /**
