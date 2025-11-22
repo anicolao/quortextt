@@ -67,8 +67,31 @@ const execAsync = promisify(exec);
 const app = express();
 
 // Webhook secret for signature verification
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'your-secret-here';
-const DEPLOY_SCRIPT = '/opt/quortex/scripts/deploy.sh';
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+const DEPLOY_SCRIPT = process.env.DEPLOY_SCRIPT || '/opt/quortex/scripts/deploy.sh';
+const ALLOWED_REPOSITORY = process.env.ALLOWED_REPOSITORY || 'anicolao/quortextt';
+const ALLOWED_BRANCH = process.env.ALLOWED_BRANCH || 'refs/heads/main';
+
+// SECURITY: Fail if webhook secret is not configured
+if (!WEBHOOK_SECRET) {
+  console.error('FATAL: WEBHOOK_SECRET environment variable is not set!');
+  console.error('Generate a secure secret with: openssl rand -base64 32');
+  console.error('Set it in /etc/quortex/webhook.env');
+  process.exit(1);
+}
+
+// SECURITY: Warn if using an insecure/example secret
+const INSECURE_SECRETS = ['your-secret-here', 'change-this', 'secret', 'password'];
+if (INSECURE_SECRETS.includes(WEBHOOK_SECRET)) {
+  console.error('FATAL: WEBHOOK_SECRET appears to be an insecure example value!');
+  console.error('Generate a secure secret with: openssl rand -base64 32');
+  process.exit(1);
+}
+
+if (WEBHOOK_SECRET.length < 20) {
+  console.warn('WARNING: WEBHOOK_SECRET is too short. Use at least 20 characters.');
+  console.warn('Generate a secure secret with: openssl rand -base64 32');
+}
 
 // Middleware to verify GitHub webhook signature
 function verifyGitHubSignature(req, res, next) {
