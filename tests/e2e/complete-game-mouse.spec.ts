@@ -224,16 +224,26 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
+    let moveCounter = 0; // Track actual moves for frequency calculation
     // Only take screenshots at key moments to speed up the test
     const SCREENSHOT_FREQUENCY = 10; // Take screenshot every N moves
+    
+    // Helper to determine if screenshot should be taken
+    const shouldTakeScreenshot = (description: string, force: boolean): boolean => {
+      if (force) return true;
+      if (description.includes('initial') || description.includes('final') || description.includes('victory')) {
+        return true;
+      }
+      // Take screenshot every Nth move (1st, 11th, 21st, etc.)
+      if (description.includes('complete') && moveCounter % SCREENSHOT_FREQUENCY === 1) {
+        return true;
+      }
+      return false;
+    };
+    
     const takeScreenshot = async (description: string, force: boolean = false) => {
-      // Skip non-critical screenshots unless forced
-      if (!force && !description.includes('initial') && !description.includes('final') && !description.includes('victory')) {
-        // Only take screenshots at regular intervals
-        if (!description.includes('complete') || (screenshotCounter - 1) % SCREENSHOT_FREQUENCY !== 0) {
-          screenshotCounter++;
-          return;
-        }
+      if (!shouldTakeScreenshot(description, force)) {
+        return;
       }
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
       await pauseAnimations(page);
@@ -492,6 +502,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       // Update state after successful placement
       state = await getReduxState(page);
       moveNumber++;
+      moveCounter = moveNumber; // Update move counter for screenshot frequency
       
       // Check if game ended after placement (victory might have occurred)
       if (placementResult.gameEnded || state.game.phase === 'finished') {
@@ -512,7 +523,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       expect(placedTile).toBeDefined();
       expect(placedTile?.rotation).toBe(rotation);
       
-      // Take screenshot after confirmation (only periodically)
+      // Take screenshot after confirmation (every 10th move or forced screenshots)
       await takeScreenshot(`move-${moveNumber}-complete`);
       
       // Next player happens automatically via checkmark click
