@@ -112,7 +112,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
   });
 
   test('complete two-player flow from login to first move', async ({ browser }) => {
-    test.setTimeout(120000); // Increase timeout to 120 seconds for multiplayer
+    test.setTimeout(60000); // 60 seconds (test takes ~29s)
 
     // Create two separate browser contexts for two different users
     // This ensures they have separate cookies and sessions
