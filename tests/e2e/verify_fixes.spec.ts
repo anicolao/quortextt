@@ -5,7 +5,7 @@ test('verify texture loading and victory animation', async ({ page }) => {
   test.setTimeout(60000);
 
   // 1. Navigate to the game
-  await page.goto('http://localhost:5173');
+  await page.goto('http://localhost:5173/quortextt/tabletop.html');
 
   // 2. Wait for canvas to be ready
   await page.waitForSelector('#game-canvas');

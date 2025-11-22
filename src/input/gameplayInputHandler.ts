@@ -1,7 +1,7 @@
 // Gameplay input handling for Phase 4
 
 import { store } from '../redux/store';
-import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, showHelp, hideHelp, showMoveList, hideMoveList, navigateMoveList } from '../redux/actions';
+import { setRotation, setSelectedPosition, setHoveredElement, placeTile, replaceTile, nextPlayer, drawTile, resetGame, rematchGame, showHelp, hideHelp, showMoveList, hideMoveList, navigateMoveList } from '../redux/actions';
 import { GameplayRenderer } from '../rendering/gameplayRenderer';
 import { pixelToHex, isPointInHex, hexToPixel, getPlayerEdgePosition } from '../rendering/hexLayout';
 import { Rotation } from '../game/types';
@@ -764,10 +764,8 @@ export class GameplayInputHandler {
         Math.pow(x - button.centerX, 2) + Math.pow(y - button.centerY, 2)
       );
       if (dist <= radius) {
-        // Rematch button clicked - reset game
-        // In multiplayer mode, this might need to send a rematch request, 
-        // but resetGame handles returning to lobby which is standard flow
-        store.dispatch(resetGame());
+        // Rematch button clicked - start a new game with same players
+        store.dispatch(rematchGame());
         return true;
       }
     }

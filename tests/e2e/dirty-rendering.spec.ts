@@ -1,6 +1,6 @@
 // E2E test for dirty rendering optimization
 import { test, expect, Page } from '@playwright/test';
-import { getReduxState, waitForAnimationFrame } from './helpers';
+import { getReduxState, waitForAnimationFrame, setupTwoPlayerGame } from './helpers';
 
 /**
  * Get render metrics from the gameplayRenderer
@@ -54,27 +54,46 @@ async function incrementFrameOnly(page: Page) {
 
 test.describe('Dirty Rendering Optimization', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('#game-canvas');
+    // Game setup will be done in each test after navigating
   });
 
   test('should skip rendering on idle frames with no state changes', async ({ page }) => {
-    // Start a 2-player game
-    await page.click('text=Add Player');
-    await page.click('text=Add Player');
-    await page.click('text=Start Game');
-    
-    // Wait for seating phase
-    await page.waitForSelector('text=Choose Your Edge', { timeout: 5000 });
-    
-    // Click edge 0 (bottom)
-    const canvas = await page.$('#game-canvas');
-    const box = await canvas!.boundingBox();
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height - 100);
+    // Setup a 2-player game (bypasses lobby by dispatching Redux actions directly)
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
+    });
     await waitForAnimationFrame(page);
     
-    // Click edge 3 (top) for second player
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + 100);
+    // Wait for seating phase
+    await page.waitForFunction(() => {
+      const state = (window as any).__REDUX_STORE__.getState();
+      return state.game.screen === 'seating';
+    }, { timeout: 5000 });
+    
+    // Complete seating by selecting edges via redux actions
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      const state = store.getState();
+      const seatingOrder = state.game.seatingPhase.seatingOrder;
+      
+      // Player 1 selects edge 0
+      store.dispatch({ type: 'SELECT_EDGE', payload: { playerId: seatingOrder[0], edgeNumber: 0 } });
+    });
+    await waitForAnimationFrame(page);
+    
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      const state = store.getState();
+      const seatingOrder = state.game.seatingPhase.seatingOrder;
+      
+      // Player 2 selects edge 3
+      store.dispatch({ type: 'SELECT_EDGE', payload: { playerId: seatingOrder[1], edgeNumber: 3 } });
+    });
     await waitForAnimationFrame(page);
     
     // Now we should be in gameplay
@@ -107,15 +126,25 @@ test.describe('Dirty Rendering Optimization', () => {
   });
 
   test('should reduce pixels painted when only animations are running', async ({ page }) => {
-    // Start a 2-player game
-    await page.click('text=Add Player');
-    await page.click('text=Add Player');
-    await page.click('text=Start Game');
+    // Setup a 2-player game
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
+    });
+    await waitForAnimationFrame(page);
     
-    // Wait for seating and select edges
-    await page.waitForSelector('text=Choose Your Edge', { timeout: 5000 });
+    // Wait for seating phase
+    await page.waitForFunction(() => {
+      const state = (window as any).__REDUX_STORE__.getState();
+      return state.game.screen === 'seating';
+    }, { timeout: 5000 });
+    
     const canvas = await page.$('#game-canvas');
     const box = await canvas!.boundingBox();
+    
+    // Complete seating
     await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height - 100);
     await waitForAnimationFrame(page);
     await page.mouse.click(box!.x + box!.width / 2, box!.y + 100);
@@ -157,18 +186,40 @@ test.describe('Dirty Rendering Optimization', () => {
   });
 
   test('should properly detect when no rendering is needed', async ({ page }) => {
-    // Start a 2-player game
-    await page.click('text=Add Player');
-    await page.click('text=Add Player');
-    await page.click('text=Start Game');
-    
-    // Complete seating
-    await page.waitForSelector('text=Choose Your Edge', { timeout: 5000 });
-    const canvas = await page.$('#game-canvas');
-    const box = await canvas!.boundingBox();
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height - 100);
+    // Setup a 2-player game
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
+    });
     await waitForAnimationFrame(page);
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + 100);
+    
+    // Wait for seating phase
+    await page.waitForFunction(() => {
+      const state = (window as any).__REDUX_STORE__.getState();
+      return state.game.screen === 'seating';
+    }, { timeout: 5000 });
+    
+    // Complete seating by selecting edges via redux actions
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      const state = store.getState();
+      const seatingOrder = state.game.seatingPhase.seatingOrder;
+      
+      // Player 1 selects edge 0
+      store.dispatch({ type: 'SELECT_EDGE', payload: { playerId: seatingOrder[0], edgeNumber: 0 } });
+    });
+    await waitForAnimationFrame(page);
+    
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      const state = store.getState();
+      const seatingOrder = state.game.seatingPhase.seatingOrder;
+      
+      // Player 2 selects edge 3
+      store.dispatch({ type: 'SELECT_EDGE', payload: { playerId: seatingOrder[1], edgeNumber: 3 } });
+    });
     await waitForAnimationFrame(page);
     
     // Enable dirty rendering
@@ -199,18 +250,40 @@ test.describe('Dirty Rendering Optimization', () => {
   });
 
   test('should compare dirty vs non-dirty rendering pixel counts', async ({ page }) => {
-    // Start a 2-player game
-    await page.click('text=Add Player');
-    await page.click('text=Add Player');
-    await page.click('text=Start Game');
-    
-    // Complete seating
-    await page.waitForSelector('text=Choose Your Edge', { timeout: 5000 });
-    const canvas = await page.$('#game-canvas');
-    const box = await canvas!.boundingBox();
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height - 100);
+    // Setup a 2-player game
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'ADD_PLAYER' });
+      store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
+    });
     await waitForAnimationFrame(page);
-    await page.mouse.click(box!.x + box!.width / 2, box!.y + 100);
+    
+    // Wait for seating phase
+    await page.waitForFunction(() => {
+      const state = (window as any).__REDUX_STORE__.getState();
+      return state.game.screen === 'seating';
+    }, { timeout: 5000 });
+    
+    // Complete seating by selecting edges via redux actions
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      const state = store.getState();
+      const seatingOrder = state.game.seatingPhase.seatingOrder;
+      
+      // Player 1 selects edge 0
+      store.dispatch({ type: 'SELECT_EDGE', payload: { playerId: seatingOrder[0], edgeNumber: 0 } });
+    });
+    await waitForAnimationFrame(page);
+    
+    await page.evaluate(() => {
+      const store = (window as any).__REDUX_STORE__;
+      const state = store.getState();
+      const seatingOrder = state.game.seatingPhase.seatingOrder;
+      
+      // Player 2 selects edge 3
+      store.dispatch({ type: 'SELECT_EDGE', payload: { playerId: seatingOrder[1], edgeNumber: 3 } });
+    });
     await waitForAnimationFrame(page);
     
     // Wait for animations to settle
