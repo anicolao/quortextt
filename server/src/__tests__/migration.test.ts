@@ -19,7 +19,7 @@ describe('Rating Migration', () => {
   });
 
   describe('checkMigrationNeeded', () => {
-    it('should fail when null users are present in the user array', () => {
+    it('should handle null users gracefully', () => {
       // This simulates the scenario where a deleted user (tombstone) is present in storage
       // which can happen when DataStorage loads entries with data: null (deleted users)
       const mockUsers = [
@@ -51,9 +51,8 @@ describe('Rating Migration', () => {
       // Mock UserStore.getAll to return our test data including null
       UserStore.getAll = () => mockUsers as any;
 
-      // This should throw the error: "Cannot read properties of null (reading 'ratings')"
-      // Reproduces the production error from the problem statement
-      expect(() => checkMigrationNeeded()).toThrow("Cannot read properties of null (reading 'ratings')");
+      // Should not throw and should return false (no migration needed)
+      expect(checkMigrationNeeded()).toBe(false);
     });
 
     it('should return false when all users have ratings', () => {
@@ -100,10 +99,36 @@ describe('Rating Migration', () => {
 
       expect(checkMigrationNeeded()).toBe(true);
     });
+
+    it('should return true when null users and users missing ratings are present', () => {
+      const mockUsers = [
+        {
+          id: 'user1',
+          displayName: 'User 1',
+          ratings: {
+            twoPlayer: { rating: 1500, rd: 350, volatility: 0.06, gamesPlayed: 0, lastUpdated: new Date() },
+            threePlayer: { rating: 1500, rd: 350, volatility: 0.06, gamesPlayed: 0, lastUpdated: new Date() },
+            fourPlayer: { rating: 1500, rd: 350, volatility: 0.06, gamesPlayed: 0, lastUpdated: new Date() },
+            fivePlayer: { rating: 1500, rd: 350, volatility: 0.06, gamesPlayed: 0, lastUpdated: new Date() },
+            sixPlayer: { rating: 1500, rd: 350, volatility: 0.06, gamesPlayed: 0, lastUpdated: new Date() },
+          },
+        },
+        null, // Deleted user (tombstone entry)
+        {
+          id: 'user3',
+          displayName: 'User 3',
+          // Missing ratings - needs migration
+        },
+      ];
+
+      UserStore.getAll = () => mockUsers as any;
+
+      expect(checkMigrationNeeded()).toBe(true);
+    });
   });
 
   describe('migrateUsersToRatings', () => {
-    it('should fail when null users are present', async () => {
+    it('should skip null users gracefully', async () => {
       const mockUsers = [
         {
           id: 'user1',
@@ -126,11 +151,20 @@ describe('Rating Migration', () => {
 
       // Mock UserStore methods
       UserStore.getAll = () => mockUsers as any;
-      UserStore.update = async () => undefined as any;
+      const updateMock = vi.fn().mockResolvedValue(undefined);
+      UserStore.update = updateMock;
 
-      // This should throw the error when it tries to check user.ratings
-      // Reproduces the production error from the problem statement
-      await expect(migrateUsersToRatings()).rejects.toThrow("Cannot read properties of null (reading 'ratings')");
+      // Should complete without throwing
+      await migrateUsersToRatings();
+
+      // Should only update user1 (not the null user or user3 who has ratings)
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      expect(updateMock).toHaveBeenCalledWith('user1', expect.objectContaining({
+        id: 'user1',
+        displayName: 'User 1',
+        ratings: expect.any(Object),
+        ratingHistory: []
+      }));
     });
   });
 });
