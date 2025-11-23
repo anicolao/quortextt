@@ -231,16 +231,20 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
+    /**
+     * Take a screenshot asynchronously without blocking.
+     * The screenshot promise is added to screenshotPromises array.
+     * Do NOT await this function - all screenshots are awaited at the end of the test.
+     */
     const takeScreenshot = (description: string) => {
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
       screenshotCounter++;
+      screenshotCount++; // Increment immediately to avoid race conditions
       
       // Create screenshot promise but don't await it - let it run in parallel
       const promise = page.screenshot({ 
         path: `${SCREENSHOT_DIR}/${filename}`,
         fullPage: false
-      }).then(() => {
-        screenshotCount++;
       });
       
       screenshotPromises.push(promise);
@@ -573,22 +577,27 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     // Wait for all screenshots to complete
     console.log(`\n⏳ Waiting for ${screenshotPromises.length} screenshots to complete...`);
     const screenshotStartWait = Date.now();
-    await Promise.all(screenshotPromises);
-    const screenshotEndWait = Date.now();
-    const screenshotWaitTime = screenshotEndWait - screenshotStartWait;
-    console.log(`✓ All screenshots completed in ${(screenshotWaitTime / 1000).toFixed(1)}s`);
-    
-    // Log timing summary
-    const testEndTime = Date.now();
-    const totalTestTime = testEndTime - testStartTime;
-    const nonScreenshotTime = totalTestTime - screenshotWaitTime;
-    const avgScreenshotTime = screenshotCount > 0 ? (screenshotWaitTime / screenshotCount).toFixed(1) : 0;
-    
-    console.log(`\n📊 Performance Timing:`);
-    console.log(`  - Total test time: ${(totalTestTime / 1000).toFixed(1)}s`);
-    console.log(`  - Screenshot wait time: ${(screenshotWaitTime / 1000).toFixed(1)}s (${screenshotCount} screenshots, avg ${avgScreenshotTime}ms each)`);
-    console.log(`  - Screenshot percentage: ${((screenshotWaitTime / totalTestTime) * 100).toFixed(1)}%`);
-    console.log(`  - Non-screenshot time: ${(nonScreenshotTime / 1000).toFixed(1)}s`);
-    console.log(`  - Non-screenshot percentage: ${((nonScreenshotTime / totalTestTime) * 100).toFixed(1)}%`);
+    try {
+      await Promise.all(screenshotPromises);
+      const screenshotEndWait = Date.now();
+      const screenshotWaitTime = screenshotEndWait - screenshotStartWait;
+      console.log(`✓ All screenshots completed in ${(screenshotWaitTime / 1000).toFixed(1)}s`);
+      
+      // Log timing summary
+      const testEndTime = Date.now();
+      const totalTestTime = testEndTime - testStartTime;
+      const nonScreenshotTime = totalTestTime - screenshotWaitTime;
+      const avgScreenshotTime = screenshotCount > 0 ? (screenshotWaitTime / screenshotCount).toFixed(1) : 0;
+      
+      console.log(`\n📊 Performance Timing:`);
+      console.log(`  - Total test time: ${(totalTestTime / 1000).toFixed(1)}s`);
+      console.log(`  - Screenshot wait time: ${(screenshotWaitTime / 1000).toFixed(1)}s (${screenshotCount} screenshots, avg ${avgScreenshotTime}ms each)`);
+      console.log(`  - Screenshot percentage: ${((screenshotWaitTime / totalTestTime) * 100).toFixed(1)}%`);
+      console.log(`  - Non-screenshot time: ${(nonScreenshotTime / 1000).toFixed(1)}s`);
+      console.log(`  - Non-screenshot percentage: ${((nonScreenshotTime / totalTestTime) * 100).toFixed(1)}%`);
+    } catch (error) {
+      console.error(`❌ Screenshot error: ${error}`);
+      throw error;
+    }
   });
 });
