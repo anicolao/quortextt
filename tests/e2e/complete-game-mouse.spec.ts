@@ -220,27 +220,39 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
 
   test('should play through a full game using only mouse clicks', async ({ page }) => {
     // Increase timeout for this long-running test
-    test.setTimeout(90000); // 90 seconds (test takes ~58s)
+    test.setTimeout(90000); // 90 seconds (test now takes ~49.9s, keeping buffer for CI variations)
+    
+    // Performance tracking
+    const testStartTime = Date.now();
+    let screenshotTime = 0;
+    let setupTime = 0;
+    let gameplayTime = 0;
     
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
     const takeScreenshot = async (description: string) => {
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
-      await pauseAnimations(page);
+      const screenshotStart = Date.now();
       await page.screenshot({ 
         path: `${SCREENSHOT_DIR}/${filename}`,
         fullPage: false
       });
+      screenshotTime += Date.now() - screenshotStart;
       screenshotCounter++;
     };
     
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
+    // Pause animations once at the beginning - they stay paused for the entire test
+    await pauseAnimations(page);
+    
     // Get canvas bounding box for mouse clicks
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
+    
+    const setupStartTime = Date.now();
     
     // === STEP 1: Initial configuration screen ===
     await takeScreenshot('initial-screen');
@@ -250,13 +262,11 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     const player1Coords = await getEdgeButtonCoordinates(page, 0, 0);
     if (!player1Coords) throw new Error('Could not find player 1 button coordinates');
     await page.mouse.click(box.x + player1Coords.x, box.y + player1Coords.y);
-    await waitForAnimationFrame(page);
     
     // Add player 2 (orange) at bottom edge
     const player2Coords = await getEdgeButtonCoordinates(page, 1, 0);
     if (!player2Coords) throw new Error('Could not find player 2 button coordinates');
     await page.mouse.click(box.x + player2Coords.x, box.y + player2Coords.y);
-    await waitForAnimationFrame(page);
     
     await takeScreenshot('players-added');
     
@@ -271,8 +281,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       // Dispatch START_GAME with seed instead of clicking button
       store.dispatch({ type: 'START_GAME', payload: { seed } });
     }, DETERMINISTIC_SEED);
-    
-    await waitForAnimationFrame(page);
     
     // We should now be in seating phase - need to select edges
     state = await getReduxState(page);
@@ -289,14 +297,15 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await waitForAnimationFrame(page);
-    
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
     expect(state.game.phase).toBe('playing');
     expect(state.game.players.length).toBe(2);
     
     await takeScreenshot('game-started');
+    
+    setupTime = Date.now() - setupStartTime;
+    const gameplayStartTime = Date.now();
     
     const player1 = state.game.players[0];
     const player2 = state.game.players[1];
@@ -340,7 +349,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         console.log(`  Clicking to rotate at (${rotateCoords.x.toFixed(1)}, ${rotateCoords.y.toFixed(1)})`);
         
         await page.mouse.click(box.x + rotateCoords.x, box.y + rotateCoords.y);
-        await waitForAnimationFrame(page); // Wait for rotation animation
         
         state = await getReduxState(page);
         const newRotation = state.ui.currentRotation;
@@ -359,7 +367,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       const hexCoords = await getHexPixelCoords(page, position);
       console.log(`  Clicking on hex at pixel (${hexCoords.x.toFixed(1)}, ${hexCoords.y.toFixed(1)})`);
       await page.mouse.click(box.x + hexCoords.x, box.y + hexCoords.y);
-      await waitForAnimationFrame(page);
       
       // Verify tile is now in selected position
       state = await getReduxState(page);
@@ -376,7 +383,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       const checkCoords = await getConfirmationButtonCoords(page, position, 'check');
       console.log(`  Clicking checkmark at pixel (${checkCoords.x.toFixed(1)}, ${checkCoords.y.toFixed(1)})`);
       await page.mouse.click(box.x + checkCoords.x, box.y + checkCoords.y);
-      await waitForAnimationFrame(page);
       
       state = await getReduxState(page);
       
@@ -476,7 +482,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
           // Cancel current placement by clicking X button
           const xCoords = await getConfirmationButtonCoords(page, position, 'x');
           await page.mouse.click(box.x + xCoords.x, box.y + xCoords.y);
-          await waitForAnimationFrame(page);
           
           placementResult = await attemptPlacement(position, tryRotation);
           
@@ -496,7 +501,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
           // Cancel current placement
           const xCoords = await getConfirmationButtonCoords(page, position, 'x');
           await page.mouse.click(box.x + xCoords.x, box.y + xCoords.y);
-          await waitForAnimationFrame(page);
           
           // Continue to next iteration to try a different position
           continue;
@@ -543,9 +547,9 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       }
       
       // Next player happens automatically via checkmark click
-      // Wait for new tile to be drawn for next player
-      await waitForAnimationFrame(page);
     }
+    
+    gameplayTime = Date.now() - gameplayStartTime;
     
     // === Final Verification ===
     state = await getReduxState(page);
@@ -567,5 +571,17 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       expect(state.game.phase).toBe('playing');
       console.log(`  - Game in progress (no winner yet)`);
     }
+    
+    // Performance summary
+    const totalTime = Date.now() - testStartTime;
+    const otherTime = totalTime - screenshotTime - setupTime - gameplayTime;
+    console.log(`\n📊 Performance Breakdown:`);
+    console.log(`  Total test time: ${(totalTime / 1000).toFixed(1)}s`);
+    console.log(`  Screenshot time: ${(screenshotTime / 1000).toFixed(1)}s (${((screenshotTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Setup time: ${(setupTime / 1000).toFixed(1)}s (${((setupTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Gameplay time: ${(gameplayTime / 1000).toFixed(1)}s (${((gameplayTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Other time: ${(otherTime / 1000).toFixed(1)}s (${((otherTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Screenshots taken: ${screenshotCounter - 1}`);
+    console.log(`  Avg per screenshot: ${(screenshotTime / (screenshotCounter - 1)).toFixed(0)}ms`);
   });
 });
