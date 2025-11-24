@@ -88,9 +88,9 @@ function generateUniqueClaimCode(): string {
 
   while (attempts < maxAttempts) {
     const code = generateClaimCode();
-    const existingUser = Array.from(userCache.values()).find(
-      (u) => u.claimCode === code,
-    );
+    const existingUser = Array.from(userCache.values())
+      .filter((u): u is IUser => u != null)
+      .find((u) => u.claimCode === code);
     if (!existingUser) {
       return code;
     }
@@ -115,21 +115,21 @@ export class UserStore {
   }
 
   static findByDiscordId(discordId: string): IUser | undefined {
-    return Array.from(userCache.values()).find(
-      (user) => user.discordId === discordId,
-    );
+    return Array.from(userCache.values())
+      .filter((user): user is IUser => user != null)
+      .find((user) => user.discordId === discordId);
   }
 
   static findByGoogleId(googleId: string): IUser | undefined {
-    return Array.from(userCache.values()).find(
-      (user) => user.googleId === googleId,
-    );
+    return Array.from(userCache.values())
+      .filter((user): user is IUser => user != null)
+      .find((user) => user.googleId === googleId);
   }
 
   static findByFacebookId(facebookId: string): IUser | undefined {
-    return Array.from(userCache.values()).find(
-      (user) => user.facebookId === facebookId,
-    );
+    return Array.from(userCache.values())
+      .filter((user): user is IUser => user != null)
+      .find((user) => user.facebookId === facebookId);
   }
 
   static findById(id: string): IUser | undefined {
@@ -137,9 +137,9 @@ export class UserStore {
   }
 
   static findByClaimCode(claimCode: string): IUser | undefined {
-    return Array.from(userCache.values()).find(
-      (user) => user.claimCode === claimCode,
-    );
+    return Array.from(userCache.values())
+      .filter((user): user is IUser => user != null)
+      .find((user) => user.claimCode === claimCode);
   }
 
   static async create(userData: {
@@ -218,7 +218,9 @@ export class UserStore {
   }
 
   static getAll(): IUser[] {
-    return Array.from(userCache.values());
+    return Array.from(userCache.values()).filter(
+      (user): user is IUser => user != null,
+    );
   }
 
   /**
