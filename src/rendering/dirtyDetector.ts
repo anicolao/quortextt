@@ -87,6 +87,21 @@ export class DirtyDetector {
     }
 
     const dirtyRects: DirtyRect[] = [];
+    
+    // Check if board rotation is active (multiplayer mode with local player)
+    // When the board is rotated, dirty region clipping becomes complex because
+    // regions are calculated in screen coordinates but rendering happens in rotated coordinates.
+    // For now, always do full redraw when rotation is active.
+    const hasBoardRotation = currentState.ui.gameMode === 'multiplayer' && 
+                              currentState.ui.localPlayerId && 
+                              currentState.game.players.length > 0;
+    
+    if (hasBoardRotation) {
+      // Full redraw needed when board rotation is active
+      // TODO: In the future, transform dirty regions to match rotation
+      this.previousState = currentState;
+      return [{ x: 0, y: 0, width: canvasWidth, height: canvasHeight }];
+    }
 
     // Check for screen changes (full redraw)
     if (this.previousState.game.screen !== currentState.game.screen) {
