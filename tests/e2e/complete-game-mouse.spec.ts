@@ -1,7 +1,7 @@
 // E2E test for a complete 2-player game using mouse clicks
 // This test demonstrates a full game from setup to victory using only mouse interactions
 import { test, expect } from '@playwright/test';
-import { getReduxState , pauseAnimations } from './helpers';
+import { getReduxState , pauseAnimations, waitForAnimationFrame } from './helpers';
 import { HexPosition } from '../../src/game/types';
 
 // Helper to calculate pixel coordinates for a hex position
@@ -220,34 +220,25 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
 
   test('should play through a full game using only mouse clicks', async ({ page }) => {
     // Increase timeout for this long-running test
-    test.setTimeout(90000); // 90 seconds (test now takes ~48.2s with parallel screenshots, keeping buffer for CI variations)
+    test.setTimeout(90000); // 90 seconds (test now takes ~49.9s, keeping buffer for CI variations)
     
-    // Timing instrumentation
-    let screenshotCount = 0;
+    // Performance tracking
     const testStartTime = Date.now();
-    
-    // Collect screenshot promises to await at the end (for parallelism)
-    const screenshotPromises: Promise<void>[] = [];
+    let screenshotTime = 0;
+    let setupTime = 0;
+    let gameplayTime = 0;
     
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
-    /**
-     * Take a screenshot asynchronously without blocking.
-     * The screenshot promise is added to screenshotPromises array.
-     * Do NOT await this function - all screenshots are awaited at the end of the test.
-     */
-    const takeScreenshot = (description: string) => {
+    const takeScreenshot = async (description: string) => {
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
-      screenshotCounter++;
-      screenshotCount++; // Increment immediately to avoid race conditions
-      
-      // Create screenshot promise but don't await it - let it run in parallel
-      const promise = page.screenshot({ 
+      const screenshotStart = Date.now();
+      await page.screenshot({ 
         path: `${SCREENSHOT_DIR}/${filename}`,
         fullPage: false
       });
-      
-      screenshotPromises.push(promise);
+      screenshotTime += Date.now() - screenshotStart;
+      screenshotCounter++;
     };
     
     await page.goto('/quortextt/tabletop.html');
@@ -261,8 +252,10 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
     
+    const setupStartTime = Date.now();
+    
     // === STEP 1: Initial configuration screen ===
-    takeScreenshot('initial-screen');
+    await takeScreenshot('initial-screen');
     
     // === STEP 2: Add two players using mouse clicks on edge buttons ===
     // Add player 1 (blue) at bottom edge
@@ -275,7 +268,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     if (!player2Coords) throw new Error('Could not find player 2 button coordinates');
     await page.mouse.click(box.x + player2Coords.x, box.y + player2Coords.y);
     
-    takeScreenshot('players-added');
+    await takeScreenshot('players-added');
     
     // Verify we have 2 players
     let state = await getReduxState(page);
@@ -309,7 +302,10 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     expect(state.game.phase).toBe('playing');
     expect(state.game.players.length).toBe(2);
     
-    takeScreenshot('game-started');
+    await takeScreenshot('game-started');
+    
+    setupTime = Date.now() - setupStartTime;
+    const gameplayStartTime = Date.now();
     
     const player1 = state.game.players[0];
     const player2 = state.game.players[1];
@@ -364,7 +360,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         console.log(`  Rotated tile: now at rotation ${currentRotation}`);
         
         // Take screenshot of rotation state
-        takeScreenshot(`move-${moveNumber + 1}-rotation-${currentRotation}`);
+        await takeScreenshot(`move-${moveNumber + 1}-rotation-${currentRotation}`);
       }
       
       // Step 2: Click on the hex position to place the tile
@@ -381,7 +377,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`  Tile placed at preview position`);
       
       // Take screenshot showing tile placement with checkmark/X buttons
-      takeScreenshot(`move-${moveNumber + 1}-tile-placed`);
+      await takeScreenshot(`move-${moveNumber + 1}-tile-placed`);
       
       // Step 3: Click the checkmark button to confirm placement
       const checkCoords = await getConfirmationButtonCoords(page, position, 'check');
@@ -423,7 +419,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         gameEnded = true;
         moveNumber++;
         
-        takeScreenshot('victory-final');
+        await takeScreenshot('victory-final');
         
         break;
       }
@@ -468,7 +464,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`\n=== Move ${moveNumber + 1}: Placing tile at (${position.row}, ${position.col}) with rotation ${rotation} ===`);
       
       // Take screenshot before placement
-      takeScreenshot(`before-move-${moveNumber + 1}`);
+      await takeScreenshot(`before-move-${moveNumber + 1}`);
       
       // Try to place the tile, with retry logic if blocked
       let placementResult = await attemptPlacement(position, rotation);
@@ -523,7 +519,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
         
         gameEnded = true;
         
-        takeScreenshot('victory-final');
+        await takeScreenshot('victory-final');
         
         break;
       }
@@ -537,7 +533,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`  Tile confirmed and committed`);
       
       // Take screenshot after confirmation
-      takeScreenshot(`move-${moveNumber}-complete`);
+      await takeScreenshot(`move-${moveNumber}-complete`);
       
       const currentPlayer = state.game.players[state.game.currentPlayerIndex];
       console.log(`Move ${moveNumber} complete: Player ${currentPlayer.id} placed tile at (${position.row}, ${position.col}) rotation ${rotation}`);
@@ -552,6 +548,8 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       
       // Next player happens automatically via checkmark click
     }
+    
+    gameplayTime = Date.now() - gameplayStartTime;
     
     // === Final Verification ===
     state = await getReduxState(page);
@@ -574,30 +572,16 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
       console.log(`  - Game in progress (no winner yet)`);
     }
     
-    // Wait for all screenshots to complete
-    console.log(`\n⏳ Waiting for ${screenshotPromises.length} screenshots to complete...`);
-    const screenshotStartWait = Date.now();
-    try {
-      await Promise.all(screenshotPromises);
-      const screenshotEndWait = Date.now();
-      const screenshotWaitTime = screenshotEndWait - screenshotStartWait;
-      console.log(`✓ All screenshots completed in ${(screenshotWaitTime / 1000).toFixed(1)}s`);
-      
-      // Log timing summary
-      const testEndTime = Date.now();
-      const totalTestTime = testEndTime - testStartTime;
-      const nonScreenshotTime = totalTestTime - screenshotWaitTime;
-      const avgScreenshotTime = screenshotCount > 0 ? (screenshotWaitTime / screenshotCount).toFixed(1) : 0;
-      
-      console.log(`\n📊 Performance Timing:`);
-      console.log(`  - Total test time: ${(totalTestTime / 1000).toFixed(1)}s`);
-      console.log(`  - Screenshot wait time: ${(screenshotWaitTime / 1000).toFixed(1)}s (${screenshotCount} screenshots, avg ${avgScreenshotTime}ms each)`);
-      console.log(`  - Screenshot percentage: ${((screenshotWaitTime / totalTestTime) * 100).toFixed(1)}%`);
-      console.log(`  - Non-screenshot time: ${(nonScreenshotTime / 1000).toFixed(1)}s`);
-      console.log(`  - Non-screenshot percentage: ${((nonScreenshotTime / totalTestTime) * 100).toFixed(1)}%`);
-    } catch (error) {
-      console.error(`❌ Screenshot error: ${error}`);
-      throw error;
-    }
+    // Performance summary
+    const totalTime = Date.now() - testStartTime;
+    const otherTime = totalTime - screenshotTime - setupTime - gameplayTime;
+    console.log(`\n📊 Performance Breakdown:`);
+    console.log(`  Total test time: ${(totalTime / 1000).toFixed(1)}s`);
+    console.log(`  Screenshot time: ${(screenshotTime / 1000).toFixed(1)}s (${((screenshotTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Setup time: ${(setupTime / 1000).toFixed(1)}s (${((setupTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Gameplay time: ${(gameplayTime / 1000).toFixed(1)}s (${((gameplayTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Other time: ${(otherTime / 1000).toFixed(1)}s (${((otherTime / totalTime) * 100).toFixed(1)}%)`);
+    console.log(`  Screenshots taken: ${screenshotCounter - 1}`);
+    console.log(`  Avg per screenshot: ${(screenshotTime / (screenshotCounter - 1)).toFixed(0)}ms`);
   });
 });
