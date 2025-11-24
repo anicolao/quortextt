@@ -92,9 +92,11 @@ export class DirtyDetector {
     // When the board is rotated, dirty region clipping becomes complex because
     // regions are calculated in screen coordinates but rendering happens in rotated coordinates.
     // For now, always do full redraw when rotation is active.
+    // Match the exact condition used in gameplayRenderer.ts renderFull() and renderDirtyRegions()
     const hasBoardRotation = currentState.ui.gameMode === 'multiplayer' && 
                               currentState.ui.localPlayerId && 
-                              currentState.game.players.length > 0;
+                              currentState.game.players.length > 0 &&
+                              currentState.game.players.some(p => p.id === currentState.ui.localPlayerId);
     
     if (hasBoardRotation) {
       // Full redraw needed when board rotation is active
