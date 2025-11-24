@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { UserStore } from '../models/User.js';
+import { UserStore, IUser } from '../models/User.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -133,14 +133,14 @@ describe('UserStore', () => {
       // the code changes ensure that null values are filtered out
       
       // Test the filter logic directly
-      const mockCache = new Map([
+      const mockCache = new Map<string, any>([
         ['google:999', null],
         ['google:123', user1],
       ]);
       
       // Simulate the findByGoogleId logic
       const found = Array.from(mockCache.values())
-        .filter((user): user is any => user != null)
+        .filter((user): user is IUser => user != null)
         .find((user) => user.googleId === '123');
       
       expect(found).toBeDefined();
@@ -160,14 +160,14 @@ describe('UserStore', () => {
         isAnonymous: true,
       };
       
-      const mockCache = new Map([
+      const mockCache = new Map<string, any>([
         ['anon:999', null],
         ['anon:123', user1],
       ]);
       
       // Simulate the findByClaimCode logic
       const found = Array.from(mockCache.values())
-        .filter((user): user is any => user != null)
+        .filter((user): user is IUser => user != null)
         .find((user) => user.claimCode === 'ABCDEF');
       
       expect(found).toBeDefined();
@@ -182,7 +182,7 @@ describe('UserStore', () => {
         claimCode: 'ABCDEF',
       };
       
-      const mockCache = new Map([
+      const mockCache = new Map<string, any>([
         ['user:999', null],
         ['user:123', user1],
       ]);
@@ -190,7 +190,7 @@ describe('UserStore', () => {
       // Simulate the claim code generation logic
       const code = 'GHIJKL';
       const existingUser = Array.from(mockCache.values())
-        .filter((u): u is any => u != null)
+        .filter((u): u is IUser => u != null)
         .find((u) => u.claimCode === code);
       
       expect(existingUser).toBeUndefined();
@@ -210,7 +210,7 @@ describe('UserStore', () => {
         displayName: 'Test User 2',
       };
       
-      const mockCache = new Map([
+      const mockCache = new Map<string, any>([
         ['user:999', null],
         ['user:123', user1],
         ['user:888', null],
@@ -219,7 +219,7 @@ describe('UserStore', () => {
       
       // Simulate the getAll logic
       const allUsers = Array.from(mockCache.values()).filter(
-        (user): user is any => user != null,
+        (user): user is IUser => user != null,
       );
       
       expect(allUsers.length).toBe(2);
