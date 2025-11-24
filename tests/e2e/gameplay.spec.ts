@@ -1,17 +1,6 @@
 // End-to-end tests for the gameplay screen rendering
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
-
-// Helper to wait for next animation frame (ensures Redux state updates are complete)
-async function waitForNextFrame(page: any) {
-  await page.evaluate(() => {
-    return new Promise(resolve => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(resolve);
-      });
-    });
-  });
-}
+import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame, takeScreenshot, TestTimer } from './helpers';
 
 // Helper to setup a game with Purple and Red players (matching end of 001-player-configuration)
 async function setupTwoPlayerGame(page: any) {
@@ -32,7 +21,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CA5127', edge: 1 } });
   });
   
-  await waitForNextFrame(page);
+  await waitForAnimationFrame(page);
   
   // Start the game with deterministic seed (transitions to seating)
   await page.evaluate(() => {
@@ -40,7 +29,7 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
   });
   
-  await waitForNextFrame(page);
+  await waitForAnimationFrame(page);
   
   // Complete seating phase (tiles will be automatically shuffled with the seed)
   await completeSeatingPhase(page, canvas, box);
@@ -51,12 +40,18 @@ async function setupTwoPlayerGame(page: any) {
     store.dispatch({ type: 'DRAW_TILE' });
   });
   
-  await waitForNextFrame(page);
+  await waitForAnimationFrame(page);
 }
 
 test.describe('Gameplay Screen Rendering', () => {
   test('should render gameplay screen with two players', async ({ page }) => {
+    const timer = new TestTimer();
+    timer.start();
+    
     await setupTwoPlayerGame(page);
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     const canvas = page.locator('canvas#game-canvas');
     await expect(canvas).toBeVisible();
@@ -84,11 +79,11 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(player2Edge).toBeLessThan(6);
     
     // Take a screenshot of the gameplay screen
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    const screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/001-two-players.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // Verify the canvas has content (not just blank)
     const canvasData = await page.evaluate(() => {
@@ -115,10 +110,18 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(canvasData.hasContent).toBe(true);
     expect(canvasData.width).toBeGreaterThan(0);
     expect(canvasData.height).toBeGreaterThan(0);
+    
+    timer.end();
   });
 
   test('should display board hexagon with colored player edges', async ({ page }) => {
+    const timer = new TestTimer();
+    timer.start();
+    
     await setupTwoPlayerGame(page);
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     const state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -132,15 +135,23 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(player1Color).not.toBe(player2Color);
     
     // Take screenshot
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    const screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/002-board-edges.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
+    
+    timer.end();
   });
 
   test('should display preview tile with grey flows', async ({ page }) => {
+    const timer = new TestTimer();
+    timer.start();
+    
     await setupTwoPlayerGame(page);
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     const state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -148,15 +159,23 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(state.ui.selectedPosition).toBeNull();
     
     // Take screenshot showing preview tile
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    const screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/003-preview-tile.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
+    
+    timer.end();
   });
 
   test('should have properly sized hexagons (canvas size calculation)', async ({ page }) => {
+    const timer = new TestTimer();
+    timer.start();
+    
     await setupTwoPlayerGame(page);
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     // Verify hex size calculation
     const hexSize = await page.evaluate(() => {
@@ -178,15 +197,20 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(hexSize.minDimension).toBeGreaterThan(0);
     
     // Take screenshot for visual verification
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    const screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/004-hex-sizing.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
+    
+    timer.end();
   });
 
   // Comprehensive user story test that demonstrates complete tile placement workflow
   test('User Story: Demonstrate gameplay with tile placement, rotation, and confirmation', async ({ page }) => {
+    const timer = new TestTimer();
+    timer.start();
+    
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
@@ -201,7 +225,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'ADD_PLAYER', payload: { color: '#CA5127', edge: 1 } });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     // Verify we have Purple and Red players
     let state = await getReduxState(page);
@@ -214,7 +238,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'START_GAME', payload: { seed: 12345 } });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     // Complete seating phase (tiles will be automatically shuffled with the seed)
     await completeSeatingPhase(page, canvas, box);
@@ -225,7 +249,10 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
@@ -234,11 +261,11 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(state.game.currentTile).toBeDefined();
     
     // STEP 1: Initial gameplay screen with Purple and Red players
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    let screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/001-two-players.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 2: Player 1 (Purple) - Select a position for tile placement
     // Select position (0, 0) - center of the board
@@ -247,16 +274,16 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: { row: 0, col: 0 } });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.selectedPosition).toEqual({ row: 0, col: 0 });
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/002-player1-position-selected.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 3: Player 1 - Rotate the tile
     await page.evaluate(() => {
@@ -264,16 +291,16 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_ROTATION', payload: 2 }); // Rotate to position 2
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.currentRotation).toBe(2);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/003-player1-tile-rotated.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 4: Player 1 - Confirm placement
     await page.evaluate(() => {
@@ -281,7 +308,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'PLACE_TILE', payload: { position: { row: 0, col: 0 }, rotation: 2 } });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.board['0,0']).toBeDefined();
@@ -292,13 +319,13 @@ test.describe('Gameplay Screen Rendering', () => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
     });
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/004-player1-tile-placed.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 5: Move to next player
     const initialPlayerIndex = state.game.currentPlayerIndex;
@@ -307,7 +334,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'NEXT_PLAYER' });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     // Draw tile for next player
     await page.evaluate(() => {
@@ -315,7 +342,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'DRAW_TILE' });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     // Verify we moved to next player (index should have changed)
@@ -323,11 +350,11 @@ test.describe('Gameplay Screen Rendering', () => {
     expect(state.game.currentPlayerIndex).toBe((initialPlayerIndex + 1) % 2);
     expect(state.game.currentTile).toBeDefined();
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/005-player2-turn.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 6: Player 2 (Red) - Select a position for tile placement
     // Select position (1, 0) - adjacent to first tile
@@ -336,16 +363,16 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: { row: 1, col: 0 } });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.selectedPosition).toEqual({ row: 1, col: 0 });
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/006-player2-position-selected.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 7: Player 2 - Rotate the tile
     await page.evaluate(() => {
@@ -353,16 +380,16 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'SET_ROTATION', payload: 4 }); // Rotate to position 4
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.ui.currentRotation).toBe(4);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/007-player2-tile-rotated.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // STEP 8: Player 2 - Confirm placement
     await page.evaluate(() => {
@@ -370,7 +397,7 @@ test.describe('Gameplay Screen Rendering', () => {
       store.dispatch({ type: 'PLACE_TILE', payload: { position: { row: 1, col: 0 }, rotation: 4 } });
     });
     
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
     state = await getReduxState(page);
     expect(state.game.board['1,0']).toBeDefined();
@@ -381,16 +408,18 @@ test.describe('Gameplay Screen Rendering', () => {
       const store = (window as any).__REDUX_STORE__;
       store.dispatch({ type: 'SET_SELECTED_POSITION', payload: null });
     });
-    await waitForNextFrame(page);
+    await waitForAnimationFrame(page);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    screenshotTime = await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/002-gameplay-rendering/008-player2-tile-placed.png',
       fullPage: false
     });
+    timer.addScreenshotTime(screenshotTime);
     
     // Verify both tiles are on the board
     expect(Object.keys(state.game.board).length).toBe(2);
     console.log('✓ User story complete: Two players (Purple and Red) each placed a tile with rotation');
+    
+    timer.end();
   });
 });

@@ -1,6 +1,36 @@
 // Shared helper functions for e2e tests
 
 /**
+ * Test timing tracker for measuring screenshot vs test logic overhead
+ */
+export class TestTimer {
+  private screenshotTime = 0;
+  private testStartTime = 0;
+  
+  start() {
+    this.screenshotTime = 0;
+    this.testStartTime = Date.now();
+  }
+  
+  addScreenshotTime(time: number) {
+    this.screenshotTime += time;
+  }
+  
+  end() {
+    const totalTime = Date.now() - this.testStartTime;
+    const testLogicTime = totalTime - this.screenshotTime;
+    
+    if (process.env.TIMING_LOGS) {
+      console.log('═══════════════════════════════════════');
+      console.log(`Total test time: ${totalTime}ms`);
+      console.log(`Screenshot time: ${this.screenshotTime}ms (${((this.screenshotTime / totalTime) * 100).toFixed(1)}%)`);
+      console.log(`Test logic time: ${testLogicTime}ms (${((testLogicTime / totalTime) * 100).toFixed(1)}%)`);
+      console.log('═══════════════════════════════════════');
+    }
+  }
+}
+
+/**
  * Get Redux state from the browser with proper serialization of Maps and Sets
  */
 export async function getReduxState(page: any) {
@@ -101,6 +131,7 @@ export async function completeSeatingPhase(page: any, canvas: any, box: any) {
 
 /**
  * Helper to pause animations to prevent canvas redraws during screenshots
+ * This should be called ONCE at the beginning of each test
  * @param page - Playwright page object
  */
 export async function pauseAnimations(page: any) {
@@ -108,28 +139,36 @@ export async function pauseAnimations(page: any) {
     const store = (window as any).__REDUX_STORE__;
     store.dispatch({ type: 'PAUSE_ANIMATIONS' });
   });
-  // Wait for multiple animation frames to ensure rendering is complete
-  await page.evaluate(() => {
-    return new Promise(resolve => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(resolve);
-          });
-        });
-      });
-    });
-  });
-  // Force a canvas rendering flush by reading canvas data
-  await page.evaluate(() => {
-    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      // Reading pixel data forces the canvas to flush any pending operations
-      ctx.getImageData(0, 0, 1, 1);
-    }
-  });
-  // Redux is synchronous, animation frames above are sufficient
+  // Wait for single animation frame - Redux is synchronous so one frame is sufficient
+  await waitForAnimationFrame(page);
+}
+
+/**
+ * Helper to take a screenshot with proper timing
+ * Waits for a single animation frame before taking the screenshot
+ * Use this instead of calling page.screenshot directly
+ * @param page - Playwright page object
+ * @param options - Screenshot options (path, fullPage, etc.)
+ * @returns Promise that resolves when screenshot is taken
+ */
+export async function takeScreenshot(page: any, options: any) {
+  const startTime = Date.now();
+  
+  // Wait for single animation frame to ensure rendering is complete
+  await waitForAnimationFrame(page);
+  
+  // Take the screenshot
+  await page.screenshot(options);
+  
+  const endTime = Date.now();
+  const screenshotTime = endTime - startTime;
+  
+  // Log timing (visible in test output)
+  if (process.env.TIMING_LOGS) {
+    console.log(`Screenshot ${options.path}: ${screenshotTime}ms`);
+  }
+  
+  return screenshotTime;
 }
 
 /**
