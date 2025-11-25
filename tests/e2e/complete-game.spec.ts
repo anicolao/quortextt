@@ -17,6 +17,7 @@ test.describe('Complete 2-Player Game', () => {
     await page.waitForSelector('canvas#game-canvas');
     
     // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     // === STEP 1: Initial configuration screen ===
     await takeScreenshot(page, { 
