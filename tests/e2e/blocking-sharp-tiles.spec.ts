@@ -1,7 +1,7 @@
 // E2E test for blocking detection with three-sharp tiles
 // Tests that blocking moves are properly prevented in the UI
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 
 test.describe('Blocking Detection with Three-Sharp Tiles', () => {
   // Note: Blocking detection is comprehensively tested in unit tests
@@ -151,7 +151,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
     
     // Take a screenshot of the final board
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/blocking-sharp-tiles-final.png',
       fullPage: false
     });
@@ -202,7 +202,7 @@ test.describe('Blocking Detection with Three-Sharp Tiles', () => {
     
     // Take screenshot showing the blocking attempt
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/blocking-sharp-tiles-attempt.png',
       fullPage: false
     });

@@ -8,7 +8,7 @@
 // tests/e2e/user-stories/player-order/ are from a single continuous test execution.
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, getSeatingEdgeButtonCoordinates, waitForAnimationFrame, pauseAnimations } from './helpers';
+import { getReduxState, getSeatingEdgeButtonCoordinates, waitForAnimationFrame, pauseAnimations, takeScreenshot } from './helpers';
 
 // Helper to add players through the configuration UI
 async function addPlayers(page: any, canvas: any, box: any, count: number) {
@@ -147,7 +147,7 @@ test.describe('Player Order Validation', () => {
     
     // Take screenshot showing 6 players configured
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/player-order/001-six-players-configured.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/player-order/001-six-players-configured.png' });
 
     // STEP 2: Start the game with a deterministic seed for reproducible screenshots
     await page.evaluate(() => {
@@ -165,7 +165,7 @@ test.describe('Player Order Validation', () => {
     
     // Take screenshot of seating phase
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/player-order/002-seating-phase.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/player-order/002-seating-phase.png' });
 
     // STEP 3: Have players select edges in clockwise order 
     // (edges 0, 1, 2, 3, 4, 5 correspond to positions around the hexagon)
@@ -186,7 +186,7 @@ test.describe('Player Order Validation', () => {
     
     // Take screenshot of initial gameplay state
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/player-order/003-gameplay-started.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/player-order/003-gameplay-started.png' });
 
     // STEP 4: Verify the starting player is first from seating order
     const currentPlayerIndex = state.game.currentPlayerIndex;
@@ -261,7 +261,7 @@ test.describe('Player Order Validation', () => {
       
       // Take screenshot after each placement
       await pauseAnimations(page);
-      await page.screenshot({ 
+      await takeScreenshot(page, { 
         path: `tests/e2e/user-stories/player-order/004-turn-${turnIndex + 1}-player-${currentPlayerId}.png` 
       });
     }
@@ -278,7 +278,7 @@ test.describe('Player Order Validation', () => {
 
     // Take final screenshot
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/player-order/005-all-turns-complete.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/player-order/005-all-turns-complete.png' });
     
     console.log('✓ Player order validated: turns taken in clockwise order from starting player');
   });

@@ -1,6 +1,6 @@
 // E2E test for AI player functionality
 import { test, expect } from '@playwright/test';
-import { getReduxState, waitForAnimationFrame, pauseAnimations } from './helpers';
+import { getReduxState, waitForAnimationFrame, pauseAnimations, takeScreenshot } from './helpers';
 
 test.describe('AI Player', () => {
   test('should auto-add AI opponent when single player starts game', async ({ page }) => {
@@ -312,7 +312,7 @@ test.describe('AI Player', () => {
     
     // Pause animations and take screenshot
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/ai-debug-scoring.png',
       fullPage: false
     });

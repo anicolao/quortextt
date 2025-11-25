@@ -1,7 +1,7 @@
 // E2E test for victory animation
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 
 test.describe('Victory Animation', () => {
   test('should display animated victory modals in all corners with pulsing flow', async ({ page }) => {
@@ -9,6 +9,9 @@ test.describe('Victory Animation', () => {
     
     // Wait for the page to load
     await page.waitForSelector('canvas#game-canvas');
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     // Set up a 2-player game
     await page.evaluate(() => {
@@ -65,24 +68,21 @@ test.describe('Victory Animation', () => {
     await waitForAnimationFrame(page);
     
     // Take a screenshot during early animation
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: '/tmp/victory-animation-early.png',
       fullPage: false
     });
     
     // Wait for modal to fully appear
     await waitForAnimationFrame(page);
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: '/tmp/victory-animation-modal.png',
       fullPage: false
     });
     
     // Wait for pulse animation
     await waitForAnimationFrame(page);
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: '/tmp/victory-animation-pulse.png',
       fullPage: false
     });
@@ -93,6 +93,9 @@ test.describe('Victory Animation', () => {
   test('should display victory animation for team victory', async ({ page }) => {
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     // Set up a 4-player game (2 teams)
     await page.evaluate(() => {
@@ -144,8 +147,7 @@ test.describe('Victory Animation', () => {
     expect(state.game.screen).toBe('game-over');
     
     // Take screenshot of team victory with two color squares
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: '/tmp/victory-animation-team.png',
       fullPage: false
     });

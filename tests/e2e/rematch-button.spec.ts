@@ -1,7 +1,7 @@
 // E2E test for rematch button functionality
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, waitForAnimationFrame, setupTwoPlayerGame, pauseAnimations } from './helpers';
+import { getReduxState, waitForAnimationFrame, setupTwoPlayerGame, pauseAnimations, takeScreenshot } from './helpers';
 
 test.describe('Rematch Button', () => {
   test('should show rematch button when game is over and start a new game', async ({ page }) => {
@@ -34,7 +34,7 @@ test.describe('Rematch Button', () => {
     expect(state.game.winners).toContain('P1');
 
     // Take a screenshot showing the rematch buttons
-    await page.screenshot({ path: 'test-results/rematch-button-visible.png' });
+    await takeScreenshot(page, { path: 'test-results/rematch-button-visible.png' });
 
     // Get canvas dimensions to calculate button position
     const canvasSize = await page.evaluate(() => {
@@ -78,7 +78,7 @@ test.describe('Rematch Button', () => {
 
     // Take a screenshot after rematch
     await pauseAnimations(page);
-    await page.screenshot({ path: 'test-results/after-rematch.png' });
+    await takeScreenshot(page, { path: 'test-results/after-rematch.png' });
   });
 
   test('should preserve player edge positions after rematch', async ({ page }) => {

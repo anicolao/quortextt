@@ -3,7 +3,7 @@
 // Specifically testing Type 1 tiles (OneSharp) placed on player edges
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, pauseAnimations, waitForAnimationFrame } from './helpers';
+import { getReduxState, pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 
 test.describe('Move Notation with Rotation', () => {
   test('should display notation for Type 1 tiles placed on edges with sharp corner pointing SE', async ({ page }) => {
@@ -139,7 +139,7 @@ test.describe('Move Notation with Rotation', () => {
     expect(allType1).toBe(true);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/007-move-notation/001-initial-state.png',
       fullPage: false
     });
@@ -202,7 +202,7 @@ test.describe('Move Notation with Rotation', () => {
     console.log('Current player after NEXT_PLAYER:', state.game.currentPlayerIndex, state.game.players[state.game.currentPlayerIndex].id);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/007-move-notation/002-first-player-placed.png',
       fullPage: false
     });
@@ -252,7 +252,7 @@ test.describe('Move Notation with Rotation', () => {
     console.log('Second move:', state.game.moveHistory[1]);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/007-move-notation/003-second-player-placed.png',
       fullPage: false
     });
@@ -269,7 +269,7 @@ test.describe('Move Notation with Rotation', () => {
     console.log('Move list visible:', state.ui.moveListCorner !== null);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/007-move-notation/004-move-list-opened.png',
       fullPage: false
     });
@@ -427,7 +427,7 @@ test.describe('Move Notation with Rotation', () => {
     await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/007-move-notation/005-four-moves-list.png',
       fullPage: false
     });
