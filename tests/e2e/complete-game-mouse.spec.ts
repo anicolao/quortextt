@@ -222,9 +222,6 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     // Increase timeout for this long-running test
     test.setTimeout(90000); // 90 seconds (test takes ~58s)
     
-    // Pause animations once at the beginning
-    await pauseAnimations(page);
-    
     // Screenshot counter for sequential naming
     let screenshotCounter = 1;
     const takeLocalScreenshot = async (description: string) => {
@@ -238,6 +235,9 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
+    
+    // Pause animations once at the beginning (after page loads)
+    await pauseAnimations(page);
     
     // Get canvas bounding box for mouse clicks
     const canvas = page.locator('canvas#game-canvas');
