@@ -1,6 +1,6 @@
 // Generic E2E test that replays a game from .clicks file (mouse clicks)
 import { test, expect } from '@playwright/test';
-import { getReduxState, pauseAnimations, waitForAnimationFrame } from './helpers';
+import { getReduxState, pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 import { loadClicksFromFile, ClickAction } from '../utils/actionConverter';
 import { getFlowExit } from '../../src/game/tiles';
 import { getEdgePositionsWithDirections, positionToKey, keyToPosition, getNeighborInDirection as getNeighbor, getOppositeDirection } from '../../src/game/board';
@@ -245,7 +245,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   
   // Take initial screenshot
   await pauseAnimations(page);
-  await page.screenshot({ 
+  await takeScreenshot(page, { 
     path: path.join(screenshotDir, '0001-initial-screen.png'),
     fullPage: false
   });
@@ -364,7 +364,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
     if (click.type === 'click') {
       await pauseAnimations(page);
       const filename = String(screenshotCounter).padStart(4, '0') + `-click.png`;
-      await page.screenshot({ 
+      await takeScreenshot(page, { 
         path: path.join(screenshotDir, filename),
         fullPage: false
       });
@@ -553,7 +553,7 @@ async function testCompleteGameFromClicks(page: any, seed: string) {
   }
   
   // Take final screenshot
-  await page.screenshot({ 
+  await takeScreenshot(page, { 
     path: path.join(screenshotDir, 'final-state.png'),
     fullPage: false
   });

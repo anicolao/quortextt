@@ -1,7 +1,7 @@
 // E2E test for a complete 2-player game user story
 // This test demonstrates a full game from setup to victory
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 
 test.describe('Complete 2-Player Game', () => {
   // Test configuration constants
@@ -16,9 +16,11 @@ test.describe('Complete 2-Player Game', () => {
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
-    // === STEP 1: Initial configuration screen ===
+    // Pause animations once at the beginning
     await pauseAnimations(page);
-    await page.screenshot({ 
+    
+    // === STEP 1: Initial configuration screen ===
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/005-complete-game/001-initial-screen.png',
       fullPage: false
     });
@@ -32,8 +34,7 @@ test.describe('Complete 2-Player Game', () => {
     
     await waitForAnimationFrame(page);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/005-complete-game/002-players-added.png',
       fullPage: false
     });
@@ -70,8 +71,7 @@ test.describe('Complete 2-Player Game', () => {
     expect(state.game.phase).toBe('playing');
     expect(state.game.players.length).toBe(2);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/005-complete-game/003-game-started.png',
       fullPage: false
     });
@@ -138,8 +138,7 @@ test.describe('Complete 2-Player Game', () => {
         gameEnded = true;
         moveNumber++;
         
-        await pauseAnimations(page);
-        await page.screenshot({ 
+        await takeScreenshot(page, { 
           path: `tests/e2e/user-stories/005-complete-game/${VICTORY_SCREENSHOT_NAME}`,
           fullPage: false
         });
@@ -194,9 +193,8 @@ test.describe('Complete 2-Player Game', () => {
       console.log(`After placement - Move ${moveNumber}: stored tile rotation in model: ${placedTile?.rotation}`);
       
       // Take screenshot
-      await pauseAnimations(page);
       const stepNum = String(moveNumber + 3).padStart(3, '0');
-      await page.screenshot({ 
+      await takeScreenshot(page, { 
         path: `tests/e2e/user-stories/005-complete-game/${stepNum}-move-${moveNumber}.png`,
         fullPage: false
       });
@@ -290,8 +288,7 @@ test.describe('Complete 2-Player Game', () => {
         
         gameEnded = true;
         
-        await pauseAnimations(page);
-        await page.screenshot({ 
+        await takeScreenshot(page, { 
           path: `tests/e2e/user-stories/005-complete-game/${VICTORY_SCREENSHOT_NAME}`,
           fullPage: false
         });

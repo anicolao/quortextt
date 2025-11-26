@@ -1,7 +1,7 @@
 // End-to-end tests for the game configuration screen (redesigned edge-based lobby)
 
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame } from './helpers';
+import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame, takeScreenshot, TestTimer } from './helpers';
 
 // Helper to get edge button coordinates for the new lobby
 // colorIndex: 0=blue, 1=orange, 2=green, 3=yellow, 4=purple, 5=red
@@ -79,6 +79,9 @@ test.describe('Configuration Screen', () => {
   });
 
   test('should display the edge-based lobby with color buttons', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     // Verify canvas exists
     const canvas = await page.locator('canvas#game-canvas');
     await expect(canvas).toBeVisible();
@@ -89,11 +92,13 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers.length).toBe(0);
     
     // Take a screenshot of the initial state
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/001-initial-state.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/001-initial-state.png' });
   });
 
   test('should add a player when clicking a color button', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -112,11 +117,13 @@ test.describe('Configuration Screen', () => {
     expect(state.game.configPlayers[0].edge).toBe(0); // Bottom edge
     expect(state.game.configPlayers[0].id).toBeDefined();
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
   });
 
   test('should add multiple players from different edges', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -142,11 +149,13 @@ test.describe('Configuration Screen', () => {
     const colors = state.game.configPlayers.map((p: any) => p.color);
     expect(new Set(colors).size).toBe(3); // All different colors
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/003-multiple-players.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/003-multiple-players.png' });
   });
 
   test('should not add more than 6 players', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -164,11 +173,13 @@ test.describe('Configuration Screen', () => {
     const state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(6);
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/004-max-players.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/004-max-players.png' });
   });
 
   test('should remove a player when X button is clicked', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -251,11 +262,13 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-player-removed.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/005-player-removed.png' });
   });
 
   test('should change player color by removing and re-adding', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -299,11 +312,13 @@ test.describe('Configuration Screen', () => {
     const newState = await getReduxState(page);
     expect(newState.game.configPlayers[0].color).toBe('#DE8F05'); // Orange
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/007-color-changed.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/007-color-changed.png' });
   });
 
   test('should start game when Start button is clicked with players', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -337,11 +352,13 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/009-game-started.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/009-game-started.png' });
   });
 
   test('should not allow duplicate colors', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -366,12 +383,14 @@ test.describe('Configuration Screen', () => {
     expect(player1Color).not.toBe(player2Color);
     expect(state.game.configPlayers.length).toBe(2);
 
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/010-no-duplicate-colors.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/010-no-duplicate-colors.png' });
   });
 
   // Comprehensive user story test that generates all screenshots in a continuous flow
   test('User Story: Complete player configuration flow', async ({ page }) => {
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
@@ -429,8 +448,7 @@ test.describe('Configuration Screen', () => {
     let state = await getReduxState(page);
     expect(state.game.screen).toBe('configuration');
     expect(state.game.configPlayers.length).toBe(0);
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/001-initial-state.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/001-initial-state.png' });
 
     // STEP 2: Add first player (1 player - Blue)
     let coords = await getEdgeButtonCoordinates(page, 0, 0); // Blue
@@ -441,8 +459,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(1);
     expect(state.game.configPlayers[0].color).toBe('#0173B2'); // Blue
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/002-player-added.png' });
 
     // STEP 3: Add second player (2 players - Blue, Orange)
     coords = await getEdgeButtonCoordinates(page, 1, 1); // Orange from right
@@ -453,8 +470,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
     expect(state.game.configPlayers[1].color).toBe('#DE8F05'); // Orange
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/003-second-player-added.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/003-second-player-added.png' });
 
     // STEP 4: Add third player (3 players - Blue, Orange, Green)
     coords = await getEdgeButtonCoordinates(page, 2, 2); // Green from top
@@ -465,8 +481,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
     expect(state.game.configPlayers[2].color).toBe('#029E73'); // Green
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/004-third-player-added.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/004-third-player-added.png' });
 
     // STEP 5: Add fourth player (4 players)
     coords = await getEdgeButtonCoordinates(page, 3, 0); // Yellow
@@ -477,8 +492,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(4);
     expect(state.game.configPlayers[3].color).toBe('#ECE133'); // Yellow
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/005-fourth-player-added.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/005-fourth-player-added.png' });
 
     // STEP 6: Add fifth player (5 players)
     coords = await getEdgeButtonCoordinates(page, 4, 0); // Purple
@@ -489,8 +503,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(5);
     expect(state.game.configPlayers[4].color).toBe('#CC78BC'); // Purple
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/006-fifth-player-added.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/006-fifth-player-added.png' });
 
     // STEP 7: Add sixth player - max players (6 players)
     coords = await getEdgeButtonCoordinates(page, 5, 0); // Red
@@ -501,8 +514,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(6);
     expect(state.game.configPlayers[5].color).toBe('#CA5127'); // Red
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/007-max-players.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/007-max-players.png' });
 
     // STEP 8: Remove first player (5 players remaining)
     const firstPlayerColor = state.game.configPlayers[0].color;
@@ -514,8 +526,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(5);
     expect(state.game.configPlayers[0].color).not.toBe(firstPlayerColor);
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/008-player-removed.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/008-player-removed.png' });
 
     // STEP 9: Remove second player (4 players remaining)
     const secondPlayerColor = state.game.configPlayers[0].color;
@@ -527,8 +538,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(4);
     expect(state.game.configPlayers[0].color).not.toBe(secondPlayerColor);
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/009-second-player-removed.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/009-second-player-removed.png' });
 
     // STEP 10: Remove third player (3 players remaining)
     const thirdPlayerColor = state.game.configPlayers[0].color;
@@ -540,8 +550,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(3);
     expect(state.game.configPlayers[0].color).not.toBe(thirdPlayerColor);
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/010-third-player-removed.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/010-third-player-removed.png' });
 
     // STEP 11: Remove fourth player (2 players remaining)
     const fourthPlayerColor = state.game.configPlayers[0].color;
@@ -553,8 +562,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.configPlayers.length).toBe(2);
     expect(state.game.configPlayers[0].color).not.toBe(fourthPlayerColor);
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/011-two-players-ready.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/011-two-players-ready.png' });
 
     // STEP 12: Start the game with a deterministic seed for reproducible screenshots
     await page.evaluate(() => {
@@ -567,8 +575,7 @@ test.describe('Configuration Screen', () => {
     expect(state.game.screen).toBe('seating');
     expect(state.game.seatingPhase.active).toBe(true);
     expect(state.game.seatingPhase.seatingOrder.length).toBe(2);
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/012-seating-screen.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/012-seating-screen.png' });
 
     // STEP 13: Player 1 selects their seat (edge 0)
     let seatingCoords = await page.evaluate(() => {
@@ -596,8 +603,7 @@ test.describe('Configuration Screen', () => {
     state = await getReduxState(page);
     expect(state.game.screen).toBe('seating');
     expect(state.game.seatingPhase.seatingIndex).toBe(1); // One player has selected
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/013-player1-seated.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/013-player1-seated.png' });
 
     // STEP 14: Player 2 selects their seat (edge 1)
     seatingCoords = await page.evaluate(() => {
@@ -624,8 +630,7 @@ test.describe('Configuration Screen', () => {
     
     state = await getReduxState(page);
     expect(state.game.screen).toBe('gameplay');
-    await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/001-player-configuration/014-gameplay-started.png' });
+    await takeScreenshot(page, { path: 'tests/e2e/user-stories/001-player-configuration/014-gameplay-started.png' });
   });
 });
 

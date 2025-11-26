@@ -1,27 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { formatMoveHistory } from '../../src/game/notation';
-
-// Helper to wait for animation frame
-async function waitForAnimationFrame(page: Page) {
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
-}
-
-// Helper to pause animations for screenshot
-async function pauseAnimations(page: Page) {
-  await page.evaluate(() => {
-    const style = document.createElement('style');
-    style.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
-    document.head.appendChild(style);
-  });
-}
-
-// Helper to get Redux state
-async function getReduxState(page: Page) {
-  return await page.evaluate(() => {
-    const store = (window as any).__REDUX_STORE__;
-    return store.getState();
-  });
-}
+import { getReduxState, pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 
 test.describe('Move Notation - Six Player Test', () => {
   test('should display notation for all 6 edges with Type 1 tiles in A1 position', async ({ page }) => {
@@ -114,7 +93,7 @@ test.describe('Move Notation - Six Player Test', () => {
 
     // Take initial screenshot
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/008-six-player-notation/001-initial-state.png',
       fullPage: false
     });
@@ -205,7 +184,7 @@ test.describe('Move Notation - Six Player Test', () => {
         await pauseAnimations(page);
         
         const screenshotNum = String((playerIdx + 1) / 2 + 1).padStart(3, '0');
-        await page.screenshot({ 
+        await takeScreenshot(page, { 
           path: `tests/e2e/user-stories/008-six-player-notation/${screenshotNum}-moves-${playerIdx - 1}-${playerIdx}.png`,
           fullPage: false
         });

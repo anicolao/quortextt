@@ -1,11 +1,14 @@
 // E2E test demonstrating correct multi-tile flow propagation with screenshots
 import { test } from '@playwright/test';
-import { completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
+import { completeSeatingPhase , pauseAnimations, waitForAnimationFrame, takeScreenshot } from './helpers';
 
 test.describe('Multi-Tile Flow Progression', () => {
   test('should generate screenshots showing correct flow behavior', async ({ page }) => {
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
+    
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
     
     const canvas = page.locator('canvas#game-canvas');
     const box = await canvas.boundingBox();
@@ -34,8 +37,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await waitForAnimationFrame(page);
     
     // === STEP 0: Initial state ===
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/004-multi-tile-flow/001-initial.png',
       fullPage: false
     });
@@ -53,8 +55,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     
     await waitForAnimationFrame(page);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/004-multi-tile-flow/002-first-tile.png',
       fullPage: false
     });
@@ -72,8 +73,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     
     await waitForAnimationFrame(page);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/004-multi-tile-flow/003-second-tile.png',
       fullPage: false
     });
@@ -91,8 +91,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     
     await waitForAnimationFrame(page);
     
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/004-multi-tile-flow/004-extended-flow.png',
       fullPage: false
     });

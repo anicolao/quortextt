@@ -1,7 +1,7 @@
 // End-to-end test for flow propagation from player edges
 // This test verifies that flows only enter from hex edges that belong to the player's board edge
 import { test, expect } from '@playwright/test';
-import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
+import { getReduxState, completeSeatingPhase , pauseAnimations, takeScreenshot } from './helpers';
 
 // Wait for next animation frame to ensure rendering is complete
 async function waitForNextFrame(page: any) {
@@ -47,6 +47,9 @@ test.describe('Flow Propagation from Player Edges', () => {
     await page.goto('/quortextt/tabletop.html');
     await page.waitForSelector('canvas#game-canvas');
     
+    // Pause animations once at the beginning
+    await pauseAnimations(page);
+    
     // Set up game with two players
     await setupTwoPlayerGame(page);
     
@@ -59,8 +62,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     const player2 = state.game.players[1];
     
     // Take screenshot of initial state with colored player edges
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/003-flow-propagation/001-initial-state.png',
       fullPage: false
     });
@@ -78,8 +80,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     state = await getReduxState(page);
     
     // Screenshot showing tile without flows (grey, not colored)
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/003-flow-propagation/002-no-connection.png',
       fullPage: false
     });
@@ -143,8 +144,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     state = await getReduxState(page);
     
     // Screenshot showing tile WITH colored flows
-    await pauseAnimations(page);
-    await page.screenshot({ 
+    await takeScreenshot(page, { 
       path: 'tests/e2e/user-stories/003-flow-propagation/003-with-connection.png',
       fullPage: false
     });
