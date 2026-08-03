@@ -30,7 +30,10 @@ jobs:
         run: npm ci
       
       - name: Build
-        run: npm run build
+        run: npm run build:all
+
+      - name: Verify build identity
+        run: npm run verify:build-metadata
       
       - name: Run unit tests with coverage
         run: npm run test:coverage -- --coverage.thresholds.lines=100 --coverage.thresholds.branches=95 --coverage.thresholds.functions=95 --coverage.thresholds.statements=95

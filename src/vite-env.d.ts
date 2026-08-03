@@ -1,5 +1,22 @@
 /// <reference types="vite/client" />
 
+interface QuortexBuildMetadata {
+  readonly component: 'frontend' | 'server';
+  readonly gitSha: string;
+  readonly buildTime: string;
+  readonly buildId: string | null;
+  readonly dirty: boolean;
+}
+
+declare const __QUORTEX_BUILD__: QuortexBuildMetadata & {
+  readonly component: 'frontend';
+};
+
+interface Window {
+  __QUORTEX_BUILD__: QuortexBuildMetadata & { readonly component: 'frontend' };
+  __QUORTEX_SERVER_BUILD__?: QuortexBuildMetadata & { readonly component: 'server' };
+}
+
 interface ImportMetaEnv {
   readonly VITE_DISCORD_CLIENT_ID?: string;
   readonly VITE_SERVER_URL?: string;

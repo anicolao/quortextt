@@ -11,6 +11,7 @@ import profileRoutes from './routes/profile.js';
 import jwt from 'jsonwebtoken';
 import { GameStorage, DataStorage } from './storage/index.js';
 import { UserStore } from './models/User.js';
+import { serverBuildMetadata } from './buildMetadata.js';
 
 // Parse command-line arguments for fixed seed (for testing)
 let FIXED_SEED: number | null = null;
@@ -285,11 +286,21 @@ app.get('/health', async (req, res) => {
       status: 'ok', 
       games: gameIds.length, 
       players: players.size,
-      storage: 'file-based'
+      storage: 'file-based',
+      version: serverBuildMetadata
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Storage unavailable' });
+    res.status(500).json({
+      status: 'error',
+      message: 'Storage unavailable',
+      version: serverBuildMetadata
+    });
   }
+});
+
+// Runtime build identity
+app.get('/version', (_req, res) => {
+  res.json(serverBuildMetadata);
 });
 
 // Get all available rooms
@@ -478,6 +489,7 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, socket.data.authenticated ? '(authenticated)' : '(anonymous)');
+  socket.emit('server_version', serverBuildMetadata);
 
   // Player identification
   socket.on('identify', async (data: { username: string }) => {

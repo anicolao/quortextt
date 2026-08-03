@@ -1,5 +1,6 @@
 // Main application entry point
 
+import './buildMetadata';
 import { store } from './redux/store';
 import { Renderer } from './rendering/renderer';
 import { InputHandler } from './input/inputHandler';
