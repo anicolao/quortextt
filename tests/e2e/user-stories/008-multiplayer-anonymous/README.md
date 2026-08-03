@@ -6,9 +6,10 @@ This user story documents the end-to-end flow for an anonymous user joining the 
 
 ## Test Coverage
 
-### UI Tests (No Server Required)
+### UI Tests
 
-These tests verify the client-side UI behavior without requiring a backend server:
+These tests verify the client-side UI behavior while the E2E launcher manages the
+backend lifecycle:
 
 1. **Login Screen Display** - Verifies the multiplayer login screen loads correctly with OAuth buttons, guest login section, info text, and proper styling
 2. **Username Input Validation** - Tests that join button is disabled/enabled based on username
@@ -18,7 +19,8 @@ These tests verify the client-side UI behavior without requiring a backend serve
 
 ### Integration Tests (With Server)
 
-With the backend server running on `localhost:3001`, all tests pass including:
+The E2E launcher starts an isolated compiled backend so the integration tests can
+exercise:
 
 1. **Join Lobby** - Complete flow of entering username and joining the game lobby
 2. **Create Game Room** - Flow of creating a new multiplayer game room with custom settings
@@ -27,31 +29,19 @@ With the backend server running on `localhost:3001`, all tests pass including:
 
 ## Running the Tests
 
-### UI Tests Only (No Server)
+### Multiplayer Tests
 
 ```bash
-# Run all multiplayer UI tests
-npx playwright test tests/e2e/multiplayer-anonymous.spec.ts
+# Run all multiplayer UI and integration tests
+npm run test:e2e -- tests/e2e/multiplayer-anonymous.spec.ts
 
 # Run with UI mode for debugging
-npx playwright test tests/e2e/multiplayer-anonymous.spec.ts --ui
+npm run test:e2e -- tests/e2e/multiplayer-anonymous.spec.ts --ui
 ```
 
-These tests will pass without a backend server and focus on the client-side UI behavior.
-
-### Full Integration Tests
-
-To run tests that create real lobby connections and game rooms:
-
-```bash
-# Terminal 1: Start the backend server
-npm run dev:server
-
-# Terminal 2: Run the tests
-npx playwright test tests/e2e/multiplayer-anonymous.spec.ts
-```
-
-The integration tests will be automatically skipped if the server is not running.
+No separately managed server is required. The npm script builds the backend,
+allocates dynamic frontend and backend ports, and removes its temporary data when
+the run ends.
 
 ## Screenshots
 

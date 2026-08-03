@@ -1,8 +1,7 @@
 // End-to-end tests for multiplayer anonymous user UI flow
 // Tests the login screen UI, username input validation, and basic interactions
 //
-// NOTE: Full multiplayer flow requires backend server. These tests focus on
-// the client-side UI behavior that can be tested without a live server.
+// The E2E launcher supplies an isolated compiled backend for every test run.
 
 import { test, expect } from '@playwright/test';
 import { waitForButtonTransition } from './helpers';
@@ -127,7 +126,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
       fullPage: true
     });
     
-    // Click join button (will attempt connection)
+    // Click join button and connect to the isolated backend
     const buttonClickPromise = joinButton.click();
     
     // Wait a brief moment to capture the UI state during connection attempt
@@ -143,36 +142,12 @@ test.describe('Multiplayer Anonymous User UI', () => {
     // Wait for the click to complete (may navigate away)
     await buttonClickPromise;
     
-    // If server is available, we should navigate to lobby or show error
-    // Just verify the page is in a stable state
-    await page.waitForTimeout(500);
-    
-    // Page should either show lobby (if server available) or stay on login with error
-    const hasLobbyHeading = await page.locator('h1:has-text("Game Lobby")').count() > 0;
-    const hasLoginHeading = await page.locator('h1:has-text("Quortex Multiplayer")').count() > 0;
-    
-    expect(hasLobbyHeading || hasLoginHeading).toBe(true);
+    await expect(page.locator('h1')).toContainText('Game Lobby', { timeout: 10000 });
   });
 });
 
-// Test group for when backend server IS available
-// These tests will be skipped if server is not running
-test.describe('Multiplayer Anonymous User Flow (requires server)', () => {
-  let serverAvailable = false;
-
-  test.beforeAll(async ({ request }) => {
-    // Check if backend server is running
-    try {
-      const response = await request.get('http://localhost:3001/health');
-      serverAvailable = response.ok();
-    } catch {
-      serverAvailable = false;
-    }
-  });
-
+test.describe('Multiplayer Anonymous User Flow (compiled backend)', () => {
   test.beforeEach(async ({ page }) => {
-    test.skip(!serverAvailable, 'Backend server not running on localhost:3001. Start with: npm run dev:server');
-    
     // Navigate to multiplayer page
     await page.goto('/quortextt/');
     await page.waitForTimeout(1000);
@@ -248,4 +223,3 @@ test.describe('Multiplayer Anonymous User Flow (requires server)', () => {
     });
   });
 });
-

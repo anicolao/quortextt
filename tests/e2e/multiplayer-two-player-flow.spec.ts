@@ -4,113 +4,10 @@
 // This test uses separate browser contexts for each user to ensure isolated sessions
 // and demonstrates the complete flow from login to first move.
 
-import { test, expect, Browser } from '@playwright/test';
-import { spawn, ChildProcess } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { getHexPixelCoords, getConfirmationButtonCoords, waitForButtonTransition, waitForCSSAnimations } from './helpers';
+import { test, expect } from '@playwright/test';
+import { waitForButtonTransition, waitForCSSAnimations } from './helpers';
 
-test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
-  let serverProcess: ChildProcess | null = null;
-  let tempDataDir: string = '';
-
-  test.beforeAll(async () => {
-    // Create a temporary data directory for this test run
-    tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quortex-e2e-test-'));
-    console.log(`Created temporary data directory: ${tempDataDir}`);
-
-    // Start the server with the temporary data directory and fixed seed for repeatability
-    const serverDir = path.join(process.cwd(), 'server');
-    
-    return new Promise<void>((resolve, reject) => {
-      serverProcess = spawn('npm', ['run', 'dev', '--', '--seed', '888'], {
-        cwd: serverDir,
-        env: {
-          ...process.env,
-          DATA_DIR: tempDataDir,
-          NODE_ENV: 'test'
-        },
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
-
-      let serverStarted = false;
-      const timeout = setTimeout(() => {
-        if (!serverStarted) {
-          reject(new Error('Server failed to start within 30 seconds'));
-        }
-      }, 30000);
-
-      serverProcess.stdout?.on('data', (data) => {
-        const output = data.toString();
-        console.log('[SERVER]', output);
-        
-        // Look for indication that server is ready
-        if (output.includes('running on port') || output.includes('Server running') || output.includes('listening')) {
-          if (!serverStarted) {
-            serverStarted = true;
-            clearTimeout(timeout);
-            
-            // Give server a moment to fully initialize
-            setTimeout(() => {
-              console.log('Server started successfully');
-              resolve();
-            }, 2000);
-          }
-        }
-      });
-
-      serverProcess.stderr?.on('data', (data) => {
-        console.error('[SERVER ERROR]', data.toString());
-      });
-
-      serverProcess.on('error', (error) => {
-        console.error('Failed to start server:', error);
-        reject(error);
-      });
-
-      serverProcess.on('exit', (code) => {
-        if (!serverStarted) {
-          reject(new Error(`Server exited early with code ${code}`));
-        }
-      });
-    });
-  });
-
-  test.afterAll(async () => {
-    // Stop the server
-    if (serverProcess) {
-      console.log('Stopping server...');
-      serverProcess.kill();
-      
-      // Wait for process to exit
-      await new Promise<void>((resolve) => {
-        if (serverProcess) {
-          serverProcess.on('exit', () => {
-            console.log('Server stopped');
-            resolve();
-          });
-          
-          // Force kill after 5 seconds if graceful shutdown fails
-          setTimeout(() => {
-            if (serverProcess) {
-              serverProcess.kill('SIGKILL');
-              resolve();
-            }
-          }, 5000);
-        } else {
-          resolve();
-        }
-      });
-    }
-
-    // Clean up temporary data directory
-    if (tempDataDir && fs.existsSync(tempDataDir)) {
-      console.log(`Cleaning up temporary data directory: ${tempDataDir}`);
-      fs.rmSync(tempDataDir, { recursive: true, force: true });
-    }
-  });
-
+test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
   test('complete two-player flow from login to first move', async ({ browser }) => {
     test.setTimeout(60000); // 60 seconds (test takes ~29s)
 
@@ -343,9 +240,9 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
         fullPage: true
       });
 
-      // Player 2 joins the room
-      // Click on the room card to join
-      await roomCard.click();
+      // Player 2 joins the room using the action scoped to this room card.
+      // Other tests may have created additional rooms in the same E2E run.
+      await roomCard.locator('button:has-text("Join")').click();
       
       // Wait for either room screen or navigation to room
       try {
@@ -365,7 +262,7 @@ test.describe('Multiplayer Two-Player Flow (with isolated server)', () => {
       
       // If still in lobby, we might need to click a Join button
       if (page2Content?.includes('Game Lobby')) {
-        const joinButton = page2.locator('button:has-text("Join")').first();
+        const joinButton = roomCard.locator('button:has-text("Join")');
         if (await joinButton.isVisible({ timeout: 1000 }).catch(() => false)) {
           await joinButton.click();
           await page2.waitForTimeout(500);

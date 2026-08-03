@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const frontendUrl = process.env.QUORTEX_E2E_FRONTEND_URL || 'http://127.0.0.1:5173';
+const frontendPort = new URL(frontendUrl).port;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false, // Run tests sequentially for accurate timing
@@ -11,7 +14,7 @@ export default defineConfig({
     ['./scripts/e2e-timing-reporter.ts'],
   ],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: frontendUrl,
     trace: 'off',
     screenshot: 'off',
     video: 'off',
@@ -42,9 +45,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    command: `npm run dev -- --host 127.0.0.1 --port ${frontendPort} --strictPort`,
+    url: frontendUrl,
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });
