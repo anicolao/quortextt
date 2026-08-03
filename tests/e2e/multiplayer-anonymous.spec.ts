@@ -144,6 +144,12 @@ test.describe('Multiplayer Anonymous User UI', () => {
         path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-connecting-state.png',
         fullPage: true
       });
+      if (process.env.CI) {
+        await page.screenshot({
+          path: 'test-results/007-connecting-state-linux.png',
+          fullPage: true
+        });
+      }
     } finally {
       releaseLoginRequest();
     }
