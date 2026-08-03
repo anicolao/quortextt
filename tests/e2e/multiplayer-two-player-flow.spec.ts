@@ -4,7 +4,7 @@
 // This test uses separate browser contexts for each user to ensure isolated sessions
 // and demonstrates the complete flow from login to first move.
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './isolatedBackend';
 import { waitForButtonTransition, waitForCSSAnimations } from './helpers';
 
 test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {

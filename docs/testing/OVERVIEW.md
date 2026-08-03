@@ -908,9 +908,9 @@ When contributing new tests:
 | `vitest.config.ts` | Unit test configuration |
 | `playwright.config.ts` | E2E test configuration |
 
-`npm run test:e2e` owns the full test lifecycle. It builds and starts the
-compiled backend on a dynamically allocated port, starts Vite on another
-dynamic port, and uses a temporary data directory and generated JWT secret.
+`npm run test:e2e` owns the full test lifecycle. It builds the compiled backend,
+allocates dynamic backend and Vite ports, and gives every backend-backed test a
+fresh server process, temporary data directory, and generated JWT secret.
 Backend output is captured in `test-results/e2e-backend.log`, including when a
 test fails. Run Playwright through the npm script so these guarantees apply;
 additional Playwright arguments may be appended after `--`.

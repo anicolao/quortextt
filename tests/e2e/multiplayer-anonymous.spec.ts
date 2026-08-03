@@ -1,9 +1,9 @@
 // End-to-end tests for multiplayer anonymous user UI flow
 // Tests the login screen UI, username input validation, and basic interactions
 //
-// The E2E launcher supplies an isolated compiled backend for every test run.
+// The E2E fixture supplies a fresh compiled backend for every test.
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './isolatedBackend';
 import { waitForButtonTransition } from './helpers';
 
 test.describe('Multiplayer Anonymous User UI', () => {
@@ -112,7 +112,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
 
   test('should attempt connection when join button is clicked', async ({ page }) => {
     const usernameInput = page.locator('input[type="text"][placeholder="Enter username"]');
-    const joinButton = page.locator('button', { hasText: 'Join Lobby' });
+    const joinButton = page.locator('.login-form button');
     
     // Enter username
     await usernameInput.fill('TestUser');
@@ -126,21 +126,27 @@ test.describe('Multiplayer Anonymous User UI', () => {
       fullPage: true
     });
     
-    // Click join button and connect to the isolated backend
-    const buttonClickPromise = joinButton.click();
-    
-    // Wait a brief moment to capture the UI state during connection attempt
-    await page.waitForTimeout(200);
-    
-    // Take screenshot showing the state after click
-    // This may show "Connecting..." or already navigated to lobby if server is fast
-    await page.screenshot({ 
-      path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-connecting-state.png',
-      fullPage: true
+    // Hold the login request so the connecting state is deterministic.
+    let releaseLoginRequest = () => {};
+    const loginRequestGate = new Promise<void>((resolve) => {
+      releaseLoginRequest = resolve;
     });
-    
-    // Wait for the click to complete (may navigate away)
-    await buttonClickPromise;
+    await page.route('**/auth/anonymous', async (route) => {
+      await loginRequestGate;
+      await route.continue();
+    });
+
+    try {
+      await joinButton.click();
+      await expect(joinButton).toContainText('Connecting...');
+
+      await page.screenshot({
+        path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-connecting-state.png',
+        fullPage: true
+      });
+    } finally {
+      releaseLoginRequest();
+    }
     
     await expect(page.locator('h1')).toContainText('Game Lobby', { timeout: 10000 });
   });

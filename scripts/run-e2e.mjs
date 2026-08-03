@@ -1,9 +1,7 @@
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -14,11 +12,10 @@ const playwrightCli = resolve(
   'test',
   'cli.js',
 );
-const backendEntryPoint = resolve(repositoryRoot, 'server', 'dist', 'index.js');
 const backendLogPath = resolve(repositoryRoot, 'test-results', 'e2e-backend.log');
 
 function waitForExit(child) {
-  if (child.exitCode !== null) {
+  if (child.exitCode !== null || child.signalCode !== null) {
     return Promise.resolve({ code: child.exitCode, signal: child.signalCode });
   }
 
@@ -67,31 +64,8 @@ async function allocatePorts(count) {
   }
 }
 
-async function waitForBackend(backendUrl, backendProcess) {
-  const deadline = Date.now() + 30_000;
-  let lastError;
-
-  while (Date.now() < deadline) {
-    if (backendProcess.exitCode !== null) {
-      throw new Error(`E2E backend exited during startup with code ${backendProcess.exitCode}`);
-    }
-
-    try {
-      const response = await fetch(`${backendUrl}/health`);
-      if (response.ok) return;
-      lastError = new Error(`Health check returned ${response.status}`);
-    } catch (error) {
-      lastError = error;
-    }
-
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-
-  throw new Error(`E2E backend did not become healthy: ${String(lastError)}`);
-}
-
 async function stopProcess(child) {
-  if (!child || child.exitCode !== null) return;
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
 
   child.kill('SIGTERM');
   const gracefulExit = waitForExit(child).then(() => true);
@@ -103,7 +77,7 @@ async function stopProcess(child) {
   const stoppedGracefully = await Promise.race([gracefulExit, timedOut]);
   clearTimeout(timeout);
 
-  if (!stoppedGracefully && child.exitCode === null) {
+  if (!stoppedGracefully && child.exitCode === null && child.signalCode === null) {
     child.kill('SIGKILL');
     await waitForExit(child);
   }
@@ -114,48 +88,18 @@ await runCommand(npmCommand, ['run', 'build:server']);
 const [frontendPort, backendPort] = await allocatePorts(2);
 const frontendUrl = `http://127.0.0.1:${frontendPort}`;
 const backendUrl = `http://127.0.0.1:${backendPort}`;
-const temporaryDirectory = await mkdtemp(join(tmpdir(), 'quortex-e2e-'));
-const backendLog = [];
-let backendProcess;
 let playwrightProcess;
-
-function captureBackendOutput(label, chunk) {
-  backendLog.push(`[${label}] ${chunk.toString()}`);
-}
 
 function forwardSignal(signal) {
   playwrightProcess?.kill(signal);
-  backendProcess?.kill(signal);
 }
 
 process.once('SIGINT', () => forwardSignal('SIGINT'));
 process.once('SIGTERM', () => forwardSignal('SIGTERM'));
 
 try {
-  backendProcess = spawn(process.execPath, [backendEntryPoint, '--seed', '888'], {
-    cwd: temporaryDirectory,
-    env: {
-      ...process.env,
-      BASE_URL: backendUrl,
-      CLIENT_URL: frontendUrl,
-      DATA_DIR: join(temporaryDirectory, 'data'),
-      JWT_SECRET: randomBytes(48).toString('hex'),
-      NODE_ENV: 'test',
-      PORT: String(backendPort),
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  backendProcess.stdout.on('data', (chunk) => captureBackendOutput('stdout', chunk));
-  backendProcess.stderr.on('data', (chunk) => captureBackendOutput('stderr', chunk));
-  const backendExit = waitForExit(backendProcess);
-
-  await Promise.race([
-    waitForBackend(backendUrl, backendProcess),
-    backendExit.then((result) => {
-      throw new Error(`E2E backend exited during startup with code ${result.code}`);
-    }),
-  ]);
-  console.log(`E2E backend ready at ${backendUrl}`);
+  await mkdir(resolve(repositoryRoot, 'test-results'), { recursive: true });
+  await writeFile(backendLogPath, '', 'utf8');
 
   playwrightProcess = spawn(
     process.execPath,
@@ -172,28 +116,14 @@ try {
     },
   );
 
-  const firstExit = await Promise.race([
-    waitForExit(playwrightProcess).then((result) => ({ source: 'playwright', result })),
-    backendExit.then((result) => ({ source: 'backend', result })),
-  ]);
-
-  if (firstExit.source === 'backend') {
-    await stopProcess(playwrightProcess);
-    throw new Error(
-      `E2E backend exited before Playwright with code ${firstExit.result.code}`,
-    );
-  }
-  if (firstExit.result.code !== 0) {
-    process.exitCode = firstExit.result.code ?? 1;
+  const result = await waitForExit(playwrightProcess);
+  if (result.code !== 0) {
+    process.exitCode = result.code ?? 1;
   }
 } catch (error) {
   console.error(error);
   process.exitCode = 1;
 } finally {
   await stopProcess(playwrightProcess);
-  await stopProcess(backendProcess);
-  await mkdir(resolve(repositoryRoot, 'test-results'), { recursive: true });
-  await writeFile(backendLogPath, backendLog.join(''), 'utf8');
-  await rm(temporaryDirectory, { recursive: true, force: true });
   console.log(`E2E backend log written to ${backendLogPath}`);
 }
