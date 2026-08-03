@@ -8,7 +8,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0, // No retries - tests should pass consistently
-  workers: process.env.CI ? 1 : undefined,
+  // The isolated backend fixture reuses one dynamic port across fresh processes.
+  workers: 1,
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: frontendUrl,

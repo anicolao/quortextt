@@ -19,8 +19,8 @@ backend lifecycle:
 
 ### Integration Tests (With Server)
 
-The E2E launcher starts an isolated compiled backend so the integration tests can
-exercise:
+The E2E fixture starts a fresh compiled backend for each test so the integration
+tests can exercise:
 
 1. **Join Lobby** - Complete flow of entering username and joining the game lobby
 2. **Create Game Room** - Flow of creating a new multiplayer game room with custom settings
@@ -39,9 +39,9 @@ npm run test:e2e -- tests/e2e/multiplayer-anonymous.spec.ts
 npm run test:e2e -- tests/e2e/multiplayer-anonymous.spec.ts --ui
 ```
 
-No separately managed server is required. The npm script builds the backend,
-allocates dynamic frontend and backend ports, and removes its temporary data when
-the run ends.
+No separately managed server is required. The npm script builds the backend and
+allocates dynamic frontend and backend ports; each test fixture removes its
+temporary data when the test ends.
 
 ## Screenshots
 
