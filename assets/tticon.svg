@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="outside" cx="46%" cy="38%" r="76%">
+      <stop offset="0" stop-color="#1c222a"/>
+      <stop offset="0.7" stop-color="#090d12"/>
+      <stop offset="1" stop-color="#020306"/>
+    </radialGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#303844"/>
+      <stop offset="0.45" stop-color="#11161d"/>
+      <stop offset="1" stop-color="#05080c"/>
+    </linearGradient>
+    <radialGradient id="board" cx="45%" cy="40%" r="76%">
+      <stop offset="0" stop-color="#20272f"/>
+      <stop offset="0.72" stop-color="#11171e"/>
+      <stop offset="1" stop-color="#080b10"/>
+    </radialGradient>
+    <linearGradient id="emptyTile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#20272e" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#121820" stop-opacity="0.82"/>
+    </linearGradient>
+    <linearGradient id="raisedTile" x1="0" y1="0" x2="0.75" y2="1">
+      <stop offset="0" stop-color="#353c45"/>
+      <stop offset="0.5" stop-color="#252b32"/>
+      <stop offset="1" stop-color="#171c22"/>
+    </linearGradient>
+    <clipPath id="boardClip"><rect x="83" y="83" width="858" height="858" rx="174"/></clipPath>
+    <filter id="outerShadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#000000" flood-opacity="0.7"/>
+    </filter>
+    <filter id="tileShadow" x="-35%" y="-35%" width="170%" height="180%">
+      <feDropShadow dx="0" dy="12" stdDeviation="9" flood-color="#000000" flood-opacity="0.78"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#outside)"/>
+  <rect x="46" y="42" width="932" height="932" rx="214" fill="url(#frame)" stroke="#7b8490" stroke-opacity="0.42" stroke-width="5" filter="url(#outerShadow)"/>
+  <rect x="67" y="65" width="890" height="890" rx="194" fill="#080b0f" stroke="#030405" stroke-width="8"/>
+  <rect x="83" y="83" width="858" height="858" rx="174" fill="url(#board)"/>
+  <g clip-path="url(#boardClip)" opacity="0.8"><polygon points="198.50,63.00 198.50,151.00 122.29,195.00 46.08,151.00 46.08,63.00 122.29,19.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="354.38,63.00 354.38,151.00 278.17,195.00 201.96,151.00 201.96,63.00 278.17,19.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="510.27,63.00 510.27,151.00 434.06,195.00 357.85,151.00 357.85,63.00 434.06,19.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="666.15,63.00 666.15,151.00 589.94,195.00 513.73,151.00 513.73,63.00 589.94,19.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="822.04,63.00 822.04,151.00 745.83,195.00 669.62,151.00 669.62,63.00 745.83,19.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="977.92,63.00 977.92,151.00 901.71,195.00 825.50,151.00 825.50,63.00 901.71,19.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="120.56,198.00 120.56,286.00 44.35,330.00 -31.86,286.00 -31.86,198.00 44.35,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="276.44,198.00 276.44,286.00 200.23,330.00 124.02,286.00 124.02,198.00 200.23,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="432.33,198.00 432.33,286.00 356.12,330.00 279.91,286.00 279.91,198.00 356.12,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="588.21,198.00 588.21,286.00 512.00,330.00 435.79,286.00 435.79,198.00 512.00,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="744.09,198.00 744.09,286.00 667.88,330.00 591.67,286.00 591.67,198.00 667.88,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="899.98,198.00 899.98,286.00 823.77,330.00 747.56,286.00 747.56,198.00 823.77,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="1055.86,198.00 1055.86,286.00 979.65,330.00 903.44,286.00 903.44,198.00 979.65,154.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="198.50,333.00 198.50,421.00 122.29,465.00 46.08,421.00 46.08,333.00 122.29,289.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="354.38,333.00 354.38,421.00 278.17,465.00 201.96,421.00 201.96,333.00 278.17,289.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="510.27,333.00 510.27,421.00 434.06,465.00 357.85,421.00 357.85,333.00 434.06,289.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="666.15,333.00 666.15,421.00 589.94,465.00 513.73,421.00 513.73,333.00 589.94,289.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="822.04,333.00 822.04,421.00 745.83,465.00 669.62,421.00 669.62,333.00 745.83,289.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="977.92,333.00 977.92,421.00 901.71,465.00 825.50,421.00 825.50,333.00 901.71,289.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="120.56,468.00 120.56,556.00 44.35,600.00 -31.86,556.00 -31.86,468.00 44.35,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="276.44,468.00 276.44,556.00 200.23,600.00 124.02,556.00 124.02,468.00 200.23,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="432.33,468.00 432.33,556.00 356.12,600.00 279.91,556.00 279.91,468.00 356.12,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="588.21,468.00 588.21,556.00 512.00,600.00 435.79,556.00 435.79,468.00 512.00,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="744.09,468.00 744.09,556.00 667.88,600.00 591.67,556.00 591.67,468.00 667.88,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="899.98,468.00 899.98,556.00 823.77,600.00 747.56,556.00 747.56,468.00 823.77,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="1055.86,468.00 1055.86,556.00 979.65,600.00 903.44,556.00 903.44,468.00 979.65,424.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="198.50,603.00 198.50,691.00 122.29,735.00 46.08,691.00 46.08,603.00 122.29,559.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="354.38,603.00 354.38,691.00 278.17,735.00 201.96,691.00 201.96,603.00 278.17,559.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="510.27,603.00 510.27,691.00 434.06,735.00 357.85,691.00 357.85,603.00 434.06,559.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="666.15,603.00 666.15,691.00 589.94,735.00 513.73,691.00 513.73,603.00 589.94,559.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="822.04,603.00 822.04,691.00 745.83,735.00 669.62,691.00 669.62,603.00 745.83,559.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="977.92,603.00 977.92,691.00 901.71,735.00 825.50,691.00 825.50,603.00 901.71,559.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="120.56,738.00 120.56,826.00 44.35,870.00 -31.86,826.00 -31.86,738.00 44.35,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="276.44,738.00 276.44,826.00 200.23,870.00 124.02,826.00 124.02,738.00 200.23,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="432.33,738.00 432.33,826.00 356.12,870.00 279.91,826.00 279.91,738.00 356.12,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="588.21,738.00 588.21,826.00 512.00,870.00 435.79,826.00 435.79,738.00 512.00,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="744.09,738.00 744.09,826.00 667.88,870.00 591.67,826.00 591.67,738.00 667.88,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="899.98,738.00 899.98,826.00 823.77,870.00 747.56,826.00 747.56,738.00 823.77,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="1055.86,738.00 1055.86,826.00 979.65,870.00 903.44,826.00 903.44,738.00 979.65,694.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="198.50,873.00 198.50,961.00 122.29,1005.00 46.08,961.00 46.08,873.00 122.29,829.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="354.38,873.00 354.38,961.00 278.17,1005.00 201.96,961.00 201.96,873.00 278.17,829.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="510.27,873.00 510.27,961.00 434.06,1005.00 357.85,961.00 357.85,873.00 434.06,829.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="666.15,873.00 666.15,961.00 589.94,1005.00 513.73,961.00 513.73,873.00 589.94,829.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="822.04,873.00 822.04,961.00 745.83,1005.00 669.62,961.00 669.62,873.00 745.83,829.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/>
+<polygon points="977.92,873.00 977.92,961.00 901.71,1005.00 825.50,961.00 825.50,873.00 901.71,829.00" fill="url(#emptyTile)" stroke="#33404c" stroke-width="3"/></g>
+  <g>
+      <g filter="url(#tileShadow)">
+        <polygon points="509.40,333.50 509.40,420.50 434.06,464.00 358.71,420.50 358.71,333.50 434.06,290.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-0"><polygon points="509.40,333.50 509.40,420.50 434.06,464.00 358.71,420.50 358.71,333.50 434.06,290.00"/></clipPath>
+        <g clip-path="url(#tile-clip-0)">
+        <path d="M 395.09 309.50 C 414.57 343.25, 453.54 343.25, 473.03 309.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 395.09 309.50 C 414.57 343.25, 453.54 343.25, 473.03 309.50" fill="none" stroke="#f0443e" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 395.09 309.50 C 414.57 343.25, 453.54 343.25, 473.03 309.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 356.12 377.00 C 395.09 377.00, 414.57 410.75, 395.09 444.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 356.12 377.00 C 395.09 377.00, 414.57 410.75, 395.09 444.50" fill="none" stroke="#ffc928" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 356.12 377.00 C 395.09 377.00, 414.57 410.75, 395.09 444.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 473.03 444.50 C 453.54 410.75, 473.03 377.00, 512.00 377.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 473.03 444.50 C 453.54 410.75, 473.03 377.00, 512.00 377.00" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 473.03 444.50 C 453.54 410.75, 473.03 377.00, 512.00 377.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="509.40,333.50 509.40,420.50 434.06,464.00 358.71,420.50 358.71,333.50 434.06,290.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="509.40,333.50 509.40,420.50 434.06,464.00 358.71,420.50 358.71,333.50 434.06,290.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="665.29,333.50 665.29,420.50 589.94,464.00 514.60,420.50 514.60,333.50 589.94,290.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-1"><polygon points="665.29,333.50 665.29,420.50 589.94,464.00 514.60,420.50 514.60,333.50 589.94,290.00"/></clipPath>
+        <g clip-path="url(#tile-clip-1)">
+        <path d="M 550.97 444.50 C 570.46 410.75, 550.97 377.00, 512.00 377.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 550.97 444.50 C 570.46 410.75, 550.97 377.00, 512.00 377.00" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 550.97 444.50 C 570.46 410.75, 550.97 377.00, 512.00 377.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 628.91 444.50 C 609.43 410.75, 609.43 343.25, 628.91 309.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 628.91 444.50 C 609.43 410.75, 609.43 343.25, 628.91 309.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 628.91 444.50 C 609.43 410.75, 609.43 343.25, 628.91 309.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 667.88 377.00 C 628.91 377.00, 570.46 343.25, 550.97 309.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 667.88 377.00 C 628.91 377.00, 570.46 343.25, 550.97 309.50" fill="none" stroke="#f0443e" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 667.88 377.00 C 628.91 377.00, 570.46 343.25, 550.97 309.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="665.29,333.50 665.29,420.50 589.94,464.00 514.60,420.50 514.60,333.50 589.94,290.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="665.29,333.50 665.29,420.50 589.94,464.00 514.60,420.50 514.60,333.50 589.94,290.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="431.46,468.50 431.46,555.50 356.12,599.00 280.77,555.50 280.77,468.50 356.12,425.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-2"><polygon points="431.46,468.50 431.46,555.50 356.12,599.00 280.77,555.50 280.77,468.50 356.12,425.00"/></clipPath>
+        <g clip-path="url(#tile-clip-2)">
+        <path d="M 278.17 512.00 C 317.14 512.00, 375.60 545.75, 395.09 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 278.17 512.00 C 317.14 512.00, 375.60 545.75, 395.09 579.50" fill="none" stroke="#ffc928" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 278.17 512.00 C 317.14 512.00, 375.60 545.75, 395.09 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 317.14 579.50 C 336.63 545.75, 375.60 478.25, 395.09 444.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 317.14 579.50 C 336.63 545.75, 375.60 478.25, 395.09 444.50" fill="none" stroke="#ffc928" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 317.14 579.50 C 336.63 545.75, 375.60 478.25, 395.09 444.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 434.06 512.00 C 395.09 512.00, 336.63 478.25, 317.14 444.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 434.06 512.00 C 395.09 512.00, 336.63 478.25, 317.14 444.50" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 434.06 512.00 C 395.09 512.00, 336.63 478.25, 317.14 444.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="431.46,468.50 431.46,555.50 356.12,599.00 280.77,555.50 280.77,468.50 356.12,425.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="431.46,468.50 431.46,555.50 356.12,599.00 280.77,555.50 280.77,468.50 356.12,425.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="587.34,468.50 587.34,555.50 512.00,599.00 436.66,555.50 436.66,468.50 512.00,425.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-3"><polygon points="587.34,468.50 587.34,555.50 512.00,599.00 436.66,555.50 436.66,468.50 512.00,425.00"/></clipPath>
+        <g clip-path="url(#tile-clip-3)">
+        <path d="M 473.03 444.50 C 492.51 478.25, 531.49 478.25, 550.97 444.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 473.03 444.50 C 492.51 478.25, 531.49 478.25, 550.97 444.50" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 473.03 444.50 C 492.51 478.25, 531.49 478.25, 550.97 444.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 434.06 512.00 C 473.03 512.00, 550.97 512.00, 589.94 512.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 434.06 512.00 C 473.03 512.00, 550.97 512.00, 589.94 512.00" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 434.06 512.00 C 473.03 512.00, 550.97 512.00, 589.94 512.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 473.03 579.50 C 492.51 545.75, 531.49 545.75, 550.97 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 473.03 579.50 C 492.51 545.75, 531.49 545.75, 550.97 579.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 473.03 579.50 C 492.51 545.75, 531.49 545.75, 550.97 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="587.34,468.50 587.34,555.50 512.00,599.00 436.66,555.50 436.66,468.50 512.00,425.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="587.34,468.50 587.34,555.50 512.00,599.00 436.66,555.50 436.66,468.50 512.00,425.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="743.23,468.50 743.23,555.50 667.88,599.00 592.54,555.50 592.54,468.50 667.88,425.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-4"><polygon points="743.23,468.50 743.23,555.50 667.88,599.00 592.54,555.50 592.54,468.50 667.88,425.00"/></clipPath>
+        <g clip-path="url(#tile-clip-4)">
+        <path d="M 745.83 512.00 C 706.86 512.00, 687.37 545.75, 706.86 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 745.83 512.00 C 706.86 512.00, 687.37 545.75, 706.86 579.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 745.83 512.00 C 706.86 512.00, 687.37 545.75, 706.86 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 706.86 444.50 C 687.37 478.25, 628.91 512.00, 589.94 512.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 706.86 444.50 C 687.37 478.25, 628.91 512.00, 589.94 512.00" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 706.86 444.50 C 687.37 478.25, 628.91 512.00, 589.94 512.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 628.91 444.50 C 648.40 478.25, 648.40 545.75, 628.91 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 628.91 444.50 C 648.40 478.25, 648.40 545.75, 628.91 579.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 628.91 444.50 C 648.40 478.25, 648.40 545.75, 628.91 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="743.23,468.50 743.23,555.50 667.88,599.00 592.54,555.50 592.54,468.50 667.88,425.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="743.23,468.50 743.23,555.50 667.88,599.00 592.54,555.50 592.54,468.50 667.88,425.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="509.40,603.50 509.40,690.50 434.06,734.00 358.71,690.50 358.71,603.50 434.06,560.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-5"><polygon points="509.40,603.50 509.40,690.50 434.06,734.00 358.71,690.50 358.71,603.50 434.06,560.00"/></clipPath>
+        <g clip-path="url(#tile-clip-5)">
+        <path d="M 473.03 579.50 C 453.54 613.25, 473.03 647.00, 512.00 647.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 473.03 579.50 C 453.54 613.25, 473.03 647.00, 512.00 647.00" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 473.03 579.50 C 453.54 613.25, 473.03 647.00, 512.00 647.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 395.09 579.50 C 414.57 613.25, 414.57 680.75, 395.09 714.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 395.09 579.50 C 414.57 613.25, 414.57 680.75, 395.09 714.50" fill="none" stroke="#ffc928" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 395.09 579.50 C 414.57 613.25, 414.57 680.75, 395.09 714.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 356.12 647.00 C 395.09 647.00, 453.54 680.75, 473.03 714.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 356.12 647.00 C 395.09 647.00, 453.54 680.75, 473.03 714.50" fill="none" stroke="#f0443e" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 356.12 647.00 C 395.09 647.00, 453.54 680.75, 473.03 714.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="509.40,603.50 509.40,690.50 434.06,734.00 358.71,690.50 358.71,603.50 434.06,560.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="509.40,603.50 509.40,690.50 434.06,734.00 358.71,690.50 358.71,603.50 434.06,560.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="665.29,603.50 665.29,690.50 589.94,734.00 514.60,690.50 514.60,603.50 589.94,560.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-6"><polygon points="665.29,603.50 665.29,690.50 589.94,734.00 514.60,690.50 514.60,603.50 589.94,560.00"/></clipPath>
+        <g clip-path="url(#tile-clip-6)">
+        <path d="M 628.91 714.50 C 609.43 680.75, 609.43 613.25, 628.91 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 628.91 714.50 C 609.43 680.75, 609.43 613.25, 628.91 579.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 628.91 714.50 C 609.43 680.75, 609.43 613.25, 628.91 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 667.88 647.00 C 628.91 647.00, 550.97 647.00, 512.00 647.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 667.88 647.00 C 628.91 647.00, 550.97 647.00, 512.00 647.00" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 667.88 647.00 C 628.91 647.00, 550.97 647.00, 512.00 647.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 550.97 579.50 C 570.46 613.25, 570.46 680.75, 550.97 714.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 550.97 579.50 C 570.46 613.25, 570.46 680.75, 550.97 714.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 550.97 579.50 C 570.46 613.25, 570.46 680.75, 550.97 714.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="665.29,603.50 665.29,690.50 589.94,734.00 514.60,690.50 514.60,603.50 589.94,560.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="665.29,603.50 665.29,690.50 589.94,734.00 514.60,690.50 514.60,603.50 589.94,560.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g>
+
+      <g filter="url(#tileShadow)">
+        <polygon points="821.17,603.50 821.17,690.50 745.83,734.00 670.48,690.50 670.48,603.50 745.83,560.00" fill="url(#raisedTile)" stroke="#59616b" stroke-width="3"/>
+        <clipPath id="tile-clip-7"><polygon points="821.17,603.50 821.17,690.50 745.83,734.00 670.48,690.50 670.48,603.50 745.83,560.00"/></clipPath>
+        <g clip-path="url(#tile-clip-7)">
+        <path d="M 667.88 647.00 C 706.86 647.00, 726.34 613.25, 706.86 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 667.88 647.00 C 706.86 647.00, 726.34 613.25, 706.86 579.50" fill="none" stroke="#2bc96f" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 667.88 647.00 C 706.86 647.00, 726.34 613.25, 706.86 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 706.86 714.50 C 726.34 680.75, 765.31 613.25, 784.80 579.50" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 706.86 714.50 C 726.34 680.75, 765.31 613.25, 784.80 579.50" fill="none" stroke="#ffc928" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 706.86 714.50 C 726.34 680.75, 765.31 613.25, 784.80 579.50" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 784.80 714.50 C 765.31 680.75, 784.80 647.00, 823.77 647.00" fill="none" stroke="#06080b" stroke-width="24.3" stroke-linecap="round"/>
+        <path d="M 784.80 714.50 C 765.31 680.75, 784.80 647.00, 823.77 647.00" fill="none" stroke="#3185f5" stroke-width="16.2" stroke-linecap="round"/>
+        <path d="M 784.80 714.50 C 765.31 680.75, 784.80 647.00, 823.77 647.00" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="3.2" stroke-linecap="round"/></g>
+        <polygon points="821.17,603.50 821.17,690.50 745.83,734.00 670.48,690.50 670.48,603.50 745.83,560.00" fill="none" stroke="#0a0d11" stroke-opacity="0.9" stroke-width="5"/>
+        <polygon points="821.17,603.50 821.17,690.50 745.83,734.00 670.48,690.50 670.48,603.50 745.83,560.00" fill="none" stroke="#88909a" stroke-opacity="0.24" stroke-width="2"/>
+      </g></g>
+  <rect x="83" y="83" width="858" height="858" rx="174" fill="none" stroke="#697481" stroke-opacity="0.24" stroke-width="4"/>
+  <path d="M 170 88 H 824 Q 920 88 936 184" fill="none" stroke="#ffffff" stroke-opacity="0.11" stroke-width="7" stroke-linecap="round"/>
+</svg>
