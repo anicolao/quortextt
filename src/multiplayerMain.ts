@@ -1,4 +1,5 @@
 // Multiplayer entry point
+import './buildMetadata';
 import { mount } from 'svelte';
 import App from './multiplayer/App.svelte';
 import { store } from './redux/store';

@@ -41,6 +41,8 @@ jobs:
       
       - name: Build for production
         run: npm run build
+        env:
+          QUORTEX_RELEASE_BUILD: true
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

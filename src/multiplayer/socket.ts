@@ -9,6 +9,8 @@ import {
   setSpectatorCount,
 } from "../redux/actions";
 
+type ServerBuildMetadata = QuortexBuildMetadata & { readonly component: "server" };
+
 class MultiplayerSocket {
   private socket: Socket | null = null;
   private serverUrl: string;
@@ -202,6 +204,13 @@ class MultiplayerSocket {
 
   private setupEventHandlers() {
     if (!this.socket) return;
+
+    this.socket.on("server_version", (metadata: ServerBuildMetadata) => {
+      window.__QUORTEX_SERVER_BUILD__ = metadata;
+      window.dispatchEvent(
+        new CustomEvent("multiplayer:server-version", { detail: metadata }),
+      );
+    });
 
     // Player identification response
     this.socket.on(

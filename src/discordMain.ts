@@ -3,6 +3,7 @@
  * Initializes the game in Discord Activity mode with authentication
  */
 
+import './buildMetadata';
 import { mount } from 'svelte';
 import App from './multiplayer/App.svelte';
 import { store } from './redux/store';

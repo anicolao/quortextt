@@ -1,14 +1,19 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
+import { createBuildMetadataConfig } from './vite.build-metadata';
+
+const buildMetadata = createBuildMetadataConfig();
 
 // Default Vite configuration - serves both multiplayer (/) and tabletop (/tabletop)
 export default defineConfig({
   plugins: [
     svelte({
       include: /\.svelte$/,
-    })
+    }),
+    buildMetadata.versionAssetPlugin,
   ],
+  define: buildMetadata.define,
   base: '/quortextt/',
   build: {
     outDir: 'dist',

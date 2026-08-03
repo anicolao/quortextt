@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
+import { createBuildMetadataConfig } from './vite.build-metadata';
+
+const buildMetadata = createBuildMetadataConfig();
 
 // Vite configuration for multiplayer mode with Svelte support
 // This serves both the multiplayer (/) and tabletop (/tabletop) experiences
@@ -8,8 +11,10 @@ export default defineConfig({
   plugins: [
     svelte({
       include: /\.svelte$/,
-    })
+    }),
+    buildMetadata.versionAssetPlugin,
   ],
+  define: buildMetadata.define,
   base: '/quortextt/',
   build: {
     outDir: 'dist',
