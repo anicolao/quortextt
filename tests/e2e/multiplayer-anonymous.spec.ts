@@ -4,7 +4,7 @@
 // The E2E fixture supplies a fresh compiled backend for every test.
 
 import { test, expect } from './isolatedBackend';
-import { waitForButtonTransition } from './helpers';
+import { waitForButtonTransition, waitForCSSAnimations } from './helpers';
 
 test.describe('Multiplayer Anonymous User UI', () => {
   test.beforeEach(async ({ page }) => {
@@ -139,6 +139,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
     try {
       await joinButton.click();
       await expect(joinButton).toContainText('Connecting...');
+      await waitForCSSAnimations(page);
 
       await page.screenshot({
         path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-connecting-state.png',
@@ -201,6 +202,7 @@ test.describe('Multiplayer Anonymous User Flow (compiled backend)', () => {
     
     // Wait for modal
     await page.waitForSelector('h2:has-text("Create New Room")', { timeout: 5000 });
+    await waitForCSSAnimations(page);
     
     // Take screenshot of modal
     await page.screenshot({ 
