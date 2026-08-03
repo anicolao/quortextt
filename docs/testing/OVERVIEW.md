@@ -887,8 +887,8 @@ When contributing new tests:
 | `npm test -- --run` | Run unit tests once |
 | `npm run test:coverage` | Run with coverage report |
 | `npm run test:ui` | Interactive test UI |
-| `npm run test:e2e` | Run E2E tests |
-| `npx playwright test --debug` | Debug E2E tests |
+| `npm run test:e2e` | Build an isolated backend and run E2E tests |
+| `npm run test:e2e -- --debug` | Debug E2E tests with the managed backend |
 
 ### Test File Patterns
 
@@ -907,6 +907,13 @@ When contributing new tests:
 | `tests/e2e/helpers.ts` | E2E helper functions |
 | `vitest.config.ts` | Unit test configuration |
 | `playwright.config.ts` | E2E test configuration |
+
+`npm run test:e2e` owns the full test lifecycle. It builds and starts the
+compiled backend on a dynamically allocated port, starts Vite on another
+dynamic port, and uses a temporary data directory and generated JWT secret.
+Backend output is captured in `test-results/e2e-backend.log`, including when a
+test fails. Run Playwright through the npm script so these guarantees apply;
+additional Playwright arguments may be appended after `--`.
 
 ### Common Test Utilities
 

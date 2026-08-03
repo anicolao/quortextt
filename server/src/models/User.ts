@@ -57,11 +57,16 @@ export interface IUser {
   lastActive: Date;
 }
 
+/** Resolve user storage under the same data root as games and sessions. */
+export function getUserDataDirectory(
+  env: NodeJS.ProcessEnv = process.env,
+  cwd: string = process.cwd(),
+): string {
+  return path.join(env.DATA_DIR || path.join(cwd, "data"), "users");
+}
+
 // Persistent user storage
-const userStorage = new DataStorage(
-  path.join(process.cwd(), "data", "users"),
-  "users.jsonl",
-);
+const userStorage = new DataStorage(getUserDataDirectory(), "users.jsonl");
 
 // In-memory cache for performance
 const userCache = new Map<string, IUser>();

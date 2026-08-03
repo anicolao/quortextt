@@ -1,11 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { UserStore, IUser } from '../models/User.js';
+import { getUserDataDirectory, UserStore, IUser } from '../models/User.js';
 import fs from 'fs/promises';
 import path from 'path';
 
 describe('UserStore', () => {
   const testDataDir = './test-data/users';
   const testUsersFile = path.join(testDataDir, 'users.jsonl');
+
+  it('uses DATA_DIR for isolated user storage', () => {
+    expect(getUserDataDirectory({ DATA_DIR: '/tmp/quortex-data' }, '/worktree')).toBe(
+      path.join('/tmp/quortex-data', 'users'),
+    );
+    expect(getUserDataDirectory({}, '/worktree')).toBe(
+      path.join('/worktree', 'data', 'users'),
+    );
+  });
 
   beforeEach(async () => {
     // Clean up test directory
