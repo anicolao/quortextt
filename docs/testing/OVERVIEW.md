@@ -922,7 +922,7 @@ output is captured in `test-results/e2e-backend.log`, including when a test
 fails. Run Playwright through the npm script so these guarantees apply;
 additional Playwright arguments may be appended after `--`.
 
-Normal E2E runs use Playwright snapshot assertions and do not rewrite narrative
+Normal local E2E runs use Playwright snapshot assertions and do not rewrite narrative
 user-story screenshots. See [visual-regression.md](visual-regression.md) for
 baseline updates, explicit story generation, and the scheduled browser matrix.
 

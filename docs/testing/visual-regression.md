@@ -10,6 +10,11 @@ and compares the curated snapshots in `tests/e2e/snapshots/`. Snapshot failures
 produce expected, actual, and diff images under `test-results/` and fail at the
 assertion that changed.
 
+CI uses the explicit update modes for both Playwright snapshots and narrative
+screenshots, then runs `git diff` across every tracked visual expectation. This
+additional check is byte-exact: a PNG fails CI even when its decoded pixels are
+identical but its compression or metadata bytes differ.
+
 Baselines are separated by Playwright project and operating-system platform.
 The required GitHub check uses the Linux baselines. A zero-pixel threshold is
 used for the required Chromium snapshots; animations, carets, viewport size,
@@ -26,7 +31,7 @@ Review actual and diff images before committing an updated baseline.
 
 ## Narrative user-story screenshots
 
-Normal E2E runs do not rewrite the documentation images in
+Normal local E2E runs do not rewrite the documentation images in
 `tests/e2e/user-stories/`. Regenerate them only when the documented flow should
 change:
 

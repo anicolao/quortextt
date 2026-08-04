@@ -262,7 +262,8 @@ npm run test:e2e:stories
 npm run test:e2e:stories -- tests/e2e/configuration.spec.ts
 ```
 
-Normal E2E and CI runs never write the tracked story images. Review every PNG
+Normal local E2E runs never write the tracked story images. CI deliberately
+regenerates them and requires a byte-exact clean `git diff`. Review every PNG
 diff produced by `test:e2e:stories` before committing it. Playwright snapshots
 under `tests/e2e/snapshots/` are separate visual regression baselines; update
 those with `npm run test:e2e -- --update-snapshots`.
