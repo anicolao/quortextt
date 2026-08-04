@@ -2,6 +2,31 @@ import { defineConfig, devices } from '@playwright/test';
 
 const frontendUrl = process.env.QUORTEX_E2E_FRONTEND_URL || 'http://127.0.0.1:5173';
 const frontendPort = new URL(frontendUrl).port;
+const fullStackTests = [
+  '**/backend-lifecycle.spec.ts',
+  '**/multiplayer-anonymous.spec.ts',
+  '**/multiplayer-two-player-flow.spec.ts',
+];
+const chromium = {
+  ...devices['Desktop Chrome'],
+  deviceScaleFactor: 1,
+  launchOptions: {
+    args: [
+      '--font-render-hinting=none',
+      '--disable-font-subpixel-positioning',
+      '--disable-lcd-text',
+      '--disable-skia-runtime-opts',
+      '--disable-system-font-check',
+      '--disable-features=FontAccess',
+      '--force-device-scale-factor=1',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--use-gl=swiftshader',
+      '--disable-smooth-scrolling',
+      '--disable-partial-raster',
+    ],
+  },
+};
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,37 +38,24 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: frontendUrl,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [
     {
-      name: 'chromium',
-      use: { 
-        ...devices['Desktop Chrome'],
-        deviceScaleFactor: 1,
-        launchOptions: {
-          args: [
-            '--font-render-hinting=none',
-            '--disable-font-subpixel-positioning',
-            '--disable-lcd-text',
-            '--disable-skia-runtime-opts',
-            '--disable-system-font-check',
-            '--disable-features=FontAccess',
-            '--force-device-scale-factor=1',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-            '--use-gl=swiftshader',
-            '--disable-smooth-scrolling',
-            '--disable-partial-raster',
-          ],
-        },
-      },
+      name: 'local-tabletop',
+      testIgnore: fullStackTests,
+      use: chromium,
+    },
+    {
+      name: 'full-stack-multiplayer',
+      testMatch: fullStackTests,
+      use: chromium,
     },
   ],
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${frontendPort} --strictPort`,
-    url: frontendUrl,
+    command: `npm run preview -- --host 127.0.0.1 --port ${frontendPort} --strictPort`,
+    url: `${frontendUrl}/quortextt/`,
     reuseExistingServer: false,
     timeout: 120 * 1000,
   },

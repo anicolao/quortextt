@@ -256,7 +256,7 @@ Contributors can verify test expectations by:
 npm run test:e2e
 
 # Run specific test
-npx playwright test tests/e2e/configuration.spec.ts
+npm run test:e2e -- tests/e2e/configuration.spec.ts
 ```
 
 ## Benefits of This Approach

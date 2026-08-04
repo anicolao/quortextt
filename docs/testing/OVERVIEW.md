@@ -226,7 +226,7 @@ npx playwright install chromium
 npm run test:e2e
 
 # Run specific E2E test
-npx playwright test tests/e2e/configuration.spec.ts
+npm run test:e2e -- tests/e2e/configuration.spec.ts
 
 # Build the project
 npm run build
@@ -497,11 +497,12 @@ Located in `vitest.config.ts`:
 Located in `playwright.config.ts`:
 
 - **Browser**: Chromium (Desktop Chrome)
-- **Base URL**: http://localhost:5173 (Vite dev server)
-- **Web Server**: Automatically starts/stops dev server
-- **Retries**: 2 retries in CI, 0 locally
+- **Frontend**: Compiled `dist` output served by `vite preview` on a dynamic port
+- **Projects**: `local-tabletop` and `full-stack-multiplayer`
+- **Backend**: Compiled `server/dist/index.js` with isolated state per backend-backed test
+- **Retries**: Disabled so required tests must pass consistently
 - **Font Rendering**: Consistent settings for screenshot stability
-- **Trace**: On first retry (for debugging)
+- **Trace**: Retained whenever a test fails
 
 ### Test Helpers
 
@@ -802,13 +803,13 @@ it('should swap colors when selecting used color', () => {
 
 2. **Use Playwright Trace**
    ```bash
-   npx playwright test --trace on
+   npm run test:e2e -- --trace on
    npx playwright show-trace trace.zip
    ```
 
 3. **Debug Mode**
    ```bash
-   npx playwright test --debug
+   npm run test:e2e -- --debug
    ```
    - Step through test execution
    - Inspect page state
@@ -824,7 +825,7 @@ it('should swap colors when selecting used color', () => {
 
 5. **Headed Mode**
    ```bash
-   npx playwright test --headed
+   npm run test:e2e -- --headed
    ```
    - See browser UI during test
    - Useful for visual debugging
@@ -833,7 +834,7 @@ it('should swap colors when selecting used color', () => {
 
 1. **Test Timeout**
    - Increase timeout: `test('...', async ({ page }) => { ... }, 60000)`
-   - Check if dev server is running
+   - Check the production preview and backend output from the managed launcher
    - Look for infinite loops
 
 2. **Flaky E2E Tests**
@@ -887,8 +888,10 @@ When contributing new tests:
 | `npm test -- --run` | Run unit tests once |
 | `npm run test:coverage` | Run with coverage report |
 | `npm run test:ui` | Interactive test UI |
-| `npm run test:e2e` | Build an isolated backend and run E2E tests |
-| `npm run test:e2e -- --debug` | Debug E2E tests with the managed backend |
+| `npm run test:e2e` | Build both production components and run E2E tests |
+| `npm run test:e2e -- --project=local-tabletop` | Run the compiled local/tabletop project |
+| `npm run test:e2e -- --project=full-stack-multiplayer` | Run the compiled full-stack project |
+| `npm run test:e2e -- --debug` | Debug E2E tests with the managed production build |
 
 ### Test File Patterns
 
@@ -908,11 +911,13 @@ When contributing new tests:
 | `vitest.config.ts` | Unit test configuration |
 | `playwright.config.ts` | E2E test configuration |
 
-`npm run test:e2e` owns the full test lifecycle. It builds the compiled backend,
-allocates dynamic backend and Vite ports, and gives every backend-backed test a
-fresh server process, temporary data directory, and generated JWT secret.
-Backend output is captured in `test-results/e2e-backend.log`, including when a
-test fails. Run Playwright through the npm script so these guarantees apply;
+`npm run test:e2e` owns the full test lifecycle. It allocates dynamic frontend
+and backend ports, builds the frontend with that backend URL, builds the
+compiled server with the same Git metadata, verifies both identities, and
+serves `dist` through `vite preview`. Every backend-backed test receives a fresh
+server process, temporary data directory, and generated JWT secret. Backend
+output is captured in `test-results/e2e-backend.log`, including when a test
+fails. Run Playwright through the npm script so these guarantees apply;
 additional Playwright arguments may be appended after `--`.
 
 ### Common Test Utilities

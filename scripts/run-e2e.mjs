@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 
@@ -83,11 +83,13 @@ async function stopProcess(child) {
   }
 }
 
-await runCommand(npmCommand, ['run', 'build:server']);
-
 const [frontendPort, backendPort] = await allocatePorts(2);
 const frontendUrl = `http://127.0.0.1:${frontendPort}`;
 const backendUrl = `http://127.0.0.1:${backendPort}`;
+const buildEnvironment = {
+  ...process.env,
+  VITE_SERVER_URL: backendUrl,
+};
 let playwrightProcess;
 
 function forwardSignal(signal) {
@@ -101,16 +103,28 @@ try {
   await mkdir(resolve(repositoryRoot, 'test-results'), { recursive: true });
   await writeFile(backendLogPath, '', 'utf8');
 
+  await runCommand(npmCommand, ['run', 'build:all'], {
+    env: buildEnvironment,
+  });
+  await runCommand(npmCommand, ['run', 'verify:build-metadata'], {
+    env: buildEnvironment,
+  });
+
+  const frontendMetadata = JSON.parse(await readFile(
+    resolve(repositoryRoot, 'dist', 'version.json'),
+    'utf8',
+  ));
+
   playwrightProcess = spawn(
     process.execPath,
     [playwrightCli, 'test', ...process.argv.slice(2)],
     {
       cwd: repositoryRoot,
       env: {
-        ...process.env,
+        ...buildEnvironment,
         QUORTEX_E2E_BACKEND_URL: backendUrl,
         QUORTEX_E2E_FRONTEND_URL: frontendUrl,
-        VITE_SERVER_URL: backendUrl,
+        QUORTEX_E2E_GIT_SHA: frontendMetadata.gitSha,
       },
       stdio: 'inherit',
     },
