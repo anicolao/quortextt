@@ -26,13 +26,19 @@ test('verify texture loading and victory animation', async ({ page }) => {
 
   // Manually dispatch actions to start game and check texture loading
   await page.evaluate(() => {
+    // Freeze the canvas before creating the game so the visual expectation is
+    // captured at a deterministic animation frame.
+    (window as any).__REDUX_STORE__.dispatch({ type: 'PAUSE_ANIMATIONS' });
     // Add a player
     (window as any).__REDUX_STORE__.dispatch({
       type: 'ADD_PLAYER',
       payload: { name: 'Player 1', color: '#ff0000', type: 'human' }
     });
     // Start game
-    (window as any).__REDUX_STORE__.dispatch({ type: 'START_GAME' });
+    (window as any).__REDUX_STORE__.dispatch({
+      type: 'START_GAME',
+      payload: { seed: 12345 }
+    });
   });
 
   // Wait for game to start and texture to load
@@ -40,6 +46,10 @@ test('verify texture loading and victory animation', async ({ page }) => {
 
   // Take screenshot of gameplay (wood texture should be visible)
   await captureNarrativeScreenshot(page, { path: 'tests/e2e/screenshots/gameplay_wood.png' });
+
+  await page.evaluate(() => {
+    (window as any).__REDUX_STORE__.dispatch({ type: 'RESUME_ANIMATIONS' });
+  });
 
   // Now verify victory animation fix
   // We can force game-over state
