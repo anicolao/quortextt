@@ -179,6 +179,7 @@ test.describe('Multiplayer Anonymous User Flow (compiled backend)', () => {
     
     // Verify username is displayed
     await expect(page.locator('text=' + testUsername)).toBeVisible();
+    await waitForCSSAnimations(page);
     
     // Take screenshot
     await page.screenshot({ 
