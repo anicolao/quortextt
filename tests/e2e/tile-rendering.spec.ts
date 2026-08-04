@@ -1,4 +1,5 @@
 // End-to-end test for tile rendering - visualize all tile types in all rotations
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // This test helps verify that tile rendering matches the logical model
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase, waitForAnimationFrame } from './helpers';
@@ -177,7 +178,7 @@ test.describe('Tile Rendering Tests', () => {
         
         // Take screenshot
         const filename = `tests/e2e/user-stories/006-tile-rendering/${tileType.name.toLowerCase()}-rotation-${rotation}.png`;
-        await page.screenshot({ 
+        await captureNarrativeScreenshot(page, {
           path: filename,
           fullPage: false
         });

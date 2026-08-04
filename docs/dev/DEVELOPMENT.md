@@ -70,11 +70,11 @@ npm run test:e2e
 
 Runs end-to-end tests using Playwright. These tests verify the application's behavior in a real browser environment.
 
-**E2E Testing Strategy**: All E2E tests generate screenshots organized as **user stories**. Each test suite corresponds to a user story with numbered screenshots that tell a coherent narrative.
+**E2E Testing Strategy**: Playwright snapshot assertions provide visual regression coverage. A separate explicit command generates screenshots organized as **user stories**. Each story uses numbered screenshots to tell a coherent narrative.
 
 - Screenshots are saved in `tests/e2e/user-stories/NNN-story-name/`
 - Each screenshot is numbered sequentially: `001-description.png`, `002-description.png`
-- See `tests/e2e/user-stories/README.md` for complete documentation
+- See `docs/testing/user-stories.md` for complete documentation
 - Contributors can verify test expectations by walking through screenshots in order
 
 **User Stories**:

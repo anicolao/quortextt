@@ -16,6 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:matrix": "node scripts/run-e2e.mjs --config=playwright.matrix.config.ts",
+    "test:e2e:stories": "node scripts/run-e2e.mjs --update-narrative-screenshots",
     "test:e2e:timing": "node scripts/run-e2e.mjs --config=playwright.timing.config.ts",
     "postinstall": "node scripts/patch-playwright.cjs && cd server && npm install",
     "prepare": "husky"

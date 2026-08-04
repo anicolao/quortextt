@@ -1,4 +1,5 @@
 // E2E test for a complete 2-player game using mouse clicks
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // This test demonstrates a full game from setup to victory using only mouse interactions
 import { test, expect } from '@playwright/test';
 import { getReduxState , pauseAnimations, waitForAnimationFrame } from './helpers';
@@ -227,7 +228,7 @@ test.describe('Complete 2-Player Game with Mouse Clicks', () => {
     const takeScreenshot = async (description: string) => {
       const filename = `${String(screenshotCounter).padStart(4, '0')}-${description}.png`;
       await pauseAnimations(page);
-      await page.screenshot({ 
+      await captureNarrativeScreenshot(page, {
         path: `${SCREENSHOT_DIR}/${filename}`,
         fullPage: false
       });

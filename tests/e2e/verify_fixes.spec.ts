@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 
 test('verify texture loading and victory animation', async ({ page }) => {
   // Increase timeout for this test as it involves waiting for game state
@@ -21,7 +22,7 @@ test('verify texture loading and victory animation', async ({ page }) => {
   await page.waitForTimeout(1000);
 
   // Take screenshot of lobby
-  await page.screenshot({ path: 'tests/e2e/screenshots/lobby.png' });
+  await captureNarrativeScreenshot(page, { path: 'tests/e2e/screenshots/lobby.png' });
 
   // Manually dispatch actions to start game and check texture loading
   await page.evaluate(() => {
@@ -38,7 +39,7 @@ test('verify texture loading and victory animation', async ({ page }) => {
   await page.waitForTimeout(1000); // Give it a second
 
   // Take screenshot of gameplay (wood texture should be visible)
-  await page.screenshot({ path: 'tests/e2e/screenshots/gameplay_wood.png' });
+  await captureNarrativeScreenshot(page, { path: 'tests/e2e/screenshots/gameplay_wood.png' });
 
   // Now verify victory animation fix
   // We can force game-over state

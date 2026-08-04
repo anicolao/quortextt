@@ -1,4 +1,5 @@
 // End-to-end test for flow propagation from player edges
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // This test verifies that flows only enter from hex edges that belong to the player's board edge
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase , pauseAnimations } from './helpers';
@@ -60,7 +61,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Take screenshot of initial state with colored player edges
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/003-flow-propagation/001-initial-state.png',
       fullPage: false
     });
@@ -79,7 +80,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Screenshot showing tile without flows (grey, not colored)
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/003-flow-propagation/002-no-connection.png',
       fullPage: false
     });
@@ -144,7 +145,7 @@ test.describe('Flow Propagation from Player Edges', () => {
     
     // Screenshot showing tile WITH colored flows
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/003-flow-propagation/003-with-connection.png',
       fullPage: false
     });

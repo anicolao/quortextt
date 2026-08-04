@@ -1,4 +1,5 @@
 // E2E test for AI player functionality
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 import { test, expect } from '@playwright/test';
 import { getReduxState, waitForAnimationFrame, pauseAnimations } from './helpers';
 
@@ -312,7 +313,7 @@ test.describe('AI Player', () => {
     
     // Pause animations and take screenshot
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/ai-debug-scoring.png',
       fullPage: false
     });

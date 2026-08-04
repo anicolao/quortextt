@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 import { getReduxState, pauseAnimations } from './helpers';
 import { getFlowExit } from '../../src/game/tiles';
 import { getEdgePositionsWithDirections, positionToKey, keyToPosition, getNeighborInDirection, getOppositeDirection } from '../../src/game/board';
@@ -139,7 +140,7 @@ async function testCompleteGameFromActions(page: any, seed: string) {
   await pauseAnimations(page);
   
   // Take initial screenshot
-  await page.screenshot({ 
+  await captureNarrativeScreenshot(page, {
     path: path.join(screenshotDir, '001-initial-screen.png'),
     fullPage: false
   });
@@ -173,7 +174,7 @@ async function testCompleteGameFromActions(page: any, seed: string) {
     
     // Take screenshot for every action
     const filename = String(screenshotCounter).padStart(3, '0') + `-${action.type.toLowerCase()}.png`;
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: path.join(screenshotDir, filename),
       fullPage: false
     });
@@ -345,7 +346,7 @@ async function testCompleteGameFromActions(page: any, seed: string) {
   }
   
   // Take final screenshot
-  await page.screenshot({ 
+  await captureNarrativeScreenshot(page, {
     path: path.join(screenshotDir, 'final-state.png'),
     fullPage: false
   });

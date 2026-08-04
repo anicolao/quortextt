@@ -1,4 +1,5 @@
 // End-to-end test for complete two-player multiplayer flow
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // Shows two users logging in, creating/joining a game, and playing through the first move
 //
 // This test uses separate browser contexts for each user to ensure isolated sessions
@@ -34,7 +35,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       console.log('✓ Step 1: Player 1 login screen validated - title, OAuth buttons, guest login visible');
 
       // Take screenshot of Player 1's login screen
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/001-player1-login-screen.png`,
         fullPage: true
       });
@@ -55,7 +56,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForButtonTransition(page1, 'Join Lobby');
       
       // Take screenshot showing Player 1's username entered
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/002-player1-username-entered.png`,
         fullPage: true
       });
@@ -77,7 +78,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page1);
 
       // Take screenshot of Player 1's lobby
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/003-player1-in-lobby.png`,
         fullPage: true
       });
@@ -96,7 +97,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       console.log('✓ Step 4: Player 2 login screen validated - cookie isolation confirmed (not auto-logged in as Player 1)');
 
       // Take screenshot of Player 2's login screen
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/004-player2-login-screen.png`,
         fullPage: true
       });
@@ -116,7 +117,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForButtonTransition(page2, 'Join Lobby');
 
       // Take screenshot showing Player 2's username entered
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/005-player2-username-entered.png`,
         fullPage: true
       });
@@ -139,7 +140,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page2);
 
       // Take screenshot of Player 2's lobby
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/006-player2-in-lobby.png`,
         fullPage: true
       });
@@ -164,7 +165,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page1);
 
       // Take screenshot of Player 1's create room modal
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/007-player1-create-room-modal.png`,
         fullPage: true
       });
@@ -185,7 +186,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       console.log(`✓ Step 8: Room settings configured - name: "${testRoomName}", max players: 2`);
 
       // Take screenshot before creating
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/008-player1-room-settings.png`,
         fullPage: true
       });
@@ -212,7 +213,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page1);
 
       // Take screenshot of Player 1 in the room
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/009-player1-in-room-waiting.png`,
         fullPage: true
       });
@@ -235,7 +236,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page2);
 
       // Take screenshot of Player 2 seeing the room
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/010-player2-sees-room.png`,
         fullPage: true
       });
@@ -289,7 +290,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page2);
 
       // Take screenshot of Player 2 in the room
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/011-player2-joined-room.png`,
         fullPage: true
       });
@@ -308,7 +309,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       await waitForCSSAnimations(page1);
 
       // Take screenshot of Player 1 seeing Player 2 join
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/012-player1-sees-player2-joined.png`,
         fullPage: true
       });
@@ -321,7 +322,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       // Wait for CSS animations to complete before taking screenshot
       await waitForCSSAnimations(page1);
 
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/013-player1-ready-to-start.png`,
         fullPage: true
       });
@@ -363,7 +364,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       let gameState1 = await getGameState(page1);
       console.log(`✓ Step 15: Game canvas visible - Player 1 screen: ${gameState1?.screen}`);
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/014-player1-game-started.png`,
         fullPage: true
       });
@@ -376,7 +377,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       let gameState2 = await getGameState(page2);
       console.log(`✓ Step 16: Game synced - Player 2 screen: ${gameState2?.screen}`);
       
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/015-player2-game-started.png`,
         fullPage: true
       });
@@ -417,7 +418,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       expect(gameState1?.configPlayers[0].color).toBe('#0173B2'); // Blue
       console.log(`✓ Step 18: Player 1 added to configuration - configPlayers: ${gameState1?.configPlayers.length}, color: ${gameState1?.configPlayers[0].color}`);
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/016-player1-added-to-config.png`,
         fullPage: true
       });
@@ -444,7 +445,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       expect(gameState2?.configPlayers[1].color).toBe('#DE8F05'); // Orange
       console.log(`✓ Step 19: Player 2 added to configuration - configPlayers: ${gameState2?.configPlayers.length}, color: ${gameState2?.configPlayers[1].color}`);
       
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/017-player2-added-to-config.png`,
         fullPage: true
       });
@@ -454,7 +455,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       gameState1 = await getGameState(page1);
       expect(gameState1?.configPlayers.length).toBe(2);
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/018-both-players-in-config.png`,
         fullPage: true
       });
@@ -476,7 +477,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       expect(gameState1?.screen).toBe('seating');
       console.log(`✓ Step 20: START_GAME dispatched - screen transitioned to: ${gameState1?.screen}`);
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/019-seating-phase-player1.png`,
         fullPage: true
       });
@@ -500,7 +501,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       
       expect(gameState2?.screen).toBe('seating');
       
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/020-seating-phase-player2.png`,
         fullPage: true
       });
@@ -543,7 +544,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       
       console.log('✓ Step 21: Player 1 selected seating edge 0');
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/021-player1-edge-selected.png`,
         fullPage: true
       });
@@ -555,7 +556,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       
       console.log('✓ Step 22: Player 2 selected seating edge 3');
       
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/022-player2-edge-selected.png`,
         fullPage: true
       });
@@ -573,12 +574,12 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       
       console.log(`✓ Step 23: Transitioned to gameplay - players: ${gameState1?.players.length}`);
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/023-gameplay-started-player1.png`,
         fullPage: true
       });
       
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/024-gameplay-started-player2.png`,
         fullPage: true
       });
@@ -610,7 +611,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
         console.log(`  After DRAW_TILE - currentTile type: ${gameState1?.currentTile}`);
       }
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/025-player1-ready-for-placement.png`,
         fullPage: true
       });
@@ -664,7 +665,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       
       console.log(`✓ Step 27: Turn advanced - currentPlayerIndex: 0 -> ${nextPlayerIndex}`);
       
-      await page1.screenshot({
+      await captureNarrativeScreenshot(page1, {
         path: `${storyDir}/026-player1-tile-placed.png`,
         fullPage: true
       });
@@ -691,7 +692,7 @@ test.describe('Multiplayer Two-Player Flow (compiled backend)', () => {
       
       console.log(`✓ Step 28: Player 2 sees synchronized state - board size: ${boardSize2}, current player: ${gameState2?.game?.currentPlayerIndex}`);
       
-      await page2.screenshot({
+      await captureNarrativeScreenshot(page2, {
         path: `${storyDir}/027-player2-sees-tile-placed.png`,
         fullPage: true
       });
