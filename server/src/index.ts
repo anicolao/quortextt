@@ -1143,7 +1143,7 @@ io.on('connection', (socket) => {
 
 // Start the server
 const PORT = Number(process.env.PORT || 3001);
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
 httpServer.listen(PORT, HOST, () => {
   console.log(`🎮 Quortex multiplayer server running on ${HOST}:${PORT}`);
   console.log(`   Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
