@@ -1,4 +1,5 @@
 // End-to-end tests for multiplayer anonymous user UI flow
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // Tests the login screen UI, username input validation, and basic interactions
 //
 // The E2E fixture supplies a fresh compiled backend for every test.
@@ -36,9 +37,12 @@ test.describe('Multiplayer Anonymous User UI', () => {
     // Verify the login container is properly styled
     const loginContainer = page.locator('.login-container');
     await expect(loginContainer).toBeVisible();
+    await page.mouse.move(0, 0);
+    await waitForCSSAnimations(page);
+    await expect(page).toHaveScreenshot('multiplayer-login.png', { fullPage: true });
     
     // Take screenshot of initial login screen
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/001-login-screen.png',
       fullPage: true
     });
@@ -52,7 +56,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
     await expect(joinButton).toBeDisabled();
     
     // Take screenshot with empty username
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/002-empty-username-disabled.png',
       fullPage: true
     });
@@ -67,7 +71,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
     await waitForButtonTransition(page, 'Join Lobby');
     
     // Take screenshot with username entered
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/003-username-entered-enabled.png',
       fullPage: true
     });
@@ -94,7 +98,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
     await waitForButtonTransition(page, 'Join Lobby');
     
     // Take screenshot
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/004-maxlength-enforced.png',
       fullPage: true
     });
@@ -121,7 +125,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
     await waitForButtonTransition(page, 'Join Lobby');
     
     // Take screenshot before clicking
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-before-click.png',
       fullPage: true
     });
@@ -141,7 +145,7 @@ test.describe('Multiplayer Anonymous User UI', () => {
       await expect(joinButton).toContainText('Connecting...');
       await waitForCSSAnimations(page);
 
-      await page.screenshot({
+      await captureNarrativeScreenshot(page, {
         path: 'tests/e2e/user-stories/008-multiplayer-anonymous/007-connecting-state.png',
         fullPage: true
       });
@@ -183,7 +187,7 @@ test.describe('Multiplayer Anonymous User Flow (compiled backend)', () => {
     await waitForCSSAnimations(page);
     
     // Take screenshot
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/008-lobby-screen.png',
       fullPage: true
     });
@@ -207,7 +211,7 @@ test.describe('Multiplayer Anonymous User Flow (compiled backend)', () => {
     await waitForCSSAnimations(page);
     
     // Take screenshot of modal
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/009-create-room-modal.png',
       fullPage: true
     });
@@ -227,7 +231,7 @@ test.describe('Multiplayer Anonymous User Flow (compiled backend)', () => {
     await page.waitForTimeout(2000);
     
     // Take screenshot of room
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-multiplayer-anonymous/010-room-created.png',
       fullPage: true
     });

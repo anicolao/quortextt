@@ -1,4 +1,5 @@
 // End-to-end tests for lobby interactions using mouse clicks only
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // Tests the rotated player labels and remove button functionality
 
 import { test, expect } from '@playwright/test';
@@ -160,7 +161,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot of initial lobby
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/001-initial-lobby.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/001-initial-lobby.png' });
 
     // Add one player from each edge
     const playersToAdd = [
@@ -190,7 +191,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot showing all 4 players
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/002-four-players-added.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/002-four-players-added.png' });
   });
 
   test('should remove player from bottom edge using X button', async ({ page }) => {
@@ -209,7 +210,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot with player at bottom
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/003-player-at-bottom.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/003-player-at-bottom.png' });
     
     // Click remove button for the player
     const removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -224,7 +225,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot after removal
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/004-player-removed.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/004-player-removed.png' });
   });
 
   test('should remove player from right edge using X button', async ({ page }) => {
@@ -244,7 +245,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot with player at right edge
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/005-player-at-right.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/005-player-at-right.png' });
     
     // Click remove button
     const removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -275,7 +276,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot with player at top edge
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/006-player-at-top.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/006-player-at-top.png' });
     
     // Click remove button
     const removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -306,7 +307,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot with player at left edge
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/007-player-at-left.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/007-player-at-left.png' });
     
     // Click remove button
     const removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -345,7 +346,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot with 4 players
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/008-four-players-before-removal.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/008-four-players-before-removal.png' });
     
     // Remove player from right edge (index 1)
     let removeCoords = await getRemoveButtonCoordinates(page, 1);
@@ -358,7 +359,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot after first removal
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/009-after-removing-right.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/009-after-removing-right.png' });
     
     // Remove player from top edge (now index 1 after previous removal)
     removeCoords = await getRemoveButtonCoordinates(page, 1);
@@ -375,7 +376,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot of final state
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/010-two-players-remain.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/010-two-players-remain.png' });
   });
 
   test('should work in portrait orientation', async ({ page }) => {
@@ -393,7 +394,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot of portrait lobby
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/011-portrait-initial.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/011-portrait-initial.png' });
 
     // Add players from bottom and top edges (simpler for portrait testing)
     const playersToAdd = [
@@ -413,7 +414,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot with players in portrait mode
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/012-portrait-with-players.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/012-portrait-with-players.png' });
     
     // Remove player from bottom edge using X button
     const removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -429,7 +430,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot after removal in portrait
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/013-portrait-after-removal.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/013-portrait-after-removal.png' });
   });
 
   test('should work with left/right edges in portrait mode', async ({ page }) => {
@@ -464,7 +465,7 @@ test.describe('Lobby Mouse Interactions', () => {
 
     // Take screenshot showing left/right edge players are now visible in portrait mode
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/014-portrait-left-right.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/014-portrait-left-right.png' });
     
     // Test removal of player from right edge using X button
     let removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -479,7 +480,7 @@ test.describe('Lobby Mouse Interactions', () => {
     
     // Take screenshot after removing right edge player
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/015-portrait-after-right-removal.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/015-portrait-after-right-removal.png' });
     
     // Test removal of player from left edge using X button
     removeCoords = await getRemoveButtonCoordinates(page, 0);
@@ -493,6 +494,6 @@ test.describe('Lobby Mouse Interactions', () => {
     
     // Take screenshot after removing left edge player
     await pauseAnimations(page);
-    await page.screenshot({ path: 'tests/e2e/user-stories/007-lobby-interactions/016-portrait-after-left-removal.png' });
+    await captureNarrativeScreenshot(page, { path: 'tests/e2e/user-stories/007-lobby-interactions/016-portrait-after-left-removal.png' });
   });
 });

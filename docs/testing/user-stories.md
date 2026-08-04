@@ -207,7 +207,7 @@ Technical requirements:
 1. **Identify the User Flow**: What is the user trying to accomplish?
 2. **Create Story Directory**: Use next available number with descriptive name
 3. **Document Story**: Add entry to this README with story description
-4. **Generate Screenshots**: Update test to save screenshots in story directory
+4. **Generate Screenshots**: Update the test to call `captureNarrativeScreenshot`
 5. **Review Flow**: Walk through screenshots to verify story is clear
 
 ### Screenshot Guidelines
@@ -223,7 +223,7 @@ Technical requirements:
 
 ### Updating Existing Stories
 
-1. Run the specific E2E test
+1. Run the specific E2E test with `npm run test:e2e:stories -- <test-file>`
 2. Review generated screenshots
 3. Verify screenshots match expected story flow
 4. Update story documentation if flow changes
@@ -252,12 +252,20 @@ Contributors can verify test expectations by:
 ## Running E2E Tests
 
 ```bash
-# Run all E2E tests (regenerates all screenshots)
+# Run behavior and visual-regression tests without changing story screenshots
 npm run test:e2e
 
-# Run specific test
-npm run test:e2e -- tests/e2e/configuration.spec.ts
+# Intentionally regenerate every narrative screenshot
+npm run test:e2e:stories
+
+# Intentionally regenerate one story
+npm run test:e2e:stories -- tests/e2e/configuration.spec.ts
 ```
+
+Normal E2E and CI runs never write the tracked story images. Review every PNG
+diff produced by `test:e2e:stories` before committing it. Playwright snapshots
+under `tests/e2e/snapshots/` are separate visual regression baselines; update
+those with `npm run test:e2e -- --update-snapshots`.
 
 ## Benefits of This Approach
 

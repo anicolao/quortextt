@@ -889,6 +889,8 @@ When contributing new tests:
 | `npm run test:coverage` | Run with coverage report |
 | `npm run test:ui` | Interactive test UI |
 | `npm run test:e2e` | Build both production components and run E2E tests |
+| `npm run test:e2e:stories` | Intentionally regenerate narrative user-story screenshots |
+| `npm run test:e2e:matrix` | Run the scheduled cross-browser and responsive smoke matrix |
 | `npm run test:e2e -- --project=local-tabletop` | Run the compiled local/tabletop project |
 | `npm run test:e2e -- --project=full-stack-multiplayer` | Run the compiled full-stack project |
 | `npm run test:e2e -- --debug` | Debug E2E tests with the managed production build |
@@ -919,6 +921,10 @@ server process, temporary data directory, and generated JWT secret. Backend
 output is captured in `test-results/e2e-backend.log`, including when a test
 fails. Run Playwright through the npm script so these guarantees apply;
 additional Playwright arguments may be appended after `--`.
+
+Normal E2E runs use Playwright snapshot assertions and do not rewrite narrative
+user-story screenshots. See [visual-regression.md](visual-regression.md) for
+baseline updates, explicit story generation, and the scheduled browser matrix.
 
 ### Common Test Utilities
 

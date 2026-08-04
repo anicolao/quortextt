@@ -1,4 +1,5 @@
 // E2E test demonstrating correct multi-tile flow propagation with screenshots
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 import { test } from '@playwright/test';
 import { completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
 
@@ -35,7 +36,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     
     // === STEP 0: Initial state ===
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/004-multi-tile-flow/001-initial.png',
       fullPage: false
     });
@@ -54,7 +55,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/004-multi-tile-flow/002-first-tile.png',
       fullPage: false
     });
@@ -73,7 +74,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/004-multi-tile-flow/003-second-tile.png',
       fullPage: false
     });
@@ -92,7 +93,7 @@ test.describe('Multi-Tile Flow Progression', () => {
     await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/004-multi-tile-flow/004-extended-flow.png',
       fullPage: false
     });

@@ -36,6 +36,15 @@ export default defineConfig({
   // The isolated backend fixture reuses one dynamic port across fresh processes.
   workers: 1,
   reporter: [['html', { open: 'never' }]],
+  snapshotPathTemplate: '{testDir}/snapshots/{projectName}/{testFileName}/{arg}-{platform}{ext}',
+  expect: {
+    toHaveScreenshot: {
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixels: 0,
+      threshold: 0,
+    },
+  },
   use: {
     baseURL: frontendUrl,
     trace: 'retain-on-failure',

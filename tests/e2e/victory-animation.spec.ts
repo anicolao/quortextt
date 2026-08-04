@@ -1,4 +1,5 @@
 // E2E test for victory animation
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase , pauseAnimations, waitForAnimationFrame } from './helpers';
@@ -66,7 +67,7 @@ test.describe('Victory Animation', () => {
     
     // Take a screenshot during early animation
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: '/tmp/victory-animation-early.png',
       fullPage: false
     });
@@ -74,7 +75,7 @@ test.describe('Victory Animation', () => {
     // Wait for modal to fully appear
     await waitForAnimationFrame(page);
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: '/tmp/victory-animation-modal.png',
       fullPage: false
     });
@@ -82,7 +83,7 @@ test.describe('Victory Animation', () => {
     // Wait for pulse animation
     await waitForAnimationFrame(page);
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: '/tmp/victory-animation-pulse.png',
       fullPage: false
     });
@@ -145,7 +146,7 @@ test.describe('Victory Animation', () => {
     
     // Take screenshot of team victory with two color squares
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: '/tmp/victory-animation-team.png',
       fullPage: false
     });

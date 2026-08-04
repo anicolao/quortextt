@@ -1,5 +1,7 @@
 // Shared helper functions for e2e tests
 
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
+
 /**
  * Test timing tracker for measuring screenshot vs test logic overhead
  */
@@ -144,12 +146,12 @@ export async function pauseAnimations(page: any) {
 }
 
 /**
- * Helper to take a screenshot with proper timing
+ * Helper to take a narrative screenshot with proper timing
  * Waits for a single animation frame before taking the screenshot
  * Use this instead of calling page.screenshot directly
  * @param page - Playwright page object
  * @param options - Screenshot options (path, fullPage, etc.)
- * @returns Promise that resolves when screenshot is taken
+ * @returns Promise that resolves after the optional screenshot capture
  */
 export async function takeScreenshot(page: any, options: any) {
   const startTime = Date.now();
@@ -157,8 +159,8 @@ export async function takeScreenshot(page: any, options: any) {
   // Wait for single animation frame to ensure rendering is complete
   await waitForAnimationFrame(page);
   
-  // Take the screenshot
-  await page.screenshot(options);
+  // Documentation screenshots are written only by the explicit story command.
+  await captureNarrativeScreenshot(page, options);
   
   const endTime = Date.now();
   const screenshotTime = endTime - startTime;

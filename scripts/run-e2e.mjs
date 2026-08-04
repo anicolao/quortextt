@@ -13,6 +13,11 @@ const playwrightCli = resolve(
   'cli.js',
 );
 const backendLogPath = resolve(repositoryRoot, 'test-results', 'e2e-backend.log');
+const updateNarrativeScreenshotsFlag = '--update-narrative-screenshots';
+const updatesNarrativeScreenshots = process.argv.includes(updateNarrativeScreenshotsFlag);
+const playwrightArguments = process.argv
+  .slice(2)
+  .filter((argument) => argument !== updateNarrativeScreenshotsFlag);
 
 function waitForExit(child) {
   if (child.exitCode !== null || child.signalCode !== null) {
@@ -117,7 +122,7 @@ try {
 
   playwrightProcess = spawn(
     process.execPath,
-    [playwrightCli, 'test', ...process.argv.slice(2)],
+    [playwrightCli, 'test', ...playwrightArguments],
     {
       cwd: repositoryRoot,
       env: {
@@ -125,6 +130,7 @@ try {
         QUORTEX_E2E_BACKEND_URL: backendUrl,
         QUORTEX_E2E_FRONTEND_URL: frontendUrl,
         QUORTEX_E2E_GIT_SHA: frontendMetadata.gitSha,
+        QUORTEX_UPDATE_NARRATIVE_SCREENSHOTS: updatesNarrativeScreenshots ? '1' : '0',
       },
       stdio: 'inherit',
     },

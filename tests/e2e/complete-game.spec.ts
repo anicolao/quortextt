@@ -1,4 +1,5 @@
 // E2E test for a complete 2-player game user story
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 // This test demonstrates a full game from setup to victory
 import { test, expect } from '@playwright/test';
 import { getReduxState, completeSeatingPhase, pauseAnimations, waitForAnimationFrame } from './helpers';
@@ -18,7 +19,7 @@ test.describe('Complete 2-Player Game', () => {
     
     // === STEP 1: Initial configuration screen ===
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/005-complete-game/001-initial-screen.png',
       fullPage: false
     });
@@ -33,7 +34,7 @@ test.describe('Complete 2-Player Game', () => {
     await waitForAnimationFrame(page);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/005-complete-game/002-players-added.png',
       fullPage: false
     });
@@ -71,7 +72,7 @@ test.describe('Complete 2-Player Game', () => {
     expect(state.game.players.length).toBe(2);
     
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/005-complete-game/003-game-started.png',
       fullPage: false
     });
@@ -139,7 +140,7 @@ test.describe('Complete 2-Player Game', () => {
         moveNumber++;
         
         await pauseAnimations(page);
-        await page.screenshot({ 
+        await captureNarrativeScreenshot(page, {
           path: `tests/e2e/user-stories/005-complete-game/${VICTORY_SCREENSHOT_NAME}`,
           fullPage: false
         });
@@ -196,7 +197,7 @@ test.describe('Complete 2-Player Game', () => {
       // Take screenshot
       await pauseAnimations(page);
       const stepNum = String(moveNumber + 3).padStart(3, '0');
-      await page.screenshot({ 
+      await captureNarrativeScreenshot(page, {
         path: `tests/e2e/user-stories/005-complete-game/${stepNum}-move-${moveNumber}.png`,
         fullPage: false
       });
@@ -291,7 +292,7 @@ test.describe('Complete 2-Player Game', () => {
         gameEnded = true;
         
         await pauseAnimations(page);
-        await page.screenshot({ 
+        await captureNarrativeScreenshot(page, {
           path: `tests/e2e/user-stories/005-complete-game/${VICTORY_SCREENSHOT_NAME}`,
           fullPage: false
         });

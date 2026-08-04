@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { captureNarrativeScreenshot } from './narrativeScreenshot';
 import { formatMoveHistory } from '../../src/game/notation';
 
 // Helper to wait for animation frame
@@ -114,7 +115,7 @@ test.describe('Move Notation - Six Player Test', () => {
 
     // Take initial screenshot
     await pauseAnimations(page);
-    await page.screenshot({ 
+    await captureNarrativeScreenshot(page, {
       path: 'tests/e2e/user-stories/008-six-player-notation/001-initial-state.png',
       fullPage: false
     });
@@ -205,7 +206,7 @@ test.describe('Move Notation - Six Player Test', () => {
         await pauseAnimations(page);
         
         const screenshotNum = String((playerIdx + 1) / 2 + 1).padStart(3, '0');
-        await page.screenshot({ 
+        await captureNarrativeScreenshot(page, {
           path: `tests/e2e/user-stories/008-six-player-notation/${screenshotNum}-moves-${playerIdx - 1}-${playerIdx}.png`,
           fullPage: false
         });
