@@ -29,12 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Build
-        run: npm run build:all
-
-      - name: Verify build identity
-        run: npm run verify:build-metadata
-      
       - name: Run unit tests with coverage
         run: npm run test:coverage -- --coverage.thresholds.lines=100 --coverage.thresholds.branches=95 --coverage.thresholds.functions=95 --coverage.thresholds.statements=95
       
@@ -46,7 +40,7 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       
-      - name: Run e2e tests
+      - name: Build and run production E2E tests
         run: npm run test:e2e
         env:
           CI: true
@@ -79,4 +73,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            dist/version.json
+            server/dist/version.json
           retention-days: 7
