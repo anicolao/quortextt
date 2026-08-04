@@ -41,12 +41,28 @@ jobs:
         run: npx playwright install --with-deps chromium
       
       - name: Build and run production E2E tests
-        run: npm run test:e2e
+        run: npm run test:e2e:stories -- --update-snapshots=all
         env:
           CI: true
       
-      - name: Confirm narrative screenshots were not regenerated
-        run: git diff --exit-code -- tests/e2e/user-stories/ tests/e2e/screenshots/
+      - name: Enforce byte-exact visual expectations
+        run: |
+          visual_paths=(
+            tests/e2e/snapshots/
+            tests/e2e/user-stories/
+            tests/e2e/screenshots/
+          )
+
+          if ! git diff --exit-code --quiet -- "${visual_paths[@]}"; then
+            echo "Error: generated visual expectations differ byte-for-byte."
+            git diff --name-only -- "${visual_paths[@]}"
+            git diff --name-only -z -- "${visual_paths[@]}" | while IFS= read -r -d '' file; do
+              destination="test-results/updated-expectations/$file"
+              mkdir -p "$(dirname "$destination")"
+              cp "$file" "$destination"
+            done
+            exit 1
+          fi
       
       - name: Upload test results
         if: failure()
