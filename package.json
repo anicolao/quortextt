@@ -13,6 +13,7 @@
     "build:server": "cd server && npm run build",
     "verify:build-metadata": "node scripts/verify-build-metadata.mjs",
     "verify:release": "node scripts/verify-release.mjs",
+    "smoke:production": "node scripts/smoke-production.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",

@@ -87,3 +87,17 @@ jobs:
             server/dist/version.json
             release-artifacts/
           retention-days: 7
+
+  deploy-production:
+    name: Deploy production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    permissions:
+      actions: read
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      release-sha: ${{ github.sha }}
+      artifact-name: quortex-release-${{ github.sha }}
+    secrets: inherit

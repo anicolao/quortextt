@@ -18,14 +18,24 @@ let
   releaseManager = pkgs.writeShellApplication {
     name = "quortex-release";
     text = ''
+      staging_args=()
+      ${lib.optionalString cfg.deployment.enable ''
+        deployment_uid="$(${pkgs.coreutils}/bin/id -u ${lib.escapeShellArg cfg.deployment.user})"
+        staging_args=(
+          --staging-root ${releaseRoot}/incoming
+          --expected-archive-uid "$deployment_uid"
+          --tar ${pkgs.gnutar}/bin/tar
+        )
+      ''}
       exec ${lib.getExe' cfg.nodePackage "node"} \
         ${releaseManagerSource}/manage-release.mjs \
+        "$@" \
         --release-root ${releaseRoot} \
         --service quortex.service \
         --systemctl ${pkgs.systemd}/bin/systemctl \
         --expected-uid 0 \
         --node-major ${lib.versions.major cfg.nodePackage.version} \
-        "$@"
+        "''${staging_args[@]}"
     '';
   };
   environmentCheck = pkgs.writeShellScript "quortex-check-environment" ''
@@ -101,6 +111,27 @@ in
       description = "Pinned Node.js runtime used to start the backend.";
     };
 
+    deployment.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether to create the restricted automatic-deployment account.";
+    };
+
+    deployment.user = lib.mkOption {
+      type = lib.types.str;
+      default = "quortex-deploy";
+      description = "Unprivileged SSH account that may upload and activate releases.";
+    };
+
+    deployment.authorizedKeys = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = ''
+        SSH public keys accepted for the deployment account. Keep the private
+        key only in the protected GitHub production environment.
+      '';
+    };
+
     nginx.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -148,6 +179,14 @@ in
         assertion = !cfg.nginx.enable || cfg.nginx.hostName != "";
         message = "services.quortex.nginx.hostName must not be empty";
       }
+      {
+        assertion = !cfg.deployment.enable || builtins.match "[a-z_][a-z0-9_-]*" cfg.deployment.user != null;
+        message = "services.quortex.deployment.user must be a valid system user name";
+      }
+      {
+        assertion = !cfg.deployment.enable || !builtins.elem cfg.deployment.user [ "root" "quortex" ];
+        message = "services.quortex.deployment.user must be separate from root and quortex";
+      }
     ];
 
     environment.systemPackages = [ releaseManager ];
@@ -161,11 +200,36 @@ in
       description = "Quortex multiplayer backend";
     };
 
+    users.groups.${cfg.deployment.user} = lib.mkIf cfg.deployment.enable { };
+    users.users.${cfg.deployment.user} = lib.mkIf cfg.deployment.enable {
+      isSystemUser = true;
+      group = cfg.deployment.user;
+      home = "${releaseRoot}/incoming";
+      createHome = false;
+      shell = pkgs.bashInteractive;
+      description = "Restricted Quortex release deployment";
+      openssh.authorizedKeys.keys = cfg.deployment.authorizedKeys;
+    };
+
     systemd.tmpfiles.rules = [
       "d /etc/quortex 0700 root root -"
       "d /var/lib/quortex 0755 root root -"
       "d /var/lib/quortex/releases 0755 root root -"
       "d ${dataDirectory} 0750 quortex quortex -"
+    ] ++ lib.optionals cfg.deployment.enable [
+      "d ${releaseRoot}/incoming 0750 ${cfg.deployment.user} ${cfg.deployment.user} -"
+    ];
+
+    security.sudo.extraRules = lib.optionals cfg.deployment.enable [
+      {
+        users = [ cfg.deployment.user ];
+        commands = [
+          {
+            command = "/run/current-system/sw/bin/quortex-release";
+            options = [ "NOPASSWD" ];
+          }
+        ];
+      }
     ];
 
     systemd.services.quortex = {

@@ -1,18 +1,20 @@
-import { mkdtemp, mkdir, readFile, readlink, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { access, mkdtemp, mkdir, readFile, readlink, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 // @ts-expect-error Build-time release helpers intentionally remain JavaScript modules.
-import { activateRelease, rollbackRelease } from '../scripts/manage-release.mjs';
+import { activateRelease, importRelease, rollbackRelease } from '../scripts/manage-release.mjs';
 // @ts-expect-error Build-time release helpers intentionally remain JavaScript modules.
 import { verifyRelease, writeReleaseManifest } from '../scripts/release-manifest.mjs';
 
 const SHA_A = '0123456789abcdef0123456789abcdef01234567';
 const SHA_B = '89abcdef0123456789abcdef0123456789abcdef';
 const temporaryDirectories: string[] = [];
+const execFileAsync = promisify(execFile);
 
-async function createRelease(releaseRoot: string, sha: string, marker: string) {
-  const releaseDirectory = resolve(releaseRoot, 'releases', sha);
+async function populateRelease(releaseDirectory: string, sha: string, marker: string) {
   await Promise.all([
     mkdir(resolve(releaseDirectory, 'frontend'), { recursive: true }),
     mkdir(resolve(releaseDirectory, 'server/dist'), { recursive: true }),
@@ -37,6 +39,10 @@ async function createRelease(releaseRoot: string, sha: string, marker: string) {
   ]);
   await writeReleaseManifest(releaseDirectory, { expectedNodeMajor: 22 });
   return releaseDirectory;
+}
+
+async function createRelease(releaseRoot: string, sha: string, marker: string) {
+  return populateRelease(resolve(releaseRoot, 'releases', sha), sha, marker);
 }
 
 async function createReleaseRoot() {
@@ -68,6 +74,52 @@ describe('immutable release manifests', () => {
     await expect(verifyRelease(releaseDirectory, { expectedSha: SHA_A })).rejects.toThrow(
       /inventory or checksums/,
     );
+  });
+});
+
+describe('release import', () => {
+  it('imports the fixed incoming archive before activation', async () => {
+    const releaseRoot = await createReleaseRoot();
+    const incomingRoot = resolve(releaseRoot, 'incoming');
+    await mkdir(incomingRoot);
+    const archivePath = resolve(incomingRoot, `quortex-${SHA_A}.tar.gz`);
+    const sourceDirectory = resolve(releaseRoot, 'archive-source');
+    await populateRelease(sourceDirectory, SHA_A, 'imported release');
+    await execFileAsync('tar', ['-czf', archivePath, '-C', sourceDirectory, '.']);
+
+    await expect(importRelease(releaseRoot, incomingRoot, SHA_A, {
+      expectedUid: process.getuid?.(),
+      expectedArchiveUid: process.getuid?.(),
+      tarPath: 'tar',
+    })).resolves.toMatchObject({ gitSha: SHA_A });
+
+    expect(await readFile(
+      resolve(releaseRoot, 'releases', SHA_A, 'frontend/index.html'),
+      'utf8',
+    )).toBe('imported release');
+    await expect(access(archivePath)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('does not install an incoming release with any changed byte', async () => {
+    const releaseRoot = await createReleaseRoot();
+    const incomingRoot = resolve(releaseRoot, 'incoming');
+    await mkdir(incomingRoot);
+    const archivePath = resolve(incomingRoot, `quortex-${SHA_A}.tar.gz`);
+    await writeFile(archivePath, 'test archive');
+
+    await expect(importRelease(releaseRoot, incomingRoot, SHA_A, {
+      expectedUid: process.getuid?.(),
+      expectedArchiveUid: process.getuid?.(),
+      extractArchive: async (_archivePath: string, destination: string) => {
+        await populateRelease(destination, SHA_A, 'original release');
+        await writeFile(resolve(destination, 'frontend/index.html'), 'changed release');
+      },
+    })).rejects.toThrow(/inventory or checksums/);
+
+    await expect(access(resolve(releaseRoot, 'releases', SHA_A))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    await expect(access(archivePath)).resolves.toBeUndefined();
   });
 });
 

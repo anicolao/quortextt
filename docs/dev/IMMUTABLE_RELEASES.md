@@ -41,8 +41,9 @@ npm run verify:release -- /path/to/extracted-release <full-git-sha>
 
 ## Host layout
 
-Archives are extracted as new root-owned directories. Neither the uploader nor
-an operator should write into `current`:
+Archives are uploaded to the deployment account's incoming directory. The
+privileged release command extracts them as new root-owned directories. Neither
+the uploader nor an operator should write into `current`:
 
 ```text
 /var/lib/quortex/
@@ -50,6 +51,7 @@ an operator should write into `current`:
     <full-git-sha>/
   current -> releases/<active-sha>
   previous -> releases/<rollback-sha>
+  incoming/                 quortex-deploy-owned archives
   data/
 ```
 
@@ -60,17 +62,21 @@ secrets remain outside every release.
 ## Activation and rollback
 
 The NixOS module installs one fixed privileged command. It accepts only a full
-Git SHA already present under `/var/lib/quortex/releases`:
+Git SHA. If the release is not already installed, activation imports the
+fixed-name `/var/lib/quortex/incoming/quortex-<sha>.tar.gz` archive first:
 
 ```bash
 sudo quortex-release activate <full-git-sha>
 sudo quortex-release rollback
 ```
 
-Activation verifies the complete release, records the old `current` target as
-`previous`, atomically replaces `current`, and restarts `quortex.service`. If
-the service restart fails, it restores and restarts the old release. Activation
-does not download, extract, build, or modify a release.
+The archive must be a regular file owned by the configured deployment account
+and must not be writable by group or other users. Activation extracts it into a
+root-owned temporary directory, verifies every path, byte, mode, owner, Node
+version, and component SHA against `release.json`, and only then renames it into
+`releases/<sha>`. It records the old `current` target as `previous`, atomically
+replaces `current`, and restarts `quortex.service`. If the service restart
+fails, it restores and restarts the old release.
 
 Rollback verifies both targets, atomically swaps `current` and `previous`, and
 restarts the service. A later deployment workflow can therefore call rollback
@@ -102,6 +108,5 @@ options in two modules can cause conflicting declarations. The old static
 directory should be retained until activation, public checks, and rollback have
 all been exercised successfully.
 
-These commands only prepare and operate the release mechanism. Automatic
-artifact upload, public smoke checks, retention, and deployment credentials
-belong to the subsequent automatic-deployment phase.
+Automatic upload, activation, public identity checks, and rollback are
+described in [Automatic Production Deployment](AUTOMATIC_DEPLOYMENT.md).

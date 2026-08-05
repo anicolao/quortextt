@@ -1,0 +1,148 @@
+name: Deploy production
+
+on:
+  workflow_call:
+    inputs:
+      release-sha:
+        description: Full Git SHA embedded in the tested release
+        required: true
+        type: string
+      artifact-name:
+        description: Immutable artifact uploaded by the calling CI run
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Production
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      deployments: write
+    environment:
+      name: production
+      url: ${{ vars.QUORTEX_PRODUCTION_URL || 'https://quortex.morpheum.dev' }}
+    concurrency:
+      group: quortex-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ vars.QUORTEX_DEPLOY_HOST || 'matrix.morpheum.dev' }}
+      DEPLOY_USER: ${{ vars.QUORTEX_DEPLOY_USER || 'quortex-deploy' }}
+      PRODUCTION_URL: ${{ vars.QUORTEX_PRODUCTION_URL || 'https://quortex.morpheum.dev' }}
+      RELEASE_SHA: ${{ inputs.release-sha }}
+
+    steps:
+      - name: Checkout the tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install smoke-test dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download the tested immutable release
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: release-artifacts
+
+      - name: Verify the downloaded release
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid release SHA: $RELEASE_SHA" >&2
+            exit 1
+          fi
+          expected_archive="release-artifacts/quortex-$RELEASE_SHA.tar.gz"
+          if [ ! -f "$expected_archive" ]; then
+            echo "Expected exactly $expected_archive" >&2
+            find release-artifacts -maxdepth 1 -type f -print
+            exit 1
+          fi
+          archive_count="$(find release-artifacts -maxdepth 1 -type f -name '*.tar.gz' | wc -l)"
+          if [ "$archive_count" -ne 1 ]; then
+            echo "Expected one release archive, found $archive_count" >&2
+            exit 1
+          fi
+          mkdir verified-release
+          tar -xzf "$expected_archive" -C verified-release
+          node scripts/verify-release.mjs verified-release "$RELEASE_SHA"
+
+      - name: Configure pinned production SSH
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.QUORTEX_DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.QUORTEX_DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "Invalid deployment host" >&2
+            exit 1
+          fi
+          if [[ ! "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+            echo "Invalid deployment user" >&2
+            exit 1
+          fi
+          if [ -z "$DEPLOY_SSH_PRIVATE_KEY" ] || [ -z "$DEPLOY_SSH_KNOWN_HOSTS" ]; then
+            echo "The protected production SSH secrets are not configured" >&2
+            exit 1
+          fi
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/quortex-production"
+          chmod 0600 "$HOME/.ssh/quortex-production"
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > "$HOME/.ssh/quortex-known-hosts"
+          chmod 0600 "$HOME/.ssh/quortex-known-hosts"
+          if ! ssh-keygen -F "$DEPLOY_HOST" -f "$HOME/.ssh/quortex-known-hosts" >/dev/null; then
+            echo "Pinned known_hosts data has no entry for $DEPLOY_HOST" >&2
+            exit 1
+          fi
+          {
+            echo 'Host quortex-production'
+            echo "  HostName $DEPLOY_HOST"
+            echo "  User $DEPLOY_USER"
+            echo "  IdentityFile $HOME/.ssh/quortex-production"
+            echo "  UserKnownHostsFile $HOME/.ssh/quortex-known-hosts"
+            echo '  StrictHostKeyChecking yes'
+            echo '  BatchMode yes'
+          } > "$HOME/.ssh/config"
+          chmod 0600 "$HOME/.ssh/config"
+
+      - name: Upload release archive
+        run: |
+          set -euo pipefail
+          remote_archive="/var/lib/quortex/incoming/quortex-$RELEASE_SHA.tar.gz"
+          ssh quortex-production 'test -d /var/lib/quortex/incoming && test -w /var/lib/quortex/incoming'
+          scp "release-artifacts/quortex-$RELEASE_SHA.tar.gz" "quortex-production:$remote_archive"
+
+      - name: Activate release
+        id: activate
+        run: |
+          set -euo pipefail
+          # RELEASE_SHA was constrained to lowercase hexadecimal before this client-side expansion.
+          # shellcheck disable=SC2029
+          activation_output="$(ssh quortex-production \
+            "sudo --non-interactive /run/current-system/sw/bin/quortex-release activate '$RELEASE_SHA'")"
+          activation_json="$(printf '%s\n' "$activation_output" | tail -n 1)"
+          changed="$(node -e 'const value=JSON.parse(process.argv[1]); process.stdout.write(String(value.changed))' "$activation_json")"
+          previous_sha="$(node -e 'const value=JSON.parse(process.argv[1]); process.stdout.write(value.previous || "")' "$activation_json")"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "previous_sha=$previous_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke deployed release
+        run: node scripts/smoke-production.mjs "$PRODUCTION_URL" "$RELEASE_SHA"
+
+      - name: Roll back failed deployment
+        if: ${{ failure() && steps.activate.outcome == 'success' && steps.activate.outputs.changed == 'true' && steps.activate.outputs.previous_sha != '' }}
+        env:
+          PREVIOUS_SHA: ${{ steps.activate.outputs.previous_sha }}
+        run: |
+          set -euo pipefail
+          ssh quortex-production \
+            'sudo --non-interactive /run/current-system/sw/bin/quortex-release rollback'
+          node scripts/smoke-production.mjs "$PRODUCTION_URL" "$PREVIOUS_SHA"
