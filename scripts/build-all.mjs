@@ -7,6 +7,9 @@ const env = {
   ...process.env,
   ...metadataEnvironment(metadata),
   QUORTEX_RELEASE_BUILD: 'true',
+  // Release frontends always reach the backend through their current origin.
+  // This also overrides any developer-only value loaded from a local .env.
+  VITE_SERVER_URL: '',
 };
 
 for (const script of ['build', 'build:server']) {

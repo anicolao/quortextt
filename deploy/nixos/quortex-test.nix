@@ -12,6 +12,7 @@ let
   };
   config = evaluated.config;
   service = config.systemd.services.quortex;
+  virtualHost = config.services.nginx.virtualHosts."quortex.morpheum.dev";
 in
 assert config.users.users.quortex.isSystemUser;
 assert config.users.users.quortex.group == "quortex";
@@ -24,6 +25,10 @@ assert service.serviceConfig.EnvironmentFile == "/etc/quortex/environment";
 assert service.serviceConfig.WorkingDirectory == "/var/lib/quortex/current/server";
 assert service.serviceConfig.ProtectSystem == "strict";
 assert service.serviceConfig.ReadWritePaths == [ "/var/lib/quortex/data" ];
+assert virtualHost.root == "/var/lib/quortex/current/frontend";
+assert virtualHost.locations."= /health".proxyPass == "http://127.0.0.1:3001";
+assert virtualHost.locations."/socket.io/".proxyWebsockets;
+assert virtualHost.locations."^~ /quortextt/assets/".alias == "/var/lib/quortex/current/frontend/assets/";
 {
   service = "quortex.service";
   user = service.serviceConfig.User;

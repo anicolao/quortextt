@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { multiplayerStore } from '../stores/multiplayerStore';
+  import { resolveServerUrl } from '../serverUrl';
 
   let serverUrl = '';
   let profile: any = null;
@@ -16,7 +17,7 @@
 
   onMount(async () => {
     // @ts-ignore - Vite injects import.meta.env
-    serverUrl = import.meta.env?.VITE_SERVER_URL || 'http://localhost:3001';
+    serverUrl = resolveServerUrl(import.meta.env?.VITE_SERVER_URL);
     await loadProfile();
   });
 

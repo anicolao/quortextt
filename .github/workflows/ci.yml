@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
       
       - name: Install dependencies
@@ -63,6 +63,17 @@ jobs:
             done
             exit 1
           fi
+
+      - name: Package tested immutable release
+        run: npm run package:release
+
+      - name: Upload immutable release
+        uses: actions/upload-artifact@v4
+        with:
+          name: quortex-release-${{ github.sha }}
+          path: release-artifacts/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
       
       - name: Upload test results
         if: failure()
@@ -74,4 +85,5 @@ jobs:
             test-results/
             dist/version.json
             server/dist/version.json
+            release-artifacts/
           retention-days: 7

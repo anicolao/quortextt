@@ -17,7 +17,8 @@ to `/var/lib/quortex/data`. NixOS creates the following stable layout:
 
 The `current` symlink and release contents are intentionally not created by the
 module. Release creation and atomic activation belong to the immutable-release
-deployment step.
+deployment step. See [Immutable Production Releases](IMMUTABLE_RELEASES.md) for
+the archive contract, activation and rollback commands, and Nginx routing.
 
 ## Host configuration
 
@@ -47,6 +48,11 @@ The module defaults match production:
 - listener: `127.0.0.1:3001`, reachable only through the local Nginx proxy;
 - public origin: `https://quortex.morpheum.dev`;
 - runtime: the Nixpkgs Node.js 22 package.
+
+The module also installs the `quortex-release` activation command and, by
+default, declares the canonical `quortex.morpheum.dev` Nginx virtual host. The
+host serves static files through `current` and proxies backend traffic only to
+the loopback listener.
 
 ## Secrets
 
@@ -111,6 +117,13 @@ systemctl status quortex --no-pager
 journalctl -u quortex -n 100 --no-pager
 curl -fsS https://quortex.morpheum.dev/health
 curl -fsS https://quortex.morpheum.dev/version
+```
+
+Also verify the canonical and compatibility frontend identities:
+
+```bash
+curl -fsS https://quortex.morpheum.dev/version.json
+curl -fsS https://quortex.morpheum.dev/quortextt/version.json
 ```
 
 The service is enabled under `multi-user.target`, so it starts automatically

@@ -93,7 +93,7 @@ const frontendUrl = `http://127.0.0.1:${frontendPort}`;
 const backendUrl = `http://127.0.0.1:${backendPort}`;
 const buildEnvironment = {
   ...process.env,
-  VITE_SERVER_URL: backendUrl,
+  QUORTEX_E2E_BACKEND_URL: backendUrl,
 };
 let playwrightProcess;
 

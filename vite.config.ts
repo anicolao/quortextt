@@ -4,6 +4,14 @@ import { resolve } from 'path';
 import { createBuildMetadataConfig } from './vite.build-metadata';
 
 const buildMetadata = createBuildMetadataConfig();
+const backendTarget = process.env.QUORTEX_E2E_BACKEND_URL || 'http://127.0.0.1:3001';
+const backendProxy = {
+  '/api': { target: backendTarget, changeOrigin: true },
+  '/auth': { target: backendTarget, changeOrigin: true },
+  '^/health$': { target: backendTarget, changeOrigin: true },
+  '^/version$': { target: backendTarget, changeOrigin: true },
+  '/socket.io': { target: backendTarget, changeOrigin: true, ws: true },
+};
 
 // Default Vite configuration - serves both multiplayer (/) and tabletop (/tabletop)
 export default defineConfig({
@@ -15,6 +23,8 @@ export default defineConfig({
   ],
   define: buildMetadata.define,
   base: '/quortextt/',
+  server: { proxy: backendProxy },
+  preview: { proxy: backendProxy },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
