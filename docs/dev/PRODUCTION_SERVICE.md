@@ -49,10 +49,12 @@ The module defaults match production:
 - public origin: `https://quortex.morpheum.dev`;
 - runtime: the Nixpkgs Node.js 22 package.
 
-The module also installs the `quortex-release` activation command and, by
-default, declares the canonical `quortex.morpheum.dev` Nginx virtual host. The
-host serves static files through `current` and proxies backend traffic only to
-the loopback listener.
+The module also installs the `quortex-release` activation command, creates the
+restricted `quortex-deploy` upload account, and, by default, declares the
+canonical `quortex.morpheum.dev` Nginx virtual host. The host serves static
+files through `current` and proxies backend traffic only to the loopback
+listener. Configure the deployment account and GitHub environment using
+[Automatic Production Deployment](AUTOMATIC_DEPLOYMENT.md).
 
 ## Secrets
 

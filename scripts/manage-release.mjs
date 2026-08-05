@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { lstat, readlink, rename, symlink, unlink } from 'node:fs/promises';
+import { lstat, mkdtemp, readlink, rename, rm, symlink, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
@@ -79,6 +79,92 @@ async function verifyManagedRelease(releaseRoot, sha, options) {
   });
 }
 
+async function pathExists(path) {
+  try {
+    await lstat(path);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
+async function extractReleaseArchive(tarPath, archivePath, destination) {
+  if (!tarPath) throw new Error('Importing a release requires a tar executable');
+  await execFileAsync(tarPath, [
+    '--extract',
+    '--gzip',
+    '--file', archivePath,
+    '--directory', destination,
+    '--no-same-owner',
+    '--no-same-permissions',
+  ]);
+}
+
+/** Import one fixed-name incoming archive into the root-owned immutable release store. */
+export async function importRelease(
+  releaseRoot,
+  stagingRoot,
+  sha,
+  {
+    expectedNodeMajor = 22,
+    expectedUid,
+    expectedArchiveUid,
+    tarPath,
+    extractArchive = (archivePath, destination) => (
+      extractReleaseArchive(tarPath, archivePath, destination)
+    ),
+  } = {},
+) {
+  if (!FULL_GIT_SHA.test(sha)) throw new Error(`Invalid release SHA: ${sha}`);
+  const root = validateReleaseRoot(releaseRoot);
+  const incomingRoot = validateReleaseRoot(stagingRoot);
+  const archivePath = resolve(incomingRoot, `quortex-${sha}.tar.gz`);
+  const releaseDirectory = resolve(root, 'releases', sha);
+
+  if (await pathExists(releaseDirectory)) {
+    return verifyManagedRelease(root, sha, { expectedNodeMajor, expectedUid });
+  }
+
+  const archiveStats = await lstat(archivePath);
+  if (!archiveStats.isFile() || archiveStats.isSymbolicLink()) {
+    throw new Error(`Incoming release must be a regular file: ${archivePath}`);
+  }
+  if (expectedArchiveUid !== undefined && archiveStats.uid !== expectedArchiveUid) {
+    throw new Error(`Incoming release must be owned by uid ${expectedArchiveUid}`);
+  }
+  if ((archiveStats.mode & 0o022) !== 0) {
+    throw new Error('Incoming release must not be writable by group or other users');
+  }
+
+  const temporaryDirectory = await mkdtemp(resolve(root, 'releases', `.import-${sha}-`));
+  try {
+    await extractArchive(archivePath, temporaryDirectory);
+    const manifest = await verifyRelease(temporaryDirectory, {
+      expectedSha: sha,
+      expectedNodeMajor,
+      expectedUid,
+    });
+    await rename(temporaryDirectory, releaseDirectory);
+    await unlink(archivePath);
+    return manifest;
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function ensureManagedRelease(releaseRoot, sha, options) {
+  const releaseDirectory = resolve(releaseRoot, 'releases', sha);
+  if (!(await pathExists(releaseDirectory))) {
+    if (!options.stagingRoot) {
+      throw new Error(`Release is not staged: ${sha}`);
+    }
+    await importRelease(releaseRoot, options.stagingRoot, sha, options);
+  }
+  return verifyManagedRelease(releaseRoot, sha, options);
+}
+
 async function applyLinkTransaction(releaseRoot, nextLinks, previousLinks, restartService) {
   try {
     await restoreLinks(releaseRoot, nextLinks);
@@ -101,13 +187,14 @@ async function applyLinkTransaction(releaseRoot, nextLinks, previousLinks, resta
 export async function activateRelease(
   releaseRoot,
   sha,
-  { restartService, expectedNodeMajor = 22, expectedUid } = {},
+  options = {},
 ) {
+  const { restartService, expectedNodeMajor = 22, expectedUid } = options;
   if (typeof restartService !== 'function') {
     throw new Error('activateRelease requires a restartService function');
   }
   const root = validateReleaseRoot(releaseRoot);
-  await verifyManagedRelease(root, sha, { expectedNodeMajor, expectedUid });
+  await ensureManagedRelease(root, sha, { ...options, expectedNodeMajor, expectedUid });
 
   const links = {
     current: await readManagedLink(root, 'current'),
@@ -180,6 +267,11 @@ async function main() {
     await execFileAsync(options.systemctl, ['restart', options.service]);
   };
   const commonOptions = { restartService, expectedNodeMajor, expectedUid };
+  commonOptions.stagingRoot = options['staging-root'];
+  commonOptions.expectedArchiveUid = options['expected-archive-uid'] === undefined
+    ? undefined
+    : Number(options['expected-archive-uid']);
+  commonOptions.tarPath = options.tar;
 
   let result;
   if (action === 'activate' && sha) {
