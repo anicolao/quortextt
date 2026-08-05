@@ -3,6 +3,31 @@
 let
   cfg = config.services.quortex;
   dataDirectory = "/var/lib/quortex/data";
+  releaseRoot = "/var/lib/quortex";
+  immutableCache = ''
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+  '';
+  noStore = ''
+    add_header Cache-Control "no-store" always;
+  '';
+  releaseManagerSource = pkgs.runCommand "quortex-release-manager-source" { } ''
+    mkdir -p "$out"
+    cp ${../../scripts/manage-release.mjs} "$out/manage-release.mjs"
+    cp ${../../scripts/release-manifest.mjs} "$out/release-manifest.mjs"
+  '';
+  releaseManager = pkgs.writeShellApplication {
+    name = "quortex-release";
+    text = ''
+      exec ${lib.getExe' cfg.nodePackage "node"} \
+        ${releaseManagerSource}/manage-release.mjs \
+        --release-root ${releaseRoot} \
+        --service quortex.service \
+        --systemctl ${pkgs.systemd}/bin/systemctl \
+        --expected-uid 0 \
+        --node-major ${lib.versions.major cfg.nodePackage.version} \
+        "$@"
+    '';
+  };
   environmentCheck = pkgs.writeShellScript "quortex-check-environment" ''
     set -eu
 
@@ -75,6 +100,30 @@ in
       defaultText = lib.literalExpression "pkgs.nodejs_22";
       description = "Pinned Node.js runtime used to start the backend.";
     };
+
+    nginx.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether to declare the canonical Quortex Nginx virtual host.";
+    };
+
+    nginx.hostName = lib.mkOption {
+      type = lib.types.str;
+      default = "quortex.morpheum.dev";
+      description = "Canonical production hostname served by Nginx.";
+    };
+
+    nginx.enableACME = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether Nginx should obtain an ACME certificate for the host.";
+    };
+
+    nginx.forceSSL = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether Nginx should redirect plaintext requests to HTTPS.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -95,7 +144,13 @@ in
         assertion = lib.hasPrefix "https://" cfg.publicOrigin;
         message = "services.quortex.publicOrigin must use HTTPS";
       }
+      {
+        assertion = !cfg.nginx.enable || cfg.nginx.hostName != "";
+        message = "services.quortex.nginx.hostName must not be empty";
+      }
     ];
+
+    environment.systemPackages = [ releaseManager ];
 
     users.groups.quortex = { };
     users.users.quortex = {
@@ -162,6 +217,66 @@ in
         RestrictRealtime = true;
         RestrictSUIDSGID = true;
         SystemCallArchitectures = "native";
+      };
+    };
+
+    services.nginx = lib.mkIf cfg.nginx.enable {
+      enable = true;
+      recommendedProxySettings = true;
+      recommendedTlsSettings = true;
+
+      virtualHosts.${cfg.nginx.hostName} = {
+        root = "${cfg.releaseDirectory}/frontend";
+        enableACME = cfg.nginx.enableACME;
+        forceSSL = cfg.nginx.forceSSL;
+
+        locations = {
+          "= /" = {
+            tryFiles = "/index.html =404";
+            extraConfig = noStore;
+          };
+          "= /index.html" = {
+            tryFiles = "/index.html =404";
+            extraConfig = noStore;
+          };
+          "= /tabletop.html" = {
+            tryFiles = "/tabletop.html =404";
+            extraConfig = noStore;
+          };
+          "= /version.json" = {
+            tryFiles = "/version.json =404";
+            extraConfig = noStore;
+          };
+          "/assets/" = {
+            tryFiles = "$uri =404";
+            extraConfig = immutableCache;
+          };
+
+          "= /quortextt".return = "308 /";
+          "= /quortextt/version.json" = {
+            alias = "${cfg.releaseDirectory}/frontend/version.json";
+            extraConfig = noStore;
+          };
+          "^~ /quortextt/assets/" = {
+            alias = "${cfg.releaseDirectory}/frontend/assets/";
+            extraConfig = immutableCache;
+          };
+          "~ ^/quortextt/(.*)$".return = "308 /$1";
+
+          "= /health".proxyPass = "http://127.0.0.1:${toString cfg.port}";
+          "= /version".proxyPass = "http://127.0.0.1:${toString cfg.port}";
+          "/api/".proxyPass = "http://127.0.0.1:${toString cfg.port}";
+          "/auth/".proxyPass = "http://127.0.0.1:${toString cfg.port}";
+          "/socket.io/" = {
+            proxyPass = "http://127.0.0.1:${toString cfg.port}";
+            proxyWebsockets = true;
+          };
+
+          "/" = {
+            tryFiles = "$uri $uri/ /index.html";
+            extraConfig = noStore;
+          };
+        };
       };
     };
   };

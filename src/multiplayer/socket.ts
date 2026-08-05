@@ -8,6 +8,7 @@ import {
   setPlayerDisconnected,
   setSpectatorCount,
 } from "../redux/actions";
+import { resolveServerUrl } from "./serverUrl";
 
 type ServerBuildMetadata = QuortexBuildMetadata & { readonly component: "server" };
 
@@ -22,16 +23,7 @@ class MultiplayerSocket {
     // @ts-ignore - Vite injects import.meta.env
     const envServerUrl = import.meta.env?.VITE_SERVER_URL;
 
-    if (envServerUrl) {
-      this.serverUrl = envServerUrl;
-    } else {
-      // Auto-detect: if page is HTTPS, use wss:// and https://, otherwise use ws:// and http://
-      const isSecure = window.location.protocol === "https:";
-      const protocol = isSecure ? "https:" : "http:";
-      const host = window.location.hostname;
-      const port = isSecure ? "3001" : "3001"; // Use same port for now
-      this.serverUrl = `${protocol}//${host}:${port}`;
-    }
+    this.serverUrl = resolveServerUrl(envServerUrl);
   }
 
   /**

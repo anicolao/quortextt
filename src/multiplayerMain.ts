@@ -17,6 +17,7 @@ import { GameCoordinator } from './multiplayer/gameCoordinator';
 import { setGameMode, resetGame, setSpectatorMode } from './redux/actions';
 import { Router } from './multiplayer/router';
 import { socket } from './multiplayer/socket';
+import { resolveServerUrl } from './multiplayer/serverUrl';
 
 // Expose store to window for testing
 declare global {
@@ -68,7 +69,7 @@ async function handleDeepLink() {
   try {
     // Get server URL from environment
     // @ts-ignore - Vite injects import.meta.env
-    const serverUrl = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:3001';
+    const serverUrl = resolveServerUrl((import.meta as any).env?.VITE_SERVER_URL);
     
     // Validate token and get user info
     const response = await fetch(`${serverUrl}/auth/me`, {

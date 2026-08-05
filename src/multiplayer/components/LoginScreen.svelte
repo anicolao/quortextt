@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { multiplayerStore } from '../stores/multiplayerStore';
   import { socket } from '../socket';
+  import { resolveServerUrl } from '../serverUrl';
 
   let username = '';
   let connecting = false;
@@ -11,7 +12,7 @@
   onMount(() => {
     // Get server URL from environment
     // @ts-ignore - Vite injects import.meta.env
-    serverUrl = import.meta.env?.VITE_SERVER_URL || 'http://localhost:3001';
+    serverUrl = resolveServerUrl(import.meta.env?.VITE_SERVER_URL);
     
     // Check if we have a token from OAuth callback
     const urlParams = new URLSearchParams(window.location.search);
